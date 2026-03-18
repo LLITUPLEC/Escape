@@ -7,6 +7,8 @@ namespace Project.Networking
     {
         public const long Transform = 1;
         public const long PlayerLeft = 2;
+        public const long DoorOpened = 3;
+        public const long MatchWon = 4;
     }
 
     [Serializable]
@@ -34,6 +36,18 @@ namespace Project.Networking
             t.position = new Vector3(px, py, pz);
             t.rotation = Quaternion.Euler(0f, ry, 0f);
         }
+    }
+
+    [Serializable]
+    public sealed class NetDoorOpenedState
+    {
+        public int doorId;
+    }
+
+    [Serializable]
+    public sealed class NetMatchWonState
+    {
+        public string winnerUserId;
     }
 }
 

@@ -10,6 +10,9 @@ namespace Project.Player
     {
         [SerializeField] private float moveSpeed = 4.5f;
         [SerializeField] private float runMultiplier = 1.6f;
+        [Header("Turning")]
+        [SerializeField] private float turnSpeed = 15f;
+        [SerializeField] private float turnMinMoveSqr = 0.0004f; // ~0.02^2
         [SerializeField] private float gravity = -25f;
         [SerializeField] private float jumpHeight = 1.2f;
         [Header("Animation")]
@@ -38,7 +41,38 @@ namespace Project.Player
 
             var isRunning = ReadRunInput();
             var speed = moveSpeed * (isRunning ? runMultiplier : 1f);
-            var move = (transform.right * input.x + transform.forward * input.y) * speed;
+            
+            // Движение считаем относительно камеры, чтобы поворот персонажа не влиял на направление движения.
+            // Это убирает обратную связь ("поворот -> смена вектора движения -> снова поворот").
+            var cam = Camera.main;
+            if (cam == null) cam = FindAnyObjectByType<Camera>();
+            var camRight = transform.right;
+            var camForward = transform.forward;
+            if (cam != null)
+            {
+                camForward = Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized;
+                camRight = Vector3.ProjectOnPlane(cam.transform.right, Vector3.up).normalized;
+                if (camForward.sqrMagnitude < 0.0001f || camRight.sqrMagnitude < 0.0001f)
+                {
+                    camForward = transform.forward;
+                    camRight = transform.right;
+                }
+            }
+
+            var moveDir = camRight * input.x + camForward * input.y;
+            var move = moveDir * speed;
+
+            // Поворачиваемся в сторону планарного перемещения (XZ) плавно.
+            var planarMove = Vector3.ProjectOnPlane(move, Vector3.up);
+            // Если игрок идёт назад (S), поворачивать не надо.
+            var shouldTurn = input.y >= -0.01f;
+            if (shouldTurn && planarMove.sqrMagnitude > turnMinMoveSqr)
+            {
+                var dir = planarMove.normalized;
+                var targetRot = Quaternion.LookRotation(dir, Vector3.up);
+                var t = 1f - Mathf.Exp(-turnSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, t);
+            }
 
             if (_cc.isGrounded && _vy < 0f) _vy = -1f;
             if (_cc.isGrounded && ReadJumpPressed())

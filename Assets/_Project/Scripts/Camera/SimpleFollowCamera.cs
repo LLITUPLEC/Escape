@@ -38,6 +38,7 @@ namespace Project
             if (_target == null) return;
 
             // Сзади и сверху относительно направления игрока.
+            // (Так камера предсказуемо следует за движением и не переходит в орбиту.)
             var desired = GetDesiredPosition();
             transform.position = Vector3.Lerp(transform.position, desired, 1f - Mathf.Exp(-smooth * Time.deltaTime));
             transform.LookAt(_target.position + Vector3.up * lookHeight);
