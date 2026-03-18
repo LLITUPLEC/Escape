@@ -1,0 +1,40 @@
+# Unity generated files
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+
+# Builds / logs
+[Bb]uild/
+[Bb]uilds/
+Logs/
+*.log
+
+# Unity user settings
+UserSettings/
+
+# Generated solution/project files
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.tmp
+*.pidb
+*.pdb
+
+# IDEs
+.vscode/
+.idea/
+.vs/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# ParrelSync clones
+ParrelSync/
+
+# Secrets
+Assets/_Project/Resources/NakamaConnectionConfig.asset
+Assets/_Project/Resources/NakamaConnectionConfig.asset.meta
+
