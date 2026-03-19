@@ -11,7 +11,7 @@ namespace Project.Player
         [SerializeField] private float moveSpeed = 4.5f;
         [SerializeField] private float runMultiplier = 1.6f;
         [Header("Turning")]
-        [SerializeField] private float turnSpeed = 15f;
+        [SerializeField] private float turnSpeed = 5f;
         [SerializeField] private float turnMinMoveSqr = 0.0004f; // ~0.02^2
         [SerializeField] private float gravity = -25f;
         [SerializeField] private float jumpHeight = 1.2f;

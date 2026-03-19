@@ -1,2 +1,17 @@
 fileFormatVersion: 2
 guid: 004b825dfe5cfa74788a4b6da2923759
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - playerPrefab: {instanceID: 0}
+  - spawnLeft: {instanceID: 0}
+  - spawnRight: {instanceID: 0}
+  - statusUI: {instanceID: 0}
+  - hud: {instanceID: 0}
+  - keypadModalPrefab: {fileID: 1122891440659908141, guid: ad97abd8340ee9c49a56a31f5b45a385, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

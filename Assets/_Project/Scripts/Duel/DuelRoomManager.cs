@@ -41,6 +41,8 @@ namespace Project.Duel
         [Header("UI")]
         [SerializeField] private DuelStatusUI statusUI;
         [SerializeField] private DuelHudController hud;
+        [Tooltip("Если назначен — инстанциирует этот префаб вместо генерации UI из кода")]
+        [SerializeField] private GameObject keypadModalPrefab;
 
         public void SetStatusUI(DuelStatusUI ui) => statusUI = ui;
         public void SetHud(DuelHudController hudController) => hud = hudController;
@@ -151,7 +153,6 @@ namespace Project.Duel
             if (_matchEnded) return;
             if (_doorOpenedById == null || _doorOpenedById.Length < 5) return;
 
-            if (_keypadModal != null && _keypadModal.IsOpen) return;
             if (_localMover == null && _localView != null) _localMover = _localView.GetComponent<PlayerMovementController>();
             if (_localMover == null) return;
 
@@ -164,6 +165,13 @@ namespace Project.Duel
 #endif
             if (!pressedF) return;
 
+            // Если модалка уже открыта — F закрывает её и возвращает управление.
+            if (_keypadModal != null && _keypadModal.IsOpen)
+            {
+                _keypadModal.Close();
+                return;
+            }
+
             // Ищем ближайшую "сферу домофона" в радиусе.
             // Временно игнорируем ограничение по расстоянию: пусть ближайшая кнопка находится "где угодно" в комнате.
             var nearest = FindNearestKeypadSphere(_localView.transform.position, 1000f);
@@ -175,16 +183,14 @@ namespace Project.Duel
             if (_doorOpenedById[doorId]) return;
 
             _localMover.enabled = false;
-            if (_keypadModal == null)
-            {
-                var modalGO = new GameObject("DuelKeypadModal");
-                modalGO.transform.SetParent(transform, false);
-                _keypadModal = modalGO.AddComponent<DuelKeypadModal>();
-            }
+            EnsureKeypadModal();
 
             _keypadModal.Show(pinCode, codeLen, () =>
             {
                 OpenDoorAndSync(doorId, sendNetwork: true);
+                if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+            }, doorId: doorId, onClosed: () =>
+            {
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             });
         }
@@ -279,13 +285,7 @@ namespace Project.Duel
             if (_matchEnded) return;
             if (_doorOpenedById == null || _doorOpenedById.Length < 5) return;
 
-            if (_keypadModal == null)
-            {
-                var modalGO = new GameObject("DuelKeypadModal");
-                modalGO.transform.SetParent(transform, false);
-                _keypadModal = modalGO.AddComponent<DuelKeypadModal>();
-            }
-
+            EnsureKeypadModal();
             if (_keypadModal.IsOpen) return;
 
             if (_localMover == null && _localView != null) _localMover = _localView.GetComponent<PlayerMovementController>();
@@ -332,6 +332,9 @@ namespace Project.Duel
             _keypadModal.Show(pinCode, codeLen, () =>
             {
                 OpenDoorAndSync(doorId, sendNetwork: true);
+                if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+            }, doorId: doorId, onClosed: () =>
+            {
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             });
         }
@@ -392,6 +395,25 @@ namespace Project.Duel
             pinCode = isDoor1 ? PinDoor1 : PinDoor2;
             codeLen = isDoor1 ? 2 : 3;
             return true;
+        }
+
+        private void EnsureKeypadModal()
+        {
+            if (_keypadModal != null) return;
+
+            if (keypadModalPrefab != null)
+            {
+                var go = Instantiate(keypadModalPrefab, transform, false);
+                go.name = "KeypadModal";
+                _keypadModal = go.GetComponent<DuelKeypadModal>();
+            }
+
+            if (_keypadModal == null)
+            {
+                var go = new GameObject("DuelKeypadModal");
+                go.transform.SetParent(transform, false);
+                _keypadModal = go.AddComponent<DuelKeypadModal>();
+            }
         }
 
         private void OpenDoorAndSync(int doorId, bool sendNetwork)

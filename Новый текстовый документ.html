@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Домофон — Пост-апокалипсис</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    background-image:
+      radial-gradient(ellipse at center, #1a1510 0%, #0a0a0a 70%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ============ SCANLINES OVERLAY ============ */
+  .scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ============ VIGNETTE ============ */
+  .vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ============ MAIN CONTAINER ============ */
+  .intercom-modal {
+    display: flex;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+    animation: powerOn 0.8s ease-out;
+  }
+
+  @keyframes powerOn {
+    0% { opacity: 0; filter: brightness(0); }
+    30% { opacity: 1; filter: brightness(3); }
+    50% { filter: brightness(0.5); }
+    70% { filter: brightness(1.5); }
+    100% { opacity: 1; filter: brightness(1); }
+  }
+
+  /* ============ MAIN FRAME (RUST) ============ */
+  .frame {
+    background: #2A2118;
+    border: 3px solid #5A4632;
+    border-radius: 2px;
+    padding: 16px;
+    position: relative;
+    box-shadow:
+      inset 0 0 30px rgba(0,0,0,0.5),
+      0 8px 32px rgba(0,0,0,0.8),
+      4px 4px 0px rgba(0,0,0,0.4);
+  }
+
+  .frame::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+    opacity: 0.3;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .frame::after {
+    content: '';
+    position: absolute;
+    top: -1px; right: 30px;
+    width: 60px; height: 8px;
+    background: #4A3A28;
+    border-radius: 0 0 3px 3px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  /* ============ LEFT: KEYPAD PANEL ============ */
+  .keypad-panel {
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ============ LABEL ============ */
+  .intercom-label {
+    text-align: center;
+    color: #5A4632;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed #3D3225;
+  }
+
+  /* ============ CODE DISPLAY ============ */
+  .code-display {
+    background: #0C1A10;
+    border: 2px solid #1A2E1A;
+    border-radius: 2px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    box-shadow:
+      inset 0 0 20px rgba(0,0,0,0.6),
+      inset 0 0 40px rgba(74, 222, 128, 0.03);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .code-display::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(74, 222, 128, 0.015) 1px,
+      rgba(74, 222, 128, 0.015) 2px
+    );
+    pointer-events: none;
+  }
+
+  .code-display.error-state .cell {
+    color: #DC2626;
+    border-color: #DC2626;
+    text-shadow: 0 0 12px rgba(220, 38, 38, 0.6);
+    animation: errorShake 0.4s ease;
+  }
+
+  .code-display.success-state .cell {
+    color: #4ADE80;
+    border-color: #4ADE80;
+    text-shadow: 0 0 16px rgba(74, 222, 128, 0.8);
+    animation: successPulse 0.6s ease 3;
+  }
+
+  @keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+
+  @keyframes successPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .cell {
+    width: 48px;
+    height: 56px;
+    border: 1px solid #1A3A1A;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 34px;
+    color: #A3E635;
+    text-shadow: 0 0 8px rgba(163, 230, 53, 0.4);
+    position: relative;
+    background: rgba(0,0,0,0.3);
+    transition: all 0.15s ease;
+  }
+
+  .cell.filled {
+    border-color: #2D5A2D;
+    background: rgba(74, 222, 128, 0.05);
+  }
+
+  .cell.active {
+    border-color: #4ADE80;
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.2);
+  }
+
+  .cell.active::after {
+    content: '▮';
+    position: absolute;
+    bottom: 4px;
+    font-size: 14px;
+    color: #4ADE80;
+    animation: cursorBlink 1s step-end infinite;
+  }
+
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .cell.empty-cursor::after {
+    content: '▮';
+    position: absolute;
+    bottom: 4px;
+    font-size: 14px;
+    color: #4ADE80;
+    animation: cursorBlink 1s step-end infinite;
+  }
+
+  .cell .dot-divider {
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    background: rgba(74, 222, 128, 0.15);
+    border-radius: 50%;
+  }
+
+  /* ============ KEYPAD GRID ============ */
+  .keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .key {
+    height: 56px;
+    background: linear-gradient(180deg, #3D3225 0%, #2A2118 100%);
+    border: 1px solid #5A4632;
+    border-radius: 2px;
+    color: #C8B89A;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.08s ease;
+    box-shadow:
+      0 2px 0 #1E150D,
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    user-select: none;
+  }
+
+  .key:hover {
+    background: linear-gradient(180deg, #5C4A32 0%, #3D3225 100%);
+    border-color: #7A6244;
+    color: #E8D8B8;
+    box-shadow:
+      0 2px 0 #1E150D,
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 0 12px rgba(74, 222, 128, 0.08);
+  }
+
+  .key:active {
+    background: linear-gradient(180deg, #1E150D 0%, #2A2118 100%);
+    transform: translateY(2px);
+    box-shadow: none;
+  }
+
+  .key:disabled {
+    background: #1E150D;
+    border-color: #2A2118;
+    color: #4B5563;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .key.key-del {
+    font-size: 16px;
+    color: #8B7355;
+  }
+
+  .key.key-del:hover {
+    color: #DC2626;
+  }
+
+  .key.key-zero {
+    font-size: 22px;
+  }
+
+  .key.key-enter {
+    font-size: 16px;
+    background: linear-gradient(180deg, #4A3A28 0%, #3D3225 100%);
+    color: #4ADE80;
+  }
+
+  .key.key-enter:hover {
+    background: linear-gradient(180deg, #5C4A32 0%, #4A3A28 100%);
+    color: #4ADE80;
+    box-shadow:
+      0 2px 0 #1E150D,
+      0 0 16px rgba(74, 222, 128, 0.15);
+  }
+
+  .key .key-sub {
+    font-size: 10px;
+    color: #6B5E4E;
+    margin-left: 4px;
+    letter-spacing: 1px;
+  }
+
+  .key:hover .key-sub {
+    color: #8B7355;
+  }
+
+  /* ============ RIGHT: ATTEMPTS PANEL ============ */
+  .attempts-panel {
+    width: 280px;
+    background: #0F0D0A;
+    border: 2px solid #3D3225;
+    border-left: none;
+    border-radius: 0 2px 2px 0;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+  }
+
+  .attempts-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(74, 222, 128, 0.008) 1px,
+      rgba(74, 222, 128, 0.008) 2px
+    );
+    pointer-events: none;
+  }
+
+  .attempts-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #5A4632;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #2A2118;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    background: #4ADE80;
+    border-radius: 50%;
+    animation: indicatorPulse 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+  }
+
+  @keyframes indicatorPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .attempts-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+  }
+
+  .attempt-row {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    padding: 5px 8px;
+    border-radius: 1px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: rowAppear 0.3s ease-out;
+    position: relative;
+  }
+
+  @keyframes rowAppear {
+    0% { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+    60% { filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .attempt-num {
+    color: #4B5563;
+    min-width: 24px;
+  }
+
+  .attempt-code {
+    color: #6B7280;
+    min-width: 56px;
+    letter-spacing: 2px;
+  }
+
+  .attempt-sep {
+    color: #3D3225;
+    min-width: 16px;
+    text-align: center;
+  }
+
+  .attempt-bulls {
+    font-weight: 700;
+    min-width: 16px;
+  }
+
+  .attempt-colon {
+    color: #3D3225;
+    min-width: 12px;
+    text-align: center;
+  }
+
+  .attempt-cows {
+    font-weight: 700;
+    min-width: 16px;
+  }
+
+  .result-good .attempt-bulls { color: #4ADE80; text-shadow: 0 0 6px rgba(74,222,128,0.3); }
+  .result-good .attempt-cows  { color: #6B7280; }
+
+  .result-warn .attempt-bulls { color: #F59E0B; text-shadow: 0 0 6px rgba(245,158,11,0.3); }
+  .result-warn .attempt-cows  { color: #F59E0B; }
+
+  .result-bad .attempt-bulls  { color: #6B7280; }
+  .result-bad .attempt-cows   { color: #DC2626; text-shadow: 0 0 6px rgba(220,38,38,0.3); }
+
+  .attempt-empty {
+    color: #2A2118;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    padding: 5px 8px;
+    letter-spacing: 4px;
+  }
+
+  /* Divider */
+  .attempts-divider {
+    border: none;
+    border-top: 1px dashed #2A2118;
+    margin: 6px 0;
+  }
+
+  /* Counter */
+  .attempts-counter {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #5A4632;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+
+  .attempts-counter .count-current {
+    color: #F59E0B;
+  }
+
+  .attempts-counter .count-max {
+    color: #4B5563;
+  }
+
+  /* Progress bar */
+  .protection-bar {
+    margin-top: auto;
+  }
+
+  .protection-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #3D3225;
+    margin-bottom: 6px;
+  }
+
+  .protection-track {
+    height: 8px;
+    background: #1A150D;
+    border: 1px solid #2A2118;
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .protection-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #DC2626, #F59E0B, #4ADE80);
+    border-radius: 1px;
+    transition: width 0.6s ease;
+    position: relative;
+  }
+
+  .protection-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 2px;
+    height: 100%;
+    background: white;
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+    animation: scanGlow 1.5s ease-in-out infinite;
+  }
+
+  @keyframes scanGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* Glitch line */
+  .glitch-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: rgba(74, 222, 128, 0.1);
+    animation: glitchMove 8s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes glitchMove {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+
+  /* ============ CLOSE BUTTON ============ */
+  .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .close-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #5A4632;
+    stroke-width: 2.5;
+    transition: all 0.2s;
+  }
+
+  .close-btn:hover svg {
+    stroke: #DC2626;
+    filter: drop-shadow(0 0 4px rgba(220,38,38,0.4));
+  }
+
+  /* ============ ERROR TEXT OVERLAY ============ */
+  .error-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(12, 26, 16, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 28px;
+    color: #DC2626;
+    text-shadow: 0 0 16px rgba(220, 38, 38, 0.6);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .error-overlay.show {
+    opacity: 1;
+    animation: errorFlash 0.15s ease 2;
+  }
+
+  @keyframes errorFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .success-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(12, 26, 16, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 28px;
+    color: #4ADE80;
+    text-shadow: 0 0 20px rgba(74, 222, 128, 0.6);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .success-overlay.show {
+    opacity: 1;
+  }
+
+  /* ============ LOCKED STATE ============ */
+  .locked-text {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 26px;
+    color: #DC2626;
+    text-shadow: 0 0 20px rgba(220, 38, 38, 0.8);
+    letter-spacing: 6px;
+    animation: lockedBlink 0.8s step-end infinite;
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(12, 26, 16, 0.95);
+  }
+
+  .locked-text.show {
+    opacity: 1;
+  }
+
+  @keyframes lockedBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ============ BOLTS (decorative) ============ */
+  .bolt {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle at 35% 35%, #8B7355, #3D3225);
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.05);
+  }
+
+  .bolt::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 1px;
+    width: 6px; height: 1.5px;
+    background: #2A2118;
+    border-radius: 1px;
+    transform: rotate(45deg);
+  }
+
+  .bolt-tl { top: 6px; left: 6px; }
+  .bolt-tr { top: 6px; right: 6px; }
+  .bolt-bl { bottom: 6px; left: 6px; }
+  .bolt-br { bottom: 6px; right: 6px; }
+
+  /* ============ STICKER ============ */
+  .sticker {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px;
+    color: #3D3225;
+    letter-spacing: 1px;
+    opacity: 0.5;
+    transform: rotate(-2deg);
+    border: 1px solid #3D3225;
+    padding: 1px 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette">
+
+<div class="intercom-modal">
+  <!-- ================== MAIN FRAME ================== -->
+  <div class="frame" style="display:flex; border-radius: 2px 0 0 2px;">
+    <!-- Decorative bolts -->
+    <div class="bolt bolt-tl"></div>
+    <div class="bolt bolt-bl"></div>
+
+    <!-- ================== KEYPAD SIDE ================== -->
+    <div class="keypad-panel">
+      <div class="intercom-label">▽ ВХОД ▽</div>
+
+      <!-- Code display -->
+      <div class="code-display" id="codeDisplay">
+        <div class="cell filled" id="c0">1</div>
+        <div class="cell filled" id="c1">2</div>
+        <div class="cell filled" id="c2">3</div>
+        <div class="cell active"  id="c3"></div>
+        <div class="cell"         id="c4"></div>
+
+        <!-- Overlays -->
+        <div class="error-overlay" id="errorOverlay">ОШИБКА</div>
+        <div class="success-overlay" id="successOverlay">ОТКРЫТО</div>
+        <div class="locked-text" id="lockedOverlay">ЗАБЛОКИРОВАНО</div>
+      </div>
+
+      <!-- Keypad -->
+      <div class="keypad-grid">
+        <div class="key" onclick="pressKey('1')">1</div>
+        <div class="key" onclick="pressKey('2')">2</div>
+        <div class="key" onclick="pressKey('3')">3</div>
+        <div class="key" onclick="pressKey('4')">4</div>
+        <div class="key" onclick="pressKey('5')">5</div>
+        <div class="key" onclick="pressKey('6')">6</div>
+        <div class="key" onclick="pressKey('7')">7</div>
+        <div class="key" onclick="pressKey('8')">8</div>
+        <div class="key" onclick="pressKey('9')">9</div>
+        <div class="key key-del" onclick="pressDel()">◄ <span class="key-sub">DEL</span></div>
+        <div class="key key-zero" onclick="pressKey('0')">0</div>
+        <div class="key key-enter" onclick="pressEnter()">✓ <span class="key-sub">ВВОД</span></div>
+      </div>
+
+      <div class="sticker">GOST-7396</div>
+    </div>
+  </div>
+
+  <!-- ================== ATTEMPTS PANEL ================== -->
+  <div class="frame" style="display:flex; border-radius: 0 2px 2px 0; border-left: none; padding: 0;">
+    <div class="attempts-panel">
+      <div class="glitch-line"></div>
+
+      <div class="attempts-title">
+        <div class="indicator-dot"></div>
+        ПОПЫТКИ
+      </div>
+
+      <div class="attempts-list" id="attemptsList">
+        <!-- Row 1 -->
+        <div class="attempt-row result-good" style="animation-delay: 0s">
+          <span class="attempt-num">1)</span>
+          <span class="attempt-code">1234</span>
+          <span class="attempt-sep">—</span>
+          <span class="attempt-bulls">1</span>
+          <span class="attempt-colon">:</span>
+          <span class="attempt-cows">0</span>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="attempt-row result-warn" style="animation-delay: 0.1s">
+          <span class="attempt-num">2)</span>
+          <span class="attempt-code">5678</span>
+          <span class="attempt-sep">—</span>
+          <span class="attempt-bulls">0</span>
+          <span class="attempt-colon">:</span>
+          <span class="attempt-cows">1</span>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="attempt-row result-good" style="animation-delay: 0.2s">
+          <span class="attempt-num">3)</span>
+          <span class="attempt-code">3456</span>
+          <span class="attempt-sep">—</span>
+          <span class="attempt-bulls">2</span>
+          <span class="attempt-colon">:</span>
+          <span class="attempt-cows">1</span>
+        </div>
+
+        <!-- Row 4 (empty) -->
+        <div class="attempt-empty">· · · · ·</div>
+
+        <!-- Row 5 (empty) -->
+        <div class="attempt-empty">· · · · ·</div>
+
+        <!-- Row 6 (empty) -->
+        <div class="attempt-empty">· · · · ·</div>
+      </div>
+
+      <hr class="attempts-divider">
+
+      <!-- Counter -->
+      <div class="attempts-counter">
+        ПОПЫТОК: <span class="count-current">3</span> / <span class="count-max">6</span>
+      </div>
+
+      <hr class="attempts-divider">
+
+      <!-- Progress bar -->
+      <div class="protection-bar">
+        <div class="protection-label">ЗАЩИТА ЗАМКА</div>
+        <div class="protection-track">
+          <div class="protection-fill" style="width: 50%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decorative bolts -->
+    <div class="bolt bolt-tr" style="right: 6px; left: auto;"></div>
+    <div class="bolt bolt-br" style="right: 6px; left: auto;"></div>
+  </div>
+
+  <!-- Close button -->
+  <button class="close-btn" title="Закрыть">
+    <svg viewBox="0 0 24 24" fill="none">
+      <line x1="6" y1="6" x2="18" y2="18"/>
+      <line x1="18" y1="6" x2="6" y2="18"/>
+    </svg>
+  </button>
+</div>
+
+</div>
+
+<script>
+  // --- State ---
+  let input = [];
+  let attemptCount = 3;
+  const MAX_DIGITS = 5;
+  const MAX_ATTEMPTS = 6;
+  const SECRET_CODE = '12345'; // для демо
+
+  const attemptsData = [
+    { code: '1234', bulls: 1, cows: 0 },
+    { code: '5678', bulls: 0, cows: 1 },
+    { code: '3456', bulls: 2, cows: 1 },
+  ];
+
+  function updateDisplay() {
+    for (let i = 0; i < MAX_DIGITS; i++) {
+      const cell = document.getElementById('c' + i);
+      cell.textContent = input[i] || '';
+      cell.className = 'cell';
+      if (input[i]) {
+        cell.classList.add('filled');
+      }
+      if (i === input.length && input.length < MAX_DIGITS) {
+        cell.classList.add('active');
+      }
+    }
+  }
+
+  function pressKey(digit) {
+    if (input.length >= MAX_DIGITS) return;
+    input.push(digit);
+    updateDisplay();
+  }
+
+  function pressDel() {
+    if (input.length === 0) return;
+    input.pop();
+    updateDisplay();
+  }
+
+  function calculateBullsCows(guess, secret) {
+    let bulls = 0, cows = 0;
+    const secretArr = secret.split('');
+    const guessArr = guess.split('');
+    const usedSecret = [false, false, false, false, false];
+    const usedGuess = [false, false, false, false, false];
+
+    // Bulls first
+    for (let i = 0; i < 5; i++) {
+      if (guessArr[i] === secretArr[i]) {
+        bulls++;
+        usedSecret[i] = true;
+        usedGuess[i] = true;
+      }
+    }
+    // Cows
+    for (let i = 0; i < 5; i++) {
+      if (usedGuess[i]) continue;
+      for (let j = 0; j < 5; j++) {
+        if (usedSecret[j]) continue;
+        if (guessArr[i] === secretArr[j]) {
+          cows++;
+          usedSecret[j] = true;
+          break;
+        }
+      }
+    }
+    return { bulls, cows };
+  }
+
+  function addAttemptRow(code, bulls, cows) {
+    attemptCount++;
+    const list = document.getElementById('attemptsList');
+
+    // Remove empty rows (add back fewer)
+    const empties = list.querySelectorAll('.attempt-empty');
+    if (empties.length > 0) empties[0].remove();
+
+    const row = document.createElement('div');
+    row.className = 'attempt-row';
+
+    let resultClass = 'result-good';
+    if (bulls >= 2) resultClass = 'result-good';
+    else if (bulls + cows >= 2) resultClass = 'result-warn';
+    else resultClass = 'result-bad';
+
+    row.classList.add(resultClass);
+    row.innerHTML = `
+      <span class="attempt-num">${attemptCount})</span>
+      <span class="attempt-code">${code}</span>
+      <span class="attempt-sep">—</span>
+      <span class="attempt-bulls">${bulls}</span>
+      <span class="attempt-colon">:</span>
+      <span class="attempt-cows">${cows}</span>
+    `;
+
+    // Insert before first empty row or at end
+    const firstEmpty = list.querySelector('.attempt-empty');
+    if (firstEmpty) {
+      list.insertBefore(row, firstEmpty);
+    } else {
+      list.appendChild(row);
+    }
+
+    // Update counter
+    const counter = list.parentElement.querySelector('.count-current');
+    if (counter) counter.textContent = attemptCount;
+
+    // Update progress bar
+    const fill = list.parentElement.querySelector('.protection-fill');
+    if (fill) fill.style.width = Math.max(0, (100 - attemptCount * 16.6)) + '%';
+  }
+
+  function showError() {
+    const display = document.getElementById('codeDisplay');
+    const overlay = document.getElementById('errorOverlay');
+    display.classList.add('error-state');
+    overlay.classList.add('show');
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      display.classList.remove('error-state');
+      input = [];
+      updateDisplay();
+    }, 1500);
+  }
+
+  function showSuccess() {
+    const display = document.getElementById('codeDisplay');
+    const overlay = document.getElementById('successOverlay');
+    display.classList.add('success-state');
+    overlay.classList.add('show');
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      display.classList.remove('success-state');
+    }, 2000);
+  }
+
+  function showLocked() {
+    const display = document.getElementById('codeDisplay');
+    const overlay = document.getElementById('lockedOverlay');
+    overlay.classList.add('show');
+
+    // Disable all keys
+    document.querySelectorAll('.key').forEach(k => k.disabled = true);
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+    }, 3000);
+  }
+
+  function pressEnter() {
+    if (input.length < MAX_DIGITS) return;
+    if (attemptCount >= MAX_ATTEMPTS) return;
+
+    const code = input.join('');
+    const { bulls, cows } = calculateBullsCows(code, SECRET_CODE);
+
+    addAttemptRow(code, bulls, cows);
+
+    if (bulls === MAX_DIGITS) {
+      showSuccess();
+      return;
+    }
+
+    if (attemptCount >= MAX_ATTEMPTS) {
+      showError();
+      setTimeout(showLocked, 1600);
+      return;
+    }
+
+    showError();
+  }
+
+  // Initial cursor
+  updateDisplay();
+</script>
+</body>
+</html>
