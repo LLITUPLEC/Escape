@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -6,14 +7,16 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Nakama;
 using Project.Networking;
-using Project.Player;
 using Project.Utils;
+using Project.Player;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Events;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 using UnityEngine.SceneManagement;
+using NavKeypad;
 
 namespace Project.Duel
 {
@@ -44,6 +47,12 @@ namespace Project.Duel
         [Tooltip("Если назначен — инстанциирует этот префаб вместо генерации UI из кода")]
         [SerializeField] private GameObject keypadModalPrefab;
 
+        [Header("3D Keypad (фокус камеры)")]
+        [SerializeField] private float keypadCameraLerpSeconds = 0.55f;
+        [SerializeField] private float keypadCameraDistance = 0.5f;
+        [Tooltip("Панель «быки : коровы» справа от клавиатуры")]
+        [SerializeField] private bool showKeypadWorldAttemptLog = true;
+
         public void SetStatusUI(DuelStatusUI ui) => statusUI = ui;
         public void SetHud(DuelHudController hudController) => hud = hudController;
 
@@ -65,6 +74,7 @@ namespace Project.Duel
         private DuelKeypadModal _keypadModal;
 
         private readonly Dictionary<int, Door> _doorsById = new();
+        private readonly Dictionary<int, SlidingDoor> _slidingDoorsById = new();
         private bool[] _doorOpenedById;
 
         private GameObject _finishSphere;
@@ -72,14 +82,25 @@ namespace Project.Duel
 
         private PlayerMovementController _localMover;
 
-        private const float KeypadInteractDistance = 1f;
-        private const int LeftDoor1Id = 1;
-        private const int LeftDoor2Id = 2;
-        private const int RightDoor1Id = 3;
-        private const int RightDoor2Id = 4;
+        private bool _keypadFocusActive;
+        private Keypad _activeKeypad;
+        private int _activeDoorId;
+        private UnityAction _activeKeypadGrantedHandler;
+        private Vector3 _camWorldPosRestore;
+        private Quaternion _camWorldRotRestore;
+        private Transform _camParentRestore;
+        private SimpleFollowCamera _playerFollowCam;
+        private KeypadInteractionFPV _runtimeKeypadFpv;
+        private bool _runtimeKeypadFpvOwned;
+        private Coroutine _keypadFocusCameraCo;
+        private GameObject _keypadWorldLogGo;
+        private bool _keypadGuessInFlight;
 
-        private const string PinDoor1 = "27";  // 2 цифры
-        private const string PinDoor2 = "441"; // 3 цифры
+        private const float KeypadInteractDistance = 2.6f;
+        private const int LeftDoor1Id = DuelDoorPins.LeftDoor1Id;
+        private const int LeftDoor2Id = DuelDoorPins.LeftDoor2Id;
+        private const int RightDoor1Id = DuelDoorPins.RightDoor1Id;
+        private const int RightDoor2Id = DuelDoorPins.RightDoor2Id;
 
         private async void Start()
         {
@@ -136,6 +157,7 @@ namespace Project.Duel
         {
             if (_localView != null)
             {
+                HandleKeypadFocusCancel();
                 HandleLocalKeypadHotkeyF();
                 HandleLocalKeypadClick();
             }
@@ -165,6 +187,12 @@ namespace Project.Duel
 #endif
             if (!pressedF) return;
 
+            if (_keypadFocusActive)
+            {
+                ExitKeypadFocus();
+                return;
+            }
+
             // Если модалка уже открыта — F закрывает её и возвращает управление.
             if (_keypadModal != null && _keypadModal.IsOpen)
             {
@@ -179,17 +207,23 @@ namespace Project.Duel
 
             var cubeTf = nearest.transform.parent;
             if (cubeTf == null) return;
-            if (!TryGetDoorIdFromCubeName(cubeTf.name, out var doorId, out var pinCode, out var codeLen)) return;
+            if (!TryGetDoorIdFromCubeName(cubeTf.name, out var doorId, out var codeLen)) return;
             if (_doorOpenedById[doorId]) return;
+            if (_match == null) return;
+            if (!TryGetSortedDuelPair(out var uaF, out var ubF))
+            {
+                Debug.LogWarning("[Duel] Клавиатура: нет пары user id для PIN (ждите соперника).");
+                return;
+            }
 
             _localMover.enabled = false;
             EnsureKeypadModal();
 
-            _keypadModal.Show(pinCode, codeLen, () =>
+            _keypadModal.ShowDuel(_match.Id, uaF, ubF, doorId, codeLen, () =>
             {
                 OpenDoorAndSync(doorId, sendNetwork: true);
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
-            }, doorId: doorId, onClosed: () =>
+            }, onClosed: () =>
             {
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             });
@@ -229,6 +263,7 @@ namespace Project.Duel
             // Массив индексов 1..4 (двери в префабе).
             _doorOpenedById = new bool[5];
             _doorsById.Clear();
+            _slidingDoorsById.Clear();
 
             foreach (var timer in FindObjectsByType<TimerOpenCondition>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -246,16 +281,73 @@ namespace Project.Duel
                     0;
                 if (id != 0) _doorsById[id] = door;
             }
+
+            foreach (var sd in FindObjectsByType<SlidingDoor>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var id = MapSideDoorIndexToId(sd.gameObject.name);
+                if (id != 0) _slidingDoorsById[id] = sd;
+            }
+        }
+
+        /// <summary>Имена вида SlidingDoor_left_1 / SlidingDoor_right_2.</summary>
+        private static int MapSideDoorIndexToId(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName)) return 0;
+            var n = objectName.ToLowerInvariant();
+            var isLeft = n.Contains("left") || n.Contains("_l_") || n.Contains("door_l");
+            var isRight = n.Contains("right") || n.Contains("_r_") || n.Contains("door_r");
+            if (!isLeft && !isRight) return 0;
+
+            var idx = ExtractTrailingIndex(objectName);
+            if (idx != 1 && idx != 2) return 0;
+
+            if (isLeft)
+                return idx == 1 ? LeftDoor1Id : LeftDoor2Id;
+            return idx == 1 ? RightDoor1Id : RightDoor2Id;
+        }
+
+        private static int ExtractTrailingIndex(string name)
+        {
+            var lastUnd = name.LastIndexOf('_');
+            if (lastUnd < 0 || lastUnd + 1 >= name.Length) return 0;
+            var tail = name.Substring(lastUnd + 1);
+            var digits = new StringBuilder(4);
+            foreach (var ch in tail)
+            {
+                if (ch >= '0' && ch <= '9') digits.Append(ch);
+            }
+            if (digits.Length == 0 || !int.TryParse(digits.ToString(), out var idx)) return 0;
+            return idx;
         }
 
         private void EnsureFinishSphere()
         {
             if (_finishSphereCreated) return;
-            if (_doorsById.Count == 0) return;
-            if (!_doorsById.TryGetValue(LeftDoor2Id, out var doorL2)) return;
-            if (!_doorsById.TryGetValue(RightDoor2Id, out var doorR2)) return;
 
-            var mid = (doorL2.transform.position + doorR2.transform.position) * 0.5f;
+            Vector3 mid;
+
+            if (_doorsById.TryGetValue(LeftDoor2Id, out var doorL2) &&
+                _doorsById.TryGetValue(RightDoor2Id, out var doorR2))
+            {
+                mid = (doorL2.transform.position + doorR2.transform.position) * 0.5f;
+            }
+            else if (_slidingDoorsById.TryGetValue(LeftDoor2Id, out var sdL2) &&
+                     _slidingDoorsById.TryGetValue(RightDoor2Id, out var sdR2))
+            {
+                mid = (sdL2.transform.position + sdR2.transform.position) * 0.5f;
+            }
+            else if (_slidingDoorsById.TryGetValue(LeftDoor1Id, out var sdL1) &&
+                     _slidingDoorsById.TryGetValue(RightDoor1Id, out var sdR1))
+            {
+                // Только первые лифты — финиш дальше по коридору.
+                mid = (sdL1.transform.position + sdR1.transform.position) * 0.5f;
+            }
+            else if (spawnLeft != null && spawnRight != null)
+            {
+                mid = (spawnLeft.position + spawnRight.position) * 0.5f;
+            }
+            else return;
+
             // Сдвигаем “за” вторую дверь по оси Z (коридор собран вдоль Z).
             mid += Vector3.forward * 8f;
             mid.y = Mathf.Max(mid.y, 0.5f);
@@ -280,13 +372,24 @@ namespace Project.Duel
             _finishSphereCreated = true;
         }
 
+        private void HandleKeypadFocusCancel()
+        {
+            if (!_keypadFocusActive || _matchEnded) return;
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame)
+                ExitKeypadFocus();
+#else
+            if (Input.GetKeyDown(KeyCode.Escape))
+                ExitKeypadFocus();
+#endif
+        }
+
         private void HandleLocalKeypadClick()
         {
             if (_matchEnded) return;
             if (_doorOpenedById == null || _doorOpenedById.Length < 5) return;
-
-            EnsureKeypadModal();
-            if (_keypadModal.IsOpen) return;
+            if (_keypadFocusActive) return;
 
             if (_localMover == null && _localView != null) _localMover = _localView.GetComponent<PlayerMovementController>();
             if (_localMover == null) return;
@@ -302,10 +405,28 @@ namespace Project.Duel
             if (cam == null) return;
 
             var ray = cam.ScreenPointToRay(clickPos);
-            if (!Physics.Raycast(ray, out var hit, 10f, ~0, QueryTriggerInteraction.Collide))
+            if (!Physics.Raycast(ray, out var hit, 22f, ~0, QueryTriggerInteraction.Collide))
                 return;
 
             if (hit.transform == null) return;
+
+            // 3D-клавиатура: без UI-модалки, режим ввода на месте.
+            if (TryGetKeypadFromHierarchy(hit.collider.transform, out var navKeypad, out var keypadRoot))
+            {
+                if (Vector3.Distance(_localView.transform.position, keypadRoot.position) > KeypadInteractDistance)
+                    return;
+
+                if (!TryGetDoorIdFromKeypadHierarchy(keypadRoot, out var kDoorId, out var kCodeLen))
+                    return;
+
+                if (_doorOpenedById[kDoorId]) return;
+
+                EnterKeypadFocus(navKeypad, kDoorId, kCodeLen);
+                return;
+            }
+
+            EnsureKeypadModal();
+            if (_keypadModal.IsOpen) return;
 
             var sphereTf = hit.transform;
             while (sphereTf != null && !sphereTf.name.StartsWith("Sphere", StringComparison.Ordinal)) sphereTf = sphereTf.parent;
@@ -322,18 +443,24 @@ namespace Project.Duel
             if (cubeTf == null) return;
 
             var cubeName = cubeTf.name;
-            if (!TryGetDoorIdFromCubeName(cubeName, out var doorId, out var pinCode, out var codeLen))
+            if (!TryGetDoorIdFromCubeName(cubeName, out var doorId, out var codeLen))
                 return;
 
             if (_doorOpenedById[doorId]) return;
+            if (_match == null) return;
+            if (!TryGetSortedDuelPair(out var uaC, out var ubC))
+            {
+                Debug.LogWarning("[Duel] Клавиатура: нет пары user id для PIN (ждите соперника).");
+                return;
+            }
 
             // “Домофон” блокирует управление, пока ввод не будет успешным.
             _localMover.enabled = false;
-            _keypadModal.Show(pinCode, codeLen, () =>
+            _keypadModal.ShowDuel(_match.Id, uaC, ubC, doorId, codeLen, () =>
             {
                 OpenDoorAndSync(doorId, sendNetwork: true);
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
-            }, doorId: doorId, onClosed: () =>
+            }, onClosed: () =>
             {
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             });
@@ -356,10 +483,9 @@ namespace Project.Duel
 #endif
         }
 
-        private bool TryGetDoorIdFromCubeName(string cubeName, out int doorId, out string pinCode, out int codeLen)
+        private bool TryGetDoorIdFromCubeName(string cubeName, out int doorId, out int codeLen)
         {
             doorId = 0;
-            pinCode = null;
             codeLen = 0;
 
             // Ожидаем имена вида: Cube_left_1 / Cube_left_2 / Cube_right_1 / Cube_right_2
@@ -391,10 +517,292 @@ namespace Project.Duel
 
             if (doorId == 0) return false;
 
-            var isDoor1 = doorId == LeftDoor1Id || doorId == RightDoor1Id;
-            pinCode = isDoor1 ? PinDoor1 : PinDoor2;
-            codeLen = isDoor1 ? 2 : 3;
-            return true;
+            return DuelDoorPins.TryGetCodeLengthForDoorId(doorId, out codeLen);
+        }
+
+        private static bool TryGetKeypadFromHierarchy(Transform hitTransform, out Keypad keypad, out Transform keypadRoot)
+        {
+            keypad = null;
+            keypadRoot = null;
+            var t = hitTransform;
+            while (t != null)
+            {
+                if (t.TryGetComponent<Keypad>(out keypad))
+                {
+                    keypadRoot = t;
+                    return true;
+                }
+                t = t.parent;
+            }
+            return false;
+        }
+
+        private bool TryGetDoorIdFromKeypadHierarchy(Transform keypadRoot, out int doorId, out int codeLen)
+        {
+            doorId = 0;
+            codeLen = 0;
+
+            var link = keypadRoot.GetComponentInParent<DuelKeypadDoorLink>();
+            if (link != null && link.TryGetDoorConfig(out doorId, out codeLen))
+                return true;
+
+            var t = keypadRoot;
+            while (t != null)
+            {
+                if (TryParseKeypadDoorFromObjectName(t.name, out doorId, out codeLen))
+                    return true;
+                t = t.parent;
+            }
+            return false;
+        }
+
+        private bool TryParseKeypadDoorFromObjectName(string objectName, out int doorId, out int codeLen)
+        {
+            doorId = 0;
+            codeLen = 0;
+            if (string.IsNullOrEmpty(objectName)) return false;
+
+            var leftMarker = objectName.IndexOf("Keypad_left_", StringComparison.OrdinalIgnoreCase) >= 0;
+            var rightMarker = objectName.IndexOf("Keypad_right_", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!leftMarker && !rightMarker) return false;
+
+            var idx = ExtractTrailingIndex(objectName);
+            if (idx != 1 && idx != 2) return false;
+
+            if (leftMarker)
+                doorId = idx == 1 ? LeftDoor1Id : LeftDoor2Id;
+            else
+                doorId = idx == 1 ? RightDoor1Id : RightDoor2Id;
+
+            return DuelDoorPins.TryGetCodeLengthForDoorId(doorId, out codeLen);
+        }
+
+        private void EnterKeypadFocus(Keypad keypad, int doorId, int codeLen)
+        {
+            if (_keypadFocusActive || keypad == null) return;
+
+            _keypadFocusActive = true;
+            _activeKeypad = keypad;
+            _activeDoorId = doorId;
+            _keypadGuessInFlight = false;
+
+            keypad.EnsureDisplayReference();
+            keypad.ConfigureDuelSession(codeLen);
+            keypad.SetServerGuessInvoker(On3DKeypadGuessSubmitted);
+
+            if (_localMover != null) _localMover.enabled = false;
+
+            var cam = Camera.main;
+            if (cam == null) cam = FindAnyObjectByType<Camera>();
+            if (cam == null)
+            {
+                _keypadFocusActive = false;
+                _activeKeypad = null;
+                _activeDoorId = 0;
+                if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+                return;
+            }
+
+            _camWorldPosRestore = cam.transform.position;
+            _camWorldRotRestore = cam.transform.rotation;
+            _camParentRestore = cam.transform.parent;
+
+            _playerFollowCam = cam.GetComponent<SimpleFollowCamera>();
+            if (_playerFollowCam != null) _playerFollowCam.enabled = false;
+
+            _runtimeKeypadFpv = cam.GetComponent<KeypadInteractionFPV>();
+            if (_runtimeKeypadFpv == null)
+            {
+                _runtimeKeypadFpv = cam.gameObject.AddComponent<KeypadInteractionFPV>();
+                _runtimeKeypadFpvOwned = true;
+            }
+            else _runtimeKeypadFpvOwned = false;
+
+            _runtimeKeypadFpv.enabled = false;
+
+            if (_keypadFocusCameraCo != null)
+            {
+                StopCoroutine(_keypadFocusCameraCo);
+                _keypadFocusCameraCo = null;
+            }
+
+            _keypadFocusCameraCo = StartCoroutine(KeypadFocusCameraRoutine(cam, keypad.transform));
+
+            _activeKeypadGrantedHandler = OnActiveKeypadAccessGranted;
+            _activeKeypad.OnAccessGranted.AddListener(_activeKeypadGrantedHandler);
+
+            if (showKeypadWorldAttemptLog)
+            {
+                if (_keypadWorldLogGo != null) Destroy(_keypadWorldLogGo);
+                _keypadWorldLogGo = new GameObject("KeypadWorldAttemptLog");
+                _keypadWorldLogGo.transform.SetParent(keypad.transform, false);
+                var log = _keypadWorldLogGo.AddComponent<DuelKeypadWorldLog>();
+                log.Initialize(keypad, keypad.transform, cam);
+            }
+        }
+
+        private IEnumerator KeypadFocusCameraRoutine(Camera cam, Transform keypadRoot)
+        {
+            var ktr = keypadRoot;
+            var startPos = cam.transform.position;
+            var startRot = cam.transform.rotation;
+
+            var focusCenterTr = ktr.Find("KeypadFocusCenter");
+            var bttn5 = FindChildTransformByName(ktr, "bttn5");
+            var vp = ktr.Find("KeypadViewpoint") ?? ktr.Find("CameraAnchor");
+
+            Vector3 endPos;
+            Quaternion endRot;
+
+            if (focusCenterTr == null && bttn5 == null && vp != null)
+            {
+                endPos = vp.position;
+                endRot = vp.rotation;
+            }
+            else
+            {
+                var focusTr = focusCenterTr != null ? focusCenterTr : bttn5 != null ? bttn5 : ktr;
+                var lookAt = focusTr.position;
+                endPos = lookAt - ktr.forward * keypadCameraDistance + ktr.up * 0.03f;
+                var toTarget = lookAt - endPos;
+                if (toTarget.sqrMagnitude > 0.0001f)
+                    endRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+                else
+                    endRot = cam.transform.rotation;
+            }
+
+            var dur = Mathf.Max(0.05f, keypadCameraLerpSeconds);
+            var t = 0f;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                var u = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / dur));
+                cam.transform.position = Vector3.Lerp(startPos, endPos, u);
+                cam.transform.rotation = Quaternion.Slerp(startRot, endRot, u);
+                yield return null;
+            }
+
+            cam.transform.position = endPos;
+            cam.transform.rotation = endRot;
+
+            if (_keypadFocusActive && _runtimeKeypadFpv != null)
+                _runtimeKeypadFpv.enabled = true;
+
+            _keypadFocusCameraCo = null;
+        }
+
+        private static Transform FindChildTransformByName(Transform root, string exactName)
+        {
+            foreach (var tr in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (tr.name == exactName)
+                    return tr;
+            }
+            return null;
+        }
+
+        private void OnActiveKeypadAccessGranted()
+        {
+            if (!_keypadFocusActive) return;
+            OpenDoorAndSync(_activeDoorId, sendNetwork: true);
+            ExitKeypadFocus();
+        }
+
+        private void On3DKeypadGuessSubmitted(string guess)
+        {
+            if (_match == null || !_keypadFocusActive || _keypadGuessInFlight) return;
+            _keypadGuessInFlight = true;
+            KeypadGuessAwait(guess);
+        }
+
+        private async void KeypadGuessAwait(string guess)
+        {
+            try
+            {
+                if (!TryGetSortedDuelPair(out var ua, out var ub))
+                {
+                    MainThreadDispatcher.Enqueue(() =>
+                    {
+                        _keypadGuessInFlight = false;
+                        _activeKeypad?.AbortPendingGuess();
+                        Debug.LogWarning("[Duel] duel_keypad_guess: нет пары user id.");
+                    });
+                    return;
+                }
+
+                var r = await DuelKeypadRpc.GuessAsync(_match.Id, _activeDoorId, guess, ua, ub);
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    _keypadGuessInFlight = false;
+                    if (!_keypadFocusActive || _activeKeypad == null) return;
+                    _activeKeypad.ApplyServerGuessOutcome(r, guess);
+                });
+            }
+            catch (Exception e)
+            {
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    _keypadGuessInFlight = false;
+                    _activeKeypad?.AbortPendingGuess();
+                    Debug.LogException(e);
+                });
+            }
+        }
+
+        private void ExitKeypadFocus()
+        {
+            if (!_keypadFocusActive) return;
+
+            if (_keypadFocusCameraCo != null)
+            {
+                StopCoroutine(_keypadFocusCameraCo);
+                _keypadFocusCameraCo = null;
+            }
+
+            if (_keypadWorldLogGo != null)
+            {
+                Destroy(_keypadWorldLogGo);
+                _keypadWorldLogGo = null;
+            }
+
+            if (_activeKeypad != null && _activeKeypadGrantedHandler != null)
+                _activeKeypad.OnAccessGranted.RemoveListener(_activeKeypadGrantedHandler);
+
+            if (_activeKeypad != null)
+                _activeKeypad.ClearDuelNetworking();
+
+            _activeKeypadGrantedHandler = null;
+            _activeKeypad = null;
+            _activeDoorId = 0;
+            _keypadGuessInFlight = false;
+
+            var cam = Camera.main;
+            if (cam == null) cam = FindAnyObjectByType<Camera>();
+            if (cam != null)
+            {
+                if (_runtimeKeypadFpv != null)
+                {
+                    _runtimeKeypadFpv.enabled = false;
+                    if (_runtimeKeypadFpvOwned)
+                        Destroy(_runtimeKeypadFpv);
+                    _runtimeKeypadFpv = null;
+                    _runtimeKeypadFpvOwned = false;
+                }
+
+                cam.transform.SetParent(_camParentRestore, true);
+                cam.transform.position = _camWorldPosRestore;
+                cam.transform.rotation = _camWorldRotRestore;
+            }
+
+            if (_playerFollowCam != null)
+            {
+                _playerFollowCam.enabled = true;
+                _playerFollowCam = null;
+            }
+
+            _keypadFocusActive = false;
+
+            if (_localMover != null && !_matchEnded) _localMover.enabled = true;
         }
 
         private void EnsureKeypadModal()
@@ -421,11 +829,19 @@ namespace Project.Duel
             if (_doorOpenedById == null || doorId <= 0 || doorId >= _doorOpenedById.Length) return;
             if (_doorOpenedById[doorId]) return;
 
+            var opened = false;
             if (_doorsById.TryGetValue(doorId, out var door) && door != null)
             {
                 door.SetOpen(true, instant: true);
-                _doorOpenedById[doorId] = true;
+                opened = true;
             }
+            else if (_slidingDoorsById.TryGetValue(doorId, out var sliding) && sliding != null)
+            {
+                sliding.OpenDoor();
+                opened = true;
+            }
+
+            if (opened) _doorOpenedById[doorId] = true;
 
             if (sendNetwork && !_matchEnded)
             {
@@ -462,6 +878,7 @@ namespace Project.Duel
             if (_matchEnded) return;
             _matchEnded = true;
 
+            ExitKeypadFocus();
             if (_keypadModal != null && _keypadModal.IsOpen) _keypadModal.Close();
 
             if (_localMover != null) _localMover.enabled = false;
@@ -516,6 +933,49 @@ namespace Project.Duel
 
         private TaskCompletionSource<IMatchmakerMatched> _mmTcs;
 
+        /// <summary>Два UUID участников дуэли, отсортированные Ordinal (как на сервере для владельца storage).</summary>
+        private bool TryGetSortedDuelPair(out string userA, out string userB)
+        {
+            userA = userB = null;
+            var ids = new HashSet<string>();
+            if (!string.IsNullOrEmpty(_myUserId))
+                ids.Add(_myUserId);
+            if (!string.IsNullOrEmpty(_opponentUserId))
+                ids.Add(_opponentUserId);
+            if (_match?.Presences != null)
+            {
+                foreach (var p in _match.Presences)
+                {
+                    if (p != null && !string.IsNullOrEmpty(p.UserId))
+                        ids.Add(p.UserId);
+                }
+            }
+
+            if (ids.Count < 2)
+                return false;
+
+            var list = new List<string>(ids);
+            list.Sort(StringComparer.Ordinal);
+            userA = list[0];
+            userB = list[1];
+            return true;
+        }
+
+        private async Task TryEnsureDuelKeypadPinsAsync()
+        {
+            if (_match == null) return;
+            if (!TryGetSortedDuelPair(out var a, out var b)) return;
+            try
+            {
+                await DuelKeypadRpc.EnsurePinsAsync(_match.Id, a, b);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Duel] duel_match_ensure_pins: " + e.Message +
+                                 " (проверьте Server/nakama/modules/duel_keypad.lua на Nakama)");
+            }
+        }
+
         private async Task FindMatchAndJoinAsync(CancellationToken ct)
         {
             _mmTcs = new TaskCompletionSource<IMatchmakerMatched>();
@@ -532,6 +992,7 @@ namespace Project.Duel
             Debug.Log($"[Duel] Matchmaker matched. Joining match...");
             _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(matched);
             Debug.Log($"[Duel] Joined match: {_match.Id}. Presences: {CountPresences(_match.Presences)}");
+            await TryEnsureDuelKeypadPinsAsync();
             // В некоторых реализациях SDK список presences может не содержать себя или быть пустым.
             // Локального игрока спавним всегда.
             EnsureLocalSpawn();
@@ -689,6 +1150,8 @@ namespace Project.Duel
                     _preferLeftUntilRemoteKnown = false;
                     ReassignSidesIfNeeded(joinUserId);
                 }
+
+                _ = TryEnsureDuelKeypadPinsAsync();
             });
         }
 
@@ -877,6 +1340,7 @@ namespace Project.Duel
             }
             finally
             {
+                ExitKeypadFocus();
                 _match = null;
                 SceneManager.LoadScene("MainMenu");
             }
@@ -887,6 +1351,7 @@ namespace Project.Duel
             if (_matchEnded) return;
             _matchEnded = true;
 
+            ExitKeypadFocus();
             if (_keypadModal != null && _keypadModal.IsOpen) _keypadModal.Close();
 
             if (_localView != null)

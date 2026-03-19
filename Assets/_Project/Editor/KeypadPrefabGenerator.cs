@@ -53,9 +53,9 @@ namespace Project.Duel.Editor
             hintRt.anchoredPosition = new Vector2(0, 16);
             SetText(hint, font, "Esc  —  закрыть", 13, new Color(1, 1, 1, 0.35f), TextAnchor.MiddleCenter);
 
-            // Panel (70% of 1920 = 1344)
-            var panelW = 1920f * 0.70f;
-            var panelH = panelW / 1.82f;
+            // Panel (fixed size, closer to authored mockup)
+            const float panelW = 1180f;
+            const float panelH = 640f;
 
             var panel = Make("Panel", uiRoot.transform);
             var panelRt = panel.GetComponent<RectTransform>();
