@@ -33,8 +33,24 @@ namespace Project.Match3
 
         public void UpdateStats(int hp, int maxHp, int mana, int maxMana)
         {
-            if (hpFill   != null) hpFill.fillAmount   = maxHp   > 0 ? (float)hp   / maxHp   : 0f;
-            if (manaFill != null) manaFill.fillAmount  = maxMana > 0 ? (float)mana / maxMana : 0f;
+            if (hpFill != null)
+            {
+                hpFill.type = Image.Type.Filled;
+                hpFill.fillMethod = Image.FillMethod.Horizontal;
+                hpFill.fillOrigin = 0;
+                hpFill.fillClockwise = true;
+                hpFill.fillAmount = maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f;
+            }
+
+            if (manaFill != null)
+            {
+                manaFill.type = Image.Type.Filled;
+                manaFill.fillMethod = Image.FillMethod.Horizontal;
+                manaFill.fillOrigin = 0;
+                manaFill.fillClockwise = true;
+                manaFill.fillAmount = maxMana > 0 ? Mathf.Clamp01((float)mana / maxMana) : 0f;
+            }
+
             if (hpText   != null) hpText.text   = $"{hp}/{maxHp}";
             if (manaText != null) manaText.text  = $"{mana}/{maxMana}";
         }

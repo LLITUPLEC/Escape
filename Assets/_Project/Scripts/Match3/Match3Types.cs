@@ -39,11 +39,52 @@ namespace Project.Match3
 
         public bool extraTurn;      // active player gets another turn
         public string activeUserId; // who just acted
+
+        // Animation metadata for remote client replay.
+        // actionType: 0 = none, 1 = swap, 2 = cross, 3 = square
+        public int actionType;
+        public int fromX, fromY;
+        public int toX, toY;
+        public int abilityX, abilityY;
+        public System.Collections.Generic.List<M3AnimStep> animSteps = new System.Collections.Generic.List<M3AnimStep>();
+    }
+
+    [Serializable]
+    public class M3AnimStep
+    {
+        // 1 = clear, 2 = drop
+        public int phase;
+        // board[y * 6 + x] = (int)PieceType
+        public int[] board = new int[36];
     }
 
     [Serializable]
     public class M3GameOverMsg
     {
         public string winnerUserId;
+    }
+
+    [Serializable]
+    public class M3ActionRequest
+    {
+        // 1 = swap, 2 = cross, 3 = square
+        public int actionType;
+        public int fromX, fromY;
+        public int toX, toY;
+        public int cx, cy;
+    }
+
+    [Serializable]
+    public class M3ActionRejectMsg
+    {
+        public string reason;
+    }
+
+    [Serializable]
+    public class M3SelectionSyncMsg
+    {
+        public int x;
+        public int y;
+        public bool selected;
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -10,6 +11,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Project.Match3
 {
@@ -50,12 +54,28 @@ namespace Project.Match3
         [Tooltip("Game-over result overlay")]
         [SerializeField] private Match3GameOverPanel  gameOverPanelPrefab;
 
+        [Header("Audio (Match3 SFX)")]
+        [SerializeField] private AudioSource sfxSource;
+        [SerializeField] private AudioClip sfxLineClear;
+        [SerializeField] private AudioClip sfxAbilitySquare;
+        [SerializeField] private AudioClip sfxAbilityCross;
+        [SerializeField] private AudioClip sfxCascadeFall;
+        [SerializeField] private AudioClip sfxExtraTurn;
+        [SerializeField] private AudioClip sfxTimerEnd;
+        [SerializeField] private AudioClip sfxDamageHit;
+        [SerializeField] private AudioClip sfxVictory;
+        [SerializeField] private AudioClip sfxDefeat;
+
         // ─── OpCodes (match-3 specific, 10+ to avoid collision with DuelRoom) ─────
         private static class M3Op
         {
-            public const long BoardSync  = 10;
-            public const long GameOver   = 11;
-            public const long PlayerLeft = 12;
+            public const long BoardSync     = 10;
+            public const long GameOver      = 11;
+            public const long PlayerLeft    = 12;
+            public const long ActionRequest = 13;
+            public const long ActionReject  = 14;
+            public const long SelectionSync = 15;
+            public const long SnapshotRequest = 16;
         }
 
         // ─── Game Constants ───────────────────────────────────────────────────────
@@ -63,12 +83,6 @@ namespace Project.Match3
         private const int   MaxMana         = 150;
         private const float TurnDuration    = 30f;
         private const int   AbilityCost     = 20;
-        private const int   AbilityCooldown = 2;
-        private const int   SkullDamage     = 5;
-        private const int   AnkhHeal        = 1;
-
-        // Mana per gem matched (index = (int)PieceType)
-        private static readonly int[] GemMana = { 0, 5, 3, 1, 0, 0 };
 
         // ─── Nakama ───────────────────────────────────────────────────────────────
         private IMatch    _match;
@@ -84,6 +98,10 @@ namespace Project.Match3
         private bool  _isMyTurn;
         private float _turnTimer;
         private bool  _gameEnded;
+        private Coroutine _remoteSyncRoutine;
+        private Coroutine _snapshotRetryRoutine;
+        private bool _hasInitialBoardSync;
+        private int _remoteSelX = -1, _remoteSelY = -1;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -110,6 +128,8 @@ namespace Project.Match3
 
             EnsureCamera();
             BuildUI();
+            EnsureAudioSource();
+            TryAutoAssignSfxInEditor();
             _searchingPanel?.Show("Поиск соперника…");
 
             try
@@ -139,10 +159,21 @@ namespace Project.Match3
 
         private void Update()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
-            _turnTimer -= Time.deltaTime;
-            _hud?.SetTimer(Mathf.CeilToInt(Mathf.Max(0f, _turnTimer)).ToString());
-            if (_turnTimer <= 0f) OnTurnTimerExpired();
+            if (_gameEnded) return;
+
+            if (_isMyTurn)
+            {
+                if (_inputBlocked) return;
+                _turnTimer -= Time.deltaTime;
+                _hud?.SetTimer(Mathf.CeilToInt(Mathf.Max(0f, _turnTimer)).ToString());
+                if (_turnTimer <= 0f) OnTurnTimerExpired();
+            }
+            else
+            {
+                if (_turnTimer <= 0f) return;
+                _turnTimer -= Time.deltaTime;
+                _hud?.SetTimer(Mathf.CeilToInt(Mathf.Max(0f, _turnTimer)).ToString());
+            }
         }
 
         // ─── Matchmaking ──────────────────────────────────────────────────────────
@@ -157,7 +188,8 @@ namespace Project.Match3
             await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(
                 query: "*",
                 minCount: 2,
-                maxCount: 2);
+                maxCount: 2,
+                stringProperties: new Dictionary<string, string> { { "mode", "match3" } });
 
             var matched = await _mmTcs.Task;
             _mmTcs = null;
@@ -176,28 +208,24 @@ namespace Project.Match3
             _searchingPanel?.Hide();
             _myPanel?.SetPlayerName("Вы");
             _opPanel?.SetPlayerName("Соперник");
-            StartGame();
+            StartGameWaitingServer();
         }
 
         // ─── Game Flow ────────────────────────────────────────────────────────────
 
-        private void StartGame()
+        private void StartGameWaitingServer()
         {
-            int seed = Math.Abs((_match?.Id ?? "seed").GetHashCode());
-            _board.Init(seed);
-
-            var ids     = GetSortedIds();
-            var firstId = ids.Count >= 2
-                ? (seed % 2 == 0 ? ids[0] : ids[1])
-                : _myUserId;
-            _isMyTurn = firstId == _myUserId;
-
+            _hasInitialBoardSync = false;
+            _remoteSelX = _remoteSelY = -1;
             _boardView?.RefreshAll(_board);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, AbilityCost);
-
-            if (_isMyTurn) BeginMyTurn();
-            else           BeginOpponentTurn();
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, AbilityCost);
+            _hud?.SetTurn("Ожидание синхронизации…");
+            _hud?.SetTimer("—");
+            _boardView?.SetDimmed(true);
+            _inputBlocked = true;
+            if (_snapshotRetryRoutine != null) StopCoroutine(_snapshotRetryRoutine);
+            _snapshotRetryRoutine = StartCoroutine(RequestSnapshotUntilSynced());
         }
 
         private void BeginMyTurn()
@@ -208,35 +236,38 @@ namespace Project.Match3
             _pendingAbility = null;
             _selX = _selY = -1;
             _boardView?.ClearSelections();
+            _remoteSelX = _remoteSelY = -1;
             _abilityPanel?.ShowHint(false);
 
             _hud?.SetTurn("Ваш ход!");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            _boardView?.SetDimmed(false);
 
-            TickAbilityCooldowns(_myStats);
             _abilityPanel?.Refresh(_myStats, true, false, AbilityCost);
         }
 
         private void BeginOpponentTurn()
         {
             _isMyTurn    = false;
+            _turnTimer   = TurnDuration;
             _inputBlocked = true;
             _pendingAbility = null;
             _selX = _selY = -1;
             _boardView?.ClearSelections();
+            _remoteSelX = _remoteSelY = -1;
             _abilityPanel?.ShowHint(false);
 
             _hud?.SetTurn("Ход соперника…");
-            _hud?.SetTimer("—");
+            _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            _boardView?.SetDimmed(true);
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, AbilityCost);
         }
 
         private void OnTurnTimerExpired()
         {
             if (_gameEnded) return;
-            _inputBlocked = true;
-            SendBoardSync(extraTurn: false);
-            BeginOpponentTurn();
+            PlaySfx(sfxTimerEnd);
+            _inputBlocked = true; // ждём серверный тик/обновление
         }
 
         // ─── Input ────────────────────────────────────────────────────────────────
@@ -255,16 +286,19 @@ namespace Project.Match3
             {
                 _selX = x; _selY = y;
                 _boardView?.SetCellSelected(x, y, true);
+                SendSelectionSync(x, y, true);
             }
             else if (_selX == x && _selY == y)
             {
                 _boardView?.SetCellSelected(x, y, false);
+                SendSelectionSync(x, y, false);
                 _selX = _selY = -1;
             }
             else
             {
                 int px = _selX, py = _selY;
                 _boardView?.SetCellSelected(px, py, false);
+                SendSelectionSync(px, py, false);
                 _selX = _selY = -1;
                 TrySwapCells(px, py, x, y);
             }
@@ -272,15 +306,24 @@ namespace Project.Match3
 
         private void TrySwapCells(int x1, int y1, int x2, int y2)
         {
-            if (!_board.TrySwap(x1, y1, x2, y2, out var initialMatches))
+            if (Math.Abs(x1 - x2) + Math.Abs(y1 - y2) != 1)
             {
-                // Not adjacent or no matches → select the new cell instead
+                // Not adjacent → select new cell.
                 _selX = x2; _selY = y2;
                 _boardView?.SetCellSelected(x2, y2, true);
+                SendSelectionSync(x2, y2, true);
                 return;
             }
+
             _inputBlocked = true;
-            ResolveAndFinishTurn(initialMatches);
+            var req = new M3ActionRequest
+            {
+                actionType = 1,
+                fromX = x1, fromY = y1,
+                toX = x2, toY = y2,
+                cx = -1, cy = -1,
+            };
+            SendActionRequest(req);
         }
 
         private void ExecuteAbility(AbilityType ability, int cx, int cy)
@@ -292,131 +335,64 @@ namespace Project.Match3
             int cd = ability == AbilityType.Cross ? _myStats.crossCooldown : _myStats.squareCooldown;
             if (cd > 0) { _abilityPanel?.Refresh(_myStats, _isMyTurn, false, AbilityCost); return; }
 
-            _myStats.mana -= AbilityCost;
-            if (ability == AbilityType.Cross) _myStats.crossCooldown  = AbilityCooldown;
-            else                              _myStats.squareCooldown = AbilityCooldown;
+            StartCoroutine(SendAbilityRequestRoutine(ability, cx, cy));
+        }
 
+        private IEnumerator SendAbilityRequestRoutine(AbilityType ability, int cx, int cy)
+        {
             _inputBlocked = true;
-            _board.ApplyAbility(ability, cx, cy);
-            ResolveAndFinishTurn(new List<MatchResult>());
-        }
-
-        // ─── Match Resolution ─────────────────────────────────────────────────────
-
-        private void ResolveAndFinishTurn(List<MatchResult> initialMatches)
-        {
-            bool extraTurn = false;
-
-            if (initialMatches != null && initialMatches.Count > 0)
+            if (_boardView != null) yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
+            var req = new M3ActionRequest
             {
-                ApplyMatchEffects(initialMatches, ref extraTurn);
-                _board.ClearMatchedCells(initialMatches);
-            }
-
-            while (true)
-            {
-                var cascade = _board.ApplyGravityAndRefill();
-                _boardView?.RefreshAll(_board);
-                if (cascade.Count == 0) break;
-                ApplyMatchEffects(cascade, ref extraTurn);
-                _board.ClearMatchedCells(cascade);
-            }
-
-            _boardView?.RefreshAll(_board);
-            RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, AbilityCost);
-
-            if (CheckGameOver()) return;
-
-            SendBoardSync(extraTurn);
-
-            if (extraTurn) BeginMyTurn();
-            else           BeginOpponentTurn();
-        }
-
-        private void ApplyMatchEffects(List<MatchResult> matches, ref bool extraTurn)
-        {
-            foreach (var m in matches)
-            {
-                if (m.count >= 5) extraTurn = true;
-                switch (m.type)
-                {
-                    case PieceType.GemRed:
-                    case PieceType.GemYellow:
-                    case PieceType.GemGreen:
-                        _myStats.mana = Mathf.Min(MaxMana, _myStats.mana + GemMana[(int)m.type] * m.count);
-                        break;
-                    case PieceType.Skull:
-                        _opStats.hp = Mathf.Max(0, _opStats.hp - SkullDamage * m.count);
-                        break;
-                    case PieceType.Ankh:
-                        _myStats.hp = Mathf.Min(MaxHp, _myStats.hp + AnkhHeal * m.count);
-                        break;
-                }
-            }
-        }
-
-        private void TickAbilityCooldowns(PlayerStats stats)
-        {
-            if (stats.crossCooldown  > 0) stats.crossCooldown--;
-            if (stats.squareCooldown > 0) stats.squareCooldown--;
+                actionType = ability == AbilityType.Cross ? 2 : 3,
+                fromX = -1, fromY = -1, toX = -1, toY = -1,
+                cx = cx, cy = cy,
+            };
+            SendActionRequest(req);
         }
 
         // ─── Game Over ────────────────────────────────────────────────────────────
-
-        private bool CheckGameOver()
-        {
-            if (_myStats.hp <= 0)
-            {
-                _gameEnded = true;
-                _ = SendStateAsync(M3Op.GameOver,
-                    Encoding.UTF8.GetBytes(JsonUtility.ToJson(new M3GameOverMsg { winnerUserId = _opUserId })));
-                ShowGameOver(won: false);
-                return true;
-            }
-            if (_opStats.hp <= 0)
-            {
-                _gameEnded = true;
-                _ = SendStateAsync(M3Op.GameOver,
-                    Encoding.UTF8.GetBytes(JsonUtility.ToJson(new M3GameOverMsg { winnerUserId = _myUserId })));
-                ShowGameOver(won: true);
-                return true;
-            }
-            return false;
-        }
 
         private void ShowGameOver(bool won)
         {
             _isMyTurn    = false;
             _inputBlocked = true;
+            _boardView?.SetDimmed(false);
+            PlaySfx(won ? sfxVictory : sfxDefeat);
             _gameOverPanel?.Show(won);
         }
 
         // ─── Networking — Send ────────────────────────────────────────────────────
 
-        private void SendBoardSync(bool extraTurn)
+        private void SendActionRequest(M3ActionRequest req)
         {
             if (_match == null || _gameEnded) return;
-            var ids  = GetSortedIds();
-            bool amA = ids.Count > 0 && _myUserId == ids[0];
+            _ = SendStateAsync(M3Op.ActionRequest,
+                Encoding.UTF8.GetBytes(JsonUtility.ToJson(req)));
+        }
 
-            var msg = new M3BoardSyncMsg
+        private void SendSelectionSync(int x, int y, bool selected)
+        {
+            if (_match == null || _gameEnded) return;
+            var msg = new M3SelectionSyncMsg { x = x, y = y, selected = selected };
+            _ = SendStateAsync(M3Op.SelectionSync, Encoding.UTF8.GetBytes(JsonUtility.ToJson(msg)));
+        }
+
+        private void RequestSnapshot()
+        {
+            if (_match == null || _gameEnded) return;
+            _ = SendStateAsync(M3Op.SnapshotRequest, Encoding.UTF8.GetBytes("{}"));
+        }
+
+        private IEnumerator RequestSnapshotUntilSynced()
+        {
+            const int maxAttempts = 8;
+            for (int i = 0; i < maxAttempts && !_hasInitialBoardSync && !_gameEnded; i++)
             {
-                board     = _board.ToArray(),
-                aHp       = amA ? _myStats.hp            : _opStats.hp,
-                aMana     = amA ? _myStats.mana           : _opStats.mana,
-                aCrossCd  = amA ? _myStats.crossCooldown  : _opStats.crossCooldown,
-                aSquareCd = amA ? _myStats.squareCooldown : _opStats.squareCooldown,
-                bHp       = amA ? _opStats.hp             : _myStats.hp,
-                bMana     = amA ? _opStats.mana            : _myStats.mana,
-                bCrossCd  = amA ? _opStats.crossCooldown  : _myStats.crossCooldown,
-                bSquareCd = amA ? _opStats.squareCooldown : _myStats.squareCooldown,
-                extraTurn    = extraTurn,
-                activeUserId = _myUserId,
-            };
-
-            _ = SendStateAsync(M3Op.BoardSync,
-                Encoding.UTF8.GetBytes(JsonUtility.ToJson(msg)));
+                RequestSnapshot();
+                yield return new WaitForSeconds(1.0f);
+            }
+            _snapshotRetryRoutine = null;
         }
 
         private async Task SendStateAsync(long opCode, byte[] data)
@@ -465,7 +441,6 @@ namespace Project.Match3
         private void OnMatchState(IMatchState state)
         {
             if (_match == null || state.MatchId != _match.Id) return;
-            if (state.UserPresence?.UserId == _myUserId) return;
 
             string json;
             try { json = Encoding.UTF8.GetString(state.State); } catch { return; }
@@ -490,11 +465,112 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 { if (!_gameEnded) { _gameEnded = true; ShowGameOver(won: true); } });
             }
+            else if (state.OpCode == M3Op.ActionReject)
+            {
+                M3ActionRejectMsg msg;
+                try { msg = JsonUtility.FromJson<M3ActionRejectMsg>(json); } catch { return; }
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    _inputBlocked = false;
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, AbilityCost);
+                    if (!string.IsNullOrEmpty(msg.reason))
+                        Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
+                });
+            }
+            else if (state.OpCode == M3Op.SelectionSync)
+            {
+                if (state.UserPresence?.UserId == _myUserId) return;
+                M3SelectionSyncMsg msg;
+                try { msg = JsonUtility.FromJson<M3SelectionSyncMsg>(json); } catch { return; }
+                MainThreadDispatcher.Enqueue(() => OnRemoteSelection(msg));
+            }
         }
 
         private void OnBoardSyncReceived(M3BoardSyncMsg msg)
         {
             if (_gameEnded) return;
+            _hasInitialBoardSync = true;
+            if (_snapshotRetryRoutine != null) { StopCoroutine(_snapshotRetryRoutine); _snapshotRetryRoutine = null; }
+            if (_remoteSyncRoutine != null) StopCoroutine(_remoteSyncRoutine);
+            _remoteSyncRoutine = StartCoroutine(ApplyRemoteBoardSync(msg));
+        }
+
+        private void OnRemoteSelection(M3SelectionSyncMsg msg)
+        {
+            if (msg.selected)
+            {
+                if (_remoteSelX >= 0 && _remoteSelY >= 0)
+                    _boardView?.SetCellSelected(_remoteSelX, _remoteSelY, false);
+                _remoteSelX = msg.x;
+                _remoteSelY = msg.y;
+                _boardView?.SetCellSelected(msg.x, msg.y, true);
+            }
+            else
+            {
+                _boardView?.SetCellSelected(msg.x, msg.y, false);
+                if (_remoteSelX == msg.x && _remoteSelY == msg.y)
+                    _remoteSelX = _remoteSelY = -1;
+            }
+        }
+
+        private IEnumerator ApplyRemoteBoardSync(M3BoardSyncMsg msg)
+        {
+            var beforeBoard = _board.ToArray();
+            int[] currentBoard = beforeBoard;
+            int prevMyHp = _myStats.hp;
+            int prevOpHp = _opStats.hp;
+
+            if (_boardView != null)
+            {
+                if (msg.actionType == 1 &&
+                    msg.fromX >= 0 && msg.fromY >= 0 && msg.toX >= 0 && msg.toY >= 0)
+                {
+                    yield return _boardView.AnimateSwap(msg.fromX, msg.fromY, msg.toX, msg.toY, 0.30f);
+                    currentBoard = SwapCellsInBoard(currentBoard, msg.fromX, msg.fromY, msg.toX, msg.toY);
+                    _board.FromArray(currentBoard);
+                    _boardView.RefreshAll(_board);
+                }
+                else if (msg.actionType == 2 &&
+                         msg.abilityX >= 0 && msg.abilityY >= 0)
+                {
+                    PlaySfx(sfxAbilityCross);
+                    yield return _boardView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
+                }
+                else if (msg.actionType == 3 &&
+                         msg.abilityX >= 0 && msg.abilityY >= 0)
+                {
+                    PlaySfx(sfxAbilitySquare);
+                    yield return _boardView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
+                }
+            }
+
+            bool usedAnimSteps = msg.animSteps != null && msg.animSteps.Count > 0;
+            if (usedAnimSteps && _boardView != null)
+            {
+                for (int i = 0; i < msg.animSteps.Count; i++)
+                {
+                    var step = msg.animSteps[i];
+                    if (step?.board == null || step.board.Length < Match3BoardLogic.Size * Match3BoardLogic.Size)
+                        continue;
+
+                    if (step.phase == 1)
+                    {
+                        PlaySfx(sfxLineClear);
+                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.5f);
+                        _board.FromArray(step.board);
+                        _boardView.RefreshAll(_board);
+                        currentBoard = _board.ToArray();
+                    }
+                    else if (step.phase == 2)
+                    {
+                        _board.FromArray(step.board);
+                        _boardView.RefreshAll(_board);
+                        PlaySfx(sfxCascadeFall);
+                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.5f);
+                        currentBoard = _board.ToArray();
+                    }
+                }
+            }
 
             _board.FromArray(msg.board);
 
@@ -509,16 +585,20 @@ namespace Project.Match3
             _opStats.mana           = amA ? msg.bMana      : msg.aMana;
 
             _boardView?.RefreshAll(_board);
+            if (!usedAnimSteps && _boardView != null)
+                yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, AbilityCost);
 
-            if (CheckGameOver()) return;
+            if (_myStats.hp < prevMyHp || _opStats.hp < prevOpHp)
+                PlaySfx(sfxDamageHit);
+            if (msg.extraTurn)
+                PlaySfx(sfxExtraTurn);
 
-            if (!msg.extraTurn)
-            {
-                TickAbilityCooldowns(_myStats);
-                BeginMyTurn();
-            }
+            bool isMyTurnNow = msg.activeUserId == _myUserId;
+            if (isMyTurnNow) BeginMyTurn();
+            else             BeginOpponentTurn();
+
+            _remoteSyncRoutine = null;
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -536,6 +616,53 @@ namespace Project.Match3
         {
             _myPanel?.UpdateStats(_myStats.hp, MaxHp, _myStats.mana, MaxMana);
             _opPanel?.UpdateStats(_opStats.hp, MaxHp, _opStats.mana, MaxMana);
+        }
+
+        private static int[] SwapCellsInBoard(int[] board, int x1, int y1, int x2, int y2)
+        {
+            if (board == null || board.Length < Match3BoardLogic.Size * Match3BoardLogic.Size)
+                return board;
+            var clone = new int[board.Length];
+            Array.Copy(board, clone, board.Length);
+            int i1 = y1 * Match3BoardLogic.Size + x1;
+            int i2 = y2 * Match3BoardLogic.Size + x2;
+            int t = clone[i1];
+            clone[i1] = clone[i2];
+            clone[i2] = t;
+            return clone;
+        }
+
+        private void EnsureAudioSource()
+        {
+            if (sfxSource != null) return;
+            sfxSource = GetComponent<AudioSource>();
+            if (sfxSource == null) sfxSource = gameObject.AddComponent<AudioSource>();
+            sfxSource.playOnAwake = false;
+            sfxSource.loop = false;
+            sfxSource.spatialBlend = 0f;
+        }
+
+        private void PlaySfx(AudioClip clip, float volume = 1f)
+        {
+            if (clip == null) return;
+            EnsureAudioSource();
+            if (sfxSource == null) return;
+            sfxSource.PlayOneShot(clip, Mathf.Clamp01(volume));
+        }
+
+        private void TryAutoAssignSfxInEditor()
+        {
+#if UNITY_EDITOR
+            if (sfxLineClear == null)    sfxLineClear    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav");
+            if (sfxAbilitySquare == null) sfxAbilitySquare = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
+            if (sfxAbilityCross == null) sfxAbilityCross = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav");
+            if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav");
+            if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
+            if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
+            if (sfxDamageHit == null)    sfxDamageHit    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav");
+            if (sfxVictory == null)      sfxVictory      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_victory.wav");
+            if (sfxDefeat == null)       sfxDefeat       = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_defeat.wav");
+#endif
         }
 
         private async void QuitToMenu()
@@ -748,9 +875,9 @@ namespace Project.Match3
         private Match3BoardView BuildBoardProcedural(Transform parent)
         {
             var frame = MakeImg(parent, "Frame", new Color(0.38f, 0.32f, 0.18f), V2(0f, 0f), V2(1f, 1f));
-            var inner = MakeImg(frame, "Inner", new Color(0.17f, 0.15f, 0.11f), V2(0.025f, 0.015f), V2(0.975f, 0.985f));
+            var inner = MakeImg(frame, "Inner", new Color(0.17f, 0.15f, 0.11f), V2(0f, 0f), V2(1f, 1f));
 
-            const int cells = Match3BoardLogic.Size, cellPx = 74, gapPx = 4;
+            const int cells = Match3BoardLogic.Size, cellPx = 74, gapPx = -1;
             int total = cells * cellPx + (cells - 1) * gapPx;
 
             var gridGo = new GameObject("CellContainer");
@@ -829,6 +956,7 @@ namespace Project.Match3
         {
             if (!_isMyTurn || _gameEnded || _inputBlocked) return;
             if (_myStats.crossCooldown  > 0 || _myStats.mana < AbilityCost) return;
+            if (_selX >= 0 && _selY >= 0) SendSelectionSync(_selX, _selY, false);
             _pendingAbility = AbilityType.Cross;
             _selX = _selY = -1;
             _boardView?.ClearSelections();
@@ -839,6 +967,7 @@ namespace Project.Match3
         {
             if (!_isMyTurn || _gameEnded || _inputBlocked) return;
             if (_myStats.squareCooldown > 0 || _myStats.mana < AbilityCost) return;
+            if (_selX >= 0 && _selY >= 0) SendSelectionSync(_selX, _selY, false);
             _pendingAbility = AbilityType.Square;
             _selX = _selY = -1;
             _boardView?.ClearSelections();
@@ -935,12 +1064,19 @@ namespace Project.Match3
         private static Image BuildBar(Transform p, string name, Color fillColor,
             Vector2 aMin, Vector2 aMax)
         {
+            var frameGo = new GameObject(name + "Frame");
+            var frameRt = frameGo.AddComponent<RectTransform>();
+            frameRt.SetParent(p, false);
+            frameRt.anchorMin = aMin; frameRt.anchorMax = aMax;
+            frameRt.offsetMin = frameRt.offsetMax = Vector2.zero;
+            frameGo.AddComponent<Image>().color = new Color(0.02f, 0.02f, 0.03f, 0.98f);
+
             var trackGo = new GameObject(name + "Track");
             var trackRt = trackGo.AddComponent<RectTransform>();
-            trackRt.SetParent(p, false);
-            trackRt.anchorMin = aMin; trackRt.anchorMax = aMax;
-            trackRt.offsetMin = trackRt.offsetMax = Vector2.zero;
-            trackGo.AddComponent<Image>().color = new Color(0.08f, 0.08f, 0.10f, 0.9f);
+            trackRt.SetParent(frameGo.transform, false);
+            trackRt.anchorMin = Vector2.zero; trackRt.anchorMax = Vector2.one;
+            trackRt.offsetMin = new Vector2(2, 2); trackRt.offsetMax = new Vector2(-2, -2);
+            trackGo.AddComponent<Image>().color = new Color(0.10f, 0.10f, 0.12f, 0.95f);
 
             var fillGo = new GameObject(name + "Fill");
             var fillRt = fillGo.AddComponent<RectTransform>();

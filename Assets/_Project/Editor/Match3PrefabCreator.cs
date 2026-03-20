@@ -132,6 +132,10 @@ public static class Match3PrefabCreator
     {
         var root = MakeRoot("Match3BoardView");
         var bv   = root.AddComponent<Match3BoardView>();
+        var so   = new SerializedObject(bv);
+        so.FindProperty("ballsAtlas").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/img/balls-sprite.png");
+        so.ApplyModifiedPropertiesWithoutUndo();
 
         // Decorative frame
         var frame = MakeImg(root.transform, "Frame", new Color(0.38f, 0.32f, 0.18f));
