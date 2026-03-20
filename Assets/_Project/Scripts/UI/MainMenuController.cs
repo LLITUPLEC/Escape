@@ -13,6 +13,7 @@ namespace Project.UI
     {
         [SerializeField] private Button duelButton;
         [SerializeField] private Button botsButton;
+        [SerializeField] private Button match3Button;
         [Header("Online Badge")]
         [SerializeField] private RectTransform onlineBadgeParent;
         [SerializeField] private GameObject onlineBadgePrefab;
@@ -28,16 +29,18 @@ namespace Project.UI
         private int _lastOnlineCount = -1;
         private Coroutine _badgePulseRoutine;
 
-        public void Bind(Button duel, Button bots)
+        public void Bind(Button duel, Button bots, Button match3 = null)
         {
-            duelButton = duel;
-            botsButton = bots;
+            duelButton   = duel;
+            botsButton   = bots;
+            match3Button = match3;
         }
 
         private void Awake()
         {
-            if (duelButton != null) duelButton.onClick.AddListener(OnDuelClicked);
-            if (botsButton != null) botsButton.onClick.AddListener(OnBotsClicked);
+            if (duelButton   != null) duelButton.onClick.AddListener(OnDuelClicked);
+            if (botsButton   != null) botsButton.onClick.AddListener(OnBotsClicked);
+            if (match3Button != null) match3Button.onClick.AddListener(OnMatch3Clicked);
             EnsureOnlineBadge();
         }
 
@@ -70,6 +73,11 @@ namespace Project.UI
         private void OnBotsClicked()
         {
             Debug.Log("Режим 'Боты' пока заглушка.");
+        }
+
+        private void OnMatch3Clicked()
+        {
+            SceneManager.LoadScene("DuelMatch3");
         }
 
         private void EnsureOnlineBadge()

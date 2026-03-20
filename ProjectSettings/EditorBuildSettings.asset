@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/DuelRoom.unity
     guid: a81c2d8da6df6444f9076504b5074bec
+  - enabled: 1
+    path: Assets/_Project/Scenes/DuelMatch3.unity
+    guid: 3b6a86858d7fd684f819dbb1034a08fb
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

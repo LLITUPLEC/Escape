@@ -339,15 +339,38 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3225113820349729819, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
+      propertyPath: m_Text
+      value: "\u0411\u043E\u0442\u044B"
+      objectReference: {fileID: 0}
+    - target: {fileID: 5682505447182218753, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
+      propertyPath: m_Name
+      value: BotsButton
+      objectReference: {fileID: 0}
     - target: {fileID: 7496840011559642499, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
       propertyPath: m_Name
       value: MainMenuScreen
       objectReference: {fileID: 0}
+    - target: {fileID: 8549976791676023677, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
+      propertyPath: match3Button
+      value: 
+      objectReference: {fileID: 863838086}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
+--- !u!114 &863838086 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2948548160258611903, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
+  m_PrefabInstance: {fileID: 863838085}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
 --- !u!1 &867371487
 GameObject:
   m_ObjectHideFlags: 0
