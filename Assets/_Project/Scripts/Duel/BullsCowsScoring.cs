@@ -33,14 +33,16 @@ namespace Project.Duel
 
         public static string FormatAttemptLine(int attemptNumber, string guess, int bulls, int cows)
         {
+            var guessedDigits = bulls + cows;
+            var inPlaceDigits = bulls;
             string bullsColor;
             string cowsColor;
-            if (bulls >= 2)
+            if (guessedDigits >= 2)
             {
                 bullsColor = "#4ADE80";
                 cowsColor = "#6B7280";
             }
-            else if (bulls + cows >= 2)
+            else if (guessedDigits >= 1 || inPlaceDigits >= 1)
             {
                 bullsColor = "#F59E0B";
                 cowsColor = "#F59E0B";
@@ -52,8 +54,8 @@ namespace Project.Duel
             }
 
             return $"{attemptNumber})  <color=#6B7280>{guess}</color>  <color=#3D3225>\u2014</color>  " +
-                   $"<b><color={bullsColor}>{bulls}</color></b> <color=#3D3225>:</color> " +
-                   $"<b><color={cowsColor}>{cows}</color></b>";
+                   $"<b><color={bullsColor}>{guessedDigits}</color></b> <color=#3D3225>:</color> " +
+                   $"<b><color={cowsColor}>{inPlaceDigits}</color></b>";
         }
     }
 }

@@ -42,6 +42,7 @@ namespace Project.Networking
     public sealed class NetDoorOpenedState
     {
         public int doorId;
+        public int attemptsUsed;
     }
 
     [Serializable]

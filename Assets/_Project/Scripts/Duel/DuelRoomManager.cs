@@ -86,6 +86,7 @@ namespace Project.Duel
         private Keypad _activeKeypad;
         private int _activeDoorId;
         private UnityAction _activeKeypadGrantedHandler;
+        private Action<string, int, int> _activeKeypadWrongGuessHandler;
         private Vector3 _camWorldPosRestore;
         private Quaternion _camWorldRotRestore;
         private Transform _camParentRestore;
@@ -95,12 +96,14 @@ namespace Project.Duel
         private Coroutine _keypadFocusCameraCo;
         private GameObject _keypadWorldLogGo;
         private bool _keypadGuessInFlight;
+        private readonly Dictionary<int, List<string>> _attemptHistoryByDoor = new();
 
         private const float KeypadInteractDistance = 2.6f;
         private const int LeftDoor1Id = DuelDoorPins.LeftDoor1Id;
         private const int LeftDoor2Id = DuelDoorPins.LeftDoor2Id;
         private const int RightDoor1Id = DuelDoorPins.RightDoor1Id;
         private const int RightDoor2Id = DuelDoorPins.RightDoor2Id;
+        private const int MaxDoorAttempts = DuelKeypadWorldLog.MaxAttempts;
 
         private async void Start()
         {
@@ -221,7 +224,7 @@ namespace Project.Duel
 
             _keypadModal.ShowDuel(_match.Id, uaF, ubF, doorId, codeLen, () =>
             {
-                OpenDoorAndSync(doorId, sendNetwork: true);
+                OpenDoorAndSync(doorId, sendNetwork: true, attemptsUsed: GetCurrentDoorAttemptNumber(doorId));
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             }, onClosed: () =>
             {
@@ -458,7 +461,7 @@ namespace Project.Duel
             _localMover.enabled = false;
             _keypadModal.ShowDuel(_match.Id, uaC, ubC, doorId, codeLen, () =>
             {
-                OpenDoorAndSync(doorId, sendNetwork: true);
+                OpenDoorAndSync(doorId, sendNetwork: true, attemptsUsed: GetCurrentDoorAttemptNumber(doorId));
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
             }, onClosed: () =>
             {
@@ -589,6 +592,8 @@ namespace Project.Duel
             keypad.EnsureDisplayReference();
             keypad.ConfigureDuelSession(codeLen);
             keypad.SetServerGuessInvoker(On3DKeypadGuessSubmitted);
+            _activeKeypadWrongGuessHandler = OnActiveKeypadWrongGuess;
+            keypad.WrongGuessSubmitted += _activeKeypadWrongGuessHandler;
 
             if (_localMover != null) _localMover.enabled = false;
 
@@ -637,7 +642,7 @@ namespace Project.Duel
                 _keypadWorldLogGo = new GameObject("KeypadWorldAttemptLog");
                 _keypadWorldLogGo.transform.SetParent(keypad.transform, false);
                 var log = _keypadWorldLogGo.AddComponent<DuelKeypadWorldLog>();
-                log.Initialize(keypad, keypad.transform, cam);
+                log.Initialize(keypad, keypad.transform, cam, GetAttemptHistory(doorId));
             }
         }
 
@@ -704,15 +709,48 @@ namespace Project.Duel
         private void OnActiveKeypadAccessGranted()
         {
             if (!_keypadFocusActive) return;
-            OpenDoorAndSync(_activeDoorId, sendNetwork: true);
+            OpenDoorAndSync(_activeDoorId, sendNetwork: true, attemptsUsed: GetCurrentDoorAttemptNumber(_activeDoorId));
             ExitKeypadFocus();
         }
 
         private void On3DKeypadGuessSubmitted(string guess)
         {
             if (_match == null || !_keypadFocusActive || _keypadGuessInFlight) return;
+            var history = GetAttemptHistory(_activeDoorId);
+            if (history.Count >= MaxDoorAttempts)
+            {
+                _activeKeypad?.AbortPendingGuess();
+                if (hud != null) hud.ShowBanner($"Лимит попыток исчерпан ({MaxDoorAttempts})");
+                return;
+            }
             _keypadGuessInFlight = true;
             KeypadGuessAwait(guess);
+        }
+
+        private List<string> GetAttemptHistory(int doorId)
+        {
+            if (!_attemptHistoryByDoor.TryGetValue(doorId, out var history))
+            {
+                history = new List<string>();
+                _attemptHistoryByDoor[doorId] = history;
+            }
+
+            return history;
+        }
+
+        private void OnActiveKeypadWrongGuess(string guess, int bulls, int cows)
+        {
+            if (_activeDoorId <= 0) return;
+            var history = GetAttemptHistory(_activeDoorId);
+            if (history.Count >= MaxDoorAttempts) return;
+            history.Add(BullsCowsScoring.FormatAttemptLine(history.Count + 1, guess, bulls, cows));
+        }
+
+        private void ClearLocalKeypadHistories()
+        {
+            _attemptHistoryByDoor.Clear();
+            if (_keypadModal != null)
+                _keypadModal.ClearAllHistory();
         }
 
         private async void KeypadGuessAwait(string guess)
@@ -767,11 +805,14 @@ namespace Project.Duel
 
             if (_activeKeypad != null && _activeKeypadGrantedHandler != null)
                 _activeKeypad.OnAccessGranted.RemoveListener(_activeKeypadGrantedHandler);
+            if (_activeKeypad != null && _activeKeypadWrongGuessHandler != null)
+                _activeKeypad.WrongGuessSubmitted -= _activeKeypadWrongGuessHandler;
 
             if (_activeKeypad != null)
                 _activeKeypad.ClearDuelNetworking();
 
             _activeKeypadGrantedHandler = null;
+            _activeKeypadWrongGuessHandler = null;
             _activeKeypad = null;
             _activeDoorId = 0;
             _keypadGuessInFlight = false;
@@ -824,7 +865,7 @@ namespace Project.Duel
             }
         }
 
-        private void OpenDoorAndSync(int doorId, bool sendNetwork)
+        private void OpenDoorAndSync(int doorId, bool sendNetwork, int attemptsUsed = 0)
         {
             if (_doorOpenedById == null || doorId <= 0 || doorId >= _doorOpenedById.Length) return;
             if (_doorOpenedById[doorId]) return;
@@ -845,16 +886,16 @@ namespace Project.Duel
 
             if (sendNetwork && !_matchEnded)
             {
-                _ = SendDoorOpenedAsync(doorId);
+                _ = SendDoorOpenedAsync(doorId, attemptsUsed);
             }
         }
 
-        private async Task SendDoorOpenedAsync(int doorId)
+        private async Task SendDoorOpenedAsync(int doorId, int attemptsUsed)
         {
             if (_match == null) return;
             if (!NakamaBootstrap.Instance.Socket.IsConnected) return;
 
-            var msg = new NetDoorOpenedState { doorId = doorId };
+            var msg = new NetDoorOpenedState { doorId = doorId, attemptsUsed = Mathf.Max(1, attemptsUsed) };
             var json = JsonUtility.ToJson(msg);
             var bytes = Encoding.UTF8.GetBytes(json);
 
@@ -880,6 +921,7 @@ namespace Project.Duel
 
             ExitKeypadFocus();
             if (_keypadModal != null && _keypadModal.IsOpen) _keypadModal.Close();
+            ClearLocalKeypadHistories();
 
             if (_localMover != null) _localMover.enabled = false;
 
@@ -1221,11 +1263,21 @@ namespace Project.Duel
 
                 if (doorMsg == null) return;
                 var doorId = doorMsg.doorId;
+                var attemptsUsed = doorMsg.attemptsUsed;
+                var openedByUserId = state.UserPresence?.UserId;
 
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     if (_matchEnded) return;
                     OpenDoorAndSync(doorId, sendNetwork: false);
+                    if (!string.IsNullOrEmpty(openedByUserId) &&
+                        !string.Equals(openedByUserId, _myUserId, StringComparison.Ordinal) &&
+                        hud != null)
+                    {
+                        var displayDoor = GetDoorDisplayIndex(doorId);
+                        var safeAttempts = Mathf.Max(1, attemptsUsed);
+                        hud.ShowBanner($"Игрок 2 открыл дверь №{displayDoor} с {safeAttempts} попытки");
+                    }
                 });
                 return;
             }
@@ -1341,6 +1393,7 @@ namespace Project.Duel
             finally
             {
                 ExitKeypadFocus();
+                ClearLocalKeypadHistories();
                 _match = null;
                 SceneManager.LoadScene("MainMenu");
             }
@@ -1353,6 +1406,7 @@ namespace Project.Duel
 
             ExitKeypadFocus();
             if (_keypadModal != null && _keypadModal.IsOpen) _keypadModal.Close();
+            ClearLocalKeypadHistories();
 
             if (_localView != null)
             {
@@ -1374,6 +1428,24 @@ namespace Project.Duel
         public void LeaveToMainMenu()
         {
             SceneManager.LoadScene("MainMenu");
+        }
+
+        private static int GetDoorDisplayIndex(int doorId)
+        {
+            return doorId == LeftDoor2Id || doorId == RightDoor2Id ? 2 : 1;
+        }
+
+        private int GetCurrentDoorAttemptNumber(int doorId)
+        {
+            // У нас в истории хранятся только неудачные попытки, успешная = следующая.
+            var wrongAttempts = 0;
+            if (_attemptHistoryByDoor.TryGetValue(doorId, out var history3D) && history3D != null)
+                wrongAttempts = Mathf.Max(wrongAttempts, history3D.Count);
+
+            if (_keypadModal != null)
+                wrongAttempts = Mathf.Max(wrongAttempts, _keypadModal.GetWrongAttemptsCount(doorId));
+
+            return wrongAttempts + 1;
         }
     }
 }

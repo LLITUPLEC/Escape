@@ -1,4 +1,4 @@
-using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,8 +12,16 @@ namespace Project.Duel
         [SerializeField] private Button confirmNoButton;
         [SerializeField] private CanvasGroup bannerGroup;
         [SerializeField] private Text bannerText;
+        [Header("Banner FX")]
+        [SerializeField] private float bannerAutoHideSeconds = 5f;
+        [SerializeField] private float bannerPulseSpeed = 1.8f;
+        [SerializeField] private float bannerPulseScaleAmplitude = 0.03f;
+        [SerializeField] private float bannerPulseAlphaAmplitude = 0.14f;
 
         private DuelRoomManager _room;
+        private Coroutine _bannerRoutine;
+        private RectTransform _bannerRect;
+        private Vector3 _bannerBaseScale = Vector3.one;
 
         public void Bind(
             DuelRoomManager room,
@@ -46,6 +54,7 @@ namespace Project.Duel
 
             SetConfirmVisible(false);
             SetBannerVisible(false);
+            CacheBannerRect();
         }
 
         private void OnExitClicked()
@@ -76,6 +85,13 @@ namespace Project.Duel
         {
             if (bannerText != null) bannerText.text = text ?? string.Empty;
             SetBannerVisible(true);
+            RestartBannerRoutine();
+        }
+
+        private void OnDisable()
+        {
+            StopBannerRoutine();
+            RestoreBannerVisual();
         }
 
         private void SetConfirmVisible(bool visible)
@@ -92,6 +108,77 @@ namespace Project.Duel
             bannerGroup.alpha = visible ? 1f : 0f;
             bannerGroup.interactable = visible;
             bannerGroup.blocksRaycasts = visible;
+        }
+
+        private void CacheBannerRect()
+        {
+            if (bannerGroup == null) return;
+            _bannerRect = bannerGroup.transform as RectTransform;
+            if (_bannerRect != null)
+                _bannerBaseScale = _bannerRect.localScale;
+        }
+
+        private void RestartBannerRoutine()
+        {
+            StopBannerRoutine();
+            CacheBannerRect();
+            RestoreBannerVisual();
+            _bannerRoutine = StartCoroutine(BannerPulseAndAutoHideRoutine());
+        }
+
+        private void StopBannerRoutine()
+        {
+            if (_bannerRoutine == null) return;
+            StopCoroutine(_bannerRoutine);
+            _bannerRoutine = null;
+        }
+
+        private void RestoreBannerVisual()
+        {
+            if (_bannerRect != null)
+                _bannerRect.localScale = _bannerBaseScale;
+            if (bannerGroup != null && bannerGroup.alpha > 0f)
+                bannerGroup.alpha = 1f;
+        }
+
+        private IEnumerator BannerPulseAndAutoHideRoutine()
+        {
+            var duration = Mathf.Max(0.1f, bannerAutoHideSeconds);
+            var pulseSpeed = Mathf.Max(0.1f, bannerPulseSpeed);
+            var scaleAmp = Mathf.Clamp(bannerPulseScaleAmplitude, 0f, 0.25f);
+            var alphaAmp = Mathf.Clamp(bannerPulseAlphaAmplitude, 0f, 0.45f);
+            var elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                var wave = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * pulseSpeed * Mathf.PI * 2f);
+                var alpha = Mathf.Clamp01(1f - alphaAmp + alphaAmp * wave);
+                if (bannerGroup != null)
+                    bannerGroup.alpha = alpha;
+                if (_bannerRect != null)
+                {
+                    var scale = 1f + scaleAmp * wave;
+                    _bannerRect.localScale = _bannerBaseScale * scale;
+                }
+                yield return null;
+            }
+
+            // Небольшой финальный fade-out, чтобы скрытие выглядело мягко.
+            var fade = 0f;
+            var fadeDur = 0.2f;
+            var startAlpha = bannerGroup != null ? bannerGroup.alpha : 0f;
+            while (fade < fadeDur)
+            {
+                fade += Time.unscaledDeltaTime;
+                var t = Mathf.Clamp01(fade / fadeDur);
+                if (bannerGroup != null)
+                    bannerGroup.alpha = Mathf.Lerp(startAlpha, 0f, t);
+                yield return null;
+            }
+
+            SetBannerVisible(false);
+            RestoreBannerVisual();
+            _bannerRoutine = null;
         }
     }
 }

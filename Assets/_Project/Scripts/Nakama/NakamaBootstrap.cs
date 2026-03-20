@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
@@ -23,6 +25,8 @@ namespace Project.Nakama
 
         public bool IsReady => Socket != null && Socket.IsConnected && Session != null;
 
+        private const string DeviceIdPrefKey = "nakama.device_id";
+        private const string DevDeviceIdPrefPrefix = "nakama.device_id.dev.";
         private CancellationTokenSource _cts;
 
         private void Awake()
@@ -113,8 +117,8 @@ namespace Project.Nakama
             Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
             Client.Timeout = 10;
 
-            var customId = Guid.NewGuid().ToString("N"); // уникально на каждый запуск => два окна не конфликтуют
-            Session = await Client.AuthenticateCustomAsync(customId, create: true, canceller: ct);
+            var deviceId = GetDeviceId();
+            Session = await Client.AuthenticateDeviceAsync(deviceId, create: true, canceller: ct);
 
             Socket = Client.NewSocket();
 
@@ -133,6 +137,77 @@ namespace Project.Nakama
 
             ct.ThrowIfCancellationRequested();
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+        }
+
+        private static string GetDeviceId()
+        {
+#if UNITY_EDITOR
+            var profileKey = GetDevelopmentProfileKey();
+            var prefKey = DevDeviceIdPrefPrefix + profileKey;
+#else
+            var profileKey = "";
+            var prefKey = DeviceIdPrefKey;
+#endif
+            if (PlayerPrefs.HasKey(prefKey))
+            {
+                var saved = PlayerPrefs.GetString(prefKey);
+                if (!string.IsNullOrWhiteSpace(saved))
+                    return saved;
+            }
+
+#if !UNITY_EDITOR
+            var nativeId = SanitizeDeviceId(SystemInfo.deviceUniqueIdentifier);
+            if (!string.IsNullOrWhiteSpace(nativeId))
+            {
+                PlayerPrefs.SetString(prefKey, nativeId);
+                PlayerPrefs.Save();
+                return nativeId;
+            }
+#endif
+            var generated = CreateGeneratedDeviceId(profileKey);
+            PlayerPrefs.SetString(prefKey, generated);
+            PlayerPrefs.Save();
+            return generated;
+        }
+
+        private static string CreateGeneratedDeviceId(string profileKey)
+        {
+            var suffix = Guid.NewGuid().ToString("N");
+            var prefix = string.IsNullOrEmpty(profileKey) ? "gen" : $"dev-{profileKey}";
+            return $"{prefix}-{suffix}";
+        }
+
+        private static string SanitizeDeviceId(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "";
+
+            var sb = new StringBuilder(raw.Length);
+            foreach (var c in raw)
+            {
+                if (char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
+                    sb.Append(c);
+                else
+                    sb.Append('-');
+            }
+
+            var sanitized = sb.ToString().Trim('-');
+            if (sanitized.Length > 128)
+                sanitized = sanitized.Substring(0, 128);
+            if (sanitized.Length < 10)
+                return "";
+            return sanitized;
+        }
+
+        private static string GetDevelopmentProfileKey()
+        {
+            var src = Application.dataPath ?? "unknown_path";
+            using var sha = SHA256.Create();
+            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(src));
+            var sb = new StringBuilder(12);
+            for (var i = 0; i < 6; i++)
+                sb.Append(hash[i].ToString("x2"));
+            return sb.ToString();
         }
     }
 }

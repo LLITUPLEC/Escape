@@ -159,6 +159,11 @@ namespace Project.Duel
             _historyPerDoor.Clear();
         }
 
+        public int GetWrongAttemptsCount(int doorId)
+        {
+            return GetHistory(doorId).Count;
+        }
+
         private void Update()
         {
             if (!_isOpen) return;

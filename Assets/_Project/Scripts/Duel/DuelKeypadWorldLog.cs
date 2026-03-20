@@ -13,10 +13,10 @@ namespace Project.Duel
     {
         public const int MaxAttempts = 20;
 
-        [SerializeField] private float panelWidth = 0.42f;
+        [SerializeField] private float panelWidth = 0.40f;
         [SerializeField] private float panelHeight = 0.55f;
-        [SerializeField] private float offsetRightLocal = 0.22f;
-        [SerializeField] private float offsetUpLocal = 0.04f;
+        [SerializeField] private float offsetRightLocal = 0.237f;
+        [SerializeField] private float offsetUpLocal = -0.02f;
         [SerializeField] private float offsetForwardLocal;
 
         private readonly List<string> _lines = new();
@@ -26,12 +26,14 @@ namespace Project.Duel
         private TextMeshProUGUI _header;
         private Camera _faceCamera;
         private Transform _keypadRoot;
+        private IReadOnlyList<string> _initialLines;
 
-        public void Initialize(Keypad keypad, Transform keypadRoot, Camera faceCamera)
+        public void Initialize(Keypad keypad, Transform keypadRoot, Camera faceCamera, IReadOnlyList<string> initialLines = null)
         {
             _keypad = keypad;
             _keypadRoot = keypadRoot;
             _faceCamera = faceCamera;
+            _initialLines = initialLines;
 
             if (_keypad != null)
                 _keypad.WrongGuessSubmitted += OnWrongGuess;
@@ -61,6 +63,13 @@ namespace Project.Duel
             transform.localPosition = new Vector3(offsetRightLocal, offsetUpLocal, offsetForwardLocal);
             transform.localRotation = Quaternion.identity;
             transform.localScale = Vector3.one;
+
+            if (_initialLines != null && _initialLines.Count > 0)
+            {
+                _lines.Clear();
+                _lines.AddRange(_initialLines);
+                _attemptSerial = _lines.Count;
+            }
 
             var canvasGo = new GameObject("Canvas");
             canvasGo.transform.SetParent(transform, false);

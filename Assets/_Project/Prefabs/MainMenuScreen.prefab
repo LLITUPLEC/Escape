@@ -257,7 +257,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u0411\u043E\u0442\u044B"
+  m_Text: "\u0422\u0440\u0438-\u0432-\u0440\u044F\u0434"
 --- !u!1 &3956253936780661963
 GameObject:
   m_ObjectHideFlags: 0
@@ -392,7 +392,7 @@ GameObject:
   - component: {fileID: 9076935133595540312}
   - component: {fileID: 8602428455830207439}
   m_Layer: 0
-  m_Name: BotsButton
+  m_Name: Match3Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -626,3 +626,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.UI.MainMenuController
   duelButton: {fileID: 202668891253770520}
   botsButton: {fileID: 8602428455830207439}
+  onlineBadgeParent: {fileID: 0}
+  onlineBadgePrefab: {fileID: 0}
+  onlineBadgeResourcePath: OnlinePlayersBadge
+  onlinePollSeconds: 5

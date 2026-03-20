@@ -37,11 +37,13 @@ namespace NavKeypad
         [SerializeField] private TMP_Text keypadDisplayText;
         [Tooltip("Цвет цифр на экране клавиатуры (TMP). Белый = как в префабе.")]
         [SerializeField] private Color displayDigitsColor = Color.white;
+        [Tooltip("Цвет динамических цифр на кнопках (TMP overlay).")]
+        [SerializeField] private Color buttonDigitsColor = new(1f, 0.78431374f, 0f, 1f);
         [SerializeField] private AudioSource audioSource;
 
         [Header("Settings")]
-        [SerializeField] private string accessGrantedText = "Granted";
-        [SerializeField] private string accessDeniedText = "Denied";
+        [SerializeField] private string accessGrantedText = "Проходите";
+        [SerializeField] private string accessDeniedText = "Отказано";
 
         [Header("Visuals")]
         [SerializeField] private float displayResultTime = 1f;
@@ -59,6 +61,8 @@ namespace NavKeypad
         private string currentInput;
         private bool displayingResult = false;
         private bool accessWasGranted = false;
+        private const string PreferredButtonMaterialName = "exampleScene-doormetal-urp";
+        private static Material _cachedPreferredButtonMaterial;
 
         /// <summary>Локальный режим (префаб / тест): задать код и длину.</summary>
         public void ApplyCombinationAndReset(int combo, int codeLength = 0)
@@ -74,7 +78,9 @@ namespace NavKeypad
             currentInput = "";
             if (panelMesh != null)
                 panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            ApplyButtonMaterialOverrideIfNeeded();
             ApplyButtonBodyTintIfNeeded();
+            ApplyButtonDigitsColor();
             ApplyDisplayDigitsColor();
             UpdateDisplayText();
         }
@@ -92,7 +98,9 @@ namespace NavKeypad
             currentInput = "";
             if (panelMesh != null)
                 panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            ApplyButtonMaterialOverrideIfNeeded();
             ApplyButtonBodyTintIfNeeded();
+            ApplyButtonDigitsColor();
             ApplyDisplayDigitsColor();
             UpdateDisplayText();
         }
@@ -164,7 +172,9 @@ namespace NavKeypad
             ClearInput();
             if (panelMesh != null)
                 panelMesh.material.SetVector("_EmissionColor", screenNormalColor * screenIntensity);
+            ApplyButtonMaterialOverrideIfNeeded();
             ApplyButtonBodyTintIfNeeded();
+            ApplyButtonDigitsColor();
             ApplyDisplayDigitsColor();
         }
 
@@ -192,6 +202,12 @@ namespace NavKeypad
             ApplyButtonBodyTintIfNeeded();
         }
 
+        public void SetButtonDigitsColor(Color color)
+        {
+            buttonDigitsColor = color;
+            ApplyButtonDigitsColor();
+        }
+
         private void ApplyButtonBodyTintIfNeeded()
         {
             if (_buttonRenderers.Count == 0) return;
@@ -215,6 +231,40 @@ namespace NavKeypad
                     _buttonMpb.SetColor("_Color", baseCol * buttonBodyTint);
                 r.SetPropertyBlock(_buttonMpb);
             }
+        }
+
+        private void ApplyButtonMaterialOverrideIfNeeded()
+        {
+            if (_buttonRenderers.Count == 0) return;
+            var preferred = FindPreferredButtonMaterial();
+            if (preferred == null) return;
+            foreach (var r in _buttonRenderers)
+            {
+                if (r == null) continue;
+                if (r.sharedMaterial == preferred) continue;
+                r.sharedMaterial = preferred;
+            }
+        }
+
+        private static Material FindPreferredButtonMaterial()
+        {
+            if (_cachedPreferredButtonMaterial != null)
+                return _cachedPreferredButtonMaterial;
+            foreach (var m in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (m == null) continue;
+                if (!string.Equals(m.name, PreferredButtonMaterialName, StringComparison.Ordinal))
+                    continue;
+                _cachedPreferredButtonMaterial = m;
+                return m;
+            }
+            return null;
+        }
+
+        private void ApplyButtonDigitsColor()
+        {
+            foreach (var btn in GetComponentsInChildren<KeypadButton>(true))
+                btn.SetDigitLabelColor(buttonDigitsColor);
         }
 
         private static bool IsEffectivelyWhite(Color c) =>
