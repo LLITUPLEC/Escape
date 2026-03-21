@@ -33,26 +33,42 @@ namespace Project.Match3
 
         public void UpdateStats(int hp, int maxHp, int mana, int maxMana)
         {
-            if (hpFill != null)
-            {
-                hpFill.type = Image.Type.Filled;
-                hpFill.fillMethod = Image.FillMethod.Horizontal;
-                hpFill.fillOrigin = 0;
-                hpFill.fillClockwise = true;
-                hpFill.fillAmount = maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f;
-            }
-
-            if (manaFill != null)
-            {
-                manaFill.type = Image.Type.Filled;
-                manaFill.fillMethod = Image.FillMethod.Horizontal;
-                manaFill.fillOrigin = 0;
-                manaFill.fillClockwise = true;
-                manaFill.fillAmount = maxMana > 0 ? Mathf.Clamp01((float)mana / maxMana) : 0f;
-            }
+            ApplyBarFill(hpFill, maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f);
+            ApplyBarFill(manaFill, maxMana > 0 ? Mathf.Clamp01((float)mana / maxMana) : 0f);
 
             if (hpText   != null) hpText.text   = $"{hp}/{maxHp}";
             if (manaText != null) manaText.text  = $"{mana}/{maxMana}";
+        }
+
+        private static void ApplyBarFill(Image fillImage, float ratio)
+        {
+            if (fillImage == null) return;
+            ratio = Mathf.Clamp01(ratio);
+
+            fillImage.type = Image.Type.Filled;
+            fillImage.fillMethod = Image.FillMethod.Horizontal;
+            fillImage.fillOrigin = 0;
+            fillImage.fillClockwise = true;
+            fillImage.fillAmount = ratio;
+
+            // Fallback for cases where Filled type behaves inconsistently with no source sprite.
+            var rt = fillImage.rectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0f, 0f);
+                rt.anchorMax = new Vector2(ratio, 1f);
+                rt.offsetMin = new Vector2(1f, 1f);
+                rt.offsetMax = new Vector2(-1f, -1f);
+            }
+
+            var frameRt = fillImage.transform.parent as RectTransform;
+            if (frameRt != null)
+            {
+                var outline = frameRt.GetComponent<Outline>();
+                if (outline == null) outline = frameRt.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.85f, 0.85f, 0.9f, 0.45f);
+                outline.effectDistance = new Vector2(1f, -1f);
+            }
         }
     }
 }

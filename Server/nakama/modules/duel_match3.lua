@@ -2,12 +2,17 @@ local nk = require("nakama")
 
 local SIZE = 6
 local MAX_HP = 150
-local MAX_MANA = 150
+local MAX_MANA = 100
 local TURN_SECONDS = 30
 local TICK_RATE = 5
-local ABILITY_COST = 20
-local ABILITY_COOLDOWN = 2
+local CROSS_ABILITY_COST = 20
+local SQUARE_ABILITY_COST = 20
+local PETARD_ABILITY_COST = 30
+local CROSS_ABILITY_COOLDOWN = 2
+local SQUARE_ABILITY_COOLDOWN = 2
+local PETARD_ABILITY_COOLDOWN = 1
 local ABILITY_BASE_DAMAGE = 3
+local PETARD_DAMAGE = 30
 local SKULL_DAMAGE = 5
 local ANKH_HEAL = 1
 local GEM_MANA = { [1] = 5, [2] = 3, [3] = 1 }
@@ -20,6 +25,8 @@ local OP_ACTION_REQUEST = 13
 local OP_ACTION_REJECT = 14
 local OP_SELECTION_SYNC = 15
 local OP_SNAPSHOT_REQUEST = 16
+local STATS_COLLECTION = "duel_match3_stats"
+local STATS_KEY = "summary"
 
 math.randomseed(os.time())
 
@@ -58,12 +65,13 @@ local function sorted_two_players(presences_map)
 end
 
 local function new_stats()
-  return { hp = MAX_HP, mana = 0, cross_cd = 0, square_cd = 0 }
+  return { hp = MAX_HP, mana = 0, cross_cd = 0, square_cd = 0, petard_cd = 0 }
 end
 
 local function tick_cooldowns(stats)
   if stats.cross_cd > 0 then stats.cross_cd = stats.cross_cd - 1 end
   if stats.square_cd > 0 then stats.square_cd = stats.square_cd - 1 end
+  if stats.petard_cd > 0 then stats.petard_cd = stats.petard_cd - 1 end
 end
 
 local function would_create_match(board, x, y, t)
@@ -201,13 +209,15 @@ local function apply_ability(board, action_type, cx, cy)
         if in_bounds(cx, ny) then bset(board, cx, ny, 0) end
       end
     end
-  else
+  elseif action_type == 3 then
     for dy = -1, 1 do
       for dx = -1, 1 do
         local nx, ny = cx + dx, cy + dy
         if in_bounds(nx, ny) then bset(board, nx, ny, 0) end
       end
     end
+  elseif action_type == 4 then
+    -- Petard does not affect board cells.
   end
 end
 
@@ -244,8 +254,8 @@ local function make_sync_msg(state, action, extra_turn, anim_steps)
 
   return {
     board = clone_board(state.board),
-    aHp = a.hp, aMana = a.mana, aCrossCd = a.cross_cd, aSquareCd = a.square_cd,
-    bHp = b.hp, bMana = b.mana, bCrossCd = b.cross_cd, bSquareCd = b.square_cd,
+    aHp = a.hp, aMana = a.mana, aCrossCd = a.cross_cd, aSquareCd = a.square_cd, aPetardCd = a.petard_cd,
+    bHp = b.hp, bMana = b.mana, bCrossCd = b.cross_cd, bSquareCd = b.square_cd, bPetardCd = b.petard_cd,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     actionType = action and action.actionType or 0,
@@ -269,7 +279,7 @@ local function send_reject(dispatcher, presence, reason)
   dispatcher.broadcast_message(OP_ACTION_REJECT, payload, { presence }, nil)
 end
 
-local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, tick, tick_rate, anim_steps)
+local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, tick_rate, anim_steps)
   local actor = state.active_user_id
   local opponent = other_player_id(state, actor)
 
@@ -281,7 +291,9 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     return
   end
 
-  if extra_turn then
+  if keep_turn then
+    state.active_user_id = actor
+  elseif extra_turn then
     tick_cooldowns(state.stats[actor])
     state.active_user_id = actor
   else
@@ -289,7 +301,9 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     tick_cooldowns(state.stats[opponent])
   end
 
-  state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+  if not keep_turn then
+    state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+  end
   broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
 end
 
@@ -311,10 +325,12 @@ local function collect_ability_cells(action_type, cx, cy)
   if action_type == 2 then
     for dx = -2, 2 do add_cell(cx + dx, cy) end
     for dy = -2, 2 do add_cell(cx, cy + dy) end
-  else
+  elseif action_type == 3 then
     for dy = -1, 1 do
       for dx = -1, 1 do add_cell(cx + dx, cy + dy) end
     end
+  elseif action_type == 4 then
+    add_cell(cx, cy)
   end
   return cells
 end
@@ -322,6 +338,11 @@ end
 local function apply_ability_rewards(state, actor_id, opponent_id, action_type, cx, cy)
   local actor = state.stats[actor_id]
   local opp = state.stats[opponent_id]
+  if action_type == 4 then
+    opp.hp = math.max(0, opp.hp - PETARD_DAMAGE)
+    return
+  end
+
   local cells = collect_ability_cells(action_type, cx, cy)
   local skulls = 0
 
@@ -342,10 +363,15 @@ end
 local function resolve_action(state, action, actor_id, opponent_id)
   local initial_matches = {}
   local anim_steps = {}
+  local keep_turn = false
   if action.actionType == 1 then
     local ok, matches = try_swap(state.board, action.fromX, action.fromY, action.toX, action.toY)
-    if not ok then return false, "invalid_swap", false, anim_steps end
+    if not ok then return false, "invalid_swap", false, false, anim_steps end
     initial_matches = matches or {}
+  elseif action.actionType == 4 then
+    apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1)
+    keep_turn = true
+    return true, nil, false, true, anim_steps
   else
     apply_ability_rewards(state, actor_id, opponent_id, action.actionType, action.cx, action.cy)
     apply_ability(state.board, action.actionType, action.cx, action.cy)
@@ -370,7 +396,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
   end
 
-  return true, nil, extra_turn, anim_steps
+  return true, nil, extra_turn, keep_turn, anim_steps
 end
 
 local function count_present_players(state)
@@ -404,6 +430,131 @@ local function parse_selection(data)
   return { x = x, y = y, selected = selected }
 end
 
+local function decode_storage_value(obj)
+  if obj == nil then return nil end
+  local v = obj.value
+  if v == nil then v = obj.Value end
+  if v == nil then return nil end
+  if type(v) == "table" then return v end
+  if type(v) == "string" then return nk.json_decode(v) end
+  return nil
+end
+
+local function read_match3_stats(user_id)
+  local rows = nk.storage_read({
+    {
+      collection = STATS_COLLECTION,
+      key = STATS_KEY,
+      user_id = user_id,
+    },
+  })
+
+  if rows == nil or #rows == 0 then
+    return { played = 0, wins = 0, losses = 0 }, nil
+  end
+
+  local row = rows[1]
+  local val = decode_storage_value(row) or {}
+  local stats = {
+    played = tonumber(val.played) or 0,
+    wins = tonumber(val.wins) or 0,
+    losses = tonumber(val.losses) or 0,
+  }
+  return stats, row.version
+end
+
+local function duel_match3_stats_get(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local stats = read_match3_stats(user_id)
+    return nk.json_encode({
+      ok = true,
+      played = stats.played or 0,
+      wins = stats.wins or 0,
+      losses = stats.losses or 0,
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_stats_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_match3_stats_record(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local won = false
+    if payload ~= nil and payload ~= "" then
+      local p = nk.json_decode(payload)
+      won = p ~= nil and p.won == true
+    end
+
+    local max_retries = 5
+    for i = 1, max_retries do
+      local stats, version = read_match3_stats(user_id)
+      stats.played = (stats.played or 0) + 1
+      if won then
+        stats.wins = (stats.wins or 0) + 1
+      else
+        stats.losses = (stats.losses or 0) + 1
+      end
+
+      local write_obj = {
+        collection = STATS_COLLECTION,
+        key = STATS_KEY,
+        user_id = user_id,
+        value = {
+          played = stats.played,
+          wins = stats.wins,
+          losses = stats.losses,
+          updated_at = os.time(),
+        },
+        permission_read = 1,
+        permission_write = 0,
+      }
+      if version ~= nil and version ~= "" then
+        write_obj.version = version
+      end
+
+      local write_ok, write_err = pcall(function()
+        nk.storage_write({ write_obj })
+      end)
+
+      if write_ok then
+        return nk.json_encode({
+          ok = true,
+          played = stats.played,
+          wins = stats.wins,
+          losses = stats.losses,
+        })
+      end
+
+      local err_text = tostring(write_err)
+      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+        error(write_err)
+      end
+    end
+
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_stats_record: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 local function validate_action_basic(state, sender_id, action)
   if state.ended then return false, "game_ended" end
   if not state.started then return false, "not_started" end
@@ -420,12 +571,17 @@ local function validate_action_basic(state, sender_id, action)
     return true, nil
   end
 
-  if action.actionType == 2 or action.actionType == 3 then
-    if not in_bounds(action.cx, action.cy) then return false, "out_of_bounds" end
+  if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+    if (action.actionType == 2 or action.actionType == 3) and not in_bounds(action.cx, action.cy) then
+      return false, "out_of_bounds"
+    end
     local st = state.stats[sender_id]
-    if st.mana < ABILITY_COST then return false, "not_enough_mana" end
+    local need_mana = action.actionType == 2 and CROSS_ABILITY_COST
+      or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+    if st.mana < need_mana then return false, "not_enough_mana" end
     if action.actionType == 2 and st.cross_cd > 0 then return false, "cross_on_cooldown" end
     if action.actionType == 3 and st.square_cd > 0 then return false, "square_on_cooldown" end
+    if action.actionType == 4 and st.petard_cd > 0 then return false, "petard_on_cooldown" end
     return true, nil
   end
 
@@ -557,17 +713,20 @@ local function match_loop(context, dispatcher, tick, state, messages)
         local opp_id = other_player_id(state, actor_id)
         local actor_stats = state.stats[actor_id]
 
-        if action.actionType == 2 or action.actionType == 3 then
-          actor_stats.mana = math.max(0, actor_stats.mana - ABILITY_COST)
-          if action.actionType == 2 then actor_stats.cross_cd = ABILITY_COOLDOWN end
-          if action.actionType == 3 then actor_stats.square_cd = ABILITY_COOLDOWN end
+        if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+          local spend = action.actionType == 2 and CROSS_ABILITY_COST
+            or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+          actor_stats.mana = math.max(0, actor_stats.mana - spend)
+          if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
+          if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
+          if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
         end
 
-        local ok, err, extra_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
+        local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
         if not ok then
           send_reject(dispatcher, m.sender, err)
         else
-          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, tick, TICK_RATE, anim_steps)
+          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
         end
       end
     end
@@ -594,6 +753,9 @@ end
 local function match_signal(context, dispatcher, tick, state, data)
   return state, "ok"
 end
+
+nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
+nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
 
 return {
   match_init = match_init,

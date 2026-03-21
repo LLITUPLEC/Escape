@@ -214,7 +214,7 @@ namespace Project.Match3
                     if (InBounds(cx, ny)) cells.Add((cx, ny));
                 }
             }
-            else // Square 3×3
+            else if (ability == AbilityType.Square) // Square 3×3
             {
                 for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
@@ -222,6 +222,10 @@ namespace Project.Match3
                     int nx = cx + dx, ny = cy + dy;
                     if (InBounds(nx, ny)) cells.Add((nx, ny));
                 }
+            }
+            else if (InBounds(cx, cy)) // Petard: single target cell
+            {
+                cells.Add((cx, cy));
             }
 
             foreach (var (x, y) in cells)

@@ -23,6 +23,10 @@
 - сервер считает всё поле/каскады/урон,
 - сервер рассылает итоговое состояние (`op=10`) и game over (`op=11`).
 
+Серверная статистика Match3 (по `ctx.user_id`) также доступна через RPC:
+- `duel_match3_stats_get` → `{ ok, played, wins, losses }`
+- `duel_match3_stats_record` с payload `{"won":true|false}` → инкрементирует сыграно/победы/поражения.
+
 
 
 Пароли **не отправляются клиенту**: хранятся в storage с `permission_read = 0` (только сервер).

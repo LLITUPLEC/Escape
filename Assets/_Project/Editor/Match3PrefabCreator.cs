@@ -73,7 +73,7 @@ public static class Match3PrefabCreator
         // Mana
         MakeTxt(root.transform, "MpLabel", "МП", 13, new Color(0.45f, 0.65f, 1f));
         Anchor(root.transform.Find("MpLabel").GetComponent<RectTransform>(), V2(0.05f, 0.47f), V2(0.25f, 0.52f));
-        panel.manaText = MakeTxt(root.transform, "MpValue", "0/150", 12, Color.white);
+        panel.manaText = MakeTxt(root.transform, "MpValue", "0/100", 12, Color.white);
         Anchor(panel.manaText.GetComponent<RectTransform>(), V2(0.60f, 0.47f), V2(0.97f, 0.52f));
         panel.manaFill = MakeBar(root.transform, "MpBar",
             new Color(0.14f, 0.35f, 0.82f), V2(0.05f, 0.42f), V2(0.95f, 0.47f));

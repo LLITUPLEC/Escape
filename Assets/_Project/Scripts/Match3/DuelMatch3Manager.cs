@@ -59,12 +59,18 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxLineClear;
         [SerializeField] private AudioClip sfxAbilitySquare;
         [SerializeField] private AudioClip sfxAbilityCross;
+        [SerializeField] private AudioClip sfxAbilityPetard;
         [SerializeField] private AudioClip sfxCascadeFall;
         [SerializeField] private AudioClip sfxExtraTurn;
         [SerializeField] private AudioClip sfxTimerEnd;
         [SerializeField] private AudioClip sfxDamageHit;
         [SerializeField] private AudioClip sfxVictory;
         [SerializeField] private AudioClip sfxDefeat;
+
+        [Header("Ability Icon Sprites")]
+        [SerializeField] private Sprite petardAbilitySprite;
+        [SerializeField] private Sprite crossAbilitySprite;
+        [SerializeField] private Sprite squareAbilitySprite;
 
         // ─── OpCodes (match-3 specific, 10+ to avoid collision with DuelRoom) ─────
         private static class M3Op
@@ -78,11 +84,15 @@ namespace Project.Match3
             public const long SnapshotRequest = 16;
         }
 
+        private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
+
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
-        private const int   MaxMana         = 150;
+        private const int   MaxMana         = 100;
         private const float TurnDuration    = 30f;
-        private const int   AbilityCost     = 20;
+        private const int   CrossAbilityCost  = 20;
+        private const int   SquareAbilityCost = 20;
+        private const int   PetardAbilityCost = 30;
 
         // ─── Nakama ───────────────────────────────────────────────────────────────
         private IMatch    _match;
@@ -102,6 +112,7 @@ namespace Project.Match3
         private Coroutine _snapshotRetryRoutine;
         private bool _hasInitialBoardSync;
         private int _remoteSelX = -1, _remoteSelY = -1;
+        private bool _resultRecorded;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -208,6 +219,7 @@ namespace Project.Match3
             _searchingPanel?.Hide();
             _myPanel?.SetPlayerName("Вы");
             _opPanel?.SetPlayerName("Соперник");
+            _resultRecorded = false;
             StartGameWaitingServer();
         }
 
@@ -219,7 +231,7 @@ namespace Project.Match3
             _remoteSelX = _remoteSelY = -1;
             _boardView?.RefreshAll(_board);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, AbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—");
             _boardView?.SetDimmed(true);
@@ -238,12 +250,13 @@ namespace Project.Match3
             _boardView?.ClearSelections();
             _remoteSelX = _remoteSelY = -1;
             _abilityPanel?.ShowHint(false);
+            _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ваш ход!");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
             _boardView?.SetDimmed(false);
 
-            _abilityPanel?.Refresh(_myStats, true, false, AbilityCost);
+            _abilityPanel?.Refresh(_myStats, true, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
         }
 
         private void BeginOpponentTurn()
@@ -256,11 +269,12 @@ namespace Project.Match3
             _boardView?.ClearSelections();
             _remoteSelX = _remoteSelY = -1;
             _abilityPanel?.ShowHint(false);
+            _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ход соперника…");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
             _boardView?.SetDimmed(true);
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, AbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
         }
 
         private void OnTurnTimerExpired()
@@ -329,11 +343,14 @@ namespace Project.Match3
         private void ExecuteAbility(AbilityType ability, int cx, int cy)
         {
             _pendingAbility = null;
+            _abilityPanel?.SetSelectedAbility(null);
             _abilityPanel?.ShowHint(false);
 
-            if (_myStats.mana < AbilityCost) { _abilityPanel?.Refresh(_myStats, _isMyTurn, false, AbilityCost); return; }
-            int cd = ability == AbilityType.Cross ? _myStats.crossCooldown : _myStats.squareCooldown;
-            if (cd > 0) { _abilityPanel?.Refresh(_myStats, _isMyTurn, false, AbilityCost); return; }
+            if (!IsAbilityAvailable(ability))
+            {
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                return;
+            }
 
             StartCoroutine(SendAbilityRequestRoutine(ability, cx, cy));
         }
@@ -341,12 +358,16 @@ namespace Project.Match3
         private IEnumerator SendAbilityRequestRoutine(AbilityType ability, int cx, int cy)
         {
             _inputBlocked = true;
-            if (_boardView != null) yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
+            if (_boardView != null && ability != AbilityType.Petard)
+            {
+                yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
+            }
             var req = new M3ActionRequest
             {
-                actionType = ability == AbilityType.Cross ? 2 : 3,
+                actionType = ability == AbilityType.Cross ? 2 : (ability == AbilityType.Square ? 3 : 4),
                 fromX = -1, fromY = -1, toX = -1, toY = -1,
-                cx = cx, cy = cy,
+                cx = ability == AbilityType.Petard ? -1 : cx,
+                cy = ability == AbilityType.Petard ? -1 : cy,
             };
             SendActionRequest(req);
         }
@@ -355,11 +376,33 @@ namespace Project.Match3
 
         private void ShowGameOver(bool won)
         {
+            if (!_resultRecorded)
+            {
+                _resultRecorded = true;
+                _ = RecordMatch3ResultServerAsync(won);
+            }
             _isMyTurn    = false;
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
             PlaySfx(won ? sfxVictory : sfxDefeat);
             _gameOverPanel?.Show(won);
+        }
+
+        private async Task RecordMatch3ResultServerAsync(bool won)
+        {
+            try
+            {
+                if (NakamaBootstrap.Instance == null) return;
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts != null ? _cts.Token : CancellationToken.None);
+                if (NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null) return;
+                var payload = won ? "{\"won\":true}" : "{\"won\":false}";
+                await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMatch3StatsRecord, payload);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Match3] Не удалось записать серверную статистику: " + e.Message);
+            }
         }
 
         // ─── Networking — Send ────────────────────────────────────────────────────
@@ -472,7 +515,7 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, AbilityCost);
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
                     if (!string.IsNullOrEmpty(msg.reason))
                         Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
                 });
@@ -542,6 +585,10 @@ namespace Project.Match3
                     PlaySfx(sfxAbilitySquare);
                     yield return _boardView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
                 }
+                else if (msg.actionType == 4)
+                {
+                    PlaySfx(sfxAbilityPetard != null ? sfxAbilityPetard : sfxAbilitySquare);
+                }
             }
 
             bool usedAnimSteps = msg.animSteps != null && msg.animSteps.Count > 0;
@@ -556,7 +603,7 @@ namespace Project.Match3
                     if (step.phase == 1)
                     {
                         PlaySfx(sfxLineClear);
-                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.5f);
+                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.25f);
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
                         currentBoard = _board.ToArray();
@@ -566,7 +613,7 @@ namespace Project.Match3
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
                         PlaySfx(sfxCascadeFall);
-                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.5f);
+                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.25f);
                         currentBoard = _board.ToArray();
                     }
                 }
@@ -581,6 +628,7 @@ namespace Project.Match3
             _myStats.mana          = amA ? msg.aMana      : msg.bMana;
             _myStats.crossCooldown  = amA ? msg.aCrossCd  : msg.bCrossCd;
             _myStats.squareCooldown = amA ? msg.aSquareCd : msg.bSquareCd;
+            _myStats.petardCooldown = amA ? msg.aPetardCd : msg.bPetardCd;
             _opStats.hp             = amA ? msg.bHp       : msg.aHp;
             _opStats.mana           = amA ? msg.bMana      : msg.aMana;
 
@@ -592,7 +640,19 @@ namespace Project.Match3
             if (_myStats.hp < prevMyHp || _opStats.hp < prevOpHp)
                 PlaySfx(sfxDamageHit);
             if (msg.extraTurn)
+            {
                 PlaySfx(sfxExtraTurn);
+                _boardView?.ShowCenterAnnouncement("Дополнительный ход\nза 5+ камней", new Color(0.35f, 1f, 0.35f), 2f);
+            }
+
+            bool petardKeepsTurn = msg.actionType == 4 && ((msg.activeUserId == _myUserId) == _isMyTurn);
+            if (petardKeepsTurn)
+            {
+                _inputBlocked = !_isMyTurn;
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                _remoteSyncRoutine = null;
+                yield break;
+            }
 
             bool isMyTurnNow = msg.activeUserId == _myUserId;
             if (isMyTurnNow) BeginMyTurn();
@@ -656,6 +716,7 @@ namespace Project.Match3
             if (sfxLineClear == null)    sfxLineClear    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav");
             if (sfxAbilitySquare == null) sfxAbilitySquare = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
             if (sfxAbilityCross == null) sfxAbilityCross = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav");
+            if (sfxAbilityPetard == null) sfxAbilityPetard = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
             if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav");
             if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
             if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
@@ -665,11 +726,98 @@ namespace Project.Match3
 #endif
         }
 
+        private void TryAutoAssignAbilitySpritesInEditor()
+        {
+#if UNITY_EDITOR
+            if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/ppp.png");
+            if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/qqq.png");
+            if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/qrr.png");
+#endif
+        }
+
+        private void ConfigureAbilityButtonsVisuals()
+        {
+            if (_abilityPanel == null) return;
+            EnsurePetardButtonExists();
+            ConfigureAbilityButtonIcon(_abilityPanel.petardButton, petardAbilitySprite);
+            ConfigureAbilityButtonIcon(_abilityPanel.crossButton, crossAbilitySprite);
+            ConfigureAbilityButtonIcon(_abilityPanel.squareButton, squareAbilitySprite);
+        }
+
+        private void EnsurePetardButtonExists()
+        {
+            if (_abilityPanel == null || _abilityPanel.petardButton != null) return;
+            var panelRt = _abilityPanel.transform as RectTransform;
+            if (panelRt == null) return;
+
+            // Re-layout existing two buttons to center/right and insert petard on the left.
+            ReanchorButton(_abilityPanel.crossButton, V2(0.35f, 0.34f), V2(0.65f, 0.80f));
+            ReanchorButton(_abilityPanel.squareButton, V2(0.68f, 0.34f), V2(0.98f, 0.80f));
+
+            var petardButton = MakeButton(panelRt, "PetardBtn", string.Empty,
+                new Color(0.48f, 0.19f, 0.16f), Color.white, V2(0.02f, 0.34f), V2(0.32f, 0.80f));
+            _abilityPanel.petardButton = petardButton;
+            _abilityPanel.petardCooldownText = MakeTxt(
+                petardButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            _abilityPanel.petardCooldownText.gameObject.SetActive(false);
+        }
+
+        private static void ReanchorButton(Button button, Vector2 aMin, Vector2 aMax)
+        {
+            if (button == null) return;
+            var rt = button.transform as RectTransform;
+            if (rt == null) return;
+            rt.anchorMin = aMin;
+            rt.anchorMax = aMax;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
+
+        private static void ConfigureAbilityButtonIcon(Button button, Sprite iconSprite)
+        {
+            if (button == null) return;
+
+            foreach (var text in button.GetComponentsInChildren<Text>(true))
+                text.gameObject.SetActive(false);
+
+            var root = button.transform as RectTransform;
+            if (root == null) return;
+
+            var iconTf = root.Find("AbilityIcon");
+            Image iconImg;
+            if (iconTf == null)
+            {
+                var go = new GameObject("AbilityIcon");
+                var rt = go.AddComponent<RectTransform>();
+                rt.SetParent(root, false);
+                rt.anchorMin = new Vector2(0.08f, 0.08f);
+                rt.anchorMax = new Vector2(0.92f, 0.92f);
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                iconImg = go.AddComponent<Image>();
+                iconImg.raycastTarget = false;
+            }
+            else
+            {
+                iconImg = iconTf.GetComponent<Image>();
+                if (iconImg == null) iconImg = iconTf.gameObject.AddComponent<Image>();
+            }
+
+            iconImg.sprite = iconSprite;
+            iconImg.preserveAspect = true;
+            iconImg.color = Color.white;
+        }
+
         private async void QuitToMenu()
         {
+            var shouldRecordLoss = !_resultRecorded && !_gameEnded && _hasInitialBoardSync && !string.IsNullOrEmpty(_opUserId);
             _gameEnded = true;
             try
             {
+                if (shouldRecordLoss)
+                {
+                    _resultRecorded = true;
+                    await RecordMatch3ResultServerAsync(won: false);
+                }
+
                 if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
                 {
                     await NakamaBootstrap.Instance.Socket.SendMatchStateAsync(
@@ -732,6 +880,9 @@ namespace Project.Match3
             _abilityPanel = BuildOrInstantiate(abilityPanelPrefab, leftTr, V2(0f, 0f), V2(1f, 0.26f));
             if (_abilityPanel == null) _abilityPanel = BuildAbilityPanelProcedural(leftTr);
 
+            TryAutoAssignAbilitySpritesInEditor();
+            ConfigureAbilityButtonsVisuals();
+            _abilityPanel.OnPetardClicked += OnPetardClicked;
             _abilityPanel.OnCrossClicked  += OnCrossClicked;
             _abilityPanel.OnSquareClicked += OnSquareClicked;
 
@@ -812,7 +963,7 @@ namespace Project.Match3
             panel.hpFill = BuildBar(bg, "HpBar", new Color(0.78f, 0.14f, 0.14f), V2(0.05f, 0.52f), V2(0.95f, 0.57f));
 
             MakeTxt(bg, "MpLbl", "МП", 13, new Color(0.45f, 0.65f, 1f), V2(0.05f, 0.47f), V2(0.25f, 0.52f));
-            panel.manaText = MakeTxt(bg, "MpVal", "0/150", 12, Color.white, V2(0.60f, 0.47f), V2(0.97f, 0.52f));
+            panel.manaText = MakeTxt(bg, "MpVal", "0/100", 12, Color.white, V2(0.60f, 0.47f), V2(0.97f, 0.52f));
             panel.manaFill = BuildBar(bg, "MpBar", new Color(0.14f, 0.35f, 0.82f), V2(0.05f, 0.42f), V2(0.95f, 0.47f));
 
             if (isLeft) BuildLegend(bg, V2(0.03f, 0.02f), V2(0.97f, 0.40f));
@@ -826,35 +977,37 @@ namespace Project.Match3
                 new Color(0.09f, 0.09f, 0.17f, 0.97f), V2(0f, 0f), V2(1f, 1f));
             var ap = bg.gameObject.AddComponent<Match3AbilityPanel>();
 
-            MakeTxt(bg, "Lbl", "Способности:", 12, new Color(0.75f, 0.75f, 0.85f),
-                V2(0.05f, 0.82f), V2(0.95f, 1f));
+            // Petard (left)
+            var petardBg = MakeButton(bg, "PetardBtn", string.Empty,
+                new Color(0.48f, 0.19f, 0.16f), Color.white, V2(0.02f, 0.34f), V2(0.32f, 0.80f));
+            ap.petardButton = petardBg;
+            ap.petardCooldownText = MakeTxt(petardBg.transform, "Cd", string.Empty, 11,
+                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.petardCooldownText.gameObject.SetActive(false);
 
-            // Cross
-            var crossBg = MakeButton(bg, "CrossBtn", "",
-                new Color(0.28f, 0.14f, 0.48f), Color.white, V2(0.05f, 0.40f), V2(0.50f, 0.80f));
+            // Cross (center)
+            var crossBg = MakeButton(bg, "CrossBtn", string.Empty,
+                new Color(0.28f, 0.14f, 0.48f), Color.white, V2(0.35f, 0.34f), V2(0.65f, 0.80f));
             ap.crossButton = crossBg;
-            MakeTxt(crossBg.transform, "Icon", "✝ Крест\n5×5", 12, Color.white, V2(0.05f, 0.5f), V2(0.95f, 1f));
-            ap.crossCooldownText = MakeTxt(crossBg.transform, "Cd", "20 мп", 11,
-                new Color(0.9f, 0.85f, 0.5f), V2(0.05f, 0f), V2(0.95f, 0.48f));
+            ap.crossCooldownText = MakeTxt(crossBg.transform, "Cd", string.Empty, 11,
+                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.crossCooldownText.gameObject.SetActive(false);
 
-            // Square
-            var sqBg = MakeButton(bg, "SquareBtn", "",
-                new Color(0.14f, 0.25f, 0.48f), Color.white, V2(0.52f, 0.40f), V2(0.97f, 0.80f));
+            // Square (right)
+            var sqBg = MakeButton(bg, "SquareBtn", string.Empty,
+                new Color(0.14f, 0.25f, 0.48f), Color.white, V2(0.68f, 0.34f), V2(0.98f, 0.80f));
             ap.squareButton = sqBg;
-            MakeTxt(sqBg.transform, "Icon", "□ Кв-т\n3×3", 12, Color.white, V2(0.05f, 0.5f), V2(0.95f, 1f));
-            ap.squareCooldownText = MakeTxt(sqBg.transform, "Cd", "20 мп", 11,
-                new Color(0.9f, 0.85f, 0.5f), V2(0.05f, 0f), V2(0.95f, 0.48f));
+            ap.squareCooldownText = MakeTxt(sqBg.transform, "Cd", string.Empty, 11,
+                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.squareCooldownText.gameObject.SetActive(false);
 
-            // Hint
+            // Hint (without text)
             var hintGo = new GameObject("AbilityHint");
             var hintRt = hintGo.AddComponent<RectTransform>();
             hintRt.SetParent(bg, false);
-            hintRt.anchorMin = V2(0.05f, 0f); hintRt.anchorMax = V2(0.95f, 0.38f);
+            hintRt.anchorMin = V2(0.05f, 0.02f); hintRt.anchorMax = V2(0.95f, 0.24f);
             hintRt.offsetMin = hintRt.offsetMax = Vector2.zero;
-            hintGo.AddComponent<Image>().color = new Color(0.45f, 0.30f, 0f, 0.85f);
-            var hintTxt = MakeTxt(hintGo.transform, "HT", "☞ Кликните клетку", 12,
-                Color.white, V2(0.03f, 0f), V2(0.97f, 1f));
-            hintTxt.alignment = TextAnchor.MiddleCenter;
+            hintGo.AddComponent<Image>().color = new Color(0.8f, 0.9f, 1f, 0.08f);
             hintGo.SetActive(false);
             ap.abilityHint = hintGo;
 
@@ -952,26 +1105,66 @@ namespace Project.Match3
 
         // ─── Ability Callbacks ────────────────────────────────────────────────────
 
-        private void OnCrossClicked()
+        private bool IsAbilityAvailable(AbilityType ability)
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
-            if (_myStats.crossCooldown  > 0 || _myStats.mana < AbilityCost) return;
+            return _myStats.mana >= GetAbilityCost(ability) && GetAbilityCooldown(ability) == 0;
+        }
+
+        private int GetAbilityCost(AbilityType ability)
+        {
+            return ability switch
+            {
+                AbilityType.Petard => PetardAbilityCost,
+                AbilityType.Cross => CrossAbilityCost,
+                _ => SquareAbilityCost,
+            };
+        }
+
+        private int GetAbilityCooldown(AbilityType ability)
+        {
+            return ability switch
+            {
+                AbilityType.Petard => _myStats.petardCooldown,
+                AbilityType.Cross => _myStats.crossCooldown,
+                _ => _myStats.squareCooldown,
+            };
+        }
+
+        private void SelectOrToggleAbility(AbilityType ability)
+        {
+            if (_pendingAbility.HasValue && _pendingAbility.Value == ability)
+            {
+                _pendingAbility = null;
+                _abilityPanel?.SetSelectedAbility(null);
+                _abilityPanel?.ShowHint(false);
+                return;
+            }
+
+            if (!IsAbilityAvailable(ability)) return;
             if (_selX >= 0 && _selY >= 0) SendSelectionSync(_selX, _selY, false);
-            _pendingAbility = AbilityType.Cross;
+            _pendingAbility = ability;
+            _abilityPanel?.SetSelectedAbility(ability);
             _selX = _selY = -1;
             _boardView?.ClearSelections();
             _abilityPanel?.ShowHint(true);
         }
 
+        private void OnPetardClicked()
+        {
+            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            ExecuteAbility(AbilityType.Petard, -1, -1);
+        }
+
+        private void OnCrossClicked()
+        {
+            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            SelectOrToggleAbility(AbilityType.Cross);
+        }
+
         private void OnSquareClicked()
         {
             if (!_isMyTurn || _gameEnded || _inputBlocked) return;
-            if (_myStats.squareCooldown > 0 || _myStats.mana < AbilityCost) return;
-            if (_selX >= 0 && _selY >= 0) SendSelectionSync(_selX, _selY, false);
-            _pendingAbility = AbilityType.Square;
-            _selX = _selY = -1;
-            _boardView?.ClearSelections();
-            _abilityPanel?.ShowHint(true);
+            SelectOrToggleAbility(AbilityType.Square);
         }
 
         // ═════════════════════════════════════════════════════════════════════════

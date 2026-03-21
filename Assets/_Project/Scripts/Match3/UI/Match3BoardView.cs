@@ -32,6 +32,9 @@ namespace Project.Match3
         private RectTransform[,] _iconRt;
         private Text[,]  _lbl;  // piece symbol
         private Image _inactiveOverlay;
+        private GameObject _centerAnnouncementRoot;
+        private Text _centerAnnouncementText;
+        private Coroutine _centerAnnouncementRoutine;
         private Texture2D _selectionRingTexture;
         private Texture2D _gridBorderTexture;
 
@@ -179,6 +182,7 @@ namespace Project.Match3
             }
 
             EnsureInactiveOverlay();
+            EnsureCenterAnnouncement();
         }
 
         // ─── Refresh ──────────────────────────────────────────────────────────────
@@ -518,6 +522,15 @@ namespace Project.Match3
                 if (_ring[x, y] != null) _ring[x, y].gameObject.SetActive(false);
         }
 
+        public void ShowCenterAnnouncement(string message, Color color, float duration)
+        {
+            EnsureCenterAnnouncement();
+            if (_centerAnnouncementText == null || _centerAnnouncementRoot == null) return;
+            if (_centerAnnouncementRoutine != null)
+                StopCoroutine(_centerAnnouncementRoutine);
+            _centerAnnouncementRoutine = StartCoroutine(ShowCenterAnnouncementRoutine(message, color, duration));
+        }
+
         private bool InRange(int x, int y) => x >= 0 && x < Size && y >= 0 && y < Size;
 
         // ─── Piece Visuals (static helpers shared with PrefabCreator) ─────────────
@@ -599,6 +612,56 @@ namespace Project.Match3
             go.SetActive(false);
         }
 
+        private void EnsureCenterAnnouncement()
+        {
+            if (_centerAnnouncementRoot != null && _centerAnnouncementText != null) return;
+
+            var root = new GameObject("CenterAnnouncement");
+            var rt = root.AddComponent<RectTransform>();
+            rt.SetParent(transform, false);
+            rt.anchorMin = new Vector2(0.18f, 0.40f);
+            rt.anchorMax = new Vector2(0.82f, 0.62f);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            var bg = root.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.52f);
+            bg.raycastTarget = false;
+
+            var txtGo = new GameObject("Text");
+            var txtRt = txtGo.AddComponent<RectTransform>();
+            txtRt.SetParent(root.transform, false);
+            txtRt.anchorMin = Vector2.zero;
+            txtRt.anchorMax = Vector2.one;
+            txtRt.offsetMin = new Vector2(8f, 8f);
+            txtRt.offsetMax = new Vector2(-8f, -8f);
+
+            var txt = txtGo.AddComponent<Text>();
+            txt.font = GetFont();
+            txt.fontSize = 34;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.raycastTarget = false;
+            txt.text = string.Empty;
+            txt.color = Color.white;
+            var outline = txtGo.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            root.SetActive(false);
+            _centerAnnouncementRoot = root;
+            _centerAnnouncementText = txt;
+        }
+
+        private IEnumerator ShowCenterAnnouncementRoutine(string message, Color color, float duration)
+        {
+            _centerAnnouncementText.text = message;
+            _centerAnnouncementText.color = color;
+            _centerAnnouncementRoot.SetActive(true);
+            yield return new WaitForSeconds(Mathf.Max(0.2f, duration));
+            if (_centerAnnouncementRoot != null)
+                _centerAnnouncementRoot.SetActive(false);
+            _centerAnnouncementRoutine = null;
+        }
+
         private static void BuildDropDistances(int[] beforeBoard, Match3BoardLogic afterBoard, int[,] drop, bool[,] spawn)
         {
             for (int x = 0; x < Size; x++)
@@ -657,6 +720,12 @@ namespace Project.Match3
                     int ny = cy + dy;
                     if (InRange(cx, ny)) cells.Add((cx, ny));
                 }
+                return cells;
+            }
+
+            if (ability == AbilityType.Petard)
+            {
+                cells.Add((cx, cy));
                 return cells;
             }
 
