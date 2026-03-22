@@ -20,9 +20,13 @@ namespace Project.Match3
         [SerializeField] public Transform cellContainer;
         [Header("Piece Atlas (optional)")]
         [SerializeField] private Texture2D ballsAtlas;
+        [Header("Selection Ring")]
+        [SerializeField] private float selectionRingScale = 1.4f;
+        [SerializeField] private float selectionRingRotationSpeed = -99f;
 
         private const int Size = Match3BoardLogic.Size;
         private const string BallsSpriteRelativePath = "_Project/img/balls-sprite.png";
+        private const string SelectionBorderRelativePath = "_Project/img/border.png";
 
         private Image[,] _bg;   // piece colour
         private Image[,] _sel;  // selection overlay
@@ -146,9 +150,10 @@ namespace Project.Match3
                 var ringRt = ringGo.AddComponent<RectTransform>();
                 ringRt.anchorMin = Vector2.zero; ringRt.anchorMax = Vector2.one;
                 ringRt.offsetMin = new Vector2(2f, 2f); ringRt.offsetMax = new Vector2(-2f, -2f);
+                ringRt.localScale = Vector3.one * Mathf.Max(0.1f, selectionRingScale);
                 var ringImg = ringGo.AddComponent<RawImage>();
                 ringImg.texture = GetSelectionRingTexture();
-                ringImg.color = new Color(1f, 0.92f, 0.28f, 0.95f);
+                ringImg.color = Color.white;
                 ringImg.raycastTarget = false;
                 ringGo.SetActive(false);
                 _ring[x, y] = ringImg;
@@ -511,7 +516,12 @@ namespace Project.Match3
             var s = _ring[x, y];
             if (s == null) return;
             s.gameObject.SetActive(selected);
-            if (selected) s.color = new Color(1f, 0.92f, 0.28f, 0.95f);
+            if (selected)
+            {
+                s.color = Color.white;
+                if (_ringRt[x, y] != null)
+                    _ringRt[x, y].localScale = Vector3.one * Mathf.Max(0.1f, selectionRingScale);
+            }
         }
 
         public void ClearSelections()
@@ -569,16 +579,16 @@ namespace Project.Match3
         private void TryLoadBallsAtlas()
         {
             if (ballsAtlas != null) return;
-            ballsAtlas = LoadTextureFromDisk();
+            ballsAtlas = LoadTextureFromDisk(BallsSpriteRelativePath);
             if (ballsAtlas == null)
                 Debug.LogWarning($"[Match3BoardView] Unable to load texture: {BallsSpriteRelativePath}");
         }
 
-        private static Texture2D LoadTextureFromDisk()
+        private static Texture2D LoadTextureFromDisk(string relativePath)
         {
             try
             {
-                var fullPath = Path.Combine(Application.dataPath, BallsSpriteRelativePath);
+                var fullPath = Path.Combine(Application.dataPath, relativePath);
                 if (!File.Exists(fullPath)) return null;
 
                 var bytes = File.ReadAllBytes(fullPath);
@@ -742,7 +752,7 @@ namespace Project.Match3
         private void Update()
         {
             if (_ringRt == null) return;
-            float delta = -165f * Time.deltaTime;
+            float delta = selectionRingRotationSpeed * Time.deltaTime;
             for (int y = 0; y < Size; y++)
             for (int x = 0; x < Size; x++)
                 if (_ring[x, y] != null && _ring[x, y].gameObject.activeSelf && _ringRt[x, y] != null)
@@ -752,7 +762,9 @@ namespace Project.Match3
         private Texture2D GetSelectionRingTexture()
         {
             if (_selectionRingTexture != null) return _selectionRingTexture;
-            _selectionRingTexture = CreateRingTexture(128, 0.72f, 0.92f);
+            _selectionRingTexture = LoadTextureFromDisk(SelectionBorderRelativePath);
+            if (_selectionRingTexture == null)
+                _selectionRingTexture = CreateRingTexture(128, 0.72f, 0.92f);
             return _selectionRingTexture;
         }
 

@@ -98,6 +98,8 @@ namespace Project.Match3
         private IMatch    _match;
         private string    _myUserId;
         private string    _opUserId;
+        private string    _matchmakerTicket;
+        private bool      _isLeavingToMenu;
         private CancellationTokenSource _cts;
         private TaskCompletionSource<IMatchmakerMatched> _mmTcs;
 
@@ -162,6 +164,8 @@ namespace Project.Match3
 
         private void OnDestroy()
         {
+            _mmTcs?.TrySetCanceled();
+            _ = CancelMatchmakerTicketAsync();
             _cts?.Cancel();
             _cts?.Dispose();
             if (NakamaBootstrap.Instance?.Socket != null)
@@ -193,17 +197,20 @@ namespace Project.Match3
         {
             _mmTcs = new TaskCompletionSource<IMatchmakerMatched>();
             ct.ThrowIfCancellationRequested();
+            await CancelMatchmakerTicketAsync();
 
             // Use "*" — same as existing DuelRoom.
             // Both players enter from DuelMatch3 scene so they naturally pair up.
-            await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(
+            var ticket = await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(
                 query: "*",
                 minCount: 2,
                 maxCount: 2,
                 stringProperties: new Dictionary<string, string> { { "mode", "match3" } });
+            _matchmakerTicket = ticket?.Ticket;
 
             var matched = await _mmTcs.Task;
             _mmTcs = null;
+            _matchmakerTicket = null; // consumed by successful match
             ct.ThrowIfCancellationRequested();
 
             _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(matched);
@@ -808,10 +815,15 @@ namespace Project.Match3
 
         private async void QuitToMenu()
         {
+            if (_isLeavingToMenu) return;
+            _isLeavingToMenu = true;
             var shouldRecordLoss = !_resultRecorded && !_gameEnded && _hasInitialBoardSync && !string.IsNullOrEmpty(_opUserId);
             _gameEnded = true;
             try
             {
+                _mmTcs?.TrySetCanceled();
+                await CancelMatchmakerTicketAsync();
+
                 if (shouldRecordLoss)
                 {
                     _resultRecorded = true;
@@ -827,6 +839,24 @@ namespace Project.Match3
             }
             catch { /* ignore */ }
             finally { SceneManager.LoadScene("MainMenu"); }
+        }
+
+        private async Task CancelMatchmakerTicketAsync()
+        {
+            var ticket = _matchmakerTicket;
+            _matchmakerTicket = null;
+            if (string.IsNullOrWhiteSpace(ticket)) return;
+
+            try
+            {
+                var socket = NakamaBootstrap.Instance?.Socket;
+                if (socket != null && socket.IsConnected)
+                    await socket.RemoveMatchmakerAsync(ticket);
+            }
+            catch
+            {
+                // ignore cleanup errors during scene transitions
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════════
@@ -910,7 +940,7 @@ namespace Project.Match3
             quitBtn.onClick.AddListener(QuitToMenu);
 
             // ── Overlays ──────────────────────────────────────────────────────────
-            _searchingPanel = BuildOrInstantiate(searchingPanelPrefab, root, V2(0.25f, 0.35f), V2(0.75f, 0.65f));
+            _searchingPanel = BuildOrInstantiate(searchingPanelPrefab, root, V2(0f, 0f), V2(1f, 1f));
             if (_searchingPanel == null) _searchingPanel = BuildSearchingPanelProcedural(root);
             _searchingPanel.OnCancelClicked += QuitToMenu;
 
@@ -1051,14 +1081,14 @@ namespace Project.Match3
 
         private Match3SearchingPanel BuildSearchingPanelProcedural(Transform parent)
         {
-            var bg = MakePanel(parent, "SearchingPanel", new Color(0f, 0f, 0f, 0.88f),
-                V2(0.25f, 0.35f), V2(0.75f, 0.65f));
+            var bg = MakePanel(parent, "SearchingPanel", new Color(0f, 0f, 0f, 0.97f),
+                V2(0f, 0f), V2(1f, 1f));
             var sp = bg.gameObject.AddComponent<Match3SearchingPanel>();
             sp.statusText = MakeTxt(bg, "ST", "Поиск соперника…", 22, Color.white,
-                V2(0.05f, 0.35f), V2(0.95f, 0.70f));
+                V2(0.25f, 0.52f), V2(0.75f, 0.62f));
             sp.statusText.alignment = TextAnchor.MiddleCenter;
             var btn = MakeButton(bg, "Cancel", "Отмена",
-                new Color(0.45f, 0.12f, 0.12f), Color.white, V2(0.20f, 0.08f), V2(0.80f, 0.30f));
+                new Color(0.45f, 0.12f, 0.12f), Color.white, V2(0.35f, 0.40f), V2(0.65f, 0.47f));
             sp.cancelButton = btn;
             return sp;
         }

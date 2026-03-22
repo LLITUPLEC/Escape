@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Match3;
 using Project.Nakama;
 using Project.Networking;
 using Project.Utils;
@@ -12,6 +13,7 @@ using Project.Player;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
+using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -44,6 +46,7 @@ namespace Project.Duel
         [Header("UI")]
         [SerializeField] private DuelStatusUI statusUI;
         [SerializeField] private DuelHudController hud;
+        [SerializeField] private Match3SearchingPanel searchingPanelPrefab;
         [Tooltip("Если назначен — инстанциирует этот префаб вместо генерации UI из кода")]
         [SerializeField] private GameObject keypadModalPrefab;
 
@@ -52,6 +55,8 @@ namespace Project.Duel
         [SerializeField] private float keypadCameraDistance = 0.5f;
         [Tooltip("Панель «быки : коровы» справа от клавиатуры")]
         [SerializeField] private bool showKeypadWorldAttemptLog = true;
+        [Header("Mobile")]
+        [SerializeField] private bool showMobileExitFromKeypad = true;
 
         public void SetStatusUI(DuelStatusUI ui) => statusUI = ui;
         public void SetHud(DuelHudController hudController) => hud = hudController;
@@ -72,6 +77,7 @@ namespace Project.Duel
         private bool _matchEnded;
 
         private DuelKeypadModal _keypadModal;
+        private Match3SearchingPanel _searchingPanel;
 
         private readonly Dictionary<int, Door> _doorsById = new();
         private readonly Dictionary<int, SlidingDoor> _slidingDoorsById = new();
@@ -97,6 +103,8 @@ namespace Project.Duel
         private GameObject _keypadWorldLogGo;
         private bool _keypadGuessInFlight;
         private readonly Dictionary<int, List<string>> _attemptHistoryByDoor = new();
+        private CanvasGroup _mobileExitKeypadGroup;
+        private Button _mobileExitKeypadButton;
 
         private const float KeypadInteractDistance = 2.6f;
         private const int LeftDoor1Id = DuelDoorPins.LeftDoor1Id;
@@ -109,11 +117,8 @@ namespace Project.Duel
         {
             _cts = new CancellationTokenSource();
             _sendEvery = sendRateHz <= 0f ? 0.1f : (1f / sendRateHz);
-            if (statusUI != null)
-            {
-                statusUI.SetVisible(true);
-                statusUI.SetText("Поиск соперника…");
-            }
+            if (statusUI != null) statusUI.SetVisible(false);
+            ShowMatchmakingOverlay("Поиск соперника...");
 
             if (playerPrefab == null)
             {
@@ -136,11 +141,13 @@ namespace Project.Duel
                 _spawnRightPos = spawnRight != null ? spawnRight.position : new Vector3(2f, 0f, -19f);
                 await FindMatchAndJoinAsync(_cts.Token);
 
-                if (statusUI != null) statusUI.SetVisible(false);
+                HideMatchmakingOverlay();
             }
+            catch (OperationCanceledException) { }
             catch (Exception e)
             {
                 Debug.LogException(e);
+                ShowMatchmakingOverlay("Ошибка подключения.\nПроверьте интернет и нажмите Отмена.");
             }
         }
 
@@ -154,6 +161,57 @@ namespace Project.Duel
             {
                 UnhookSocket(NakamaBootstrap.Instance.Socket);
             }
+
+            if (_searchingPanel != null)
+                _searchingPanel.OnCancelClicked -= OnSearchCancelClicked;
+        }
+
+        private void ShowMatchmakingOverlay(string text)
+        {
+            EnsureSearchingPanel();
+            _searchingPanel?.Show(text);
+        }
+
+        private void HideMatchmakingOverlay()
+        {
+            _searchingPanel?.Hide();
+        }
+
+        private void EnsureSearchingPanel()
+        {
+            if (_searchingPanel != null || searchingPanelPrefab == null) return;
+
+            Transform parent = null;
+            Canvas topCanvas = null;
+            foreach (var c in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (c == null || !c.gameObject.activeInHierarchy) continue;
+                var s = c.transform.lossyScale;
+                if (Mathf.Abs(s.x) < 0.01f || Mathf.Abs(s.y) < 0.01f) continue;
+                if (topCanvas == null || c.sortingOrder > topCanvas.sortingOrder)
+                    topCanvas = c;
+            }
+            if (topCanvas != null) parent = topCanvas.transform;
+            if (parent == null) return;
+
+            _searchingPanel = Instantiate(searchingPanelPrefab, parent, false);
+            _searchingPanel.name = "MatchmakingOverlay";
+            if (_searchingPanel.transform is RectTransform rt)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+            _searchingPanel.transform.SetAsLastSibling();
+            _searchingPanel.OnCancelClicked += OnSearchCancelClicked;
+            _searchingPanel.Hide();
+        }
+
+        private void OnSearchCancelClicked()
+        {
+            if (_isQuitting || _matchEnded) return;
+            QuitMatchAndReturnToMenu();
         }
 
         private void Update()
@@ -596,6 +654,7 @@ namespace Project.Duel
             keypad.WrongGuessSubmitted += _activeKeypadWrongGuessHandler;
 
             if (_localMover != null) _localMover.enabled = false;
+            SetMobileExitKeypadVisible(true);
 
             var cam = Camera.main;
             if (cam == null) cam = FindAnyObjectByType<Camera>();
@@ -604,6 +663,7 @@ namespace Project.Duel
                 _keypadFocusActive = false;
                 _activeKeypad = null;
                 _activeDoorId = 0;
+                SetMobileExitKeypadVisible(false);
                 if (_localMover != null && !_matchEnded) _localMover.enabled = true;
                 return;
             }
@@ -842,8 +902,66 @@ namespace Project.Duel
             }
 
             _keypadFocusActive = false;
+            SetMobileExitKeypadVisible(false);
 
             if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+        }
+
+        private void EnsureMobileExitKeypadButton()
+        {
+            if (!showMobileExitFromKeypad || !Application.isMobilePlatform)
+                return;
+            if (_mobileExitKeypadButton != null && _mobileExitKeypadGroup != null)
+                return;
+
+            Canvas targetCanvas = null;
+            foreach (var c in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (targetCanvas == null || c.sortingOrder > targetCanvas.sortingOrder)
+                    targetCanvas = c;
+            }
+            if (targetCanvas == null) return;
+
+            var go = new GameObject("MobileExitKeypadButton");
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(targetCanvas.transform, false);
+            rt.anchorMin = new Vector2(0.91f, 0.83f);
+            rt.anchorMax = new Vector2(0.98f, 0.93f);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0f, 0f, 0f, 0.65f);
+
+            var btn = go.AddComponent<Button>();
+            btn.onClick.AddListener(ExitKeypadFocus);
+
+            var labelGo = new GameObject("Text");
+            var labelRt = labelGo.AddComponent<RectTransform>();
+            labelRt.SetParent(rt, false);
+            labelRt.anchorMin = Vector2.zero;
+            labelRt.anchorMax = Vector2.one;
+            labelRt.offsetMin = labelRt.offsetMax = Vector2.zero;
+
+            var txt = labelGo.AddComponent<Text>();
+            txt.text = "X";
+            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            txt.fontSize = 42;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = Color.white;
+            txt.raycastTarget = false;
+
+            _mobileExitKeypadGroup = go.AddComponent<CanvasGroup>();
+            _mobileExitKeypadButton = btn;
+            SetMobileExitKeypadVisible(false);
+        }
+
+        private void SetMobileExitKeypadVisible(bool visible)
+        {
+            EnsureMobileExitKeypadButton();
+            if (_mobileExitKeypadGroup == null) return;
+            _mobileExitKeypadGroup.alpha = visible ? 1f : 0f;
+            _mobileExitKeypadGroup.interactable = visible;
+            _mobileExitKeypadGroup.blocksRaycasts = visible;
         }
 
         private void EnsureKeypadModal()

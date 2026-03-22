@@ -27,6 +27,9 @@ namespace Project.Nakama
 
         private const string DeviceIdPrefKey = "nakama.device_id";
         private const string DevDeviceIdPrefPrefix = "nakama.device_id.dev.";
+        private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
+        [SerializeField] private bool keepOnlineHeartbeat = true;
+        [SerializeField] private float onlineHeartbeatSeconds = 5f;
         private CancellationTokenSource _cts;
 
         private void Awake()
@@ -66,10 +69,37 @@ namespace Project.Nakama
             try
             {
                 await EnsureConnectedAsync(_cts.Token);
+                if (keepOnlineHeartbeat)
+                    _ = OnlineHeartbeatLoopAsync(_cts.Token);
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
+            }
+        }
+
+        private async Task OnlineHeartbeatLoopAsync(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                try
+                {
+                    if (IsReady && Client != null && Session != null)
+                        await Client.RpcAsync(Session, RpcOnlinePingAndCount, "{}");
+                }
+                catch
+                {
+                    // Best-effort heartbeat. Errors are ignored.
+                }
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Mathf.Max(2f, onlineHeartbeatSeconds)), ct);
+                }
+                catch (TaskCanceledException)
+                {
+                    return;
+                }
             }
         }
 

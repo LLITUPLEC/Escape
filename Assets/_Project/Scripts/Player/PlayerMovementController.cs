@@ -20,12 +20,16 @@ namespace Project.Player
         [SerializeField] private string speedParam = "Speed";
         [SerializeField] private string jumpTrigger = "Jump";
         [SerializeField] private string groundedBoolParam = "Grounded";
+        [Header("Virtual Joystick (optional)")]
+        [SerializeField] private Joystick virtualJoystick;
+        [SerializeField] private bool autoFindJoystick = true;
 
         private CharacterController _cc;
         private float _vy;
 
         public float MoveSpeed => moveSpeed;
         public float RunMultiplier => runMultiplier;
+        public void SetVirtualJoystick(Joystick joystick) => virtualJoystick = joystick;
 
         private void Awake()
         {
@@ -36,6 +40,9 @@ namespace Project.Player
 
         private void Update()
         {
+            if (autoFindJoystick && virtualJoystick == null)
+                virtualJoystick = FindAnyObjectByType<Joystick>(FindObjectsInactive.Include);
+
             var input = ReadMoveInput();
             input = Vector2.ClampMagnitude(input, 1f);
 
@@ -98,7 +105,15 @@ namespace Project.Player
             }
         }
 
-        private static Vector2 ReadMoveInput()
+        private Vector2 ReadMoveInput()
+        {
+            var input = ReadKeyboardMoveInput();
+            if (virtualJoystick != null)
+                input += virtualJoystick.Direction;
+            return input;
+        }
+
+        private static Vector2 ReadKeyboardMoveInput()
         {
 #if ENABLE_INPUT_SYSTEM
             var k = Keyboard.current;

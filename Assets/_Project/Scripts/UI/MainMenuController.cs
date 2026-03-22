@@ -19,9 +19,9 @@ namespace Project.UI
         [SerializeField] private GameObject onlineBadgePrefab;
         [SerializeField] private string onlineBadgeResourcePath = "OnlinePlayersBadge";
         [SerializeField] private float onlinePollSeconds = 5f;
+        [SerializeField] private float match3StatsPollSeconds = 5f;
 
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
-        private const string RpcOnlineLeave = "duel_online_leave";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
         private Text _onlineCountText;
         private CancellationTokenSource _onlineCts;
@@ -69,7 +69,6 @@ namespace Project.UI
             }
             if (_onlineBadgeRect != null)
                 _onlineBadgeRect.localScale = Vector3.one;
-            _ = NotifyLeaveAsync();
         }
 
         private void OnDuelClicked()
@@ -89,20 +88,28 @@ namespace Project.UI
 
         private void EnsureMatch3StatsCard()
         {
-            if (_match3StatsRoot != null) return;
             var parent = FindCanvasRoot();
             if (parent == null) return;
 
-            var cardGo = new GameObject("Match3StatsCard");
-            _match3StatsRoot = cardGo.AddComponent<RectTransform>();
-            _match3StatsRoot.SetParent(parent, false);
-            _match3StatsRoot.anchorMin = new Vector2(0.70f, 0.08f);
-            _match3StatsRoot.anchorMax = new Vector2(0.97f, 0.34f);
-            _match3StatsRoot.offsetMin = _match3StatsRoot.offsetMax = Vector2.zero;
+            if (_match3StatsRoot == null)
+            {
+                var cardGo = new GameObject("Match3StatsCard");
+                _match3StatsRoot = cardGo.AddComponent<RectTransform>();
+                _match3StatsRoot.SetParent(parent, false);
+            }
+            // Keep fixed card size and move it up by 125 px.
+            _match3StatsRoot.anchorMin = new Vector2(0.835f, 0.50f);
+            _match3StatsRoot.anchorMax = new Vector2(0.835f, 0.50f);
+            _match3StatsRoot.pivot = new Vector2(0.5f, 0.5f);
+            _match3StatsRoot.sizeDelta = new Vector2(320f, 420f);
+            _match3StatsRoot.anchoredPosition = new Vector2(0f, 125f);
 
-            var bg = cardGo.AddComponent<Image>();
+            if (_match3PlayedText != null && _match3WinsText != null && _match3LossesText != null)
+                return;
+
+            var bg = _match3StatsRoot.gameObject.AddComponent<Image>();
             bg.color = new Color(0.08f, 0.10f, 0.18f, 0.92f);
-            var outline = cardGo.AddComponent<Outline>();
+            var outline = _match3StatsRoot.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(0.22f, 0.74f, 1f, 0.65f);
             outline.effectDistance = new Vector2(1f, -1f);
 
@@ -213,9 +220,15 @@ namespace Project.UI
 
         private async Task OnlineLoopAsync(CancellationToken ct)
         {
+            var nextStatsRefreshAt = 0f;
             while (!ct.IsCancellationRequested)
             {
                 await RefreshOnlineCountAsync(ct);
+                if (Time.unscaledTime >= nextStatsRefreshAt)
+                {
+                    await RefreshMatch3StatsCardAsync(ct);
+                    nextStatsRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
+                }
                 try
                 {
                     await Task.Delay(TimeSpan.FromSeconds(Mathf.Max(1f, onlinePollSeconds)), ct);
@@ -275,20 +288,6 @@ namespace Project.UI
             catch
             {
                 _onlineCountText.text = "—";
-            }
-        }
-
-        private async Task NotifyLeaveAsync()
-        {
-            try
-            {
-                if (NakamaBootstrap.Instance == null || !NakamaBootstrap.Instance.IsReady) return;
-                await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcOnlineLeave, "{}");
-            }
-            catch
-            {
-                // ignore
             }
         }
 
