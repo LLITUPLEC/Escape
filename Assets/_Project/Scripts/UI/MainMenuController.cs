@@ -7,6 +7,9 @@ using Project.Nakama;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Project.UI
 {
@@ -24,6 +27,7 @@ namespace Project.UI
 
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
+        private const string RpcMatch3PveCatalogGet = "duel_match3_pve_catalog_get";
         private Text _onlineCountText;
         private CancellationTokenSource _onlineCts;
         private GameObject _onlineBadgeInstance;
@@ -34,6 +38,19 @@ namespace Project.UI
         private Text _match3PlayedText;
         private Text _match3WinsText;
         private Text _match3LossesText;
+        private Button _match3StatsToggleButton;
+        private Image _match3StatsToggleImage;
+        [SerializeField] private Texture2D eyeTexture;
+        [SerializeField] private Sprite eyeOpenSprite;
+        [SerializeField] private Sprite eyeClosedSprite;
+        private bool _match3StatsVisible;
+        private RectTransform _profileHudRoot;
+        private Text _profileLevelText;
+        private Text _profileGoldText;
+        private Text _profileXpText;
+        private Image _profileXpFill;
+        private RectTransform _profileXpFillRt;
+        private int[] _levelXp = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 };
 
         public void Bind(Button duel, Button bots, Button match3 = null)
         {
@@ -47,15 +64,26 @@ namespace Project.UI
             if (duelButton   != null) duelButton.onClick.AddListener(OnDuelClicked);
             if (botsButton   != null) botsButton.onClick.AddListener(OnBotsClicked);
             if (match3Button != null) match3Button.onClick.AddListener(OnMatch3Clicked);
+            TryAutoAssignEyeSpritesInEditor();
             EnsureOnlineBadge();
             EnsureMatch3StatsCard();
+            EnsureMatch3StatsToggleButton();
+            EnsureProfileHud();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            TryAutoAssignEyeSpritesInEditor();
+        }
+#endif
 
         private void OnEnable()
         {
             _onlineCts = new CancellationTokenSource();
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
+            _ = RefreshProfileHudAsync(_onlineCts.Token);
         }
 
         private void OnDisable()
@@ -106,6 +134,7 @@ namespace Project.UI
             _match3StatsRoot.pivot = new Vector2(0.5f, 0.5f);
             _match3StatsRoot.sizeDelta = new Vector2(320f, 420f);
             _match3StatsRoot.anchoredPosition = new Vector2(0f, 125f);
+            _match3StatsRoot.gameObject.SetActive(_match3StatsVisible);
 
             if (_match3PlayedText != null && _match3WinsText != null && _match3LossesText != null)
                 return;
@@ -187,6 +216,254 @@ namespace Project.UI
             if (_match3LossesText != null) _match3LossesText.text = "—";
         }
 
+        private void EnsureProfileHud()
+        {
+            if (_profileHudRoot != null && _profileLevelText != null && _profileGoldText != null && _profileXpText != null && _profileXpFill != null)
+                return;
+
+            var parent = FindCanvasRoot();
+            if (parent == null) return;
+
+            if (_profileHudRoot == null)
+            {
+                var cardGo = new GameObject("ProfileProgressHud");
+                _profileHudRoot = cardGo.AddComponent<RectTransform>();
+                _profileHudRoot.SetParent(parent, false);
+            }
+
+            var avatar = FindAvatarRect(parent);
+            if (avatar != null)
+            {
+                _profileHudRoot.anchorMin = avatar.anchorMin;
+                _profileHudRoot.anchorMax = avatar.anchorMax;
+                _profileHudRoot.pivot = avatar.pivot;
+                _profileHudRoot.sizeDelta = new Vector2(Mathf.Max(220f, avatar.rect.width), 74f);
+            }
+            else
+            {
+                _profileHudRoot.anchorMin = new Vector2(0.12f, 0.78f);
+                _profileHudRoot.anchorMax = new Vector2(0.12f, 0.78f);
+                _profileHudRoot.pivot = new Vector2(0.5f, 0.5f);
+                _profileHudRoot.sizeDelta = new Vector2(280f, 74f);
+            }
+            _profileHudRoot.anchoredPosition = new Vector2(-60f, 170f);
+
+            if (_profileLevelText != null) return;
+
+            var bg = _profileHudRoot.gameObject.AddComponent<Image>();
+            bg.color = new Color(0.06f, 0.09f, 0.15f, 0.88f);
+            var outline = _profileHudRoot.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.20f, 0.70f, 0.95f, 0.55f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            _profileLevelText = CreateStatsText("LevelText", _profileHudRoot, "Lvl 1", 16, new Color(0.80f, 0.96f, 1f));
+            Anchor(_profileLevelText.rectTransform, new Vector2(0.05f, 0.52f), new Vector2(0.48f, 0.94f), TextAnchor.MiddleLeft);
+            _profileGoldText = CreateStatsText("GoldText", _profileHudRoot, "Gold: 0", 16, new Color(1f, 0.88f, 0.35f));
+            Anchor(_profileGoldText.rectTransform, new Vector2(0.52f, 0.52f), new Vector2(0.95f, 0.94f), TextAnchor.MiddleRight);
+
+            _profileXpText = CreateStatsText("XpText", _profileHudRoot, "XP 0/100", 13, Color.white);
+            Anchor(_profileXpText.rectTransform, new Vector2(0.05f, 0.06f), new Vector2(0.95f, 0.40f), TextAnchor.MiddleCenter);
+
+            var barBgGo = new GameObject("XpBarBg");
+            var barBgRt = barBgGo.AddComponent<RectTransform>();
+            barBgRt.SetParent(_profileHudRoot, false);
+            barBgRt.anchorMin = new Vector2(0.05f, 0.40f);
+            barBgRt.anchorMax = new Vector2(0.95f, 0.50f);
+            barBgRt.offsetMin = barBgRt.offsetMax = Vector2.zero;
+            var barBg = barBgGo.AddComponent<Image>();
+            barBg.color = new Color(0.08f, 0.11f, 0.16f, 0.95f);
+
+            var fillGo = new GameObject("XpBarFill");
+            var fillRt = fillGo.AddComponent<RectTransform>();
+            fillRt.SetParent(barBgRt, false);
+            fillRt.anchorMin = new Vector2(0f, 0f);
+            fillRt.anchorMax = new Vector2(0f, 1f);
+            fillRt.offsetMin = new Vector2(1f, 1f);
+            fillRt.offsetMax = new Vector2(-1f, -1f);
+            _profileXpFillRt = fillRt;
+            _profileXpFill = fillGo.AddComponent<Image>();
+            _profileXpFill.color = new Color(0.24f, 0.75f, 0.95f, 1f);
+        }
+
+        private static RectTransform FindAvatarRect(RectTransform root)
+        {
+            if (root == null) return null;
+            var direct = root.Find("MainMenuScreen/Canvas/Panel/Avatar");
+            if (direct is RectTransform rtDirect) return rtDirect;
+            var fallback = root.Find("Panel/Avatar");
+            if (fallback is RectTransform rtFallback) return rtFallback;
+            return null;
+        }
+
+        private async Task RefreshProfileHudAsync(CancellationToken ct)
+        {
+            EnsureProfileHud();
+            if (_profileLevelText == null || _profileGoldText == null || _profileXpText == null || _profileXpFill == null) return;
+            try
+            {
+                if (NakamaBootstrap.Instance == null)
+                {
+                    SetProfileUnknown();
+                    return;
+                }
+
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                {
+                    SetProfileUnknown();
+                    return;
+                }
+
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMatch3PveCatalogGet, "{}");
+                var payload = rpc?.Payload;
+                if (string.IsNullOrEmpty(payload))
+                {
+                    SetProfileUnknown();
+                    return;
+                }
+
+                var model = JsonUtility.FromJson<PveCatalogHudRpcResponse>(payload);
+                if (model == null || !model.ok || model.progression == null)
+                {
+                    SetProfileUnknown();
+                    return;
+                }
+
+                if (model.level_xp != null && model.level_xp.Length > 1)
+                    _levelXp = model.level_xp;
+
+                var level = Mathf.Max(1, model.progression.level);
+                var xp = Mathf.Max(0, model.progression.xp);
+                var gold = Mathf.Max(0, model.progression.gold);
+                var currentReq = level >= 1 && level <= _levelXp.Length ? _levelXp[level - 1] : 0;
+                var nextReq = level < _levelXp.Length ? _levelXp[level] : currentReq;
+                var denom = Mathf.Max(1, nextReq - currentReq);
+                var frac = level >= _levelXp.Length ? 1f : Mathf.Clamp01((xp - currentReq) / (float)denom);
+
+                _profileLevelText.text = $"Lvl {level}";
+                _profileGoldText.text = $"Gold: {gold}";
+                _profileXpText.text = level >= _levelXp.Length ? $"XP {xp} (MAX)" : $"XP {xp}/{nextReq}";
+                if (_profileXpFillRt != null)
+                    _profileXpFillRt.anchorMax = new Vector2(frac, 1f);
+            }
+            catch
+            {
+                SetProfileUnknown();
+            }
+        }
+
+        private void SetProfileUnknown()
+        {
+            if (_profileLevelText != null) _profileLevelText.text = "Lvl —";
+            if (_profileGoldText != null) _profileGoldText.text = "Gold: —";
+            if (_profileXpText != null) _profileXpText.text = "XP —";
+            if (_profileXpFillRt != null) _profileXpFillRt.anchorMax = new Vector2(0f, 1f);
+        }
+
+        private void EnsureMatch3StatsToggleButton()
+        {
+            if (_match3StatsToggleButton != null) return;
+            if (match3Button == null) return;
+
+            var root = match3Button.transform as RectTransform;
+            if (root == null) return;
+
+            var eyeGo = new GameObject("StatsToggleEye");
+            var rt = eyeGo.AddComponent<RectTransform>();
+            rt.SetParent(root, false);
+            rt.anchorMin = new Vector2(1f, 0.5f);
+            rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(34f, 34f);
+            rt.anchoredPosition = new Vector2(28f, 0f);
+
+            var bg = eyeGo.AddComponent<Image>();
+            bg.color = new Color(0x8C / 255f, 0xBD / 255f, 0xF1 / 255f, 0.92f);
+            var btn = eyeGo.AddComponent<Button>();
+            btn.targetGraphic = bg;
+            _match3StatsToggleButton = btn;
+
+            var iconGo = new GameObject("EyeIcon");
+            var iconRt = iconGo.AddComponent<RectTransform>();
+            iconRt.SetParent(rt, false);
+            iconRt.anchorMin = new Vector2(0.14f, 0.14f);
+            iconRt.anchorMax = new Vector2(0.86f, 0.86f);
+            iconRt.offsetMin = iconRt.offsetMax = Vector2.zero;
+            _match3StatsToggleImage = iconGo.AddComponent<Image>();
+            _match3StatsToggleImage.raycastTarget = false;
+            _match3StatsToggleImage.preserveAspect = true;
+            UpdateMatch3StatsToggleVisual();
+
+            if (_match3StatsToggleImage.sprite == null)
+            {
+                var lbl = CreateStatsText("EyeText", rt, "eye", 13, Color.white);
+                Anchor(lbl.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), TextAnchor.MiddleCenter);
+            }
+            _match3StatsToggleButton.onClick.AddListener(ToggleMatch3StatsCard);
+        }
+
+        private void ToggleMatch3StatsCard()
+        {
+            _match3StatsVisible = !_match3StatsVisible;
+            EnsureMatch3StatsCard();
+            if (_match3StatsRoot != null)
+                _match3StatsRoot.gameObject.SetActive(_match3StatsVisible);
+            UpdateMatch3StatsToggleVisual();
+        }
+
+        private void UpdateMatch3StatsToggleVisual()
+        {
+            EnsureEyeSpritesReady();
+            if (_match3StatsToggleImage == null) return;
+            var sprite = _match3StatsVisible ? eyeOpenSprite : eyeClosedSprite;
+            if (sprite != null)
+                _match3StatsToggleImage.sprite = sprite;
+        }
+
+        private void EnsureEyeSpritesReady()
+        {
+            if (eyeTexture == null) return;
+
+            var w = eyeTexture.width;
+            var h = eyeTexture.height;
+            if (w <= 0 || h <= 1) return;
+
+            bool looksUnsliced =
+                eyeOpenSprite == null ||
+                eyeClosedSprite == null ||
+                (Mathf.Abs(eyeOpenSprite.rect.height - h) < 0.5f && Mathf.Abs(eyeClosedSprite.rect.height - h) < 0.5f);
+            if (!looksUnsliced) return;
+
+            var half = h / 2f;
+            // Unity sprite rect origin is bottom-left:
+            // lower half = closed eye, upper half = open eye.
+            eyeClosedSprite = Sprite.Create(eyeTexture, new Rect(0f, 0f, w, half), new Vector2(0.5f, 0.5f), 100f);
+            eyeOpenSprite = Sprite.Create(eyeTexture, new Rect(0f, half, w, h - half), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private void TryAutoAssignEyeSpritesInEditor()
+        {
+#if UNITY_EDITOR
+            if (eyeTexture == null)
+                eyeTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/img/eye.png");
+            if (eyeOpenSprite != null && eyeClosedSprite != null) return;
+            var path = "Assets/_Project/img/eye.png";
+            var sprites = AssetDatabase.LoadAllAssetRepresentationsAtPath(path);
+            Sprite upper = null;
+            Sprite lower = null;
+            foreach (var obj in sprites)
+            {
+                if (obj is not Sprite s) continue;
+                if (upper == null || s.rect.y > upper.rect.y) upper = s;
+                if (lower == null || s.rect.y < lower.rect.y) lower = s;
+            }
+
+            eyeOpenSprite ??= upper;
+            eyeClosedSprite ??= lower;
+#endif
+        }
+
         private void EnsureOnlineBadge()
         {
             if (_onlineCountText != null) return;
@@ -224,6 +501,7 @@ namespace Project.UI
         private async Task OnlineLoopAsync(CancellationToken ct)
         {
             var nextStatsRefreshAt = 0f;
+            var nextProfileRefreshAt = 0f;
             while (!ct.IsCancellationRequested)
             {
                 await RefreshOnlineCountAsync(ct);
@@ -231,6 +509,11 @@ namespace Project.UI
                 {
                     await RefreshMatch3StatsCardAsync(ct);
                     nextStatsRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
+                }
+                if (Time.unscaledTime >= nextProfileRefreshAt)
+                {
+                    await RefreshProfileHudAsync(ct);
+                    nextProfileRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
                 }
                 try
                 {
@@ -398,6 +681,23 @@ namespace Project.UI
             public int wins;
             public int losses;
             public string err;
+        }
+
+        [Serializable]
+        private sealed class PveCatalogHudRpcResponse
+        {
+            public bool ok;
+            public PveProgressHudInfo progression;
+            public int[] level_xp;
+            public string err;
+        }
+
+        [Serializable]
+        private sealed class PveProgressHudInfo
+        {
+            public int level = 1;
+            public int xp;
+            public int gold;
         }
     }
 }

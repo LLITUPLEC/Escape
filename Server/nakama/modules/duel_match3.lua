@@ -5,6 +5,8 @@ local MAX_HP = 150
 local MAX_MANA = 100
 local TURN_SECONDS = 30
 local TICK_RATE = 5
+local BOT_THINK_SECONDS = 5.0
+local BOT_THINK_TICKS = math.max(1, math.floor(BOT_THINK_SECONDS * TICK_RATE + 0.5))
 local CROSS_ABILITY_COST = 20
 local SQUARE_ABILITY_COST = 20
 local PETARD_ABILITY_COST = 30
@@ -32,6 +34,7 @@ local PVE_PROGRESS_KEY = "profile"
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
 local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
+local award_pve_victory
 
 local BOTS = {
   slime_1 = {
@@ -314,12 +317,19 @@ end
 local function apply_match_effects(state, actor_id, opponent_id, matches, extra_turn)
   local actor = state.stats[actor_id]
   local opp = state.stats[opponent_id]
+  local sim = state._sim_metrics
 
   for _, m in ipairs(matches) do
     if m.count >= 5 then extra_turn = true end
+    if sim ~= nil and m.count >= 5 then sim.extra_turn = true end
     if m.type == 1 or m.type == 2 or m.type == 3 then
       local gain = (GEM_MANA[m.type] or 0) * m.count
       actor.mana = math.min(MAX_MANA, actor.mana + gain)
+      if sim ~= nil then
+        if m.type == 1 then sim.red = sim.red + m.count
+        elseif m.type == 2 then sim.yellow = sim.yellow + m.count
+        elseif m.type == 3 then sim.green = sim.green + m.count end
+      end
     elseif m.type == 4 then
       opp.hp = math.max(0, opp.hp - SKULL_DAMAGE * m.count)
     elseif m.type == 5 then
@@ -345,7 +355,9 @@ local function make_sync_msg(state, action, extra_turn, anim_steps)
   return {
     board = clone_board(state.board),
     aHp = a.hp, aMana = a.mana, aCrossCd = a.cross_cd, aSquareCd = a.square_cd, aPetardCd = a.petard_cd,
+    aMaxHp = a.max_hp or MAX_HP,
     bHp = b.hp, bMana = b.mana, bCrossCd = b.cross_cd, bSquareCd = b.square_cd, bPetardCd = b.petard_cd,
+    bMaxHp = b.max_hp or MAX_HP,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     actionType = action and action.actionType or 0,
@@ -393,7 +405,6 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     state.active_user_id = actor
     state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
   elseif extra_turn then
-    tick_cooldowns(state.stats[actor])
     state.active_user_id = actor
   else
     state.active_user_id = opponent
@@ -402,6 +413,15 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 
   if not keep_turn then
     state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+  end
+  if state.mode == "pve" then
+    if state.active_user_id == state.bot_user_id then
+      state.bot_turn_pending = true
+      state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+    else
+      state.bot_turn_pending = false
+      state.bot_turn_ready_tick = 0
+    end
   end
   broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
 end
@@ -437,6 +457,7 @@ end
 local function apply_ability_rewards(state, actor_id, opponent_id, action_type, cx, cy)
   local actor = state.stats[actor_id]
   local opp = state.stats[opponent_id]
+  local sim = state._sim_metrics
   if action_type == 4 then
     opp.hp = math.max(0, opp.hp - PETARD_DAMAGE)
     return
@@ -449,6 +470,11 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     local t = bget(state.board, c.x, c.y)
     if t == 1 or t == 2 or t == 3 then
       actor.mana = math.min(MAX_MANA, actor.mana + (GEM_MANA[t] or 0))
+      if sim ~= nil then
+        if t == 1 then sim.red = sim.red + 1
+        elseif t == 2 then sim.yellow = sim.yellow + 1
+        elseif t == 3 then sim.green = sim.green + 1 end
+      end
     elseif t == 5 then
       actor.hp = math.min(actor.max_hp or MAX_HP, actor.hp + ANKH_HEAL)
     elseif t == 4 then
@@ -586,7 +612,7 @@ local function write_pve_progress(user_id, progress, version)
   nk.storage_write({ write_obj })
 end
 
-local function award_pve_victory(user_id, bot_id)
+award_pve_victory = function(user_id, bot_id)
   local bot = get_bot_profile(bot_id)
   local reward_xp = bot.reward_xp or 0
   local reward_gold = bot.reward_gold or 0
@@ -788,6 +814,18 @@ local function duel_match3_pve_catalog_get(ctx, payload)
   return result
 end
 
+-- Must mirror duel_matchmaker.lua: Nakama resolves Lua match modules under different names per version.
+local function try_match_create(setup)
+  local names = { "duel_match3", "modules/duel_match3", "modules.duel_match3" }
+  for _, name in ipairs(names) do
+    local ok, match_id_or_err = pcall(nk.match_create, name, setup)
+    if ok and match_id_or_err then
+      return match_id_or_err
+    end
+  end
+  return nil
+end
+
 local function duel_match3_pve_create(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -805,13 +843,16 @@ local function duel_match3_pve_create(ctx, payload)
     local bot_user_id = make_bot_user_id(bot.id)
     local progress = read_pve_progress(user_id)
 
-    local match_id = nk.match_create("duel_match3", {
+    local match_id = try_match_create({
       mode = "pve",
       owner_user_id = user_id,
       bot_id = bot.id,
       bot_user_id = bot_user_id,
       owner_level = progress.level or 1,
     })
+    if match_id == nil or match_id == "" then
+      return nk.json_encode({ ok = false, err = "match_create_failed" })
+    end
 
     return nk.json_encode({
       ok = true,
@@ -881,55 +922,122 @@ local function enumerate_valid_swaps(board)
   return swaps
 end
 
+local function copy_stats(src)
+  return {
+    hp = src.hp or MAX_HP,
+    mana = src.mana or 0,
+    cross_cd = src.cross_cd or 0,
+    square_cd = src.square_cd or 0,
+    petard_cd = src.petard_cd or 0,
+    max_hp = src.max_hp or MAX_HP,
+  }
+end
+
+local function spend_ability_for_sim(stats, action_type)
+  if action_type == 2 then
+    stats.mana = math.max(0, stats.mana - CROSS_ABILITY_COST)
+    stats.cross_cd = CROSS_ABILITY_COOLDOWN
+  elseif action_type == 3 then
+    stats.mana = math.max(0, stats.mana - SQUARE_ABILITY_COST)
+    stats.square_cd = SQUARE_ABILITY_COOLDOWN
+  elseif action_type == 4 then
+    stats.mana = math.max(0, stats.mana - PETARD_ABILITY_COST)
+    stats.petard_cd = PETARD_ABILITY_COOLDOWN
+  end
+end
+
+local function simulate_and_score_action(state, bot_user_id, player_user_id, action)
+  local sim_bot = copy_stats(state.stats[bot_user_id] or {})
+  local sim_player = copy_stats(state.stats[player_user_id] or {})
+  local sim_state = {
+    board = clone_board(state.board),
+    stats = {
+      [bot_user_id] = sim_bot,
+      [player_user_id] = sim_player,
+    },
+    _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0 },
+  }
+
+  if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+    spend_ability_for_sim(sim_bot, action.actionType)
+  end
+
+  local before_hp = sim_player.hp
+  local ok, _, extra_turn, _, _ = resolve_action(sim_state, action, bot_user_id, player_user_id)
+  if not ok then return nil end
+
+  local m = sim_state._sim_metrics or { extra_turn = false, red = 0, yellow = 0, green = 0 }
+  local score = {
+    extra_turn = (extra_turn == true) or (m.extra_turn == true),
+    damage = math.max(0, before_hp - sim_player.hp),
+    red = m.red or 0,
+    yellow = m.yellow or 0,
+    green = m.green or 0,
+  }
+  return score
+end
+
+local function is_better_score(a, b)
+  if b == nil then return true end
+  if a.extra_turn ~= b.extra_turn then return a.extra_turn end
+  if a.damage ~= b.damage then return a.damage > b.damage end
+  if a.red ~= b.red then return a.red > b.red end
+  if a.yellow ~= b.yellow then return a.yellow > b.yellow end
+  if a.green ~= b.green then return a.green > b.green end
+  return false
+end
+
 local function choose_bot_action(state, bot_user_id, player_user_id)
-  local bot = get_bot_profile(state.bot_id)
   local stats = state.stats[bot_user_id]
-  local ability_chance = bot.ai_ability_chance or 0.2
+  if stats == nil then return nil end
 
   local can_cross = stats.mana >= CROSS_ABILITY_COST and stats.cross_cd <= 0
   local can_square = stats.mana >= SQUARE_ABILITY_COST and stats.square_cd <= 0
   local can_petard = stats.mana >= PETARD_ABILITY_COST and stats.petard_cd <= 0
-  local has_any_ability = can_cross or can_square or can_petard
 
-  if has_any_ability and math.random() < ability_chance then
-    local weighted = {}
-    local function push(action_type, w)
-      if w <= 0 then return end
-      weighted[#weighted + 1] = { actionType = action_type, weight = w }
+  -- При запасе маны бот всегда сначала тратит петарду, затем (из-за keep_turn) выбирает следующий ход по общей оценке.
+  if can_petard and (stats.mana or 0) > 50 then
+    return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+  end
+
+  local candidates = enumerate_valid_swaps(state.board)
+  if can_cross then
+    for y = 0, SIZE - 1 do
+      for x = 0, SIZE - 1 do
+        candidates[#candidates + 1] = {
+          actionType = 2,
+          fromX = -1, fromY = -1, toX = -1, toY = -1,
+          cx = x, cy = y,
+        }
+      end
     end
-
-    if can_petard then push(4, bot.petard_bias or 0.34) end
-    if can_cross then push(2, bot.cross_bias or 0.33) end
-    if can_square then push(3, bot.square_bias or 0.33) end
-
-    if #weighted > 0 then
-      local total = 0
-      for _, w in ipairs(weighted) do total = total + w.weight end
-      local roll = math.random() * total
-      local pick = weighted[#weighted]
-      local acc = 0
-      for _, w in ipairs(weighted) do
-        acc = acc + w.weight
-        if roll <= acc then
-          pick = w
-          break
-        end
+  end
+  if can_square then
+    for y = 0, SIZE - 1 do
+      for x = 0, SIZE - 1 do
+        candidates[#candidates + 1] = {
+          actionType = 3,
+          fromX = -1, fromY = -1, toX = -1, toY = -1,
+          cx = x, cy = y,
+        }
       end
+    end
+  end
+  if can_petard then
+    candidates[#candidates + 1] = { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+  end
 
-      if pick.actionType == 4 then
-        return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
-      end
-      return {
-        actionType = pick.actionType,
-        fromX = -1, fromY = -1, toX = -1, toY = -1,
-        cx = math.random(0, SIZE - 1), cy = math.random(0, SIZE - 1),
-      }
+  local best_action = nil
+  local best_score = nil
+  for _, action in ipairs(candidates) do
+    local score = simulate_and_score_action(state, bot_user_id, player_user_id, action)
+    if score ~= nil and is_better_score(score, best_score) then
+      best_score = score
+      best_action = action
     end
   end
 
-  local swaps = enumerate_valid_swaps(state.board)
-  if #swaps == 0 then return nil end
-  return swaps[math.random(1, #swaps)]
+  return best_action
 end
 
 local function match_init(context, params)
@@ -957,6 +1065,8 @@ local function match_init(context, params)
     active_user_id = nil,
     turn_deadline_tick = 0,
     last_reward = nil,
+    bot_turn_pending = false,
+    bot_turn_ready_tick = 0,
   }
 
   return state, TICK_RATE, "mode=duel_match3"
@@ -1131,41 +1241,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     end
   end
 
-  if state.mode == "pve" and state.started and not state.ended then
-    if state.active_user_id == state.bot_user_id and tick >= state.turn_deadline_tick then
-      local actor_id = state.bot_user_id
-      local opp_id = state.owner_user_id
-      local action = choose_bot_action(state, actor_id, opp_id)
-      if action == nil then
-        state.active_user_id = opp_id
-        tick_cooldowns(state.stats[opp_id])
-        state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
-        broadcast_sync(dispatcher, state, nil, false)
-      else
-        local actor_stats = state.stats[actor_id]
-        if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
-          local spend = action.actionType == 2 and CROSS_ABILITY_COST
-            or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
-          actor_stats.mana = math.max(0, actor_stats.mana - spend)
-          if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
-          if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
-          if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
-        end
-
-        local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
-        if ok then
-          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
-        else
-          nk.logger_warn("bot action rejected: " .. tostring(err))
-          state.active_user_id = opp_id
-          tick_cooldowns(state.stats[opp_id])
-          state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
-          broadcast_sync(dispatcher, state, nil, false)
-        end
-      end
-    end
-  end
-
+  -- Сначала таймаут хода (человек не успел), затем ход бота — чтобы бот мог сходить в том же тике.
   if state.started and not state.ended and tick >= state.turn_deadline_tick then
     local current = state.active_user_id
     local next_player = other_player_id(state, current)
@@ -1173,7 +1249,55 @@ local function match_loop(context, dispatcher, tick, state, messages)
       state.active_user_id = next_player
       tick_cooldowns(state.stats[next_player])
       state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      if state.mode == "pve" then
+        if state.active_user_id == state.bot_user_id then
+          state.bot_turn_pending = true
+          state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+        else
+          state.bot_turn_pending = false
+          state.bot_turn_ready_tick = 0
+        end
+      end
       broadcast_sync(dispatcher, state, nil, false)
+    end
+  end
+
+  if state.mode == "pve" and state.started and not state.ended and state.active_user_id == state.bot_user_id and state.bot_turn_pending and tick >= (state.bot_turn_ready_tick or 0) then
+    state.bot_turn_pending = false
+    state.bot_turn_ready_tick = 0
+    local actor_id = state.bot_user_id
+    local opp_id = state.owner_user_id
+    local action = choose_bot_action(state, actor_id, opp_id)
+    if action == nil then
+      state.active_user_id = opp_id
+      tick_cooldowns(state.stats[opp_id])
+      state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      state.bot_turn_pending = false
+      state.bot_turn_ready_tick = 0
+      broadcast_sync(dispatcher, state, nil, false)
+    else
+      local actor_stats = state.stats[actor_id]
+      if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+        local spend = action.actionType == 2 and CROSS_ABILITY_COST
+          or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+        actor_stats.mana = math.max(0, actor_stats.mana - spend)
+        if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
+        if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
+        if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
+      end
+
+      local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
+      if ok then
+        finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
+      else
+        nk.logger_warn("bot action rejected: " .. tostring(err))
+        state.active_user_id = opp_id
+        tick_cooldowns(state.stats[opp_id])
+        state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+        state.bot_turn_pending = false
+        state.bot_turn_ready_tick = 0
+        broadcast_sync(dispatcher, state, nil, false)
+      end
     end
   end
 

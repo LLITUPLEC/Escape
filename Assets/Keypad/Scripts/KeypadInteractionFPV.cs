@@ -33,16 +33,31 @@ public class KeypadInteractionFPV : MonoBehaviour
             if (cam == null) return;
         }
 
-        Vector2 pointerPos;
+        Vector2 pointerPos = default;
         bool pressDown;
 #if ENABLE_INPUT_SYSTEM
-        var mouse = Mouse.current;
-        if (mouse == null) return;
-        pointerPos = mouse.position.ReadValue();
-        pressDown = mouse.leftButton.wasPressedThisFrame;
+        var ts = Touchscreen.current;
+        if (ts != null && ts.primaryTouch.press.wasPressedThisFrame)
+        {
+            pointerPos = ts.primaryTouch.position.ReadValue();
+            pressDown = true;
+        }
+        else
+        {
+            var mouse = Mouse.current;
+            if (mouse != null)
+            {
+                pointerPos = mouse.position.ReadValue();
+                pressDown = mouse.leftButton.wasPressedThisFrame;
+            }
+            else
+                pressDown = false;
+        }
 #else
         pointerPos = Input.mousePosition;
-        pressDown = Input.GetMouseButtonDown(0);
+        pressDown = Input.touchCount > 0
+            ? Input.GetTouch(0).phase == TouchPhase.Began
+            : Input.GetMouseButtonDown(0);
 #endif
 
         if (pressDown)

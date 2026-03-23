@@ -36,7 +36,9 @@ namespace Project.Match3
 
         // "a" = sorted userId[0], "b" = sorted userId[1]
         public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd;
+        public int aMaxHp;
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd;
+        public int bMaxHp;
 
         public bool extraTurn;      // active player gets another turn
         public string activeUserId; // who just acted

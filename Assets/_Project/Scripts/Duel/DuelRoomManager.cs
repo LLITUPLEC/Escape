@@ -562,7 +562,7 @@ namespace Project.Duel
             if (!TryGetClick(out var clickPos))
                 return;
 
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            if (IsPointerOverUiThisFrame())
                 return;
 
             var cam = Camera.main;
@@ -650,16 +650,46 @@ namespace Project.Duel
         {
             position = default;
 #if ENABLE_INPUT_SYSTEM
+            var ts = Touchscreen.current;
+            if (ts != null && ts.primaryTouch.press.wasPressedThisFrame)
+            {
+                position = ts.primaryTouch.position.ReadValue();
+                return true;
+            }
             var mouse = Mouse.current;
-            if (mouse == null) return false;
-            if (!mouse.leftButton.wasPressedThisFrame) return false;
-
-            position = mouse.position.ReadValue();
-            return true;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                position = mouse.position.ReadValue();
+                return true;
+            }
+            return false;
 #else
+            if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                position = Input.GetTouch(0).position;
+                return true;
+            }
             if (!Input.GetMouseButtonDown(0)) return false;
             position = Input.mousePosition;
             return true;
+#endif
+        }
+
+        private static bool IsPointerOverUiThisFrame()
+        {
+            if (EventSystem.current == null) return false;
+#if ENABLE_INPUT_SYSTEM
+            var ts = Touchscreen.current;
+            if (ts != null && ts.primaryTouch.press.wasPressedThisFrame)
+                return EventSystem.current.IsPointerOverGameObject(ts.primaryTouch.touchId.ReadValue());
+            var mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                return EventSystem.current.IsPointerOverGameObject();
+            return false;
+#else
+            if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+                return EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId);
+            return Input.GetMouseButtonDown(0) && EventSystem.current.IsPointerOverGameObject();
 #endif
         }
 
