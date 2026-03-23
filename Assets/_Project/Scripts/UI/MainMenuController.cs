@@ -69,6 +69,7 @@ namespace Project.UI
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
             EnsureProfileHud();
+            ApplySafeAreaClamp();
         }
 
 #if UNITY_EDITOR
@@ -84,6 +85,7 @@ namespace Project.UI
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshProfileHudAsync(_onlineCts.Token);
+            ApplySafeAreaClamp();
         }
 
         private void OnDisable()
@@ -361,6 +363,89 @@ namespace Project.UI
             if (_profileXpFillRt != null) _profileXpFillRt.anchorMax = new Vector2(0f, 1f);
         }
 
+        private void ApplySafeAreaClamp()
+        {
+            // На некоторых Android-экранах safe area не совпадает с полным экраном.
+            // Мы “поджимаем” UI внутрь, чтобы подписи не уходили за границы.
+            var canvas = FindFirstObjectByType<Canvas>();
+            if (canvas == null) return;
+            var canvasRect = canvas.transform as RectTransform;
+            if (canvasRect == null) return;
+
+            var safe = Screen.safeArea;
+            if (safe.width <= 0 || safe.height <= 0) return;
+
+            const float paddingPx = 14f;
+            if (_match3StatsRoot != null && _match3StatsRoot.gameObject.activeSelf)
+                ClampRectToSafeArea(_match3StatsRoot, canvasRect, safe, paddingPx);
+            if (_profileHudRoot != null && _profileHudRoot.gameObject.activeSelf)
+                ClampRectToSafeArea(_profileHudRoot, canvasRect, safe, paddingPx);
+        }
+
+        private static void ClampRectToSafeArea(RectTransform rt, RectTransform canvasRect, Rect safePixels, float paddingPx)
+        {
+            if (rt == null || canvasRect == null) return;
+
+            var minScreen = safePixels.position;
+            var maxScreen = new Vector2(safePixels.position.x + safePixels.width, safePixels.position.y + safePixels.height);
+
+            Vector2 safeLocalMin;
+            Vector2 safeLocalMax;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, minScreen, null, out safeLocalMin);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, maxScreen, null, out safeLocalMax);
+
+            float safeMinX = Mathf.Min(safeLocalMin.x, safeLocalMax.x);
+            float safeMaxX = Mathf.Max(safeLocalMin.x, safeLocalMax.x);
+            float safeMinY = Mathf.Min(safeLocalMin.y, safeLocalMax.y);
+            float safeMaxY = Mathf.Max(safeLocalMin.y, safeLocalMax.y);
+
+            var cornersWorld = new Vector3[4];
+            rt.GetWorldCorners(cornersWorld);
+            float minX = cornersWorld[0].x;
+            float maxX = cornersWorld[0].x;
+            float minY = cornersWorld[0].y;
+            float maxY = cornersWorld[0].y;
+
+            for (int i = 1; i < 4; i++)
+            {
+                minX = Mathf.Min(minX, cornersWorld[i].x);
+                maxX = Mathf.Max(maxX, cornersWorld[i].x);
+                minY = Mathf.Min(minY, cornersWorld[i].y);
+                maxY = Mathf.Max(maxY, cornersWorld[i].y);
+            }
+
+            // Приводим world-координаты к локальным canvas-координатам
+            var local0 = canvasRect.InverseTransformPoint(cornersWorld[0]);
+            var local1 = canvasRect.InverseTransformPoint(cornersWorld[1]);
+            var local2 = canvasRect.InverseTransformPoint(cornersWorld[2]);
+            var local3 = canvasRect.InverseTransformPoint(cornersWorld[3]);
+            var cornersLocal = new[] { local0, local1, local2, local3 };
+
+            minX = cornersLocal[0].x;
+            maxX = cornersLocal[0].x;
+            minY = cornersLocal[0].y;
+            maxY = cornersLocal[0].y;
+
+            for (int i = 1; i < 4; i++)
+            {
+                minX = Mathf.Min(minX, cornersLocal[i].x);
+                maxX = Mathf.Max(maxX, cornersLocal[i].x);
+                minY = Mathf.Min(minY, cornersLocal[i].y);
+                maxY = Mathf.Max(maxY, cornersLocal[i].y);
+            }
+
+            float offsetX = 0f;
+            if (minX < safeMinX + paddingPx) offsetX = (safeMinX + paddingPx) - minX;
+            else if (maxX > safeMaxX - paddingPx) offsetX = (safeMaxX - paddingPx) - maxX;
+
+            float offsetY = 0f;
+            if (minY < safeMinY + paddingPx) offsetY = (safeMinY + paddingPx) - minY;
+            else if (maxY > safeMaxY - paddingPx) offsetY = (safeMaxY - paddingPx) - maxY;
+
+            if (Mathf.Abs(offsetX) < 0.01f && Mathf.Abs(offsetY) < 0.01f) return;
+            rt.anchoredPosition += new Vector2(offsetX, offsetY);
+        }
+
         private void EnsureMatch3StatsToggleButton()
         {
             if (_match3StatsToggleButton != null) return;
@@ -410,6 +495,7 @@ namespace Project.UI
             if (_match3StatsRoot != null)
                 _match3StatsRoot.gameObject.SetActive(_match3StatsVisible);
             UpdateMatch3StatsToggleVisual();
+            ApplySafeAreaClamp();
         }
 
         private void UpdateMatch3StatsToggleVisual()
