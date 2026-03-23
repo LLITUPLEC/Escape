@@ -135,6 +135,8 @@ public static class Match3PrefabCreator
         var so   = new SerializedObject(bv);
         so.FindProperty("ballsAtlas").objectReferenceValue =
             AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/img/balls-sprite.png");
+        so.FindProperty("selectionRingTexture").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/img/border.png");
         so.ApplyModifiedPropertiesWithoutUndo();
 
         // Decorative frame

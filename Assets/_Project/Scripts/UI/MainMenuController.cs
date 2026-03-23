@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Match3;
 using Project.Nakama;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -78,11 +79,13 @@ namespace Project.UI
 
         private void OnBotsClicked()
         {
-            Debug.Log("Режим 'Боты' пока заглушка.");
+            Match3LaunchContext.SetMode(Match3LaunchMode.SoloBot);
+            SceneManager.LoadScene("DuelMatch3");
         }
 
         private void OnMatch3Clicked()
         {
+            Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
             SceneManager.LoadScene("DuelMatch3");
         }
 

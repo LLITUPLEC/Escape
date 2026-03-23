@@ -73,8 +73,12 @@ namespace Project.Duel
         private bool _spawnedLocal;
         private bool _preferLeftUntilRemoteKnown = true;
         private string _opponentUserId;
+        private string _duelMatchmakerTicket;
         private bool _isQuitting;
         private bool _matchEnded;
+        private bool _isSoloMode;
+        private Coroutine _searchCountdownRoutine;
+        private Text _searchCountdownText;
 
         private DuelKeypadModal _keypadModal;
         private Match3SearchingPanel _searchingPanel;
@@ -105,8 +109,11 @@ namespace Project.Duel
         private readonly Dictionary<int, List<string>> _attemptHistoryByDoor = new();
         private CanvasGroup _mobileExitKeypadGroup;
         private Button _mobileExitKeypadButton;
+        private readonly Dictionary<int, string> _soloPinsByDoor = new();
+        private readonly System.Random _soloRng = new();
 
         private const float KeypadInteractDistance = 2.6f;
+        private const int DuelMatchmakingTimeoutSeconds = 30;
         private const int LeftDoor1Id = DuelDoorPins.LeftDoor1Id;
         private const int LeftDoor2Id = DuelDoorPins.LeftDoor2Id;
         private const int RightDoor1Id = DuelDoorPins.RightDoor1Id;
@@ -161,20 +168,68 @@ namespace Project.Duel
             {
                 UnhookSocket(NakamaBootstrap.Instance.Socket);
             }
+            _ = CancelDuelMatchmakerTicketAsync();
 
             if (_searchingPanel != null)
                 _searchingPanel.OnCancelClicked -= OnSearchCancelClicked;
+            StopSearchCountdown();
         }
 
         private void ShowMatchmakingOverlay(string text)
         {
             EnsureSearchingPanel();
+            EnsureSearchCountdownText();
             _searchingPanel?.Show(text);
         }
 
         private void HideMatchmakingOverlay()
         {
+            StopSearchCountdown();
+            if (_searchCountdownText != null)
+                _searchCountdownText.gameObject.SetActive(false);
             _searchingPanel?.Hide();
+        }
+
+        private void StartSearchCountdown(string baseText, int timeoutSeconds)
+        {
+            StopSearchCountdown();
+            _searchCountdownRoutine = StartCoroutine(SearchCountdownRoutine(baseText, timeoutSeconds));
+        }
+
+        private void StopSearchCountdown()
+        {
+            if (_searchCountdownRoutine == null) return;
+            StopCoroutine(_searchCountdownRoutine);
+            _searchCountdownRoutine = null;
+        }
+
+        private IEnumerator SearchCountdownRoutine(string baseText, int timeoutSeconds)
+        {
+            var left = Mathf.Max(1, timeoutSeconds);
+            while (left > 0)
+            {
+                _searchingPanel?.Show($"{baseText}\nАвто-переход в соло через {left}с");
+                SetCountdownText(left);
+                yield return new WaitForSecondsRealtime(1f);
+                left--;
+            }
+            SetCountdownText(0);
+            _searchCountdownRoutine = null;
+        }
+
+        private void SetCountdownText(int secondsLeft)
+        {
+            EnsureSearchCountdownText();
+            if (_searchCountdownText == null) return;
+            if (secondsLeft > 0)
+            {
+                _searchCountdownText.gameObject.SetActive(true);
+                _searchCountdownText.text = $"Соло через: {secondsLeft:00}с";
+            }
+            else
+            {
+                _searchCountdownText.gameObject.SetActive(false);
+            }
         }
 
         private void EnsureSearchingPanel()
@@ -205,7 +260,40 @@ namespace Project.Duel
             }
             _searchingPanel.transform.SetAsLastSibling();
             _searchingPanel.OnCancelClicked += OnSearchCancelClicked;
+            EnsureSearchCountdownText();
             _searchingPanel.Hide();
+        }
+
+        private void EnsureSearchCountdownText()
+        {
+            if (_searchingPanel == null) return;
+            if (_searchCountdownText != null) return;
+            var root = _searchingPanel.transform as RectTransform;
+            if (root == null) return;
+
+            var go = new GameObject("DuelSearchCountdownText");
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(root, false);
+            rt.anchorMin = new Vector2(0.5f, 0.70f);
+            rt.anchorMax = new Vector2(0.5f, 0.70f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(420f, 56f);
+
+            var txt = go.AddComponent<Text>();
+            txt.font = Match3BoardView.GetFont();
+            txt.fontSize = 36;
+            txt.fontStyle = FontStyle.Bold;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = new Color(1f, 0.92f, 0.4f, 1f);
+            txt.raycastTarget = false;
+
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            go.transform.SetAsLastSibling();
+            go.SetActive(false);
+            _searchCountdownText = txt;
         }
 
         private void OnSearchCancelClicked()
@@ -270,7 +358,23 @@ namespace Project.Duel
             if (cubeTf == null) return;
             if (!TryGetDoorIdFromCubeName(cubeTf.name, out var doorId, out var codeLen)) return;
             if (_doorOpenedById[doorId]) return;
-            if (_match == null) return;
+            if (!_isSoloMode && _match == null) return;
+            if (_isSoloMode)
+            {
+                var soloPin = GetSoloPin(doorId, codeLen);
+                _localMover.enabled = false;
+                EnsureKeypadModal();
+                _keypadModal.Show(soloPin, codeLen, () =>
+                {
+                    OpenDoorAndSync(doorId, sendNetwork: false, attemptsUsed: GetCurrentDoorAttemptNumber(doorId));
+                    if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+                }, doorId, onClosed: () =>
+                {
+                    if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+                });
+                return;
+            }
+
             if (!TryGetSortedDuelPair(out var uaF, out var ubF))
             {
                 Debug.LogWarning("[Duel] Клавиатура: нет пары user id для PIN (ждите соперника).");
@@ -508,7 +612,22 @@ namespace Project.Duel
                 return;
 
             if (_doorOpenedById[doorId]) return;
-            if (_match == null) return;
+            if (!_isSoloMode && _match == null) return;
+            if (_isSoloMode)
+            {
+                var soloPin = GetSoloPin(doorId, codeLen);
+                _localMover.enabled = false;
+                _keypadModal.Show(soloPin, codeLen, () =>
+                {
+                    OpenDoorAndSync(doorId, sendNetwork: false, attemptsUsed: GetCurrentDoorAttemptNumber(doorId));
+                    if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+                }, doorId, onClosed: () =>
+                {
+                    if (_localMover != null && !_matchEnded) _localMover.enabled = true;
+                });
+                return;
+            }
+
             if (!TryGetSortedDuelPair(out var uaC, out var ubC))
             {
                 Debug.LogWarning("[Duel] Клавиатура: нет пары user id для PIN (ждите соперника).");
@@ -648,8 +767,19 @@ namespace Project.Duel
             _keypadGuessInFlight = false;
 
             keypad.EnsureDisplayReference();
-            keypad.ConfigureDuelSession(codeLen);
-            keypad.SetServerGuessInvoker(On3DKeypadGuessSubmitted);
+            if (_isSoloMode)
+            {
+                var pin = GetSoloPin(doorId, codeLen);
+                if (int.TryParse(pin, out var pinValue))
+                    keypad.ApplyCombinationAndReset(pinValue, codeLen);
+                else
+                    keypad.ConfigureDuelSession(codeLen);
+            }
+            else
+            {
+                keypad.ConfigureDuelSession(codeLen);
+                keypad.SetServerGuessInvoker(On3DKeypadGuessSubmitted);
+            }
             _activeKeypadWrongGuessHandler = OnActiveKeypadWrongGuess;
             keypad.WrongGuessSubmitted += _activeKeypadWrongGuessHandler;
 
@@ -775,6 +905,7 @@ namespace Project.Duel
 
         private void On3DKeypadGuessSubmitted(string guess)
         {
+            if (_isSoloMode) return;
             if (_match == null || !_keypadFocusActive || _keypadGuessInFlight) return;
             var history = GetAttemptHistory(_activeDoorId);
             if (history.Count >= MaxDoorAttempts)
@@ -1002,7 +1133,7 @@ namespace Project.Duel
 
             if (opened) _doorOpenedById[doorId] = true;
 
-            if (sendNetwork && !_matchEnded)
+            if (sendNetwork && !_matchEnded && !_isSoloMode)
             {
                 _ = SendDoorOpenedAsync(doorId, attemptsUsed);
             }
@@ -1123,6 +1254,7 @@ namespace Project.Duel
 
         private async Task TryEnsureDuelKeypadPinsAsync()
         {
+            if (_isSoloMode) return;
             if (_match == null) return;
             if (!TryGetSortedDuelPair(out var a, out var b)) return;
             try
@@ -1143,10 +1275,26 @@ namespace Project.Duel
             // Любые игроки, 2 человека.
             ct.ThrowIfCancellationRequested();
             Debug.Log("[Duel] Matchmaker: enqueue ticket...");
-            await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(query: "*", minCount: 2, maxCount: 2);
+            var ticket = await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(query: "*", minCount: 2, maxCount: 2);
+            _duelMatchmakerTicket = ticket?.Ticket;
+            StartSearchCountdown("Поиск соперника...", DuelMatchmakingTimeoutSeconds);
 
-            var matched = await _mmTcs.Task;
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(DuelMatchmakingTimeoutSeconds), ct);
+            var matchedTask = _mmTcs.Task;
+            var completed = await Task.WhenAny(matchedTask, timeoutTask);
+            StopSearchCountdown();
+            if (completed != matchedTask)
+            {
+                ct.ThrowIfCancellationRequested();
+                _mmTcs = null;
+                await CancelDuelMatchmakerTicketAsync();
+                StartSoloDuelMode();
+                return;
+            }
+
+            var matched = await matchedTask;
             _mmTcs = null;
+            _duelMatchmakerTicket = null;
 
             ct.ThrowIfCancellationRequested();
             Debug.Log($"[Duel] Matchmaker matched. Joining match...");
@@ -1157,6 +1305,64 @@ namespace Project.Duel
             // Локального игрока спавним всегда.
             EnsureLocalSpawn();
             SpawnInitialPresences(_match);
+        }
+
+        private async Task CancelDuelMatchmakerTicketAsync()
+        {
+            var ticket = _duelMatchmakerTicket;
+            _duelMatchmakerTicket = null;
+            if (string.IsNullOrWhiteSpace(ticket)) return;
+            try
+            {
+                var socket = NakamaBootstrap.Instance?.Socket;
+                if (socket != null && socket.IsConnected)
+                    await socket.RemoveMatchmakerAsync(ticket);
+            }
+            catch
+            {
+                // ignore cleanup errors
+            }
+        }
+
+        private void StartSoloDuelMode()
+        {
+            _isSoloMode = true;
+            _match = null;
+            _opponentUserId = "solo";
+            _preferLeftUntilRemoteKnown = false;
+            GenerateSoloPins();
+            EnsureLocalSpawn();
+            if (_playersByUserId.TryGetValue(_myUserId, out var local))
+                local.transform.position = _spawnLeftPos;
+            if (hud != null) hud.ShowBanner("Соперник не найден.\nСоло-режим.");
+        }
+
+        private void GenerateSoloPins()
+        {
+            _soloPinsByDoor.Clear();
+            for (var doorId = 1; doorId <= 4; doorId++)
+            {
+                if (!DuelDoorPins.TryGetCodeLengthForDoorId(doorId, out var codeLen)) continue;
+                _soloPinsByDoor[doorId] = GenerateNumericCode(codeLen);
+            }
+        }
+
+        private string GetSoloPin(int doorId, int fallbackLen)
+        {
+            if (_soloPinsByDoor.TryGetValue(doorId, out var pin) && !string.IsNullOrEmpty(pin))
+                return pin;
+            var len = Mathf.Max(1, fallbackLen);
+            var generated = GenerateNumericCode(len);
+            _soloPinsByDoor[doorId] = generated;
+            return generated;
+        }
+
+        private string GenerateNumericCode(int codeLen)
+        {
+            var chars = new char[Mathf.Max(1, codeLen)];
+            for (var i = 0; i < chars.Length; i++)
+                chars[i] = (char)('0' + _soloRng.Next(0, 10));
+            return new string(chars);
         }
 
         private void OnMatchmakerMatched(IMatchmakerMatched matched)

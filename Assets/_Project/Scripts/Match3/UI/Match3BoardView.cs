@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Project.Match3
@@ -21,12 +21,21 @@ namespace Project.Match3
         [Header("Piece Atlas (optional)")]
         [SerializeField] private Texture2D ballsAtlas;
         [Header("Selection Ring")]
+        [SerializeField] private Texture2D selectionRingTexture;
         [SerializeField] private float selectionRingScale = 1.4f;
         [SerializeField] private float selectionRingRotationSpeed = -99f;
 
         private const int Size = Match3BoardLogic.Size;
-        private const string BallsSpriteRelativePath = "_Project/img/balls-sprite.png";
-        private const string SelectionBorderRelativePath = "_Project/img/border.png";
+        private static readonly string[] BallsAtlasResourceCandidates =
+        {
+            "_Project/img/balls-sprite",
+            "balls-sprite",
+        };
+        private static readonly string[] SelectionRingResourceCandidates =
+        {
+            "_Project/img/border",
+            "border",
+        };
 
         private Image[,] _bg;   // piece colour
         private Image[,] _sel;  // selection overlay
@@ -44,6 +53,8 @@ namespace Project.Match3
 
         /// <summary>Fired when the player clicks a cell.</summary>
         public event Action<int, int> CellClicked;
+        /// <summary>Fired when the player swipes from one cell to adjacent cell.</summary>
+        public event Action<int, int, int, int> CellSwiped;
 
         // ─── Build ────────────────────────────────────────────────────────────────
 
@@ -102,12 +113,12 @@ namespace Project.Match3
                 var hitImg = cellGo.AddComponent<Image>();
                 hitImg.color = Color.clear;
 
-                var btn = cellGo.AddComponent<Button>();
-                btn.targetGraphic = hitImg;
-                var cb = btn.colors;
-                cb.normalColor = cb.highlightedColor = cb.pressedColor = cb.disabledColor = Color.clear;
-                btn.colors = cb;
-                btn.onClick.AddListener(() => CellClicked?.Invoke(cx, cy));
+                var input = cellGo.AddComponent<Match3CellInput>();
+                input.Init(
+                    cx,
+                    cy,
+                    () => CellClicked?.Invoke(cx, cy),
+                    (fx, fy, tx, ty) => CellSwiped?.Invoke(fx, fy, tx, ty));
 
                 // ── Piece colour background ────────────────────────────────────────
                 var bgGo = new GameObject("Bg");
@@ -579,30 +590,22 @@ namespace Project.Match3
         private void TryLoadBallsAtlas()
         {
             if (ballsAtlas != null) return;
-            ballsAtlas = LoadTextureFromDisk(BallsSpriteRelativePath);
+            ballsAtlas = TryLoadTextureFromResources(BallsAtlasResourceCandidates);
             if (ballsAtlas == null)
-                Debug.LogWarning($"[Match3BoardView] Unable to load texture: {BallsSpriteRelativePath}");
+                Debug.LogWarning("[Match3BoardView] ballsAtlas is not assigned. Falling back to symbolic pieces.");
         }
 
-        private static Texture2D LoadTextureFromDisk(string relativePath)
+        private static Texture2D TryLoadTextureFromResources(string[] candidates)
         {
-            try
+            if (candidates == null) return null;
+            for (var i = 0; i < candidates.Length; i++)
             {
-                var fullPath = Path.Combine(Application.dataPath, relativePath);
-                if (!File.Exists(fullPath)) return null;
-
-                var bytes = File.ReadAllBytes(fullPath);
-                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!tex.LoadImage(bytes)) return null;
-
-                tex.filterMode = FilterMode.Bilinear;
-                tex.wrapMode = TextureWrapMode.Clamp;
-                return tex;
+                var path = candidates[i];
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                var tex = Resources.Load<Texture2D>(path);
+                if (tex != null) return tex;
             }
-            catch
-            {
-                return null;
-            }
+            return null;
         }
 
         private void EnsureInactiveOverlay()
@@ -762,7 +765,9 @@ namespace Project.Match3
         private Texture2D GetSelectionRingTexture()
         {
             if (_selectionRingTexture != null) return _selectionRingTexture;
-            _selectionRingTexture = LoadTextureFromDisk(SelectionBorderRelativePath);
+            _selectionRingTexture = selectionRingTexture != null
+                ? selectionRingTexture
+                : TryLoadTextureFromResources(SelectionRingResourceCandidates);
             if (_selectionRingTexture == null)
                 _selectionRingTexture = CreateRingTexture(128, 0.72f, 0.92f);
             return _selectionRingTexture;
@@ -817,6 +822,67 @@ namespace Project.Match3
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (_font == null) _font = Resources.GetBuiltinResource<Font>("Arial.ttf");
             return _font;
+        }
+    }
+
+    internal sealed class Match3CellInput :
+        MonoBehaviour,
+        IPointerDownHandler,
+        IPointerClickHandler,
+        IDragHandler,
+        IEndDragHandler
+    {
+        private const float SwipeThresholdPx = 22f;
+
+        private int _x;
+        private int _y;
+        private Action _onClick;
+        private Action<int, int, int, int> _onSwipe;
+        private Vector2 _pointerDownPos;
+        private bool _swipeTriggered;
+
+        public void Init(int x, int y, Action onClick, Action<int, int, int, int> onSwipe)
+        {
+            _x = x;
+            _y = y;
+            _onClick = onClick;
+            _onSwipe = onSwipe;
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            _pointerDownPos = eventData.position;
+            _swipeTriggered = false;
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (_swipeTriggered) return;
+            var delta = eventData.position - _pointerDownPos;
+            if (delta.sqrMagnitude < SwipeThresholdPx * SwipeThresholdPx) return;
+
+            var absX = Mathf.Abs(delta.x);
+            var absY = Mathf.Abs(delta.y);
+            var tx = _x;
+            var ty = _y;
+            if (absX >= absY)
+                tx += delta.x >= 0f ? 1 : -1;
+            else
+                ty += delta.y >= 0f ? -1 : 1; // UI y-axis is inverted for board coordinates.
+
+            _swipeTriggered = true;
+            _onSwipe?.Invoke(_x, _y, tx, ty);
+        }
+
+        public void OnEndDrag(PointerEventData eventData)
+        {
+            // keep _swipeTriggered state for potential click suppression.
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_swipeTriggered) return;
+            _onClick?.Invoke();
         }
     }
 }

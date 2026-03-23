@@ -93,6 +93,15 @@ namespace Project.Match3
         private const int   CrossAbilityCost  = 20;
         private const int   SquareAbilityCost = 20;
         private const int   PetardAbilityCost = 30;
+        private const int   CrossCooldownTurns = 2;
+        private const int   SquareCooldownTurns = 2;
+        private const int   PetardCooldownTurns = 1;
+        private const int   AbilityBaseDamage = 3;
+        private const int   PetardDamage = 15;
+        private const int   SkullDamage = 5;
+        private const int   AnkhHeal = 1;
+        private const string LocalPlayerId = "a-local-player";
+        private const string BotPlayerId = "z-bot-player";
 
         // ─── Nakama ───────────────────────────────────────────────────────────────
         private IMatch    _match;
@@ -115,6 +124,10 @@ namespace Project.Match3
         private bool _hasInitialBoardSync;
         private int _remoteSelX = -1, _remoteSelY = -1;
         private bool _resultRecorded;
+        private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
+        private bool _isSoloBotMode;
+        private System.Random _botRandom;
+        private Coroutine _botTurnRoutine;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -138,12 +151,21 @@ namespace Project.Match3
             _board   = new Match3BoardLogic();
             _myStats = new PlayerStats();
             _opStats = new PlayerStats();
+            _launchMode = Match3LaunchContext.ConsumeMode();
+            _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
+            _botRandom = new System.Random(Environment.TickCount);
 
             EnsureCamera();
             BuildUI();
             EnsureAudioSource();
             TryAutoAssignSfxInEditor();
-            _searchingPanel?.Show("Поиск соперника…");
+            _searchingPanel?.Show(_isSoloBotMode ? "Подготовка боя с ботом…" : "Поиск соперника…");
+
+            if (_isSoloBotMode)
+            {
+                StartSoloBotGame();
+                return;
+            }
 
             try
             {
@@ -164,6 +186,11 @@ namespace Project.Match3
 
         private void OnDestroy()
         {
+            if (_botTurnRoutine != null)
+            {
+                StopCoroutine(_botTurnRoutine);
+                _botTurnRoutine = null;
+            }
             _mmTcs?.TrySetCanceled();
             _ = CancelMatchmakerTicketAsync();
             _cts?.Cancel();
@@ -230,6 +257,31 @@ namespace Project.Match3
             StartGameWaitingServer();
         }
 
+        private void StartSoloBotGame()
+        {
+            _myUserId = LocalPlayerId;
+            _opUserId = BotPlayerId;
+            _resultRecorded = false;
+            _gameEnded = false;
+            _hasInitialBoardSync = true;
+
+            _myPanel?.SetPlayerName("Вы");
+            _opPanel?.SetPlayerName("Компьютер");
+
+            _board.Init(_botRandom.Next());
+            _myStats = new PlayerStats();
+            _opStats = new PlayerStats();
+
+            _searchingPanel?.Hide();
+            _boardView?.RefreshAll(_board);
+            RefreshStatsUI();
+            _abilityPanel?.Refresh(_myStats, false, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+
+            var myFirst = _botRandom.NextDouble() >= 0.5;
+            if (myFirst) BeginMyTurn();
+            else BeginOpponentTurn();
+        }
+
         // ─── Game Flow ────────────────────────────────────────────────────────────
 
         private void StartGameWaitingServer()
@@ -249,6 +301,11 @@ namespace Project.Match3
 
         private void BeginMyTurn()
         {
+            if (_botTurnRoutine != null)
+            {
+                StopCoroutine(_botTurnRoutine);
+                _botTurnRoutine = null;
+            }
             _isMyTurn    = true;
             _turnTimer   = TurnDuration;
             _inputBlocked = false;
@@ -282,6 +339,12 @@ namespace Project.Match3
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
             _boardView?.SetDimmed(true);
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+
+            if (_isSoloBotMode && !_gameEnded)
+            {
+                if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
+                _botTurnRoutine = StartCoroutine(BotTurnRoutine());
+            }
         }
 
         private void OnTurnTimerExpired()
@@ -323,6 +386,22 @@ namespace Project.Match3
                 _selX = _selY = -1;
                 TrySwapCells(px, py, x, y);
             }
+        }
+
+        private void OnCellSwiped(int fromX, int fromY, int toX, int toY)
+        {
+            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (_pendingAbility.HasValue) return;
+            if (Mathf.Abs(fromX - toX) + Mathf.Abs(fromY - toY) != 1) return;
+
+            if (_selX >= 0 && _selY >= 0)
+            {
+                _boardView?.SetCellSelected(_selX, _selY, false);
+                SendSelectionSync(_selX, _selY, false);
+                _selX = _selY = -1;
+            }
+
+            TrySwapCells(fromX, fromY, toX, toY);
         }
 
         private void TrySwapCells(int x1, int y1, int x2, int y2)
@@ -416,21 +495,29 @@ namespace Project.Match3
 
         private void SendActionRequest(M3ActionRequest req)
         {
-            if (_match == null || _gameEnded) return;
+            if (_gameEnded) return;
+            if (_isSoloBotMode)
+            {
+                HandleLocalActionRequest(req, _myUserId);
+                return;
+            }
+            if (_match == null) return;
             _ = SendStateAsync(M3Op.ActionRequest,
                 Encoding.UTF8.GetBytes(JsonUtility.ToJson(req)));
         }
 
         private void SendSelectionSync(int x, int y, bool selected)
         {
-            if (_match == null || _gameEnded) return;
+            if (_gameEnded) return;
+            if (_isSoloBotMode) return;
+            if (_match == null) return;
             var msg = new M3SelectionSyncMsg { x = x, y = y, selected = selected };
             _ = SendStateAsync(M3Op.SelectionSync, Encoding.UTF8.GetBytes(JsonUtility.ToJson(msg)));
         }
 
         private void RequestSnapshot()
         {
-            if (_match == null || _gameEnded) return;
+            if (_isSoloBotMode || _match == null || _gameEnded) return;
             _ = SendStateAsync(M3Op.SnapshotRequest, Encoding.UTF8.GetBytes("{}"));
         }
 
@@ -449,6 +536,7 @@ namespace Project.Match3
         {
             try
             {
+                if (_isSoloBotMode) return;
                 if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
                     await NakamaBootstrap.Instance.Socket.SendMatchStateAsync(_match.Id, opCode, data);
             }
@@ -657,6 +745,11 @@ namespace Project.Match3
             {
                 _inputBlocked = !_isMyTurn;
                 _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                if (_isSoloBotMode && !_isMyTurn && !_gameEnded)
+                {
+                    if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
+                    _botTurnRoutine = StartCoroutine(BotTurnRoutine());
+                }
                 _remoteSyncRoutine = null;
                 yield break;
             }
@@ -666,6 +759,423 @@ namespace Project.Match3
             else             BeginOpponentTurn();
 
             _remoteSyncRoutine = null;
+        }
+
+        private IEnumerator BotTurnRoutine()
+        {
+            _botTurnRoutine = null;
+            yield return new WaitForSeconds(UnityEngine.Random.Range(0.85f, 1.45f));
+            if (_gameEnded || !_isSoloBotMode || _isMyTurn) yield break;
+
+            var action = BuildBotAction();
+            if (action == null)
+            {
+                AdvanceTurnWithoutAction(_opUserId);
+                yield break;
+            }
+
+            HandleLocalActionRequest(action, _opUserId);
+        }
+
+        private M3ActionRequest BuildBotAction()
+        {
+            var availableAbilities = new List<AbilityType>(3);
+            if (CanUseAbility(_opStats, AbilityType.Petard)) availableAbilities.Add(AbilityType.Petard);
+            if (CanUseAbility(_opStats, AbilityType.Cross)) availableAbilities.Add(AbilityType.Cross);
+            if (CanUseAbility(_opStats, AbilityType.Square)) availableAbilities.Add(AbilityType.Square);
+
+            if (availableAbilities.Count > 0 && _botRandom.NextDouble() < 0.35d)
+            {
+                var ability = availableAbilities[_botRandom.Next(availableAbilities.Count)];
+                return ability switch
+                {
+                    AbilityType.Petard => new M3ActionRequest
+                    {
+                        actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1,
+                    },
+                    AbilityType.Cross => new M3ActionRequest
+                    {
+                        actionType = 2, fromX = -1, fromY = -1, toX = -1, toY = -1,
+                        cx = _botRandom.Next(0, Match3BoardLogic.Size),
+                        cy = _botRandom.Next(0, Match3BoardLogic.Size),
+                    },
+                    _ => new M3ActionRequest
+                    {
+                        actionType = 3, fromX = -1, fromY = -1, toX = -1, toY = -1,
+                        cx = _botRandom.Next(0, Match3BoardLogic.Size),
+                        cy = _botRandom.Next(0, Match3BoardLogic.Size),
+                    },
+                };
+            }
+
+            var swaps = EnumerateValidSwaps();
+            if (swaps.Count == 0) return null;
+            var pick = swaps[_botRandom.Next(swaps.Count)];
+            return new M3ActionRequest
+            {
+                actionType = 1,
+                fromX = pick.fromX,
+                fromY = pick.fromY,
+                toX = pick.toX,
+                toY = pick.toY,
+                cx = -1,
+                cy = -1,
+            };
+        }
+
+        private List<(int fromX, int fromY, int toX, int toY)> EnumerateValidSwaps()
+        {
+            var list = new List<(int fromX, int fromY, int toX, int toY)>();
+            var snapshot = _board.ToArray();
+            for (var y = 0; y < Match3BoardLogic.Size; y++)
+            {
+                for (var x = 0; x < Match3BoardLogic.Size; x++)
+                {
+                    if (x + 1 < Match3BoardLogic.Size && IsSwapValid(snapshot, x, y, x + 1, y))
+                        list.Add((x, y, x + 1, y));
+                    if (y + 1 < Match3BoardLogic.Size && IsSwapValid(snapshot, x, y, x, y + 1))
+                        list.Add((x, y, x, y + 1));
+                }
+            }
+            return list;
+        }
+
+        private bool IsSwapValid(int[] boardArray, int x1, int y1, int x2, int y2)
+        {
+            var sim = new Match3BoardLogic();
+            sim.FromArray(boardArray);
+            return sim.TrySwap(x1, y1, x2, y2, out _);
+        }
+
+        private void HandleLocalActionRequest(M3ActionRequest req, string actorId)
+        {
+            if (!_isSoloBotMode || _gameEnded || req == null) return;
+            if (!_hasInitialBoardSync) return;
+            if (!string.Equals(actorId, _myUserId, StringComparison.Ordinal) &&
+                !string.Equals(actorId, _opUserId, StringComparison.Ordinal))
+                return;
+            if (!string.Equals(actorId, GetActiveUserId(), StringComparison.Ordinal)) return;
+
+            var actorStats = string.Equals(actorId, _myUserId, StringComparison.Ordinal) ? _myStats : _opStats;
+            var oppStats = ReferenceEquals(actorStats, _myStats) ? _opStats : _myStats;
+            if (!ValidateLocalAction(req, actorStats)) return;
+            var beforeBoard = _board.ToArray();
+            var simBoard = new Match3BoardLogic();
+            simBoard.FromArray(beforeBoard);
+
+            var msg = new M3BoardSyncMsg();
+            msg.actionType = req.actionType;
+            msg.fromX = req.fromX;
+            msg.fromY = req.fromY;
+            msg.toX = req.toX;
+            msg.toY = req.toY;
+            msg.abilityX = req.cx;
+            msg.abilityY = req.cy;
+
+            bool keepTurn;
+            bool extraTurn;
+            var actionApplied = ResolveLocalAction(simBoard, req, actorStats, oppStats, msg, out extraTurn, out keepTurn);
+            if (!actionApplied)
+            {
+                if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
+                {
+                    _inputBlocked = false;
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                }
+                return;
+            }
+
+            if (actorStats.hp <= 0 || oppStats.hp <= 0)
+            {
+                var winnerUserId = actorStats.hp > 0 ? actorId : OpponentOf(actorId);
+                _gameEnded = true;
+                msg.activeUserId = winnerUserId;
+                FillSyncStats(msg);
+                msg.board = simBoard.ToArray();
+                OnBoardSyncReceived(msg);
+                ShowGameOver(string.Equals(winnerUserId, _myUserId, StringComparison.Ordinal));
+                return;
+            }
+
+            if (!keepTurn)
+            {
+                if (!extraTurn)
+                {
+                    SwitchActiveUser();
+                    TickCooldownsForActive();
+                }
+                else
+                {
+                    TickCooldownsForActive();
+                }
+            }
+
+            msg.extraTurn = extraTurn;
+            msg.activeUserId = GetActiveUserId();
+            msg.board = simBoard.ToArray();
+            FillSyncStats(msg);
+            OnBoardSyncReceived(msg);
+        }
+
+        private bool ValidateLocalAction(M3ActionRequest req, PlayerStats actorStats)
+        {
+            if (req.actionType == 1)
+            {
+                if (!InBounds(req.fromX, req.fromY) || !InBounds(req.toX, req.toY)) return false;
+                return Mathf.Abs(req.fromX - req.toX) + Mathf.Abs(req.fromY - req.toY) == 1;
+            }
+
+            if (req.actionType == 2)
+            {
+                return InBounds(req.cx, req.cy) &&
+                       actorStats.mana >= CrossAbilityCost &&
+                       actorStats.crossCooldown <= 0;
+            }
+            if (req.actionType == 3)
+            {
+                return InBounds(req.cx, req.cy) &&
+                       actorStats.mana >= SquareAbilityCost &&
+                       actorStats.squareCooldown <= 0;
+            }
+            if (req.actionType == 4)
+            {
+                return actorStats.mana >= PetardAbilityCost &&
+                       actorStats.petardCooldown <= 0;
+            }
+            return false;
+        }
+
+        private bool ResolveLocalAction(
+            Match3BoardLogic board,
+            M3ActionRequest req,
+            PlayerStats actorStats,
+            PlayerStats oppStats,
+            M3BoardSyncMsg msg,
+            out bool extraTurn,
+            out bool keepTurn)
+        {
+            extraTurn = false;
+            keepTurn = false;
+            msg.animSteps = new List<M3AnimStep>();
+
+            if (req.actionType == 1)
+            {
+                if (!board.TrySwap(req.fromX, req.fromY, req.toX, req.toY, out var initialMatches))
+                    return false;
+
+                if (initialMatches != null && initialMatches.Count > 0)
+                {
+                    extraTurn = ApplyMatchEffects(actorStats, oppStats, initialMatches, extraTurn);
+                    board.ClearMatchedCells(initialMatches);
+                    msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
+                }
+
+                ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
+                return true;
+            }
+
+            if (req.actionType == 2 || req.actionType == 3 || req.actionType == 4)
+            {
+                SpendAbility(actorStats, req.actionType);
+
+                if (req.actionType == 4)
+                {
+                    oppStats.hp = Mathf.Max(0, oppStats.hp - PetardDamage);
+                    keepTurn = true;
+                    return true;
+                }
+
+                ApplyAbilityRewards(board, req.actionType, req.cx, req.cy, actorStats, oppStats);
+                var ability = req.actionType == 2 ? AbilityType.Cross : AbilityType.Square;
+                board.ApplyAbility(ability, req.cx, req.cy);
+                msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
+                ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ResolveCascades(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, M3BoardSyncMsg msg, ref bool extraTurn)
+        {
+            while (true)
+            {
+                var cascade = board.ApplyGravityAndRefill();
+                msg.animSteps.Add(new M3AnimStep { phase = 2, board = board.ToArray() });
+                if (cascade == null || cascade.Count == 0) break;
+
+                extraTurn = ApplyMatchEffects(actorStats, oppStats, cascade, extraTurn);
+                board.ClearMatchedCells(cascade);
+                msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
+            }
+        }
+
+        private bool ApplyMatchEffects(PlayerStats actorStats, PlayerStats oppStats, List<MatchResult> matches, bool extraTurn)
+        {
+            foreach (var match in matches)
+            {
+                if (match.count >= 5) extraTurn = true;
+                if (match.type == PieceType.GemRed || match.type == PieceType.GemYellow || match.type == PieceType.GemGreen)
+                {
+                    actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(match.type) * match.count);
+                }
+                else if (match.type == PieceType.Skull)
+                {
+                    oppStats.hp = Mathf.Max(0, oppStats.hp - SkullDamage * match.count);
+                }
+                else if (match.type == PieceType.Ankh)
+                {
+                    actorStats.hp = Mathf.Min(MaxHp, actorStats.hp + AnkhHeal * match.count);
+                }
+            }
+            return extraTurn;
+        }
+
+        private void ApplyAbilityRewards(Match3BoardLogic board, int actionType, int cx, int cy, PlayerStats actorStats, PlayerStats oppStats)
+        {
+            var skulls = 0;
+            var cells = CollectAbilityCells(actionType, cx, cy);
+            foreach (var (x, y) in cells)
+            {
+                var type = board[x, y];
+                if (type == PieceType.GemRed || type == PieceType.GemYellow || type == PieceType.GemGreen)
+                    actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(type));
+                else if (type == PieceType.Ankh)
+                    actorStats.hp = Mathf.Min(MaxHp, actorStats.hp + AnkhHeal);
+                else if (type == PieceType.Skull)
+                    skulls++;
+            }
+
+            oppStats.hp = Mathf.Max(0, oppStats.hp - (AbilityBaseDamage + SkullDamage * skulls));
+        }
+
+        private List<(int x, int y)> CollectAbilityCells(int actionType, int cx, int cy)
+        {
+            var cells = new List<(int x, int y)>(12);
+            var used = new HashSet<int>();
+            void Add(int x, int y)
+            {
+                if (!InBounds(x, y)) return;
+                var key = y * Match3BoardLogic.Size + x;
+                if (!used.Add(key)) return;
+                cells.Add((x, y));
+            }
+
+            if (actionType == 2)
+            {
+                for (var dx = -2; dx <= 2; dx++) Add(cx + dx, cy);
+                for (var dy = -2; dy <= 2; dy++) Add(cx, cy + dy);
+            }
+            else if (actionType == 3)
+            {
+                for (var dy = -1; dy <= 1; dy++)
+                    for (var dx = -1; dx <= 1; dx++)
+                        Add(cx + dx, cy + dy);
+            }
+            else if (actionType == 4)
+            {
+                Add(cx, cy);
+            }
+            return cells;
+        }
+
+        private static int GetManaByGemType(PieceType type)
+        {
+            return type switch
+            {
+                PieceType.GemRed => 5,
+                PieceType.GemYellow => 3,
+                PieceType.GemGreen => 1,
+                _ => 0,
+            };
+        }
+
+        private static bool CanUseAbility(PlayerStats stats, AbilityType ability)
+        {
+            if (ability == AbilityType.Petard)
+                return stats.mana >= PetardAbilityCost && stats.petardCooldown <= 0;
+            if (ability == AbilityType.Cross)
+                return stats.mana >= CrossAbilityCost && stats.crossCooldown <= 0;
+            return stats.mana >= SquareAbilityCost && stats.squareCooldown <= 0;
+        }
+
+        private static bool InBounds(int x, int y)
+        {
+            return x >= 0 && x < Match3BoardLogic.Size && y >= 0 && y < Match3BoardLogic.Size;
+        }
+
+        private void SpendAbility(PlayerStats stats, int actionType)
+        {
+            if (actionType == 2)
+            {
+                stats.mana = Mathf.Max(0, stats.mana - CrossAbilityCost);
+                stats.crossCooldown = CrossCooldownTurns;
+            }
+            else if (actionType == 3)
+            {
+                stats.mana = Mathf.Max(0, stats.mana - SquareAbilityCost);
+                stats.squareCooldown = SquareCooldownTurns;
+            }
+            else if (actionType == 4)
+            {
+                stats.mana = Mathf.Max(0, stats.mana - PetardAbilityCost);
+                stats.petardCooldown = PetardCooldownTurns;
+            }
+        }
+
+        private void TickCooldownsForActive()
+        {
+            var active = GetActiveStats();
+            if (active == null) return;
+            if (active.crossCooldown > 0) active.crossCooldown--;
+            if (active.squareCooldown > 0) active.squareCooldown--;
+            if (active.petardCooldown > 0) active.petardCooldown--;
+        }
+
+        private void FillSyncStats(M3BoardSyncMsg msg)
+        {
+            msg.aHp = _myStats.hp;
+            msg.aMana = _myStats.mana;
+            msg.aCrossCd = _myStats.crossCooldown;
+            msg.aSquareCd = _myStats.squareCooldown;
+            msg.aPetardCd = _myStats.petardCooldown;
+            msg.bHp = _opStats.hp;
+            msg.bMana = _opStats.mana;
+            msg.bCrossCd = _opStats.crossCooldown;
+            msg.bSquareCd = _opStats.squareCooldown;
+            msg.bPetardCd = _opStats.petardCooldown;
+        }
+
+        private void AdvanceTurnWithoutAction(string actorId)
+        {
+            if (!string.Equals(actorId, GetActiveUserId(), StringComparison.Ordinal)) return;
+            SwitchActiveUser();
+            TickCooldownsForActive();
+            var msg = new M3BoardSyncMsg
+            {
+                actionType = 0,
+                fromX = -1,
+                fromY = -1,
+                toX = -1,
+                toY = -1,
+                abilityX = -1,
+                abilityY = -1,
+                activeUserId = GetActiveUserId(),
+                extraTurn = false,
+                board = _board.ToArray(),
+            };
+            FillSyncStats(msg);
+            OnBoardSyncReceived(msg);
+        }
+
+        private string GetActiveUserId() => _isMyTurn ? _myUserId : _opUserId;
+        private PlayerStats GetActiveStats() => _isMyTurn ? _myStats : _opStats;
+        private string OpponentOf(string userId) =>
+            string.Equals(userId, _myUserId, StringComparison.Ordinal) ? _opUserId : _myUserId;
+
+        private void SwitchActiveUser()
+        {
+            _isMyTurn = !_isMyTurn;
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -926,6 +1436,7 @@ namespace Project.Match3
             if (_boardView == null) _boardView = BuildBoardProcedural(boardColTr);
 
             _boardView.CellClicked += OnCellClicked;
+            _boardView.CellSwiped += OnCellSwiped;
             _boardView.Build();
 
             // ── Right panel (opponent) ────────────────────────────────────────────

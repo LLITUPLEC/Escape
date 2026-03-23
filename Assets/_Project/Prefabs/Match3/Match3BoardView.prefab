@@ -203,6 +203,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.Match3BoardView
   cellContainer: {fileID: 6281085174558679260}
   ballsAtlas: {fileID: 2800000, guid: b7660594331a05844a0dc97b81f766de, type: 3}
+  selectionRingTexture: {fileID: 2800000, guid: aff15b6b355e4664791da90ac12a6a2e, type: 3}
 --- !u!1 &5060342242228243028
 GameObject:
   m_ObjectHideFlags: 0
