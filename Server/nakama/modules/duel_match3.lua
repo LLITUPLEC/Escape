@@ -27,6 +27,74 @@ local OP_SELECTION_SYNC = 15
 local OP_SNAPSHOT_REQUEST = 16
 local STATS_COLLECTION = "duel_match3_stats"
 local STATS_KEY = "summary"
+local PVE_PROGRESS_COLLECTION = "duel_match3_progress"
+local PVE_PROGRESS_KEY = "profile"
+local BOT_USER_ID_PREFIX = "zz-bot-"
+
+local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
+
+local BOTS = {
+  slime_1 = {
+    id = "slime_1", name = "Слизень-разведчик", difficulty = 1,
+    hp_bonus = 0, start_mana = 0,
+    ai_ability_chance = 0.12, petard_bias = 0.20, cross_bias = 0.40, square_bias = 0.40,
+    reward_xp = 40, reward_gold = 20,
+  },
+  goblin_2 = {
+    id = "goblin_2", name = "Гоблин-подрывник", difficulty = 2,
+    hp_bonus = 15, start_mana = 5,
+    ai_ability_chance = 0.20, petard_bias = 0.40, cross_bias = 0.35, square_bias = 0.25,
+    reward_xp = 55, reward_gold = 30,
+  },
+  knight_3 = {
+    id = "knight_3", name = "Костяной рыцарь", difficulty = 3,
+    hp_bonus = 25, start_mana = 10,
+    ai_ability_chance = 0.24, petard_bias = 0.25, cross_bias = 0.35, square_bias = 0.40,
+    reward_xp = 75, reward_gold = 45,
+  },
+  necro_4 = {
+    id = "necro_4", name = "Некромант Пыли", difficulty = 4,
+    hp_bonus = 35, start_mana = 14,
+    ai_ability_chance = 0.28, petard_bias = 0.30, cross_bias = 0.40, square_bias = 0.30,
+    reward_xp = 95, reward_gold = 60,
+  },
+  hydra_5 = {
+    id = "hydra_5", name = "Гидра Глубин", difficulty = 5,
+    hp_bonus = 50, start_mana = 18,
+    ai_ability_chance = 0.30, petard_bias = 0.20, cross_bias = 0.30, square_bias = 0.50,
+    reward_xp = 120, reward_gold = 80,
+  },
+  titan_6 = {
+    id = "titan_6", name = "Титан Разлома", difficulty = 6,
+    hp_bonus = 65, start_mana = 22,
+    ai_ability_chance = 0.33, petard_bias = 0.34, cross_bias = 0.33, square_bias = 0.33,
+    reward_xp = 150, reward_gold = 105,
+  },
+  dragon_7 = {
+    id = "dragon_7", name = "Огненный Дракон", difficulty = 7,
+    hp_bonus = 85, start_mana = 26,
+    ai_ability_chance = 0.36, petard_bias = 0.44, cross_bias = 0.28, square_bias = 0.28,
+    reward_xp = 185, reward_gold = 135,
+  },
+  lich_8 = {
+    id = "lich_8", name = "Лич Пустоты", difficulty = 8,
+    hp_bonus = 100, start_mana = 30,
+    ai_ability_chance = 0.40, petard_bias = 0.30, cross_bias = 0.45, square_bias = 0.25,
+    reward_xp = 225, reward_gold = 170,
+  },
+  leviathan_9 = {
+    id = "leviathan_9", name = "Левиафан Теней", difficulty = 9,
+    hp_bonus = 120, start_mana = 35,
+    ai_ability_chance = 0.44, petard_bias = 0.35, cross_bias = 0.25, square_bias = 0.40,
+    reward_xp = 270, reward_gold = 210,
+  },
+  emperor_10 = {
+    id = "emperor_10", name = "Император Бездны", difficulty = 10,
+    hp_bonus = 150, start_mana = 40,
+    ai_ability_chance = 0.50, petard_bias = 0.36, cross_bias = 0.32, square_bias = 0.32,
+    reward_xp = 320, reward_gold = 260,
+  },
+}
 
 math.randomseed(os.time())
 
@@ -64,8 +132,30 @@ local function sorted_two_players(presences_map)
   return ids
 end
 
+local function get_bot_profile(bot_id)
+  return BOTS[bot_id] or BOTS["slime_1"]
+end
+
+local function make_bot_user_id(bot_id)
+  return BOT_USER_ID_PREFIX .. tostring(bot_id or "slime_1")
+end
+
+local function current_level_from_xp(xp)
+  local level = 1
+  local safe_xp = math.max(0, tonumber(xp) or 0)
+  for i = 2, #LEVEL_XP do
+    if safe_xp >= LEVEL_XP[i] then
+      level = i
+    else
+      break
+    end
+  end
+  if level > 10 then level = 10 end
+  return level
+end
+
 local function new_stats()
-  return { hp = MAX_HP, mana = 0, cross_cd = 0, square_cd = 0, petard_cd = 0 }
+  return { hp = MAX_HP, mana = 0, cross_cd = 0, square_cd = 0, petard_cd = 0, max_hp = MAX_HP }
 end
 
 local function tick_cooldowns(stats)
@@ -233,7 +323,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     elseif m.type == 4 then
       opp.hp = math.max(0, opp.hp - SKULL_DAMAGE * m.count)
     elseif m.type == 5 then
-      actor.hp = math.min(MAX_HP, actor.hp + ANKH_HEAL * m.count)
+      actor.hp = math.min(actor.max_hp or MAX_HP, actor.hp + ANKH_HEAL * m.count)
     end
   end
 
@@ -287,12 +377,21 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     local winner = state.stats[actor].hp > 0 and actor or opponent
     state.ended = true
     broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
-    dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+
+    local game_over_payload = { winnerUserId = winner }
+    if state.mode == "pve" and winner == state.owner_user_id then
+      state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id)
+      game_over_payload.rewardXp = state.last_reward.reward_xp or 0
+      game_over_payload.rewardGold = state.last_reward.reward_gold or 0
+      game_over_payload.newLevel = state.last_reward.level or 1
+    end
+    dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
   end
 
   if keep_turn then
     state.active_user_id = actor
+    state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
   elseif extra_turn then
     tick_cooldowns(state.stats[actor])
     state.active_user_id = actor
@@ -351,7 +450,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     if t == 1 or t == 2 or t == 3 then
       actor.mana = math.min(MAX_MANA, actor.mana + (GEM_MANA[t] or 0))
     elseif t == 5 then
-      actor.hp = math.min(MAX_HP, actor.hp + ANKH_HEAL)
+      actor.hp = math.min(actor.max_hp or MAX_HP, actor.hp + ANKH_HEAL)
     elseif t == 4 then
       skulls = skulls + 1
     end
@@ -438,6 +537,98 @@ local function decode_storage_value(obj)
   if type(v) == "table" then return v end
   if type(v) == "string" then return nk.json_decode(v) end
   return nil
+end
+
+local function read_pve_progress(user_id)
+  local rows = nk.storage_read({
+    {
+      collection = PVE_PROGRESS_COLLECTION,
+      key = PVE_PROGRESS_KEY,
+      user_id = user_id,
+    },
+  })
+
+  if rows == nil or #rows == 0 then
+    local base = { xp = 0, gold = 0, level = 1, defeated = {} }
+    return base, nil
+  end
+
+  local row = rows[1]
+  local val = decode_storage_value(row) or {}
+  local progress = {
+    xp = math.max(0, tonumber(val.xp) or 0),
+    gold = math.max(0, tonumber(val.gold) or 0),
+    level = math.max(1, tonumber(val.level) or 1),
+    defeated = type(val.defeated) == "table" and val.defeated or {},
+  }
+  progress.level = current_level_from_xp(progress.xp)
+  return progress, row.version
+end
+
+local function write_pve_progress(user_id, progress, version)
+  local write_obj = {
+    collection = PVE_PROGRESS_COLLECTION,
+    key = PVE_PROGRESS_KEY,
+    user_id = user_id,
+    value = {
+      xp = progress.xp,
+      gold = progress.gold,
+      level = progress.level,
+      defeated = progress.defeated,
+      updated_at = os.time(),
+    },
+    permission_read = 1,
+    permission_write = 0,
+  }
+  if version ~= nil and version ~= "" then
+    write_obj.version = version
+  end
+  nk.storage_write({ write_obj })
+end
+
+local function award_pve_victory(user_id, bot_id)
+  local bot = get_bot_profile(bot_id)
+  local reward_xp = bot.reward_xp or 0
+  local reward_gold = bot.reward_gold or 0
+  local max_retries = 5
+
+  for i = 1, max_retries do
+    local progress, version = read_pve_progress(user_id)
+    progress.xp = progress.xp + reward_xp
+    progress.gold = progress.gold + reward_gold
+    progress.level = current_level_from_xp(progress.xp)
+    local defeated = progress.defeated or {}
+    local current_count = tonumber(defeated[bot_id]) or 0
+    defeated[bot_id] = current_count + 1
+    progress.defeated = defeated
+
+    local ok, err = pcall(function()
+      write_pve_progress(user_id, progress, version)
+    end)
+    if ok then
+      return {
+        reward_xp = reward_xp,
+        reward_gold = reward_gold,
+        level = progress.level,
+        xp = progress.xp,
+        gold = progress.gold,
+      }
+    end
+
+    local err_text = tostring(err)
+    if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+      nk.logger_error("award_pve_victory: " .. err_text)
+      break
+    end
+  end
+
+  return {
+    reward_xp = reward_xp,
+    reward_gold = reward_gold,
+    level = 1,
+    xp = 0,
+    gold = 0,
+  }
 end
 
 local function read_match3_stats(user_id)
@@ -555,6 +746,89 @@ local function duel_match3_stats_record(ctx, payload)
   return result
 end
 
+local function duel_match3_pve_catalog_get(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local progress = read_pve_progress(user_id)
+    local bots = {}
+    for _, bot in pairs(BOTS) do
+      bots[#bots + 1] = {
+        id = bot.id,
+        name = bot.name,
+        difficulty = bot.difficulty,
+        hp_bonus = bot.hp_bonus or 0,
+        start_mana = bot.start_mana or 0,
+        reward_xp = bot.reward_xp,
+        reward_gold = bot.reward_gold,
+      }
+    end
+    table.sort(bots, function(a, b) return tostring(a.id) < tostring(b.id) end)
+
+    return nk.json_encode({
+      ok = true,
+      progression = {
+        level = progress.level,
+        xp = progress.xp,
+        gold = progress.gold,
+        max_level = 10,
+      },
+      level_xp = LEVEL_XP,
+      bots = bots,
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_pve_catalog_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_match3_pve_create(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+
+    local requested_bot_id = tostring(p.bot_id or "slime_1")
+    local bot = get_bot_profile(requested_bot_id)
+    local bot_user_id = make_bot_user_id(bot.id)
+    local progress = read_pve_progress(user_id)
+
+    local match_id = nk.match_create("duel_match3", {
+      mode = "pve",
+      owner_user_id = user_id,
+      bot_id = bot.id,
+      bot_user_id = bot_user_id,
+      owner_level = progress.level or 1,
+    })
+
+    return nk.json_encode({
+      ok = true,
+      match_id = match_id,
+      bot_id = bot.id,
+      bot_name = bot.name,
+      bot_user_id = bot_user_id,
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_pve_create: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 local function validate_action_basic(state, sender_id, action)
   if state.ended then return false, "game_ended" end
   if not state.started then return false, "not_started" end
@@ -588,6 +862,76 @@ local function validate_action_basic(state, sender_id, action)
   return false, "unknown_action"
 end
 
+local function enumerate_valid_swaps(board)
+  local swaps = {}
+  for y = 0, SIZE - 1 do
+    for x = 0, SIZE - 1 do
+      if x + 1 < SIZE then
+        local sim = clone_board(board)
+        local ok, _ = try_swap(sim, x, y, x + 1, y)
+        if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x + 1, toY = y, cx = -1, cy = -1 } end
+      end
+      if y + 1 < SIZE then
+        local sim = clone_board(board)
+        local ok, _ = try_swap(sim, x, y, x, y + 1)
+        if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x, toY = y + 1, cx = -1, cy = -1 } end
+      end
+    end
+  end
+  return swaps
+end
+
+local function choose_bot_action(state, bot_user_id, player_user_id)
+  local bot = get_bot_profile(state.bot_id)
+  local stats = state.stats[bot_user_id]
+  local ability_chance = bot.ai_ability_chance or 0.2
+
+  local can_cross = stats.mana >= CROSS_ABILITY_COST and stats.cross_cd <= 0
+  local can_square = stats.mana >= SQUARE_ABILITY_COST and stats.square_cd <= 0
+  local can_petard = stats.mana >= PETARD_ABILITY_COST and stats.petard_cd <= 0
+  local has_any_ability = can_cross or can_square or can_petard
+
+  if has_any_ability and math.random() < ability_chance then
+    local weighted = {}
+    local function push(action_type, w)
+      if w <= 0 then return end
+      weighted[#weighted + 1] = { actionType = action_type, weight = w }
+    end
+
+    if can_petard then push(4, bot.petard_bias or 0.34) end
+    if can_cross then push(2, bot.cross_bias or 0.33) end
+    if can_square then push(3, bot.square_bias or 0.33) end
+
+    if #weighted > 0 then
+      local total = 0
+      for _, w in ipairs(weighted) do total = total + w.weight end
+      local roll = math.random() * total
+      local pick = weighted[#weighted]
+      local acc = 0
+      for _, w in ipairs(weighted) do
+        acc = acc + w.weight
+        if roll <= acc then
+          pick = w
+          break
+        end
+      end
+
+      if pick.actionType == 4 then
+        return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+      end
+      return {
+        actionType = pick.actionType,
+        fromX = -1, fromY = -1, toX = -1, toY = -1,
+        cx = math.random(0, SIZE - 1), cy = math.random(0, SIZE - 1),
+      }
+    end
+  end
+
+  local swaps = enumerate_valid_swaps(state.board)
+  if #swaps == 0 then return nil end
+  return swaps[math.random(1, #swaps)]
+end
+
 local function match_init(context, params)
   local invited = {}
   if params and params.invited then
@@ -599,6 +943,11 @@ local function match_init(context, params)
 
   local state = {
     invited = invited,
+    mode = params and tostring(params.mode or "pvp") or "pvp",
+    owner_user_id = params and params.owner_user_id or nil,
+    bot_id = params and params.bot_id or "slime_1",
+    bot_user_id = params and params.bot_user_id or make_bot_user_id(params and params.bot_id or "slime_1"),
+    owner_level = tonumber(params and params.owner_level or 1) or 1,
     presences = {},
     players_sorted = {},
     stats = {},
@@ -607,6 +956,7 @@ local function match_init(context, params)
     ended = false,
     active_user_id = nil,
     turn_deadline_tick = 0,
+    last_reward = nil,
   }
 
   return state, TICK_RATE, "mode=duel_match3"
@@ -614,6 +964,16 @@ end
 
 local function match_join_attempt(context, dispatcher, tick, state, presence, metadata)
   if state.ended then return state, false, "ended" end
+
+  if state.mode == "pve" then
+    if state.owner_user_id ~= nil and state.owner_user_id ~= "" and presence.user_id ~= state.owner_user_id then
+      return state, false, "not_owner"
+    end
+    if count_present_players(state) >= 1 and state.presences[presence.user_id] == nil then
+      return state, false, "full"
+    end
+    return state, true
+  end
 
   if count_present_players(state) >= 2 and state.presences[presence.user_id] == nil then
     return state, false, "full"
@@ -630,6 +990,41 @@ end
 local function match_join(context, dispatcher, tick, state, presences)
   for _, p in ipairs(presences) do
     state.presences[p.user_id] = p
+  end
+
+  if state.mode == "pve" then
+    if not state.started and count_present_players(state) == 1 then
+      local player_id = nil
+      for uid, _ in pairs(state.presences) do player_id = uid end
+      if player_id == nil then return state end
+
+      local bot_profile = get_bot_profile(state.bot_id)
+      state.bot_id = bot_profile.id
+      if state.bot_user_id == nil or state.bot_user_id == "" then
+        state.bot_user_id = make_bot_user_id(state.bot_id)
+      end
+
+      state.started = true
+      state.players_sorted = { player_id, state.bot_user_id }
+      state.stats[player_id] = new_stats()
+      state.stats[state.bot_user_id] = new_stats()
+      local player_level = math.max(1, math.min(10, tonumber(state.owner_level) or 1))
+      local player_hp_bonus = (player_level - 1) * 5
+      state.stats[player_id].max_hp = MAX_HP + player_hp_bonus
+      state.stats[player_id].hp = state.stats[player_id].max_hp
+
+      local bot_hp_bonus = bot_profile.hp_bonus or 0
+      local bot_start_mana = math.max(0, tonumber(bot_profile.start_mana) or 0)
+      state.stats[state.bot_user_id].max_hp = MAX_HP + bot_hp_bonus
+      state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
+      state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
+      state.board = init_board()
+      state.active_user_id = player_id
+      tick_cooldowns(state.stats[player_id])
+      state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      broadcast_sync(dispatcher, state, nil, false)
+    end
+    return state
   end
 
   if not state.started and count_present_players(state) == 2 then
@@ -660,13 +1055,17 @@ local function match_leave(context, dispatcher, tick, state, presences)
 
   if state.started and not state.ended then
     local count = count_present_players(state)
-    if count <= 1 then
+    if count <= 1 and state.mode ~= "pve" then
       state.ended = true
       local winner = nil
       for uid, _ in pairs(state.presences) do winner = uid end
       if winner ~= nil then
         dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
+      return nil
+    end
+    if count <= 0 and state.mode == "pve" then
+      state.ended = true
       return nil
     end
   end
@@ -732,6 +1131,41 @@ local function match_loop(context, dispatcher, tick, state, messages)
     end
   end
 
+  if state.mode == "pve" and state.started and not state.ended then
+    if state.active_user_id == state.bot_user_id and tick >= state.turn_deadline_tick then
+      local actor_id = state.bot_user_id
+      local opp_id = state.owner_user_id
+      local action = choose_bot_action(state, actor_id, opp_id)
+      if action == nil then
+        state.active_user_id = opp_id
+        tick_cooldowns(state.stats[opp_id])
+        state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+        broadcast_sync(dispatcher, state, nil, false)
+      else
+        local actor_stats = state.stats[actor_id]
+        if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+          local spend = action.actionType == 2 and CROSS_ABILITY_COST
+            or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+          actor_stats.mana = math.max(0, actor_stats.mana - spend)
+          if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
+          if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
+          if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
+        end
+
+        local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
+        if ok then
+          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
+        else
+          nk.logger_warn("bot action rejected: " .. tostring(err))
+          state.active_user_id = opp_id
+          tick_cooldowns(state.stats[opp_id])
+          state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+          broadcast_sync(dispatcher, state, nil, false)
+        end
+      end
+    end
+  end
+
   if state.started and not state.ended and tick >= state.turn_deadline_tick then
     local current = state.active_user_id
     local next_player = other_player_id(state, current)
@@ -756,6 +1190,8 @@ end
 
 nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
 nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
+nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
+nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 
 return {
   match_init = match_init,

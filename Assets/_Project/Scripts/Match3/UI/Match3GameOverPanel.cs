@@ -20,7 +20,7 @@ namespace Project.Match3
                 backButton.onClick.AddListener(() => OnBackClicked?.Invoke());
         }
 
-        public void Show(bool won)
+        public void Show(bool won, string customRewardText = null)
         {
             gameObject.SetActive(true);
 
@@ -33,7 +33,9 @@ namespace Project.Match3
             }
 
             if (rewardText != null)
-                rewardText.text = won ? "+100 опыта\n+50 золота" : "+25 опыта";
+                rewardText.text = string.IsNullOrEmpty(customRewardText)
+                    ? (won ? "+100 опыта\n+50 золота" : "+25 опыта")
+                    : customRewardText;
         }
 
         public void Hide() => gameObject.SetActive(false);

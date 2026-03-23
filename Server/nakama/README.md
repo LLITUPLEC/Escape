@@ -23,6 +23,24 @@
 - сервер считает всё поле/каскады/урон,
 - сервер рассылает итоговое состояние (`op=10`) и game over (`op=11`).
 
+Для PVE (боты) доступны RPC:
+- `duel_match3_pve_catalog_get` — возвращает список ботов и текущую прогрессию.
+- `duel_match3_pve_create` с payload `{"bot_id":"slime_1"}` — создаёт authoritative PVE-матч и возвращает `match_id`.
+  Клиент затем делает `JoinMatch` по `match_id`.
+
+Прогрессия PVE хранится в `duel_match3_progress/profile`:
+- `level` (до 10),
+- `xp`,
+- `gold`,
+- `defeated` (счётчик побед по bot_id).
+
+В `duel_match3.lua` заведена таблица из 10 боссов (`slime_1 ... emperor_10`) с параметрами:
+- `difficulty`,
+- `hp_bonus`,
+- `start_mana`,
+- поведенческие коэффициенты ИИ (`ai_ability_chance`, `petard_bias`, `cross_bias`, `square_bias`),
+- награды (`reward_xp`, `reward_gold`).
+
 Серверная статистика Match3 (по `ctx.user_id`) также доступна через RPC:
 - `duel_match3_stats_get` → `{ ok, played, wins, losses }`
 - `duel_match3_stats_record` с payload `{"won":true|false}` → инкрементирует сыграно/победы/поражения.

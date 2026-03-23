@@ -85,6 +85,8 @@ namespace Project.Match3
         }
 
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
+        private const string RpcMatch3PveCreate = "duel_match3_pve_create";
+        private const string DefaultPveBotId = "slime_1";
 
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
@@ -124,8 +126,10 @@ namespace Project.Match3
         private bool _hasInitialBoardSync;
         private int _remoteSelX = -1, _remoteSelY = -1;
         private bool _resultRecorded;
+        private string _lastRewardText;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
         private bool _isSoloBotMode;
+        private bool _useLocalBotSimulation;
         private System.Random _botRandom;
         private Coroutine _botTurnRoutine;
 
@@ -142,6 +146,17 @@ namespace Project.Match3
         private Match3GameHUD       _hud;
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
+        private GameObject _pveSelectorRoot;
+        private Text _pveProgressText;
+        private Text _pveHudProgressText;
+        private Text _pveBotTitleText;
+        private Text _pveBotStatsText;
+        private Button _pvePrevButton;
+        private Button _pveNextButton;
+        private Button _pveStartButton;
+        private List<PveBotInfo> _pveBots = new();
+        private int _selectedPveBotIndex;
+        private PveProgressInfo _pveProgress;
 
         // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -153,6 +168,7 @@ namespace Project.Match3
             _opStats = new PlayerStats();
             _launchMode = Match3LaunchContext.ConsumeMode();
             _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
+            _useLocalBotSimulation = false;
             _botRandom = new System.Random(Environment.TickCount);
 
             EnsureCamera();
@@ -163,7 +179,17 @@ namespace Project.Match3
 
             if (_isSoloBotMode)
             {
-                StartSoloBotGame();
+                try
+                {
+                    await PreparePveLobbyAsync(_cts.Token);
+                }
+                catch (OperationCanceledException) { /* destroyed */ }
+                catch (Exception e)
+                {
+                    Debug.LogError("[Match3] Не удалось запустить PVE матч: " + e.Message);
+                    MainThreadDispatcher.Enqueue(() =>
+                        _searchingPanel?.Show("Ошибка PVE сервера.\nПроверьте подключение и попробуйте снова."));
+                }
                 return;
             }
 
@@ -254,32 +280,133 @@ namespace Project.Match3
             _myPanel?.SetPlayerName("Вы");
             _opPanel?.SetPlayerName("Соперник");
             _resultRecorded = false;
+            _lastRewardText = null;
             StartGameWaitingServer();
         }
 
-        private void StartSoloBotGame()
+        private async Task PreparePveLobbyAsync(CancellationToken ct)
         {
-            _myUserId = LocalPlayerId;
-            _opUserId = BotPlayerId;
-            _resultRecorded = false;
-            _gameEnded = false;
-            _hasInitialBoardSync = true;
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+            _myUserId = NakamaBootstrap.Instance.Session.UserId;
+            HookSocket(NakamaBootstrap.Instance.Socket);
+            await LoadPveCatalogAsync(ct);
+            MainThreadDispatcher.Enqueue(() =>
+            {
+                _searchingPanel?.Hide();
+                ShowPveSelector(true);
+                RefreshPveSelectorTexts();
+            });
+        }
 
-            _myPanel?.SetPlayerName("Вы");
-            _opPanel?.SetPlayerName("Компьютер");
+        private async Task StartSoloBotServerAsync(CancellationToken ct, string botId)
+        {
+            var safeBotId = string.IsNullOrWhiteSpace(botId) ? DefaultPveBotId : botId;
+            var payload = "{\"bot_id\":\"" + safeBotId + "\"}";
+            var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                NakamaBootstrap.Instance.Session, RpcMatch3PveCreate, payload);
 
-            _board.Init(_botRandom.Next());
-            _myStats = new PlayerStats();
-            _opStats = new PlayerStats();
+            var model = JsonUtility.FromJson<PveCreateRpcResponse>(rpc?.Payload ?? "");
+            if (model == null || !model.ok || string.IsNullOrEmpty(model.match_id))
+                throw new Exception("pve_create_failed");
 
+            _opUserId = string.IsNullOrEmpty(model.bot_user_id) ? ("zz-bot-" + DefaultPveBotId) : model.bot_user_id;
+            _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(model.match_id);
+            var botName = string.IsNullOrEmpty(model.bot_name) ? "Бот" : model.bot_name;
+            MainThreadDispatcher.Enqueue(() => OnBotMatchFound(botName));
+        }
+
+        private async Task LoadPveCatalogAsync(CancellationToken ct)
+        {
+            var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                NakamaBootstrap.Instance.Session, "duel_match3_pve_catalog_get", "{}");
+            var payload = rpc?.Payload ?? string.Empty;
+            var model = JsonUtility.FromJson<PveCatalogRpcResponse>(payload);
+            if (model == null || !model.ok || model.bots == null || model.bots.Length == 0)
+                throw new Exception("pve_catalog_empty");
+
+            _pveBots = new List<PveBotInfo>(model.bots);
+            _pveProgress = model.progression ?? new PveProgressInfo();
+            _selectedPveBotIndex = Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1);
+            ct.ThrowIfCancellationRequested();
+        }
+
+        private void OnBotMatchFound(string botName)
+        {
+            ShowPveSelector(false);
             _searchingPanel?.Hide();
-            _boardView?.RefreshAll(_board);
-            RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, false, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+            _myPanel?.SetPlayerName("Вы");
+            _opPanel?.SetPlayerName(botName);
+            _resultRecorded = false;
+            _lastRewardText = null;
+            StartGameWaitingServer();
+        }
 
-            var myFirst = _botRandom.NextDouble() >= 0.5;
-            if (myFirst) BeginMyTurn();
-            else BeginOpponentTurn();
+        private void ShowPveSelector(bool visible)
+        {
+            if (_pveSelectorRoot != null)
+                _pveSelectorRoot.SetActive(visible);
+        }
+
+        private void RefreshPveSelectorTexts()
+        {
+            if (_pveProgressText != null)
+            {
+                _pveProgressText.text = $"Уровень {_pveProgress.level}/10\nXP: {_pveProgress.xp}\nЗолото: {_pveProgress.gold}";
+            }
+            RefreshPveHudProgressText();
+            if (_pveBots == null || _pveBots.Count == 0) return;
+            _selectedPveBotIndex = Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1);
+            var bot = _pveBots[_selectedPveBotIndex];
+            if (_pveBotTitleText != null)
+                _pveBotTitleText.text = $"{bot.name} ({bot.id})";
+            if (_pveBotStatsText != null)
+            {
+                _pveBotStatsText.text =
+                    $"Сложность: {bot.difficulty}\n" +
+                    $"HP бонус: +{bot.hp_bonus}\n" +
+                    $"Старт. мана: {bot.start_mana}\n" +
+                    $"Награда: +{bot.reward_xp} XP, +{bot.reward_gold} золота";
+            }
+        }
+
+        private void RefreshPveHudProgressText()
+        {
+            if (_pveHudProgressText == null) return;
+            _pveHudProgressText.text = $"Прогресс\nУровень {_pveProgress.level}/10\nXP: {_pveProgress.xp}\nЗолото: {_pveProgress.gold}";
+        }
+
+        private void SelectPrevPveBot()
+        {
+            if (_pveBots == null || _pveBots.Count == 0) return;
+            _selectedPveBotIndex--;
+            if (_selectedPveBotIndex < 0) _selectedPveBotIndex = _pveBots.Count - 1;
+            RefreshPveSelectorTexts();
+        }
+
+        private void SelectNextPveBot()
+        {
+            if (_pveBots == null || _pveBots.Count == 0) return;
+            _selectedPveBotIndex = (_selectedPveBotIndex + 1) % _pveBots.Count;
+            RefreshPveSelectorTexts();
+        }
+
+        private async void StartSelectedPveBot()
+        {
+            if (_pveBots == null || _pveBots.Count == 0) return;
+            if (_pveStartButton != null) _pveStartButton.interactable = false;
+            _searchingPanel?.Show("Создание боя с боссом...");
+            try
+            {
+                var bot = _pveBots[Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1)];
+                await StartSoloBotServerAsync(_cts != null ? _cts.Token : CancellationToken.None, bot.id);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                _searchingPanel?.Show("Не удалось создать PVE бой.\nПопробуйте ещё раз.");
+                ShowPveSelector(true);
+                if (_pveStartButton != null) _pveStartButton.interactable = true;
+            }
         }
 
         // ─── Game Flow ────────────────────────────────────────────────────────────
@@ -340,7 +467,7 @@ namespace Project.Match3
             _boardView?.SetDimmed(true);
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
 
-            if (_isSoloBotMode && !_gameEnded)
+            if (_useLocalBotSimulation && !_gameEnded)
             {
                 if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
                 _botTurnRoutine = StartCoroutine(BotTurnRoutine());
@@ -471,7 +598,8 @@ namespace Project.Match3
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
             PlaySfx(won ? sfxVictory : sfxDefeat);
-            _gameOverPanel?.Show(won);
+            var rewardText = won && !string.IsNullOrEmpty(_lastRewardText) ? _lastRewardText : null;
+            _gameOverPanel?.Show(won, rewardText);
         }
 
         private async Task RecordMatch3ResultServerAsync(bool won)
@@ -496,7 +624,7 @@ namespace Project.Match3
         private void SendActionRequest(M3ActionRequest req)
         {
             if (_gameEnded) return;
-            if (_isSoloBotMode)
+            if (_useLocalBotSimulation)
             {
                 HandleLocalActionRequest(req, _myUserId);
                 return;
@@ -509,7 +637,7 @@ namespace Project.Match3
         private void SendSelectionSync(int x, int y, bool selected)
         {
             if (_gameEnded) return;
-            if (_isSoloBotMode) return;
+            if (_useLocalBotSimulation) return;
             if (_match == null) return;
             var msg = new M3SelectionSyncMsg { x = x, y = y, selected = selected };
             _ = SendStateAsync(M3Op.SelectionSync, Encoding.UTF8.GetBytes(JsonUtility.ToJson(msg)));
@@ -517,7 +645,7 @@ namespace Project.Match3
 
         private void RequestSnapshot()
         {
-            if (_isSoloBotMode || _match == null || _gameEnded) return;
+            if (_useLocalBotSimulation || _match == null || _gameEnded) return;
             _ = SendStateAsync(M3Op.SnapshotRequest, Encoding.UTF8.GetBytes("{}"));
         }
 
@@ -536,7 +664,7 @@ namespace Project.Match3
         {
             try
             {
-                if (_isSoloBotMode) return;
+                if (_useLocalBotSimulation) return;
                 if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
                     await NakamaBootstrap.Instance.Socket.SendMatchStateAsync(_match.Id, opCode, data);
             }
@@ -595,7 +723,22 @@ namespace Project.Match3
                 try { msg = JsonUtility.FromJson<M3GameOverMsg>(json); } catch { return; }
                 MainThreadDispatcher.Enqueue(() =>
                 {
-                    if (!_gameEnded) { _gameEnded = true; ShowGameOver(msg.winnerUserId == _myUserId); }
+                    if (_gameEnded) return;
+                    if (_isSoloBotMode && string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal))
+                    {
+                        var rxp = Mathf.Max(0, msg.rewardXp);
+                        var rgold = Mathf.Max(0, msg.rewardGold);
+                        if (rxp > 0 || rgold > 0)
+                        {
+                            _pveProgress.xp += rxp;
+                            _pveProgress.gold += rgold;
+                            if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
+                            _lastRewardText = $"+{rxp} опыта\n+{rgold} золота";
+                            RefreshPveHudProgressText();
+                        }
+                    }
+                    _gameEnded = true;
+                    ShowGameOver(msg.winnerUserId == _myUserId);
                 });
             }
             else if (state.OpCode == M3Op.PlayerLeft)
@@ -745,7 +888,7 @@ namespace Project.Match3
             {
                 _inputBlocked = !_isMyTurn;
                 _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
-                if (_isSoloBotMode && !_isMyTurn && !_gameEnded)
+                if (_useLocalBotSimulation && !_isMyTurn && !_gameEnded)
                 {
                     if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
                     _botTurnRoutine = StartCoroutine(BotTurnRoutine());
@@ -1444,6 +1587,9 @@ namespace Project.Match3
             _opPanel = BuildOrInstantiate(opPanelPrefab, rightTr, V2(0f, 0.27f), V2(1f, 1f));
             if (_opPanel == null) _opPanel = BuildPlayerPanelProcedural(rightTr, isLeft: false);
 
+            if (_isSoloBotMode)
+                BuildPveProgressHud(rightTr);
+
             // ── Quit button ───────────────────────────────────────────────────────
             var quitBtn = MakeButton(root, "QuitBtn", "← Выйти",
                 new Color(0.42f, 0.12f, 0.12f), Color.white,
@@ -1459,6 +1605,12 @@ namespace Project.Match3
             if (_gameOverPanel == null) _gameOverPanel = BuildGameOverPanelProcedural(root);
             _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene("MainMenu");
             _gameOverPanel.Hide();
+
+            if (_isSoloBotMode)
+            {
+                BuildPveSelector(root);
+                ShowPveSelector(false);
+            }
         }
 
         // ─── Generic helper: instantiate prefab or return null ────────────────────
@@ -1588,6 +1740,34 @@ namespace Project.Match3
             var bv = frame.gameObject.AddComponent<Match3BoardView>();
             bv.cellContainer = gridGo.transform;
             return bv;
+        }
+
+        private void BuildPveProgressHud(Transform rightCol)
+        {
+            var hud = MakePanel(rightCol, "PveProgressHud", new Color(0.08f, 0.10f, 0.18f, 0.88f), V2(0.04f, 0.02f), V2(0.96f, 0.24f));
+            _pveHudProgressText = MakeTxt(hud, "ProgressText", "Уровень 1/10\nXP: 0\nЗолото: 0", 14, Color.white, V2(0.06f, 0.08f), V2(0.94f, 0.92f));
+            _pveHudProgressText.alignment = TextAnchor.MiddleLeft;
+        }
+
+        private void BuildPveSelector(Transform root)
+        {
+            _pveSelectorRoot = MakePanel(root, "PveSelector", new Color(0f, 0f, 0f, 0.92f), V2(0f, 0f), V2(1f, 1f)).gameObject;
+            var card = MakePanel(_pveSelectorRoot.transform, "Card", new Color(0.08f, 0.10f, 0.18f, 0.98f), V2(0.22f, 0.18f), V2(0.78f, 0.82f));
+            MakeTxt(card, "Title", "Выбор босса", 28, new Color(0.8f, 0.95f, 1f), V2(0.05f, 0.84f), V2(0.95f, 0.96f)).alignment = TextAnchor.MiddleCenter;
+            _pveProgressText = MakeTxt(card, "Progress", "Уровень 1/10\nXP: 0\nЗолото: 0", 18, Color.white, V2(0.08f, 0.62f), V2(0.92f, 0.82f));
+            _pveProgressText.alignment = TextAnchor.MiddleCenter;
+            _pveBotTitleText = MakeTxt(card, "BossName", "Босс", 22, new Color(1f, 0.9f, 0.45f), V2(0.08f, 0.50f), V2(0.92f, 0.62f));
+            _pveBotTitleText.alignment = TextAnchor.MiddleCenter;
+            _pveBotStatsText = MakeTxt(card, "BossStats", "—", 16, Color.white, V2(0.10f, 0.22f), V2(0.90f, 0.50f));
+            _pveBotStatsText.alignment = TextAnchor.UpperLeft;
+
+            _pvePrevButton = MakeButton(card, "PrevBoss", "←", new Color(0.18f, 0.28f, 0.55f), Color.white, V2(0.10f, 0.08f), V2(0.28f, 0.18f));
+            _pveNextButton = MakeButton(card, "NextBoss", "→", new Color(0.18f, 0.28f, 0.55f), Color.white, V2(0.30f, 0.08f), V2(0.48f, 0.18f));
+            _pveStartButton = MakeButton(card, "StartBoss", "В бой", new Color(0.14f, 0.42f, 0.18f), Color.white, V2(0.52f, 0.08f), V2(0.90f, 0.18f));
+
+            _pvePrevButton.onClick.AddListener(SelectPrevPveBot);
+            _pveNextButton.onClick.AddListener(SelectNextPveBot);
+            _pveStartButton.onClick.AddListener(StartSelectedPveBot);
         }
 
         private Match3SearchingPanel BuildSearchingPanelProcedural(Transform parent)
@@ -1825,5 +2005,45 @@ namespace Project.Match3
 
         private static Image BuildBar(RectTransform p, string name, Color fillColor,
             Vector2 aMin, Vector2 aMax) => BuildBar((Transform)p, name, fillColor, aMin, aMax);
+
+        [Serializable]
+        private sealed class PveCreateRpcResponse
+        {
+            public bool ok;
+            public string match_id;
+            public string bot_id;
+            public string bot_name;
+            public string bot_user_id;
+            public string err;
+        }
+
+        [Serializable]
+        private sealed class PveCatalogRpcResponse
+        {
+            public bool ok;
+            public PveProgressInfo progression;
+            public PveBotInfo[] bots;
+            public string err;
+        }
+
+        [Serializable]
+        private sealed class PveProgressInfo
+        {
+            public int level = 1;
+            public int xp;
+            public int gold;
+        }
+
+        [Serializable]
+        private sealed class PveBotInfo
+        {
+            public string id;
+            public string name;
+            public int difficulty;
+            public int hp_bonus;
+            public int start_mana;
+            public int reward_xp;
+            public int reward_gold;
+        }
     }
 }

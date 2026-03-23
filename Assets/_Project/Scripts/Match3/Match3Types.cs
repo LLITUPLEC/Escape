@@ -63,6 +63,9 @@ namespace Project.Match3
     public class M3GameOverMsg
     {
         public string winnerUserId;
+        public int rewardXp;
+        public int rewardGold;
+        public int newLevel;
     }
 
     [Serializable]
