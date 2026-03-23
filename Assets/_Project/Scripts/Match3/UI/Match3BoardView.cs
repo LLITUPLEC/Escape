@@ -371,28 +371,63 @@ namespace Project.Match3
             }
 
             var startOffset = new float[Size, Size];
+            float maxStartOffset = 0f;
             for (int y = 0; y < Size; y++)
             for (int x = 0; x < Size; x++)
+            {
                 startOffset[x, y] = _iconRt[x, y] != null ? _iconRt[x, y].anchoredPosition.y : 0f;
+                if (startOffset[x, y] > maxStartOffset) maxStartOffset = startOffset[x, y];
+            }
 
+            if (maxStartOffset <= 0.001f)
+                yield break;
+
+            // Strong visible cascade: lower rows start first, higher rows start with clear delays.
+            // Tunables below intentionally aggressive so the effect is obvious.
+            float speed = maxStartOffset / duration;
+            float delayPerRow = 0.06f;
+            float extraByDistance = duration * 0.15f;
+            float staggerMax = (Size - 1) * delayPerRow + extraByDistance;
             float t = 0f;
-            while (t < duration)
+            while (t < duration + staggerMax)
             {
                 t += Time.deltaTime;
-                float p = Mathf.Clamp01(t / duration);
-                // "Heavier" gravity feel: accelerate down, no duration change.
-                float eased = p * p;
                 for (int y = 0; y < Size; y++)
                 for (int x = 0; x < Size; x++)
-                    if (_iconRt[x, y] != null)
-                        _iconRt[x, y].anchoredPosition = new Vector2(0f, startOffset[x, y] * (1f - eased));
+                {
+                    var rt = _iconRt[x, y];
+                    if (rt == null) continue;
+                    float start = startOffset[x, y];
+                    if (start <= 0f)
+                    {
+                        rt.anchoredPosition = Vector2.zero;
+                        continue;
+                    }
+
+                    float rowDelay = (Size - 1 - y) * delayPerRow;
+                    float distDelay = Mathf.Clamp01(start / maxStartOffset) * extraByDistance;
+                    float delay = rowDelay + distDelay;
+                    float localT = Mathf.Max(0f, t - delay);
+                    float remaining = Mathf.Max(0f, start - speed * localT);
+                    // Tiny smooth easing near landing (keeps trailing feel without harsh snapping).
+                    float cellProgress = 1f - (remaining / start);
+                    float easedCell = 1f - Mathf.Pow(1f - cellProgress, 2.2f);
+                    rt.anchoredPosition = new Vector2(0f, start * (1f - easedCell));
+                }
 
                 for (int y = 0; y < Size; y++)
                 for (int x = 0; x < Size; x++)
                 {
                     if (_icon[x, y] == null || !spawn[x, y]) continue;
                     var c = _icon[x, y].color;
-                    c.a = eased;
+                    float start = Mathf.Max(0.001f, startOffset[x, y]);
+                    float rowDelay = (Size - 1 - y) * delayPerRow;
+                    float distDelay = Mathf.Clamp01(start / maxStartOffset) * extraByDistance;
+                    float delay = rowDelay + distDelay;
+                    float localT = Mathf.Max(0f, t - delay);
+                    float remaining = Mathf.Max(0f, start - speed * localT);
+                    float cellProgress = 1f - (remaining / start);
+                    c.a = Mathf.Clamp01(cellProgress);
                     _icon[x, y].color = c;
                 }
                 yield return null;
