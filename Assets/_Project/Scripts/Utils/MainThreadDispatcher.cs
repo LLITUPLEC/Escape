@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Project.Utils
@@ -25,6 +26,42 @@ namespace Project.Utils
         {
             if (action == null) return;
             Queue.Enqueue(action);
+        }
+
+        /// <summary>Выполнить код на главном потоке и дождаться завершения (PlayerPrefs, UI).</summary>
+        public static Task RunAsync(Action action)
+        {
+            var tcs = new TaskCompletionSource<object>();
+            Enqueue(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.SetResult(null);
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            });
+            return tcs.Task;
+        }
+
+        public static Task<T> RunAsync<T>(Func<T> func)
+        {
+            var tcs = new TaskCompletionSource<T>();
+            Enqueue(() =>
+            {
+                try
+                {
+                    tcs.SetResult(func());
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            });
+            return tcs.Task;
         }
 
         private void Update()

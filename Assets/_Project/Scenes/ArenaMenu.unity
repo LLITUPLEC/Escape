@@ -167,6 +167,14 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 400001011, guid: 7b3e0b1f9a0b4f4aa3b2c1d0e9f8a7b6, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 653
+      objectReference: {fileID: 0}
+    - target: {fileID: 9100000000000100000, guid: 7b3e0b1f9a0b4f4aa3b2c1d0e9f8a7b6, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -1661
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -393,6 +401,7 @@ MonoBehaviour:
   match3ButtonPath: MainMenuScreen/Canvas/Panel/ModalWindow/match3Button
   botsButtonPath: MainMenuScreen/Canvas/Panel/ModalWindow/BotsButton
   backButtonPath: ArenaMenuWorld/Background2D/BackButton
+  mainMenuSceneName: MainMenu
   duelSceneName: DuelRoom
   match3SceneName: DuelMatch3
 --- !u!114 &200000103
@@ -411,7 +420,7 @@ MonoBehaviour:
   - ProfileProgressHud
   - OnlinePlayersBadge
   - OnlinePlayersBadge(Clone)
-
+  - 
 --- !u!114 &200000104
 MonoBehaviour:
   m_ObjectHideFlags: 0

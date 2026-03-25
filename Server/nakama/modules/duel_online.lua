@@ -5,6 +5,25 @@ local nk = require("nakama")
 local online_expire_at = {}
 local PRESENCE_TTL_SEC = 20
 
+local SESSION_EPOCH_META_KEY = "session_epoch"
+
+local function read_session_epoch(user_id)
+  if user_id == nil or user_id == "" then
+    return 0
+  end
+  local ok, account = pcall(function()
+    return nk.account_get_id(user_id)
+  end)
+  if not ok or account == nil or account.user == nil or account.user.metadata == nil then
+    return 0
+  end
+  local v = account.user.metadata[SESSION_EPOCH_META_KEY]
+  if v == nil then
+    return 0
+  end
+  return tonumber(v) or 0
+end
+
 local function now_unix()
   return os.time()
 end
@@ -33,7 +52,8 @@ local function duel_online_ping_and_count(ctx, payload)
       count = count + 1
     end
 
-    return nk.json_encode({ ok = true, count = count })
+    local epoch = read_session_epoch(user_id)
+    return nk.json_encode({ ok = true, count = count, session_epoch = epoch })
   end)
 
   if not ok then
