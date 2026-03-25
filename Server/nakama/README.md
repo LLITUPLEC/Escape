@@ -6,6 +6,7 @@
    - `duel_keypad.lua` (RPC для PIN дверей),
    - `duel_online.lua` (онлайн-статус),
    - `duel_session.lua` (single-session по e-mail: эпоха сессии + уведомление при входе с другого устройства),
+   - `duel_session_epoch_guard.lua` (проверка `session_epoch` в мутациях Match3 и PVE-матче),
    - `duel_match3.lua` (server-authoritative Match3),
    - `duel_relay.lua` (authoritative relay fallback),
    - `duel_matchmaker.lua` (matchmaker hook, создаёт нужный тип матча).

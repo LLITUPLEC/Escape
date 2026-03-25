@@ -14,6 +14,8 @@ namespace Project.Nakama
     {
         public static NakamaBootstrap Instance { get; private set; }
 
+        public static int GetLocalSessionEpoch() => PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
+
         [SerializeField] private NakamaConnectionConfig config;
         public NakamaConnectionConfig Config
         {
@@ -40,7 +42,7 @@ namespace Project.Nakama
         private const string PrefUseEmailSession = "nakama.use_email_session";
         private const string PrefAuthToken = "nakama.session.auth_token";
         private const string PrefRefreshToken = "nakama.session.refresh_token";
-        private const string PrefSessionEpochLocal = "nakama.session_epoch.local";
+        public const string SessionEpochLocalPrefKey = "nakama.session_epoch.local";
         private const long NotificationCodeSessionReplaced = 10001;
 
         [SerializeField] private bool keepOnlineHeartbeat = true;
@@ -381,7 +383,7 @@ namespace Project.Nakama
 
         private static void PersistLocalSessionEpochSync(int epoch)
         {
-            PlayerPrefs.SetInt(PrefSessionEpochLocal, Mathf.Max(0, epoch));
+            PlayerPrefs.SetInt(SessionEpochLocalPrefKey, Mathf.Max(0, epoch));
             PlayerPrefs.Save();
         }
 
@@ -392,13 +394,13 @@ namespace Project.Nakama
             {
                 var m = JsonUtility.FromJson<OnlinePingRpcResponse>(payload);
                 if (m == null || !m.ok) return;
-                if (!PlayerPrefs.HasKey(PrefSessionEpochLocal))
+                if (!PlayerPrefs.HasKey(SessionEpochLocalPrefKey))
                 {
                     PersistLocalSessionEpochSync(m.session_epoch);
                     return;
                 }
 
-                var local = PlayerPrefs.GetInt(PrefSessionEpochLocal, 0);
+                var local = PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
                 if (m.session_epoch > local)
                 {
                     BeginSessionReplacedFlow();
@@ -416,13 +418,13 @@ namespace Project.Nakama
         private void ConsiderSessionReplacedIfEpochNewer(int serverEpoch)
         {
             if (_sessionReplacedFlowActive) return;
-            if (!PlayerPrefs.HasKey(PrefSessionEpochLocal))
+            if (!PlayerPrefs.HasKey(SessionEpochLocalPrefKey))
             {
                 PersistLocalSessionEpochSync(serverEpoch);
                 return;
             }
 
-            var local = PlayerPrefs.GetInt(PrefSessionEpochLocal, 0);
+            var local = PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
             if (serverEpoch > local) BeginSessionReplacedFlow();
         }
 
@@ -463,7 +465,7 @@ namespace Project.Nakama
             await MainThreadDispatcher.RunAsync(() =>
             {
                 ClearEmailSessionPrefsSync();
-                PlayerPrefs.DeleteKey(PrefSessionEpochLocal);
+                PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
                 RegenerateDeviceIdentitySync();
                 PlayerPrefs.Save();
             }).ConfigureAwait(false);
@@ -488,14 +490,19 @@ namespace Project.Nakama
             await EnsureConnectedAsync(ct).ConfigureAwait(false);
         }
 
+        /// <summary>Новый гостевой device id в PlayerPrefs (не полагаемся на hardware id), иначе на телефоне снова тот же Nakama-пользователь.</summary>
         private static void RegenerateDeviceIdentitySync()
         {
 #if UNITY_EDITOR
             var profileKey = GetDevelopmentProfileKey();
-            PlayerPrefs.DeleteKey(DevDeviceIdPrefPrefix + profileKey);
+            var prefKey = DevDeviceIdPrefPrefix + profileKey;
 #else
-            PlayerPrefs.DeleteKey(DeviceIdPrefKey);
+            var profileKey = "";
+            var prefKey = DeviceIdPrefKey;
 #endif
+            var newId = CreateGeneratedDeviceId(profileKey);
+            PlayerPrefs.SetString(prefKey, newId);
+            PlayerPrefs.Save();
         }
 
         private async Task MaintainValidSessionAsync(CancellationToken ct)

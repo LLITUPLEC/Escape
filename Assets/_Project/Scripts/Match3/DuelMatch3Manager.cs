@@ -302,7 +302,11 @@ namespace Project.Match3
         private async Task StartSoloBotServerAsync(CancellationToken ct, string botId)
         {
             var safeBotId = string.IsNullOrWhiteSpace(botId) ? DefaultPveBotId : botId;
-            var payload = "{\"bot_id\":\"" + safeBotId + "\"}";
+            var payload = JsonUtility.ToJson(new PveCreateRpcRequest
+            {
+                bot_id = safeBotId,
+                session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+            });
             var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
                 NakamaBootstrap.Instance.Session, RpcMatch3PveCreate, payload);
 
@@ -606,7 +610,11 @@ namespace Project.Match3
                 if (NakamaBootstrap.Instance == null) return;
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts != null ? _cts.Token : CancellationToken.None);
                 if (NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null) return;
-                var payload = won ? "{\"won\":true}" : "{\"won\":false}";
+                var payload = JsonUtility.ToJson(new StatsRecordRpcRequest
+                {
+                    won = won,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                });
                 await NakamaBootstrap.Instance.Client.RpcAsync(
                     NakamaBootstrap.Instance.Session, RpcMatch3StatsRecord, payload);
             }
@@ -2052,6 +2060,20 @@ namespace Project.Match3
             public string bot_name;
             public string bot_user_id;
             public string err;
+        }
+
+        [Serializable]
+        private sealed class PveCreateRpcRequest
+        {
+            public string bot_id;
+            public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class StatsRecordRpcRequest
+        {
+            public bool won;
+            public int session_epoch;
         }
 
         [Serializable]

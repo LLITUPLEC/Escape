@@ -34,6 +34,7 @@ local PVE_PROGRESS_KEY = "profile"
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
 local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
+local epoch_guard = require("duel_session_epoch_guard")
 local award_pve_victory
 
 local BOTS = {
@@ -406,7 +407,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 
     local game_over_payload = { winnerUserId = winner }
     if state.mode == "pve" and winner == state.owner_user_id then
-      state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id)
+      state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch)
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
       game_over_payload.newLevel = state.last_reward.level or 1
@@ -626,7 +627,21 @@ local function write_pve_progress(user_id, progress, version)
   nk.storage_write({ write_obj })
 end
 
-award_pve_victory = function(user_id, bot_id)
+award_pve_victory = function(user_id, bot_id, match_epoch_snapshot)
+  local snap = tonumber(match_epoch_snapshot) or 0
+  if epoch_guard.is_epoch_stale_for_match(nk, user_id, snap) then
+    nk.logger_info("award_pve_victory skipped: session_stale")
+    local progress = read_pve_progress(user_id)
+    return {
+      reward_xp = 0,
+      reward_gold = 0,
+      level = progress.level or 1,
+      xp = progress.xp or 0,
+      gold = progress.gold or 0,
+      session_stale = true,
+    }
+  end
+
   local bot = get_bot_profile(bot_id)
   local reward_xp = bot.reward_xp or 0
   local reward_gold = bot.reward_gold or 0
@@ -722,6 +737,11 @@ local function duel_match3_stats_record(ctx, payload)
     local user_id = ctx and ctx.user_id or ""
     if user_id == nil or user_id == "" then
       return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = epoch_guard.assert_client_epoch_matches(nk, user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
     end
 
     local won = false
@@ -847,6 +867,13 @@ local function duel_match3_pve_create(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
+    local ok_epoch, err_epoch = epoch_guard.assert_client_epoch_matches(nk, user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local owner_epoch = epoch_guard.read_metadata_epoch(nk, user_id)
+
     local p = {}
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
@@ -863,6 +890,7 @@ local function duel_match3_pve_create(ctx, payload)
       bot_id = bot.id,
       bot_user_id = bot_user_id,
       owner_level = progress.level or 1,
+      owner_session_epoch = owner_epoch,
     })
     if match_id == nil or match_id == "" then
       return nk.json_encode({ ok = false, err = "match_create_failed" })
@@ -1098,6 +1126,7 @@ local function match_init(context, params)
     invited = invited,
     mode = params and tostring(params.mode or "pvp") or "pvp",
     owner_user_id = params and params.owner_user_id or nil,
+    owner_session_epoch = tonumber(params and params.owner_session_epoch or 0) or 0,
     bot_id = params and params.bot_id or "slime_1",
     bot_user_id = params and params.bot_user_id or make_bot_user_id(params and params.bot_id or "slime_1"),
     owner_level = tonumber(params and params.owner_level or 1) or 1,
@@ -1262,6 +1291,14 @@ local function match_loop(context, dispatcher, tick, state, messages)
     end
 
     if m.op_code == OP_ACTION_REQUEST then
+      local stale_pve = state.mode == "pve"
+        and state.owner_user_id ~= nil
+        and state.owner_user_id ~= ""
+        and m.sender.user_id == state.owner_user_id
+        and epoch_guard.is_epoch_stale_for_match(nk, m.sender.user_id, state.owner_session_epoch)
+      if stale_pve then
+        send_reject(dispatcher, m.sender, "session_stale")
+      else
       local action = parse_action(m.data)
       local valid, reason = validate_action_basic(state, m.sender.user_id, action)
       if not valid then
@@ -1286,6 +1323,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         else
           finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
         end
+      end
       end
     end
   end

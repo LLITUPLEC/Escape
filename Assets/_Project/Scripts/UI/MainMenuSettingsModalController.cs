@@ -262,14 +262,12 @@ namespace Project.UI
                 Color? linkedColor = null;
                 if (!string.IsNullOrWhiteSpace(mailFromApi))
                 {
-                    linkedBody = $"Привязанный e-mail (сервер): {mailFromApi}";
+                    linkedBody = $"Привязанный e-mail: {mailFromApi}";
                     linkedColor = new Color(0.55f, 1f, 0.65f);
                 }
                 else if (!string.IsNullOrWhiteSpace(mailKnown))
                 {
-                    linkedBody =
-                        $"Привязанный e-mail (последняя успешная привязка в игре): {mailKnown}\n" +
-                        "(если в консоли Nakama почта есть, а здесь строка «сервер» пустая — API пользователя в этой версии клиента не отдаёт поле; данные в Nakama всё равно корректны.)";
+                    linkedBody = $"Привязанный e-mail: {mailKnown}";
                     linkedColor = new Color(1f, 0.92f, 0.6f);
                 }
                 else
