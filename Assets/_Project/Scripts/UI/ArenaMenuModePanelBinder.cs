@@ -15,6 +15,7 @@ namespace Project.UI
         [SerializeField] private string backButtonPath = "ArenaMenuWorld/Background2D/BackButton";
 
         [Header("Scenes")]
+        [SerializeField] private string mainMenuSceneName = "MainMenu";
         [SerializeField] private string duelSceneName = "DuelRoom";
         [SerializeField] private string match3SceneName = "DuelMatch3";
 
@@ -66,7 +67,8 @@ namespace Project.UI
 
         private void BackToMainMenu()
         {
-            SceneManager.LoadScene("ArenaMenu");
+            if (string.IsNullOrWhiteSpace(mainMenuSceneName)) return;
+            SceneManager.LoadScene(mainMenuSceneName);
         }
 
         private static Button FindButton(string fullPath, string fallbackName)

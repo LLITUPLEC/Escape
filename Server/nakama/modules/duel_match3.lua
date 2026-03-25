@@ -101,6 +101,20 @@ local BOTS = {
 
 math.randomseed(os.time())
 
+--- First-move fairness: avoid math.random(0,1) here — multiple Lua modules call
+--- math.randomseed(os.time()); combined with Nakama's RNG this skewed toward one side.
+local function pick_first_actor(id_a, id_b)
+  local s = nk.uuid_v4()
+  local sum = 0
+  for i = 1, #s do
+    sum = sum + string.byte(s, i)
+  end
+  if (sum % 2) == 0 then
+    return id_a
+  end
+  return id_b
+end
+
 local function idx(x, y)
   return y * SIZE + x + 1
 end
@@ -1160,11 +1174,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
       state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
       state.board = init_board()
-      if math.random(0, 1) == 0 then
-        state.active_user_id = player_id
-      else
-        state.active_user_id = state.bot_user_id
-      end
+      state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
       tick_cooldowns(state.stats[state.active_user_id])
       state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
@@ -1187,11 +1197,7 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.stats[state.players_sorted[2]] = new_stats()
     state.board = init_board()
 
-    if math.random(0, 1) == 0 then
-      state.active_user_id = state.players_sorted[1]
-    else
-      state.active_user_id = state.players_sorted[2]
-    end
+    state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
 
     tick_cooldowns(state.stats[state.active_user_id])
     state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE

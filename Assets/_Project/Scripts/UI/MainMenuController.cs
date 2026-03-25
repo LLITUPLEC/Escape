@@ -2,11 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
-using Project.Match3;
 using Project.Nakama;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,9 +14,6 @@ namespace Project.UI
 {
     public sealed class MainMenuController : MonoBehaviour
     {
-        [SerializeField] private Button duelButton;
-        [SerializeField] private Button botsButton;
-        [SerializeField] private Button match3Button;
         [Header("Online Badge")]
         [SerializeField] private RectTransform onlineBadgeParent;
         [SerializeField] private GameObject onlineBadgePrefab;
@@ -52,18 +47,8 @@ namespace Project.UI
         [SerializeField] private Sprite eyeClosedSprite;
         private bool _match3StatsVisible;
 
-        public void Bind(Button duel, Button bots, Button match3 = null)
-        {
-            duelButton   = duel;
-            botsButton   = bots;
-            match3Button = match3;
-        }
-
         private void Awake()
         {
-            if (duelButton   != null) duelButton.onClick.AddListener(OnDuelClicked);
-            if (botsButton   != null) botsButton.onClick.AddListener(OnBotsClicked);
-            if (match3Button != null) match3Button.onClick.AddListener(OnMatch3Clicked);
             TryAutoAssignEyeSpritesInEditor();
             EnsureOnlineBadge();
             EnsureMatch3StatsCard();
@@ -100,26 +85,9 @@ namespace Project.UI
                 _onlineBadgeRect.localScale = Vector3.one;
         }
 
-        private void OnDuelClicked()
-        {
-            SceneManager.LoadScene("DuelRoom");
-        }
-
-        private void OnBotsClicked()
-        {
-            Match3LaunchContext.SetMode(Match3LaunchMode.SoloBot);
-            SceneManager.LoadScene("DuelMatch3");
-        }
-
-        private void OnMatch3Clicked()
-        {
-            Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
-            SceneManager.LoadScene("DuelMatch3");
-        }
-
         private void EnsureMatch3StatsCard()
         {
-            var parent = FindHudOverlayRoot() ?? FindCanvasRoot();
+            var parent = ResolveMainMenuHudLayoutRoot();
             if (parent == null) return;
 
             if (_match3StatsRoot == null)
@@ -340,14 +308,11 @@ namespace Project.UI
         private void EnsureMatch3StatsToggleButton()
         {
             if (_match3StatsToggleButton != null) return;
-            if (match3Button == null) return;
+            var layout = ResolveMainMenuHudLayoutRoot();
+            if (layout == null) return;
 
-            var root = match3Button.transform as RectTransform;
-            if (root == null) return;
-
-            // Prefer a pre-placed toggle under the button (editable in prefab),
-            // and do not generate UI objects at runtime.
-            var eyeRoot = FindRectTransformChildByName(root, "StatsToggleEye");
+            // Prefer a pre-placed toggle somewhere under the HUD (editable in prefab).
+            var eyeRoot = FindRectTransformChildByName(layout, "StatsToggleEye");
             if (eyeRoot == null) return;
 
             _match3StatsToggleButton = eyeRoot.GetComponent<Button>();
@@ -425,7 +390,7 @@ namespace Project.UI
             if (_onlineCountText != null || _onlineCountTmp != null) return;
 
             // Badge is expected to be present in MainMenuHudOverlay prefab as a child.
-            var parent = FindHudOverlayRoot() ?? FindCanvasRoot();
+            var parent = ResolveMainMenuHudLayoutRoot();
             if (parent == null) return;
 
             if (_onlineBadgeInstance == null)
@@ -536,16 +501,38 @@ namespace Project.UI
             return canvas != null ? canvas.transform as RectTransform : null;
         }
 
+        /// <summary>
+        /// Prefer this component's own canvas when <see cref="MainMenuController"/> sits on MainMenuHudOverlay
+        /// (avoids picking Background2D / another Canvas via <see cref="FindCanvasRoot"/>).
+        /// </summary>
+        private RectTransform ResolveMainMenuHudLayoutRoot()
+        {
+            var selfRt = transform as RectTransform;
+            if (selfRt != null)
+            {
+                if (FindRectTransformChildByName(selfRt, "OnlinePlayersBadge") != null ||
+                    FindRectTransformChildByName(selfRt, "Match3StatsCard") != null)
+                    return selfRt;
+            }
+
+            return FindHudOverlayRoot() ?? FindCanvasRoot();
+        }
+
         private static RectTransform FindHudOverlayRoot()
         {
-            // GameObject.Find doesn't see inactive objects; include them.
+            const string baseName = "MainMenuHudOverlay";
+            var cloneName = baseName + "(Clone)";
+
             foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (canvas != null && string.Equals(canvas.gameObject.name, "MainMenuHudOverlay", StringComparison.Ordinal))
+                if (canvas == null) continue;
+                var n = canvas.gameObject.name;
+                if (string.Equals(n, baseName, StringComparison.Ordinal) ||
+                    string.Equals(n, cloneName, StringComparison.Ordinal))
                     return canvas.transform as RectTransform;
             }
 
-            var go = GameObject.Find("MainMenuHudOverlay");
+            var go = GameObject.Find(baseName) ?? GameObject.Find(cloneName);
             return go != null ? go.transform as RectTransform : null;
         }
 

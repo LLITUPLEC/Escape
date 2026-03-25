@@ -125,8 +125,7 @@ namespace Project.Editor
             var duelBtn = CreateButton(panel.transform, "DuelButton", "Дуэль", new Vector2(0.5f, 0.58f));
             var botsBtn = CreateButton(panel.transform, "BotsButton", "Боты", new Vector2(0.5f, 0.42f));
 
-            var controller = root.AddComponent<MainMenuController>();
-            controller.Bind(duelBtn.GetComponent<Button>(), botsBtn.GetComponent<Button>());
+            root.AddComponent<MainMenuController>();
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, assetPath);
             UObject.DestroyImmediate(root);
