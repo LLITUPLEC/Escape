@@ -183,6 +183,14 @@ PrefabInstance:
       propertyPath: m_LocalPosition.x
       value: -0.01
       objectReference: {fileID: 0}
+    - target: {fileID: 900000002, guid: 99b83f46a7274ec2a6fbf94d4c6fac9c, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 900000012, guid: 99b83f46a7274ec2a6fbf94d4c6fac9c, type: 3}
+      propertyPath: m_Type
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -323,6 +331,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Nakama.NakamaBootstrap
   config: {fileID: 11400000, guid: c38af29577a9c0243af7d972b14cc0b4, type: 2}
+  keepOnlineHeartbeat: 1
+  onlineHeartbeatSeconds: 5
 --- !u!4 &560919687
 Transform:
   m_ObjectHideFlags: 0
@@ -465,38 +475,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1001 &863838085
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 8549976791676023677, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
-      propertyPath: match3Button
-      value: 
-      objectReference: {fileID: 863838086}
-    - target: {fileID: 1358551598851368509, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
---- !u!114 &863838086 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2948548160258611903, guid: 33fd85a1fdc9bcd4b8c6288e76fb85c5, type: 3}
-  m_PrefabInstance: {fileID: 863838085}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
 --- !u!1 &867371487
 GameObject:
   m_ObjectHideFlags: 0
@@ -739,6 +717,5 @@ SceneRoots:
   - {fileID: 808770680}
   - {fileID: 560919687}
   - {fileID: 867371490}
-  - {fileID: 863838085}
   - {fileID: 210000001}
   - {fileID: 210000002}

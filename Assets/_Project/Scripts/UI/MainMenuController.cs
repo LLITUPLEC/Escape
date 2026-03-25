@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Match3;
 using Project.Nakama;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -21,14 +22,17 @@ namespace Project.UI
         [Header("Online Badge")]
         [SerializeField] private RectTransform onlineBadgeParent;
         [SerializeField] private GameObject onlineBadgePrefab;
-        [SerializeField] private string onlineBadgeResourcePath = "OnlinePlayersBadge";
+        [Header("Resources UI")]
         [SerializeField] private float onlinePollSeconds = 5f;
         [SerializeField] private float match3StatsPollSeconds = 5f;
+        [Header("Debug")]
+        [SerializeField] private bool debugUiStats = false;
 
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
         private const string RpcMatch3PveCatalogGet = "duel_match3_pve_catalog_get";
         private Text _onlineCountText;
+        private TMP_Text _onlineCountTmp;
         private CancellationTokenSource _onlineCts;
         private GameObject _onlineBadgeInstance;
         private RectTransform _onlineBadgeRect;
@@ -38,19 +42,15 @@ namespace Project.UI
         private Text _match3PlayedText;
         private Text _match3WinsText;
         private Text _match3LossesText;
+        private TMP_Text _match3PlayedTmp;
+        private TMP_Text _match3WinsTmp;
+        private TMP_Text _match3LossesTmp;
         private Button _match3StatsToggleButton;
         private Image _match3StatsToggleImage;
         [SerializeField] private Texture2D eyeTexture;
         [SerializeField] private Sprite eyeOpenSprite;
         [SerializeField] private Sprite eyeClosedSprite;
         private bool _match3StatsVisible;
-        private RectTransform _profileHudRoot;
-        private Text _profileLevelText;
-        private Text _profileGoldText;
-        private Text _profileXpText;
-        private Image _profileXpFill;
-        private RectTransform _profileXpFillRt;
-        private int[] _levelXp = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 };
 
         public void Bind(Button duel, Button bots, Button match3 = null)
         {
@@ -68,7 +68,6 @@ namespace Project.UI
             EnsureOnlineBadge();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
-            EnsureProfileHud();
             ApplySafeAreaClamp();
         }
 
@@ -84,7 +83,6 @@ namespace Project.UI
             _onlineCts = new CancellationTokenSource();
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
-            _ = RefreshProfileHudAsync(_onlineCts.Token);
             ApplySafeAreaClamp();
         }
 
@@ -121,14 +119,19 @@ namespace Project.UI
 
         private void EnsureMatch3StatsCard()
         {
-            var parent = FindCanvasRoot();
+            var parent = FindHudOverlayRoot() ?? FindCanvasRoot();
             if (parent == null) return;
 
             if (_match3StatsRoot == null)
             {
-                var cardGo = new GameObject("Match3StatsCard");
-                _match3StatsRoot = cardGo.AddComponent<RectTransform>();
-                _match3StatsRoot.SetParent(parent, false);
+                // Card must be pre-placed in MainMenuHudOverlay prefab.
+                _match3StatsRoot = FindRectTransformChildByName(parent, "Match3StatsCard");
+                if (_match3StatsRoot == null)
+                {
+                    if (debugUiStats)
+                        Debug.Log("[MainMenu] Match3StatsCard root not found under HUD/Canvas.");
+                    return;
+                }
             }
             // Keep fixed card size and move it up by 125 px.
             _match3StatsRoot.anchorMin = new Vector2(0.835f, 0.50f);
@@ -138,7 +141,25 @@ namespace Project.UI
             _match3StatsRoot.anchoredPosition = new Vector2(0f, 125f);
             _match3StatsRoot.gameObject.SetActive(_match3StatsVisible);
 
-            if (_match3PlayedText != null && _match3WinsText != null && _match3LossesText != null)
+            if (HasMatch3StatsBindings())
+                return;
+
+            _match3PlayedText = FindTextUnder(_match3StatsRoot, "PlayedValue");
+            _match3WinsText = FindTextUnder(_match3StatsRoot, "WinsValue");
+            _match3LossesText = FindTextUnder(_match3StatsRoot, "LossesValue");
+            _match3PlayedTmp = FindTmpTextUnder(_match3StatsRoot, "PlayedValue");
+            _match3WinsTmp = FindTmpTextUnder(_match3StatsRoot, "WinsValue");
+            _match3LossesTmp = FindTmpTextUnder(_match3StatsRoot, "LossesValue");
+            if (debugUiStats)
+            {
+                Debug.Log("[MainMenu] Match3StatsCard bindings: " +
+                          $"Played(Text={_match3PlayedText != null}, TMP={_match3PlayedTmp != null}) " +
+                          $"Wins(Text={_match3WinsText != null}, TMP={_match3WinsTmp != null}) " +
+                          $"Losses(Text={_match3LossesText != null}, TMP={_match3LossesTmp != null}).");
+            }
+
+            // If prefab bindings are present (Text or TMP), we're done.
+            if (HasMatch3StatsBindings())
                 return;
 
             var bg = _match3StatsRoot.gameObject.AddComponent<Image>();
@@ -169,12 +190,13 @@ namespace Project.UI
         private async Task RefreshMatch3StatsCardAsync(CancellationToken ct)
         {
             EnsureMatch3StatsCard();
-            if (_match3PlayedText == null || _match3WinsText == null || _match3LossesText == null) return;
+            if (!HasMatch3StatsBindings()) return;
             try
             {
                 if (NakamaBootstrap.Instance == null)
                 {
                     SetMatch3StatsUnknown();
+                    if (debugUiStats) Debug.Log("[MainMenu] Match3Stats: NakamaBootstrap.Instance == null");
                     return;
                 }
 
@@ -182,6 +204,11 @@ namespace Project.UI
                 if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
                 {
                     SetMatch3StatsUnknown();
+                    if (debugUiStats)
+                        Debug.Log("[MainMenu] Match3Stats: Nakama not ready " +
+                                  $"IsReady={NakamaBootstrap.Instance.IsReady} " +
+                                  $"Client={(NakamaBootstrap.Instance.Client != null)} " +
+                                  $"Session={(NakamaBootstrap.Instance.Session != null)}");
                     return;
                 }
 
@@ -191,6 +218,7 @@ namespace Project.UI
                 if (string.IsNullOrEmpty(payload))
                 {
                     SetMatch3StatsUnknown();
+                    if (debugUiStats) Debug.Log("[MainMenu] Match3Stats RPC payload empty/null.");
                     return;
                 }
 
@@ -198,170 +226,35 @@ namespace Project.UI
                 if (model == null || !model.ok)
                 {
                     SetMatch3StatsUnknown();
+                    if (debugUiStats)
+                        Debug.Log($"[MainMenu] Match3Stats RPC not ok. payload={payload}");
                     return;
                 }
 
-                _match3PlayedText.text = Mathf.Max(0, model.played).ToString();
-                _match3WinsText.text = Mathf.Max(0, model.wins).ToString();
-                _match3LossesText.text = Mathf.Max(0, model.losses).ToString();
+                var played = Mathf.Max(0, model.played).ToString();
+                var wins = Mathf.Max(0, model.wins).ToString();
+                var losses = Mathf.Max(0, model.losses).ToString();
+                SetMatch3Text(ref _match3PlayedText, ref _match3PlayedTmp, played);
+                SetMatch3Text(ref _match3WinsText, ref _match3WinsTmp, wins);
+                SetMatch3Text(ref _match3LossesText, ref _match3LossesTmp, losses);
+                if (debugUiStats)
+                    Debug.Log($"[MainMenu] Match3Stats OK. played={played} wins={wins} losses={losses} raw={payload}");
             }
             catch
             {
                 SetMatch3StatsUnknown();
+                if (debugUiStats) Debug.Log("[MainMenu] Match3Stats exception (see previous).");
             }
         }
 
         private void SetMatch3StatsUnknown()
         {
-            if (_match3PlayedText != null) _match3PlayedText.text = "—";
-            if (_match3WinsText != null) _match3WinsText.text = "—";
-            if (_match3LossesText != null) _match3LossesText.text = "—";
+            SetMatch3Text(ref _match3PlayedText, ref _match3PlayedTmp, "—");
+            SetMatch3Text(ref _match3WinsText, ref _match3WinsTmp, "—");
+            SetMatch3Text(ref _match3LossesText, ref _match3LossesTmp, "—");
         }
 
-        private void EnsureProfileHud()
-        {
-            if (_profileHudRoot != null && _profileLevelText != null && _profileGoldText != null && _profileXpText != null && _profileXpFill != null)
-                return;
-
-            var parent = FindCanvasRoot();
-            if (parent == null) return;
-
-            if (_profileHudRoot == null)
-            {
-                var cardGo = new GameObject("ProfileProgressHud");
-                _profileHudRoot = cardGo.AddComponent<RectTransform>();
-                _profileHudRoot.SetParent(parent, false);
-            }
-
-            var avatar = FindAvatarRect(parent);
-            if (avatar != null)
-            {
-                _profileHudRoot.anchorMin = avatar.anchorMin;
-                _profileHudRoot.anchorMax = avatar.anchorMax;
-                _profileHudRoot.pivot = avatar.pivot;
-                _profileHudRoot.sizeDelta = new Vector2(Mathf.Max(220f, avatar.rect.width), 74f);
-            }
-            else
-            {
-                _profileHudRoot.anchorMin = new Vector2(0.12f, 0.78f);
-                _profileHudRoot.anchorMax = new Vector2(0.12f, 0.78f);
-                _profileHudRoot.pivot = new Vector2(0.5f, 0.5f);
-                _profileHudRoot.sizeDelta = new Vector2(280f, 74f);
-            }
-            _profileHudRoot.anchoredPosition = new Vector2(-60f, 170f);
-
-            if (_profileLevelText != null) return;
-
-            var bg = _profileHudRoot.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.06f, 0.09f, 0.15f, 0.88f);
-            var outline = _profileHudRoot.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0.20f, 0.70f, 0.95f, 0.55f);
-            outline.effectDistance = new Vector2(1f, -1f);
-
-            _profileLevelText = CreateStatsText("LevelText", _profileHudRoot, "Lvl 1", 16, new Color(0.80f, 0.96f, 1f));
-            Anchor(_profileLevelText.rectTransform, new Vector2(0.05f, 0.52f), new Vector2(0.48f, 0.94f), TextAnchor.MiddleLeft);
-            _profileGoldText = CreateStatsText("GoldText", _profileHudRoot, "Gold: 0", 16, new Color(1f, 0.88f, 0.35f));
-            Anchor(_profileGoldText.rectTransform, new Vector2(0.52f, 0.52f), new Vector2(0.95f, 0.94f), TextAnchor.MiddleRight);
-
-            _profileXpText = CreateStatsText("XpText", _profileHudRoot, "XP 0/100", 13, Color.white);
-            Anchor(_profileXpText.rectTransform, new Vector2(0.05f, 0.06f), new Vector2(0.95f, 0.40f), TextAnchor.MiddleCenter);
-
-            var barBgGo = new GameObject("XpBarBg");
-            var barBgRt = barBgGo.AddComponent<RectTransform>();
-            barBgRt.SetParent(_profileHudRoot, false);
-            barBgRt.anchorMin = new Vector2(0.05f, 0.40f);
-            barBgRt.anchorMax = new Vector2(0.95f, 0.50f);
-            barBgRt.offsetMin = barBgRt.offsetMax = Vector2.zero;
-            var barBg = barBgGo.AddComponent<Image>();
-            barBg.color = new Color(0.08f, 0.11f, 0.16f, 0.95f);
-
-            var fillGo = new GameObject("XpBarFill");
-            var fillRt = fillGo.AddComponent<RectTransform>();
-            fillRt.SetParent(barBgRt, false);
-            fillRt.anchorMin = new Vector2(0f, 0f);
-            fillRt.anchorMax = new Vector2(0f, 1f);
-            fillRt.offsetMin = new Vector2(1f, 1f);
-            fillRt.offsetMax = new Vector2(-1f, -1f);
-            _profileXpFillRt = fillRt;
-            _profileXpFill = fillGo.AddComponent<Image>();
-            _profileXpFill.color = new Color(0.24f, 0.75f, 0.95f, 1f);
-        }
-
-        private static RectTransform FindAvatarRect(RectTransform root)
-        {
-            if (root == null) return null;
-            var direct = root.Find("MainMenuScreen/Canvas/Panel/Avatar");
-            if (direct is RectTransform rtDirect) return rtDirect;
-            var fallback = root.Find("Panel/Avatar");
-            if (fallback is RectTransform rtFallback) return rtFallback;
-            return null;
-        }
-
-        private async Task RefreshProfileHudAsync(CancellationToken ct)
-        {
-            EnsureProfileHud();
-            if (_profileLevelText == null || _profileGoldText == null || _profileXpText == null || _profileXpFill == null) return;
-            try
-            {
-                if (NakamaBootstrap.Instance == null)
-                {
-                    SetProfileUnknown();
-                    return;
-                }
-
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
-                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
-                {
-                    SetProfileUnknown();
-                    return;
-                }
-
-                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcMatch3PveCatalogGet, "{}");
-                var payload = rpc?.Payload;
-                if (string.IsNullOrEmpty(payload))
-                {
-                    SetProfileUnknown();
-                    return;
-                }
-
-                var model = JsonUtility.FromJson<PveCatalogHudRpcResponse>(payload);
-                if (model == null || !model.ok || model.progression == null)
-                {
-                    SetProfileUnknown();
-                    return;
-                }
-
-                if (model.level_xp != null && model.level_xp.Length > 1)
-                    _levelXp = model.level_xp;
-
-                var level = Mathf.Max(1, model.progression.level);
-                var xp = Mathf.Max(0, model.progression.xp);
-                var gold = Mathf.Max(0, model.progression.gold);
-                var currentReq = level >= 1 && level <= _levelXp.Length ? _levelXp[level - 1] : 0;
-                var nextReq = level < _levelXp.Length ? _levelXp[level] : currentReq;
-                var denom = Mathf.Max(1, nextReq - currentReq);
-                var frac = level >= _levelXp.Length ? 1f : Mathf.Clamp01((xp - currentReq) / (float)denom);
-
-                _profileLevelText.text = $"Lvl {level}";
-                _profileGoldText.text = $"Gold: {gold}";
-                _profileXpText.text = level >= _levelXp.Length ? $"XP {xp} (MAX)" : $"XP {xp}/{nextReq}";
-                if (_profileXpFillRt != null)
-                    _profileXpFillRt.anchorMax = new Vector2(frac, 1f);
-            }
-            catch
-            {
-                SetProfileUnknown();
-            }
-        }
-
-        private void SetProfileUnknown()
-        {
-            if (_profileLevelText != null) _profileLevelText.text = "Lvl —";
-            if (_profileGoldText != null) _profileGoldText.text = "Gold: —";
-            if (_profileXpText != null) _profileXpText.text = "XP —";
-            if (_profileXpFillRt != null) _profileXpFillRt.anchorMax = new Vector2(0f, 1f);
-        }
+        // ProfileProgressHud удалён: больше не генерируем прогресс в меню.
 
         private void ApplySafeAreaClamp()
         {
@@ -378,8 +271,6 @@ namespace Project.UI
             const float paddingPx = 14f;
             if (_match3StatsRoot != null && _match3StatsRoot.gameObject.activeSelf)
                 ClampRectToSafeArea(_match3StatsRoot, canvasRect, safe, paddingPx);
-            if (_profileHudRoot != null && _profileHudRoot.gameObject.activeSelf)
-                ClampRectToSafeArea(_profileHudRoot, canvasRect, safe, paddingPx);
         }
 
         private static void ClampRectToSafeArea(RectTransform rt, RectTransform canvasRect, Rect safePixels, float paddingPx)
@@ -454,37 +345,16 @@ namespace Project.UI
             var root = match3Button.transform as RectTransform;
             if (root == null) return;
 
-            var eyeGo = new GameObject("StatsToggleEye");
-            var rt = eyeGo.AddComponent<RectTransform>();
-            rt.SetParent(root, false);
-            rt.anchorMin = new Vector2(1f, 0.5f);
-            rt.anchorMax = new Vector2(1f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(34f, 34f);
-            rt.anchoredPosition = new Vector2(28f, 0f);
+            // Prefer a pre-placed toggle under the button (editable in prefab),
+            // and do not generate UI objects at runtime.
+            var eyeRoot = FindRectTransformChildByName(root, "StatsToggleEye");
+            if (eyeRoot == null) return;
 
-            var bg = eyeGo.AddComponent<Image>();
-            bg.color = new Color(0x8C / 255f, 0xBD / 255f, 0xF1 / 255f, 0.92f);
-            var btn = eyeGo.AddComponent<Button>();
-            btn.targetGraphic = bg;
-            _match3StatsToggleButton = btn;
+            _match3StatsToggleButton = eyeRoot.GetComponent<Button>();
+            _match3StatsToggleImage = eyeRoot.GetComponentInChildren<Image>(true);
+            if (_match3StatsToggleButton == null) return;
 
-            var iconGo = new GameObject("EyeIcon");
-            var iconRt = iconGo.AddComponent<RectTransform>();
-            iconRt.SetParent(rt, false);
-            iconRt.anchorMin = new Vector2(0.14f, 0.14f);
-            iconRt.anchorMax = new Vector2(0.86f, 0.86f);
-            iconRt.offsetMin = iconRt.offsetMax = Vector2.zero;
-            _match3StatsToggleImage = iconGo.AddComponent<Image>();
-            _match3StatsToggleImage.raycastTarget = false;
-            _match3StatsToggleImage.preserveAspect = true;
             UpdateMatch3StatsToggleVisual();
-
-            if (_match3StatsToggleImage.sprite == null)
-            {
-                var lbl = CreateStatsText("EyeText", rt, "eye", 13, Color.white);
-                Anchor(lbl.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), TextAnchor.MiddleCenter);
-            }
             _match3StatsToggleButton.onClick.AddListener(ToggleMatch3StatsCard);
         }
 
@@ -552,42 +422,38 @@ namespace Project.UI
 
         private void EnsureOnlineBadge()
         {
-            if (_onlineCountText != null) return;
+            if (_onlineCountText != null || _onlineCountTmp != null) return;
 
-            if (onlineBadgePrefab == null && !string.IsNullOrEmpty(onlineBadgeResourcePath))
-            {
-                onlineBadgePrefab = Resources.Load<GameObject>(onlineBadgeResourcePath);
-            }
-
-            if (onlineBadgePrefab == null) return;
-
-            var parent = onlineBadgeParent != null ? onlineBadgeParent : FindCanvasRoot();
+            // Badge is expected to be present in MainMenuHudOverlay prefab as a child.
+            var parent = FindHudOverlayRoot() ?? FindCanvasRoot();
             if (parent == null) return;
 
             if (_onlineBadgeInstance == null)
             {
-                _onlineBadgeInstance = Instantiate(onlineBadgePrefab, parent, false);
-                _onlineBadgeInstance.name = "OnlinePlayersBadge";
+                var badgeRt = FindRectTransformChildByName(parent, "OnlinePlayersBadge");
+                if (badgeRt == null)
+                {
+                    if (debugUiStats)
+                        Debug.Log("[MainMenu] OnlinePlayersBadge root not found under HUD/Canvas.");
+                    return;
+                }
+                _onlineBadgeInstance = badgeRt.gameObject;
             }
             _onlineBadgeRect = _onlineBadgeInstance.transform as RectTransform;
 
-            var allTexts = _onlineBadgeInstance.GetComponentsInChildren<Text>(true);
-            foreach (var t in allTexts)
+            _onlineCountText = FindTextUnder(_onlineBadgeInstance.transform, "CountText");
+            _onlineCountTmp = FindTmpTextUnder(_onlineBadgeInstance.transform, "CountText");
+            SetOnlineCountText("—");
+            if (debugUiStats)
             {
-                if (t != null && string.Equals(t.gameObject.name, "CountText", StringComparison.Ordinal))
-                {
-                    _onlineCountText = t;
-                    break;
-                }
+                Debug.Log("[MainMenu] OnlinePlayersBadge bindings: " +
+                          $"CountText(Text={_onlineCountText != null}, TMP={_onlineCountTmp != null}).");
             }
-            if (_onlineCountText != null)
-                _onlineCountText.text = "—";
         }
 
         private async Task OnlineLoopAsync(CancellationToken ct)
         {
             var nextStatsRefreshAt = 0f;
-            var nextProfileRefreshAt = 0f;
             while (!ct.IsCancellationRequested)
             {
                 await RefreshOnlineCountAsync(ct);
@@ -595,11 +461,6 @@ namespace Project.UI
                 {
                     await RefreshMatch3StatsCardAsync(ct);
                     nextStatsRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
-                }
-                if (Time.unscaledTime >= nextProfileRefreshAt)
-                {
-                    await RefreshProfileHudAsync(ct);
-                    nextProfileRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
                 }
                 try
                 {
@@ -615,20 +476,22 @@ namespace Project.UI
         private async Task RefreshOnlineCountAsync(CancellationToken ct)
         {
             EnsureOnlineBadge();
-            if (_onlineCountText == null) return;
+            if (_onlineCountText == null && _onlineCountTmp == null) return;
 
             try
             {
                 if (NakamaBootstrap.Instance == null)
                 {
-                    _onlineCountText.text = "—";
+                    SetOnlineCountText("—");
+                    if (debugUiStats) Debug.Log("[MainMenu] OnlineCount: NakamaBootstrap.Instance == null");
                     return;
                 }
 
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
                 if (!NakamaBootstrap.Instance.IsReady)
                 {
-                    _onlineCountText.text = "—";
+                    SetOnlineCountText("—");
+                    if (debugUiStats) Debug.Log($"[MainMenu] OnlineCount: Nakama not ready. IsReady={NakamaBootstrap.Instance.IsReady}");
                     return;
                 }
 
@@ -638,28 +501,32 @@ namespace Project.UI
                 var payload = rpc?.Payload;
                 if (string.IsNullOrEmpty(payload))
                 {
-                    _onlineCountText.text = "—";
+                    SetOnlineCountText("—");
+                    if (debugUiStats) Debug.Log("[MainMenu] OnlineCount RPC payload empty/null.");
                     return;
                 }
 
                 var model = JsonUtility.FromJson<OnlineCountRpcResponse>(payload);
                 if (model == null || !model.ok)
                 {
-                    _onlineCountText.text = "—";
+                    SetOnlineCountText("—");
+                    if (debugUiStats) Debug.Log($"[MainMenu] OnlineCount RPC not ok. payload={payload}");
                     return;
                 }
 
                 var count = Mathf.Max(1, model.count);
-                _onlineCountText.text = count.ToString();
+                SetOnlineCountText(count.ToString());
                 if (_lastOnlineCount >= 0 && _lastOnlineCount != count)
                 {
                     TriggerBadgePulse();
                 }
                 _lastOnlineCount = count;
+                if (debugUiStats) Debug.Log($"[MainMenu] OnlineCount OK. count={count} raw={payload}");
             }
             catch
             {
-                _onlineCountText.text = "—";
+                SetOnlineCountText("—");
+                if (debugUiStats) Debug.Log("[MainMenu] OnlineCount exception (see previous).");
             }
         }
 
@@ -667,6 +534,76 @@ namespace Project.UI
         {
             var canvas = FindFirstObjectByType<Canvas>();
             return canvas != null ? canvas.transform as RectTransform : null;
+        }
+
+        private static RectTransform FindHudOverlayRoot()
+        {
+            // GameObject.Find doesn't see inactive objects; include them.
+            foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (canvas != null && string.Equals(canvas.gameObject.name, "MainMenuHudOverlay", StringComparison.Ordinal))
+                    return canvas.transform as RectTransform;
+            }
+
+            var go = GameObject.Find("MainMenuHudOverlay");
+            return go != null ? go.transform as RectTransform : null;
+        }
+
+        private static Text FindTextUnder(Transform root, string name)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(name)) return null;
+            var all = root.GetComponentsInChildren<Text>(true);
+            foreach (var t in all)
+            {
+                if (t != null && t.gameObject.name == name)
+                    return t;
+            }
+            return null;
+        }
+
+        private static TMP_Text FindTmpTextUnder(Transform root, string name)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(name)) return null;
+            var all = root.GetComponentsInChildren<TMP_Text>(true);
+            foreach (var t in all)
+            {
+                if (t != null && t.gameObject.name == name)
+                    return t;
+            }
+            return null;
+        }
+
+        private static void SetMatch3Text(ref Text uiText, ref TMP_Text tmpText, string value)
+        {
+            if (uiText != null) uiText.text = value;
+            if (tmpText != null) tmpText.text = value;
+        }
+
+        private bool HasMatch3StatsBindings()
+        {
+            // Accept either UI.Text or TMP_Text for each value.
+            var hasPlayed = _match3PlayedText != null || _match3PlayedTmp != null;
+            var hasWins = _match3WinsText != null || _match3WinsTmp != null;
+            var hasLosses = _match3LossesText != null || _match3LossesTmp != null;
+            return hasPlayed && hasWins && hasLosses;
+        }
+
+        private void SetOnlineCountText(string value)
+        {
+            if (_onlineCountText != null) _onlineCountText.text = value;
+            if (_onlineCountTmp != null) _onlineCountTmp.text = value;
+        }
+
+        private static RectTransform FindRectTransformChildByName(Transform root, string name)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(name)) return null;
+            var all = root.GetComponentsInChildren<RectTransform>(true);
+            foreach (var rt in all)
+            {
+                if (rt != null && rt.gameObject.name == name)
+                    return rt;
+            }
+            return null;
         }
 
         private static Text CreateStatsText(string name, RectTransform parent, string value, int size, Color color)

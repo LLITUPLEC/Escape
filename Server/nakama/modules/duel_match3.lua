@@ -995,12 +995,43 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local can_square = stats.mana >= SQUARE_ABILITY_COST and stats.square_cd <= 0
   local can_petard = stats.mana >= PETARD_ABILITY_COST and stats.petard_cd <= 0
 
-  -- При запасе маны бот всегда сначала тратит петарду, затем (из-за keep_turn) выбирает следующий ход по общей оценке.
-  if can_petard and (stats.mana or 0) > 50 then
-    return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+  local player_stats = state.stats[player_user_id] or {}
+  local player_hp = tonumber(player_stats.hp) or MAX_HP
+
+  local swaps = enumerate_valid_swaps(state.board)
+  local best_extra_swap = nil
+  local best_extra_score = nil
+  local max_swap_damage = 0
+  for _, action in ipairs(swaps) do
+    local score = simulate_and_score_action(state, bot_user_id, player_user_id, action)
+    if score ~= nil then
+      if score.damage ~= nil and score.damage > max_swap_damage then max_swap_damage = score.damage end
+      if score.extra_turn and is_better_score(score, best_extra_score) then
+        best_extra_score = score
+        best_extra_swap = action
+      end
+    end
   end
 
-  local candidates = enumerate_valid_swaps(state.board)
+  -- “Молния/петарда” приоритетна, если:
+  --  • маны > 50 (как и раньше),
+  --  • либо маны >= 30 и петарда добивает прямо сейчас,
+  --  • либо петарда + лучший свап по урону добивают (петарда сохраняет ход).
+  if can_petard then
+    local mana = tonumber(stats.mana) or 0
+    if mana > 50
+      or (mana >= 30 and PETARD_DAMAGE >= player_hp)
+      or (mana >= PETARD_ABILITY_COST and (PETARD_DAMAGE + max_swap_damage) >= player_hp) then
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+  end
+
+  -- Если есть явный 5+ свап (extra turn) — берём его прежде любых способностей.
+  if best_extra_swap ~= nil then
+    return best_extra_swap
+  end
+
+  local candidates = swaps
   if can_cross then
     for y = 0, SIZE - 1 do
       for x = 0, SIZE - 1 do
@@ -1129,9 +1160,21 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
       state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
       state.board = init_board()
-      state.active_user_id = player_id
-      tick_cooldowns(state.stats[player_id])
+      if math.random(0, 1) == 0 then
+        state.active_user_id = player_id
+      else
+        state.active_user_id = state.bot_user_id
+      end
+
+      tick_cooldowns(state.stats[state.active_user_id])
       state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      if state.active_user_id == state.bot_user_id then
+        state.bot_turn_pending = true
+        state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+      else
+        state.bot_turn_pending = false
+        state.bot_turn_ready_tick = 0
+      end
       broadcast_sync(dispatcher, state, nil, false)
     end
     return state

@@ -859,7 +859,7 @@ namespace Project.Match3
                     if (step.phase == 1)
                     {
                         PlaySfx(sfxLineClear);
-                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.25f);
+                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.125f);
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
                         currentBoard = _board.ToArray();
@@ -1540,7 +1540,7 @@ namespace Project.Match3
                 }
             }
             catch { /* ignore */ }
-            finally { SceneManager.LoadScene("MainMenu"); }
+            finally { SceneManager.LoadScene("ArenaMenu"); }
         }
 
         private async Task CancelMatchmakerTicketAsync()
@@ -1649,7 +1649,7 @@ namespace Project.Match3
 
             _gameOverPanel = BuildOrInstantiate(gameOverPanelPrefab, root, V2(0.22f, 0.24f), V2(0.78f, 0.76f));
             if (_gameOverPanel == null) _gameOverPanel = BuildGameOverPanelProcedural(root);
-            _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene("MainMenu");
+            _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene("ArenaMenu");
             _gameOverPanel.Hide();
 
             if (_isSoloBotMode)

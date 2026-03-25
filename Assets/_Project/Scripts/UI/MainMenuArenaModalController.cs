@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.SceneManagement;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -17,6 +18,9 @@ namespace Project.UI
         [SerializeField] private bool hidePanelOnStart = true;
         [SerializeField] private bool useFadeAnimation = true;
         [SerializeField, Min(0f)] private float fadeDuration = 0.18f;
+        [Header("Scene navigation")]
+        [SerializeField] private bool openArenaAsScene = true;
+        [SerializeField] private string arenaSceneName = "ArenaMenu";
 
         private Button _arenaButton;
         private Button _closeButton;
@@ -31,6 +35,9 @@ namespace Project.UI
             _arenaButton = GetComponent<Button>();
             if (_arenaButton != null)
                 _arenaButton.onClick.AddListener(OnArenaButtonClicked);
+
+            if (openArenaAsScene)
+                return;
 
             ResolvePanel();
             if (hidePanelOnStart && _panel != null)
@@ -53,6 +60,9 @@ namespace Project.UI
 
         private void Update()
         {
+            if (openArenaAsScene)
+                return;
+
             ResolvePanel();
             if (_panel == null || !_panel.activeSelf)
                 return;
@@ -72,6 +82,12 @@ namespace Project.UI
 
         private void OnArenaButtonClicked()
         {
+            if (openArenaAsScene && !string.IsNullOrWhiteSpace(arenaSceneName))
+            {
+                SceneManager.LoadScene(arenaSceneName);
+                return;
+            }
+
             ResolvePanel();
             if (_panel == null)
                 return;
@@ -98,6 +114,9 @@ namespace Project.UI
 
         private void ResolvePanel()
         {
+            if (openArenaAsScene)
+                return;
+
             if (_panel == null && !string.IsNullOrWhiteSpace(panelPath))
             {
                 _panel = FindByPath(panelPath);

@@ -1749,7 +1749,7 @@ namespace Project.Duel
                 ExitKeypadFocus();
                 ClearLocalKeypadHistories();
                 _match = null;
-                SceneManager.LoadScene("MainMenu");
+                SceneManager.LoadScene("ArenaMenu");
             }
         }
 
@@ -1781,7 +1781,7 @@ namespace Project.Duel
 
         public void LeaveToMainMenu()
         {
-            SceneManager.LoadScene("MainMenu");
+            SceneManager.LoadScene("ArenaMenu");
         }
 
         private static int GetDoorDisplayIndex(int doorId)
