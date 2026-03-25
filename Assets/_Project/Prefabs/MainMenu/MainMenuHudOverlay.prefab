@@ -125,7 +125,7 @@ MonoBehaviour:
   onlinePollSeconds: 5
   match3StatsPollSeconds: 5
   debugUiStats: 0
-  eyeTexture: {fileID: 0}
+  eyeTexture: {fileID: 2800000, guid: 4f1c6b15a30d67246ab5e016d376f6da, type: 3}
   eyeOpenSprite: {fileID: 0}
   eyeClosedSprite: {fileID: 0}
 --- !u!1 &300001200
