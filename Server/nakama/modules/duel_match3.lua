@@ -34,7 +34,58 @@ local PVE_PROGRESS_KEY = "profile"
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
 local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
-local epoch_guard = require("duel_session_epoch_guard")
+
+-- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
+local SESSION_EPOCH_ACCOUNT_META = "session_epoch"
+
+local function guard_read_metadata_epoch(user_id)
+  if user_id == nil or user_id == "" then
+    return 0
+  end
+  local ok, account = pcall(function()
+    return nk.account_get_id(user_id)
+  end)
+  if not ok or account == nil or account.user == nil or account.user.metadata == nil then
+    return 0
+  end
+  local v = account.user.metadata[SESSION_EPOCH_ACCOUNT_META]
+  if v == nil then
+    return 0
+  end
+  return tonumber(v) or 0
+end
+
+local function guard_parse_client_epoch_from_payload(payload)
+  if payload == nil or payload == "" then
+    return nil
+  end
+  local ok, p = pcall(nk.json_decode, payload)
+  if not ok or type(p) ~= "table" then
+    return nil
+  end
+  if p.session_epoch == nil then
+    return nil
+  end
+  return tonumber(p.session_epoch)
+end
+
+local function guard_assert_client_epoch_matches(user_id, payload)
+  local server_e = guard_read_metadata_epoch(user_id)
+  local client_e = guard_parse_client_epoch_from_payload(payload)
+  if client_e == nil then
+    return false, "session_epoch_required"
+  end
+  if client_e ~= server_e then
+    return false, "session_stale"
+  end
+  return true, nil
+end
+
+local function guard_is_epoch_stale_for_match(user_id, match_snapshot_epoch)
+  local snap = tonumber(match_snapshot_epoch) or 0
+  return guard_read_metadata_epoch(user_id) > snap
+end
+
 local award_pve_victory
 
 local BOTS = {
@@ -629,7 +680,7 @@ end
 
 award_pve_victory = function(user_id, bot_id, match_epoch_snapshot)
   local snap = tonumber(match_epoch_snapshot) or 0
-  if epoch_guard.is_epoch_stale_for_match(nk, user_id, snap) then
+  if guard_is_epoch_stale_for_match(user_id, snap) then
     nk.logger_info("award_pve_victory skipped: session_stale")
     local progress = read_pve_progress(user_id)
     return {
@@ -739,7 +790,7 @@ local function duel_match3_stats_record(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = epoch_guard.assert_client_epoch_matches(nk, user_id, payload)
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -867,12 +918,12 @@ local function duel_match3_pve_create(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = epoch_guard.assert_client_epoch_matches(nk, user_id, payload)
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
 
-    local owner_epoch = epoch_guard.read_metadata_epoch(nk, user_id)
+    local owner_epoch = guard_read_metadata_epoch(user_id)
 
     local p = {}
     if payload ~= nil and payload ~= "" then
@@ -1295,7 +1346,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         and state.owner_user_id ~= nil
         and state.owner_user_id ~= ""
         and m.sender.user_id == state.owner_user_id
-        and epoch_guard.is_epoch_stale_for_match(nk, m.sender.user_id, state.owner_session_epoch)
+        and guard_is_epoch_stale_for_match(m.sender.user_id, state.owner_session_epoch)
       if stale_pve then
         send_reject(dispatcher, m.sender, "session_stale")
       else
