@@ -65,6 +65,7 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxExtraTurn;
         [SerializeField] private AudioClip sfxTimerEnd;
         [SerializeField] private AudioClip sfxDamageHit;
+        [SerializeField] private AudioClip sfxDamageCrit;
         [SerializeField] private AudioClip sfxVictory;
         [SerializeField] private AudioClip sfxDefeat;
 
@@ -966,7 +967,10 @@ namespace Project.Match3
                 _opPanel.ShowDamagePopup(opDamageTaken, msg.critTriggered && myDamageTaken == 0);
 
             if (_myStats.hp < prevMyHp || _opStats.hp < prevOpHp)
-                PlaySfx(sfxDamageHit);
+            {
+                if (msg.critTriggered) PlaySfx(sfxDamageCrit);
+                else                   PlaySfx(sfxDamageHit);
+            }
             if (msg.extraTurn)
             {
                 PlaySfx(sfxExtraTurn);
@@ -1723,6 +1727,7 @@ namespace Project.Match3
             if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
             if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
             if (sfxDamageHit == null)    sfxDamageHit    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav");
+            if (sfxDamageCrit == null)   sfxDamageCrit   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav");
             if (sfxVictory == null)      sfxVictory      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_victory.wav");
             if (sfxDefeat == null)       sfxDefeat       = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_defeat.wav");
 #endif
@@ -2148,6 +2153,43 @@ namespace Project.Match3
                 }
                 panel.damagePopup = inst;
             }
+
+            // Runtime fallback for builds where prefab wasn't assigned in Inspector.
+            if (panel.damagePopup == null)
+                panel.damagePopup = BuildDamagePopupProcedural(anchor);
+        }
+
+        private DamagePopupView BuildDamagePopupProcedural(RectTransform anchor)
+        {
+            if (anchor == null) return null;
+
+            var rootGo = new GameObject("DamagePopup");
+            var rootRt = rootGo.AddComponent<RectTransform>();
+            rootRt.SetParent(anchor, false);
+            rootRt.anchorMin = new Vector2(0.5f, 0.5f);
+            rootRt.anchorMax = new Vector2(0.5f, 0.5f);
+            rootRt.pivot = new Vector2(0.5f, 0.5f);
+            rootRt.anchoredPosition = new Vector2(0f, 40f);
+            rootRt.sizeDelta = new Vector2(100f, 100f);
+
+            var canvasGroup = rootGo.AddComponent<CanvasGroup>();
+            var view = rootGo.AddComponent<DamagePopupView>();
+
+            var critBgRt = MakeImg(rootRt, "CritBg", new Color(1f, 1f, 1f, 0.65f), V2(0f, 0f), V2(1f, 1f));
+            var critBg = critBgRt.GetComponent<Image>();
+            if (critBg != null) critBg.enabled = false;
+
+            var txt = MakeTxt(rootRt, "Value", "-15", 22, new Color(1f, 0.22f, 0.22f, 1f), V2(0f, 0f), V2(1f, 1f));
+            txt.alignment = TextAlignmentOptions.Center;
+
+            // Wire private serialized fields on runtime-built instance.
+            var viewType = typeof(DamagePopupView);
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            viewType.GetField("valueText", flags)?.SetValue(view, txt);
+            viewType.GetField("critBackground", flags)?.SetValue(view, critBg);
+            viewType.GetField("canvasGroup", flags)?.SetValue(view, canvasGroup);
+
+            return view;
         }
 
         private Match3AbilityPanel BuildAbilityPanelProcedural(Transform parent)
