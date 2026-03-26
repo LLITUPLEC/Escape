@@ -201,6 +201,12 @@ namespace Project.Match3
             EnsureCenterAnnouncement();
         }
 
+        public Texture2D GetBallsAtlasTexture()
+        {
+            TryLoadBallsAtlas();
+            return ballsAtlas;
+        }
+
         // ─── Refresh ──────────────────────────────────────────────────────────────
 
         public void RefreshAll(Match3BoardLogic board)

@@ -41,9 +41,11 @@ local function after_authenticate_email(ctx, logger, nkrt, session, request)
   end
 
   local ok, err = pcall(function()
-    local epoch = read_session_epoch_from_account(nkrt, user_id) + 1
-    merge_metadata_and_set_epoch(nkrt, user_id, epoch)
-    nkrt.notification_send(
+    -- Use the built-in `nk` module here. `nkrt` passed to after-hooks is not guaranteed
+    -- to expose account_get_id/account_update_id in all Nakama versions/configs.
+    local epoch = read_session_epoch_from_account(nk, user_id) + 1
+    merge_metadata_and_set_epoch(nk, user_id, epoch)
+    nk.notification_send(
       user_id,
       "session_replaced",
       { session_epoch = epoch },

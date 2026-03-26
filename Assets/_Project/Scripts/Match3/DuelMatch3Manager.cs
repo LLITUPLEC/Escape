@@ -80,6 +80,10 @@ namespace Project.Match3
         [Header("UI Prefabs")]
         [SerializeField] private DamagePopupView damagePopupPrefab;
 
+        [Header("Cheat Overlay (optional)")]
+        [Tooltip("Optional prefab for the overlay cells container (CheatRowsOverlayCells). If null, created at runtime.")]
+        [SerializeField] private Transform cheatRowsOverlayCellsPrefab;
+
         // ─── OpCodes (match-3 specific, 10+ to avoid collision with DuelRoom) ─────
         private static class M3Op
         {
@@ -165,6 +169,7 @@ namespace Project.Match3
         private Match3PlayerPanel   _opPanel;
         private Match3AbilityPanel  _abilityPanel;
         private Match3BoardView     _boardView;
+        private Match3CheatRowsOverlayView _cheatRowsOverlayView;
         private Match3GameHUD       _hud;
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
@@ -594,6 +599,8 @@ namespace Project.Match3
             if (_boardView != null && (ability == AbilityType.Cross || ability == AbilityType.Square))
             {
                 yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
+                if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                    yield return _cheatRowsOverlayView.AnimateAbilityArea(ability, cx, cy, 0.24f);
             }
             var req = new M3ActionRequest
             {
@@ -797,10 +804,42 @@ namespace Project.Match3
         private void OnBoardSyncReceived(M3BoardSyncMsg msg)
         {
             if (_gameEnded) return;
+
+            EnsureCheatRowsOverlay(msg);
+
             _hasInitialBoardSync = true;
             if (_snapshotRetryRoutine != null) { StopCoroutine(_snapshotRetryRoutine); _snapshotRetryRoutine = null; }
             _pendingBoardSyncs.Enqueue(msg);
             TryStartNextBoardSync();
+        }
+
+        private void EnsureCheatRowsOverlay(M3BoardSyncMsg msg)
+        {
+            bool shouldShow = msg != null && msg.cheatRows != null && msg.cheatRows.Length >= Match3BoardLogic.Size * 2;
+            if (!shouldShow)
+            {
+                if (_cheatRowsOverlayView != null)
+                    _cheatRowsOverlayView.gameObject.SetActive(false);
+                return;
+            }
+
+            if (_boardView == null || _boardView.cellContainer == null) return;
+
+            if (_cheatRowsOverlayView == null)
+            {
+                var go = new GameObject("Match3CheatRowsOverlay");
+                go.transform.SetParent(_boardView.transform, false);
+                _cheatRowsOverlayView = go.AddComponent<Match3CheatRowsOverlayView>();
+                if (cheatRowsOverlayCellsPrefab != null)
+                    _cheatRowsOverlayView.SetCellContainerPrefab(cheatRowsOverlayCellsPrefab);
+                _cheatRowsOverlayView.gameObject.SetActive(true);
+                _cheatRowsOverlayView.Build(_boardView);
+            }
+
+            if (_cheatRowsOverlayView.gameObject.activeSelf == false)
+                _cheatRowsOverlayView.gameObject.SetActive(true);
+
+            _cheatRowsOverlayView.RefreshAll(msg.cheatRows);
         }
 
         private void TryStartNextBoardSync()
@@ -864,12 +903,16 @@ namespace Project.Match3
                 {
                     PlaySfx(sfxAbilityCross);
                     yield return _boardView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
+                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                        yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
                 }
                 else if (msg.actionType == 3 &&
                          msg.abilityX >= 0 && msg.abilityY >= 0)
                 {
                     PlaySfx(sfxAbilitySquare);
                     yield return _boardView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
+                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                        yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
                 }
                 else if (msg.actionType == 4)
                 {

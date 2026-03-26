@@ -326,6 +326,7 @@ MonoBehaviour:
   furyAbilitySprite: {fileID: 21300000, guid: df9dbddaf3e01ad4aafec78602fd3ae5, type: 3}
   spellBorderSprite: {fileID: 21300000, guid: 12a9630a27055ac4fab7951b3737c9ea, type: 3}
   damagePopupPrefab: {fileID: 1563794341977534896, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
+  cheatRowsOverlayCellsPrefab: {fileID: 8564567523557899235, guid: 2c5f112379cf13343935c7cab488f4b8, type: 3}
   furyCritChance: 0.25
 --- !u!1 &1921802989
 GameObject:

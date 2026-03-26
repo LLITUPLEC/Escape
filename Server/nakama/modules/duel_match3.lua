@@ -1,6 +1,14 @@
 local nk = require("nakama")
 
-local SIZE = 6
+-- Board dimensions:
+-- We keep a real 6x8 board on server.
+-- Active area (seen/played by everyone) is bottom 6 rows (client y=0..5).
+-- Preview area (seen only by whitelisted users) is top 2 rows (server y=0..1),
+-- and is NOT interactable and NOT affected by abilities/match scoring until pieces fall into active area.
+local SIZE = 6            -- columns
+local HEIGHT = 8          -- total rows on server
+local ACTIVE_Y_MIN = 2    -- server y where active area starts
+local ACTIVE_ROWS = 6     -- rows in active area (=HEIGHT-ACTIVE_Y_MIN)
 local MAX_HP = 150
 local MAX_MANA = 100
 local TURN_SECONDS = 30
@@ -29,6 +37,17 @@ local SHIELD_ARMOR_PER_STACK = 4
 local SHIELD_HEAL_PER_STACK = 3
 local GEM_MANA = { [1] = 5, [2] = 3, [3] = 1 }
 local SPAWN_POOL = { 1, 2, 3, 4, 5 }
+
+-- Visual-only cheat rows (above the 6x6 board).
+-- They are sent only to whitelisted players and are never modified by abilities/cascades.
+local CHEAT_ROWS_COUNT = 2
+local CHEAT_ROWS_TOTAL = SIZE * CHEAT_ROWS_COUNT
+local CHEAT_WHITELIST_COLLECTION = "duel_match3_cheat_whitelist"
+local CHEAT_WHITELIST_KEY = "emails"
+-- Console usually writes storage objects under a real user_id context.
+-- We try "global" first, but also fall back to reading the object under any present player ids.
+local CHEAT_WHITELIST_USER_ID = "global"
+local DEFAULT_CHEAT_EMAILS = { "tminn91@mail.ru" }
 
 local OP_BOARD_SYNC = 10
 local OP_GAME_OVER = 11
@@ -182,7 +201,19 @@ local function idx(x, y)
 end
 
 local function in_bounds(x, y)
-  return x >= 0 and x < SIZE and y >= 0 and y < SIZE
+  return x >= 0 and x < SIZE and y >= 0 and y < HEIGHT
+end
+
+local function in_active_client(x, y)
+  return x >= 0 and x < SIZE and y >= 0 and y < ACTIVE_ROWS
+end
+
+local function client_to_server_y(y)
+  return (tonumber(y) or -999) + ACTIVE_Y_MIN
+end
+
+local function in_active_server(x, y)
+  return x >= 0 and x < SIZE and y >= ACTIVE_Y_MIN and y < HEIGHT
 end
 
 local function bget(board, x, y)
@@ -276,7 +307,7 @@ end
 
 local function count_skulls(board)
   local n = 0
-  for y = 0, SIZE - 1 do
+  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
     for x = 0, SIZE - 1 do
       if bget(board, x, y) == 4 then n = n + 1 end
     end
@@ -329,14 +360,16 @@ local function tick_buffs_end_turn(st)
 end
 
 local function would_create_match(board, x, y, t)
+  -- Only enforce "no initial matches" inside active area.
+  if not in_active_server(x, y) then return false end
   if x >= 2 and bget(board, x - 1, y) == t and bget(board, x - 2, y) == t then return true end
-  if y >= 2 and bget(board, x, y - 1) == t and bget(board, x, y - 2) == t then return true end
+  if y >= (ACTIVE_Y_MIN + 2) and bget(board, x, y - 1) == t and bget(board, x, y - 2) == t then return true end
   return false
 end
 
 local function init_board()
   local board = {}
-  for y = 0, SIZE - 1 do
+  for y = 0, HEIGHT - 1 do
     for x = 0, SIZE - 1 do
       local t = 1
       local tries = 0
@@ -350,6 +383,72 @@ local function init_board()
   return board
 end
 
+local function init_cheat_rows()
+  local out = {}
+  -- Order for clients: yGhost=0 (top) => logical y=-2, then yGhost=1 => logical y=-1.
+  for yGhost = 0, CHEAT_ROWS_COUNT - 1 do
+    for x = 0, SIZE - 1 do
+      out[#out + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+    end
+  end
+  return out
+end
+
+-- Spawn preview implementation:
+-- We maintain a per-column queue of upcoming pieces. Refill consumes from this queue,
+-- and cheat_rows always mirrors the next 2 pieces for each column.
+local function spawn_queue_min_len()
+  -- A single refill can spawn up to SIZE new pieces in a column, so keep some buffer.
+  return SIZE + CHEAT_ROWS_COUNT + 2
+end
+
+local function ensure_spawn_queue(state, x)
+  if state.spawn_queues == nil then state.spawn_queues = {} end
+  if state.spawn_queues[x] == nil then state.spawn_queues[x] = {} end
+  local q = state.spawn_queues[x]
+  local need = spawn_queue_min_len()
+  while #q < need do
+    q[#q + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+  end
+  return q
+end
+
+local function spawn_next_from_queue(state, x)
+  local q = ensure_spawn_queue(state, x)
+  local v = q[1]
+  table.remove(q, 1)
+  q[#q + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+  return v
+end
+
+local function update_cheat_rows_from_queues(state)
+  if state == nil then return end
+  if state.cheat_rows == nil then state.cheat_rows = {} end
+  local out = {}
+  -- yGhost=0 => logical y=-2 (farthest), yGhost=1 => logical y=-1 (nearest to board)
+  for yGhost = 0, CHEAT_ROWS_COUNT - 1 do
+    for x = 0, SIZE - 1 do
+      local q = ensure_spawn_queue(state, x)
+      local idx1 = yGhost + 1
+      out[#out + 1] = q[idx1] or SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+    end
+  end
+  state.cheat_rows = out
+end
+
+local function update_cheat_rows_from_board(state)
+  if state == nil or state.board == nil then return end
+  local out = {}
+  -- Server top rows are y=0..1 (2 rows). We expose them as cheatRows in the same order:
+  -- yGhost=0 corresponds to server y=0, yGhost=1 corresponds to server y=1.
+  for y = 0, CHEAT_ROWS_COUNT - 1 do
+    for x = 0, SIZE - 1 do
+      out[#out + 1] = bget(state.board, x, y)
+    end
+  end
+  state.cheat_rows = out
+end
+
 local function do_swap(board, x1, y1, x2, y2)
   local t = bget(board, x1, y1)
   bset(board, x1, y1, bget(board, x2, y2))
@@ -359,7 +458,7 @@ end
 local function find_matches(board)
   local results = {}
 
-  for y = 0, SIZE - 1 do
+  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
     local x = 0
     while x < SIZE do
       local t = bget(board, x, y)
@@ -381,14 +480,14 @@ local function find_matches(board)
   end
 
   for x = 0, SIZE - 1 do
-    local y = 0
-    while y < SIZE do
+    local y = ACTIVE_Y_MIN
+    while y < HEIGHT do
       local t = bget(board, x, y)
       if t == 0 then
         y = y + 1
       else
         local len = 1
-        while y + len < SIZE and bget(board, x, y + len) == t do
+        while y + len < HEIGHT and bget(board, x, y + len) == t do
           len = len + 1
         end
         if len >= 3 then
@@ -407,15 +506,18 @@ end
 local function clear_matches(board, matches)
   for _, m in ipairs(matches) do
     for _, c in ipairs(m.cells) do
-      bset(board, c.x, c.y, 0)
+      if in_active_server(c.x, c.y) then
+        bset(board, c.x, c.y, 0)
+      end
     end
   end
 end
 
-local function apply_gravity_and_refill(board)
+local function apply_gravity_and_refill(state)
+  local board = state.board
   for x = 0, SIZE - 1 do
-    local write_y = SIZE - 1
-    for y = SIZE - 1, 0, -1 do
+    local write_y = HEIGHT - 1
+    for y = HEIGHT - 1, 0, -1 do
       local t = bget(board, x, y)
       if t ~= 0 then
         bset(board, x, write_y, t)
@@ -428,19 +530,22 @@ local function apply_gravity_and_refill(board)
     end
   end
 
-  for y = 0, SIZE - 1 do
+  for y = 0, HEIGHT - 1 do
     for x = 0, SIZE - 1 do
       if bget(board, x, y) == 0 then
-        bset(board, x, y, SPAWN_POOL[math.random(1, #SPAWN_POOL)])
+        bset(board, x, y, spawn_next_from_queue(state, x))
       end
     end
   end
+
+  -- cheatRows must always reflect the real top 2 rows of the 6x8 board.
+  update_cheat_rows_from_board(state)
 
   return find_matches(board)
 end
 
 local function try_swap(board, x1, y1, x2, y2)
-  if not in_bounds(x1, y1) or not in_bounds(x2, y2) then return false, nil end
+  if not in_active_server(x1, y1) or not in_active_server(x2, y2) then return false, nil end
   if math.abs(x1 - x2) + math.abs(y1 - y2) ~= 1 then return false, nil end
 
   do_swap(board, x1, y1, x2, y2)
@@ -455,19 +560,19 @@ local function apply_ability(board, action_type, cx, cy)
   if action_type == 2 then
     for dx = -2, 2 do
       local nx = cx + dx
-      if in_bounds(nx, cy) then bset(board, nx, cy, 0) end
+      if in_active_server(nx, cy) then bset(board, nx, cy, 0) end
     end
     for dy = -2, 2 do
       if dy ~= 0 then
         local ny = cy + dy
-        if in_bounds(cx, ny) then bset(board, cx, ny, 0) end
+        if in_active_server(cx, ny) then bset(board, cx, ny, 0) end
       end
     end
   elseif action_type == 3 then
     for dy = -1, 1 do
       for dx = -1, 1 do
         local nx, ny = cx + dx, cy + dy
-        if in_bounds(nx, ny) then bset(board, nx, ny, 0) end
+        if in_active_server(nx, ny) then bset(board, nx, ny, 0) end
       end
     end
   elseif action_type == 4 then
@@ -517,14 +622,25 @@ local function other_player_id(state, uid)
   return state.players_sorted[1]
 end
 
-local function make_sync_msg(state, action, extra_turn, anim_steps)
+local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser)
   local a_id = state.players_sorted[1]
   local b_id = state.players_sorted[2]
   local a = state.stats[a_id]
   local b = state.stats[b_id]
 
+  local function export_active_board()
+    local out = {}
+    for y = ACTIVE_Y_MIN, HEIGHT - 1 do
+      for x = 0, SIZE - 1 do
+        out[#out + 1] = bget(state.board, x, y)
+      end
+    end
+    return out
+  end
+
   return {
-    board = clone_board(state.board),
+    board = export_active_board(),
+    cheatRows = cheatRowsForUser or {},
     aHp = a.hp,
     aMana = a.mana,
     aCrossCd = a.cross_cd,
@@ -566,8 +682,34 @@ local function make_sync_msg(state, action, extra_turn, anim_steps)
 end
 
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
-  local msg = make_sync_msg(state, action, extra_turn, anim_steps)
-  dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
+  local allowed_presences = {}
+  local other_presences = {}
+  if state.cheat_rows_allowed ~= nil then
+    for uid, p in pairs(state.presences) do
+      if state.cheat_rows_allowed[uid] == true then
+        allowed_presences[#allowed_presences + 1] = p
+      else
+        other_presences[#other_presences + 1] = p
+      end
+    end
+  end
+
+  -- If we don't have any permission map (edge cases), fallback to "send to all".
+  if state.cheat_rows_allowed == nil then
+    local msg = make_sync_msg(state, action, extra_turn, anim_steps, {})
+    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
+    return
+  end
+
+  local msg_allowed = make_sync_msg(state, action, extra_turn, anim_steps, state.cheat_rows or {})
+  local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {})
+
+  if #allowed_presences > 0 then
+    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg_allowed), allowed_presences, nil)
+  end
+  if #other_presences > 0 then
+    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg_other), other_presences, nil)
+  end
 end
 
 local function send_reject(dispatcher, presence, reason)
@@ -622,14 +764,21 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 end
 
 local function clone_step(board, phase)
-  return { phase = phase, board = clone_board(board) }
+  -- Anim steps are sent in client 6x6 coordinates (active area only).
+  local out = {}
+  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
+    for x = 0, SIZE - 1 do
+      out[#out + 1] = bget(board, x, y)
+    end
+  end
+  return { phase = phase, board = out }
 end
 
 local function collect_ability_cells(action_type, cx, cy)
   local cells = {}
   local used = {}
   local function add_cell(x, y)
-    if not in_bounds(x, y) then return end
+    if not in_active_server(x, y) then return end
     local k = tostring(x) .. ":" .. tostring(y)
     if used[k] then return end
     used[k] = true
@@ -695,7 +844,9 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local keep_turn = false
   local crit_triggered = false
   if action.actionType == 1 then
-    local ok, matches = try_swap(state.board, action.fromX, action.fromY, action.toX, action.toY)
+    local fy = client_to_server_y(action.fromY)
+    local ty = client_to_server_y(action.toY)
+    local ok, matches = try_swap(state.board, action.fromX, fy, action.toX, ty)
     if not ok then return false, "invalid_swap", false, false, anim_steps end
     initial_matches = matches or {}
   elseif action.actionType == 4 then
@@ -714,8 +865,9 @@ local function resolve_action(state, action, actor_id, opponent_id)
     state.last_crit = false
     return true, nil, false, true, anim_steps
   else
-    if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, action.cx, action.cy) then crit_triggered = true end
-    apply_ability(state.board, action.actionType, action.cx, action.cy)
+    local sy = client_to_server_y(action.cy)
+    if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, action.cx, sy) then crit_triggered = true end
+    apply_ability(state.board, action.actionType, action.cx, sy)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
     initial_matches = {}
   end
@@ -731,7 +883,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   end
 
   while true do
-    local cascade = apply_gravity_and_refill(state.board)
+    local cascade = apply_gravity_and_refill(state)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 2)
     if #cascade == 0 then break end
     local et, crit = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
@@ -784,6 +936,127 @@ local function decode_storage_value(obj)
   if type(v) == "table" then return v end
   if type(v) == "string" then return nk.json_decode(v) end
   return nil
+end
+
+local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
+  -- Fallback for local dev / empty storage.
+  local emails = {}
+  for i = 1, #DEFAULT_CHEAT_EMAILS do
+    emails[#emails + 1] = DEFAULT_CHEAT_EMAILS[i]
+  end
+
+  if storage_user_id == nil or storage_user_id == "" then
+    return emails
+  end
+
+  local ok, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = CHEAT_WHITELIST_COLLECTION,
+        key = CHEAT_WHITELIST_KEY,
+        user_id = storage_user_id,
+      },
+    })
+  end)
+  if not ok or rows == nil or #rows == 0 then
+    return emails
+  end
+
+  local row = rows[1]
+  local val = decode_storage_value(row) or {}
+  local fromValue = nil
+
+  if type(val) == "table" then
+    -- Support both { emails = [...] } and [...] shapes.
+    if type(val.emails) == "table" then
+      fromValue = val.emails
+    else
+      fromValue = val
+    end
+  elseif type(val) == "string" then
+    local ok2, p = pcall(nk.json_decode, val)
+    if ok2 and type(p) == "table" then
+      if type(p.emails) == "table" then fromValue = p.emails else fromValue = p end
+    end
+  end
+
+  if type(fromValue) == "table" and #fromValue > 0 then
+    local newEmails = {}
+    for _, e in ipairs(fromValue) do
+      if type(e) == "string" and e ~= "" then
+        newEmails[#newEmails + 1] = string.lower(e)
+      end
+    end
+    if #newEmails > 0 then return newEmails end
+  end
+
+  return emails
+end
+
+local function build_cheat_whitelist_set(candidate_user_ids)
+  local set = {}
+  local function absorb(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "string" and e ~= "" then
+        set[string.lower(e)] = true
+      end
+    end
+  end
+
+  -- 1) Try global bucket first (if it exists).
+  local global_list = read_cheat_whitelist_emails_for_user_id(CHEAT_WHITELIST_USER_ID)
+  absorb(global_list)
+
+  -- 2) Also try under any real player user_id (Console commonly writes under user context).
+  if type(candidate_user_ids) == "table" then
+    for _, uid in ipairs(candidate_user_ids) do
+      local list = read_cheat_whitelist_emails_for_user_id(uid)
+      absorb(list)
+    end
+  end
+
+  -- 3) Always include defaults so the feature still works without storage.
+  absorb(DEFAULT_CHEAT_EMAILS)
+
+  return set
+end
+
+local function user_email_lower(user_id)
+  if user_id == nil or user_id == "" then return nil end
+  if string.sub(user_id, 1, #BOT_USER_ID_PREFIX) == BOT_USER_ID_PREFIX then
+    return nil
+  end
+
+  local ok, account = pcall(function()
+    return nk.account_get_id(user_id)
+  end)
+  if not ok or account == nil then
+    return nil
+  end
+
+  -- In Nakama's ApiAccount, e-mail is usually a top-level field (account.email),
+  -- not inside account.user.
+  local email = account.email
+  if email == nil and account.user ~= nil then
+    -- Extra tolerance for older/modified payloads.
+    email = account.user.email or account.user.email_address or account.user.emailAddress
+    if email == nil and account.user.metadata ~= nil then
+      email = account.user.metadata.email or account.user.metadata.Email
+    end
+  end
+  if email == nil then return nil end
+  return string.lower(tostring(email))
+end
+
+local function is_user_allowed_for_cheat_rows(user_id, whitelist_set)
+  local email = user_email_lower(user_id)
+  if email == nil or email == "" then return false end
+  local set = whitelist_set
+  if set == nil then
+    set = build_cheat_whitelist_set({ user_id })
+  end
+  return set[email] == true
 end
 
 local function read_pve_progress(user_id)
@@ -1125,7 +1398,7 @@ local function validate_action_basic(state, sender_id, action)
   if action == nil then return false, "bad_payload" end
 
   if action.actionType == 1 then
-    if not in_bounds(action.fromX, action.fromY) or not in_bounds(action.toX, action.toY) then
+    if not in_active_client(action.fromX, action.fromY) or not in_active_client(action.toX, action.toY) then
       return false, "out_of_bounds"
     end
     if math.abs(action.fromX - action.toX) + math.abs(action.fromY - action.toY) ~= 1 then
@@ -1135,7 +1408,7 @@ local function validate_action_basic(state, sender_id, action)
   end
 
   if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
-    if (action.actionType == 2 or action.actionType == 3) and not in_bounds(action.cx, action.cy) then
+    if (action.actionType == 2 or action.actionType == 3) and not in_active_client(action.cx, action.cy) then
       return false, "out_of_bounds"
     end
     local st = state.stats[sender_id]
@@ -1162,16 +1435,16 @@ end
 
 local function enumerate_valid_swaps(board)
   local swaps = {}
-  for y = 0, SIZE - 1 do
+  for y = 0, ACTIVE_ROWS - 1 do
     for x = 0, SIZE - 1 do
       if x + 1 < SIZE then
         local sim = clone_board(board)
-        local ok, _ = try_swap(sim, x, y, x + 1, y)
+        local ok, _ = try_swap(sim, x, client_to_server_y(y), x + 1, client_to_server_y(y))
         if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x + 1, toY = y, cx = -1, cy = -1 } end
       end
-      if y + 1 < SIZE then
+      if y + 1 < ACTIVE_ROWS then
         local sim = clone_board(board)
-        local ok, _ = try_swap(sim, x, y, x, y + 1)
+        local ok, _ = try_swap(sim, x, client_to_server_y(y), x, client_to_server_y(y + 1))
         if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x, toY = y + 1, cx = -1, cy = -1 } end
       end
     end
@@ -1432,6 +1705,20 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
       state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
       state.board = init_board()
+
+      state.cheat_rows = init_cheat_rows()
+      state.spawn_queues = {}
+      for x = 0, SIZE - 1 do ensure_spawn_queue(state, x) end
+      update_cheat_rows_from_board(state)
+      state.cheat_rows_allowed = {}
+      local wl = build_cheat_whitelist_set({ player_id })
+      local p_email = user_email_lower(player_id)
+      local p_allowed = is_user_allowed_for_cheat_rows(player_id, wl)
+      state.cheat_rows_allowed[player_id] = p_allowed
+      state.cheat_rows_allowed[state.bot_user_id] = is_user_allowed_for_cheat_rows(state.bot_user_id, wl)
+      nk.logger_info("duel_match3 cheat_rows_allowed (pve): user_id=" .. tostring(player_id) ..
+        " email=" .. tostring(p_email) .. " allowed=" .. tostring(p_allowed))
+
       state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
       tick_cooldowns(state.stats[state.active_user_id])
@@ -1454,6 +1741,20 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.stats[state.players_sorted[1]] = new_stats()
     state.stats[state.players_sorted[2]] = new_stats()
     state.board = init_board()
+
+    state.cheat_rows = init_cheat_rows()
+    state.spawn_queues = {}
+    for x = 0, SIZE - 1 do ensure_spawn_queue(state, x) end
+    update_cheat_rows_from_board(state)
+    state.cheat_rows_allowed = {}
+    local wl = build_cheat_whitelist_set(state.players_sorted)
+    for _, uid in ipairs(state.players_sorted) do
+      local u_email = user_email_lower(uid)
+      local allowed = is_user_allowed_for_cheat_rows(uid, wl)
+      state.cheat_rows_allowed[uid] = allowed
+      nk.logger_info("duel_match3 cheat_rows_allowed (pvp): user_id=" .. tostring(uid) ..
+        " email=" .. tostring(u_email) .. " allowed=" .. tostring(allowed))
+    end
 
     state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
 
@@ -1505,7 +1806,11 @@ local function match_loop(context, dispatcher, tick, state, messages)
 
     if m.op_code == OP_SNAPSHOT_REQUEST then
       if state.started and not state.ended and state.board ~= nil then
-        local msg = make_sync_msg(state, nil, false)
+        local cheat = {}
+        if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[m.sender.user_id] == true then
+          cheat = state.cheat_rows or {}
+        end
+        local msg = make_sync_msg(state, nil, false, nil, cheat)
         dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), { m.sender }, nil)
       end
     end
@@ -1513,7 +1818,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     if m.op_code == OP_SELECTION_SYNC then
       if state.started and not state.ended and m.sender.user_id == state.active_user_id then
         local sel = parse_selection(m.data)
-        if sel and in_bounds(sel.x, sel.y) then
+        if sel and in_active_client(sel.x, sel.y) then
           dispatcher.broadcast_message(OP_SELECTION_SYNC, nk.json_encode(sel), nil, m.sender)
         end
       end

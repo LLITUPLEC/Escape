@@ -46,6 +46,11 @@ namespace Project.Match3
         // board[y * 6 + x] = (int)PieceType, 36 elements
         public int[] board = new int[36];
 
+        // cheatRows are 2 extra visual rows above the normal 6x6 board.
+        // Order: yView=0 (logical y=-2), then yView=1 (logical y=-1), each with x=0..5.
+        // Only included for whitelisted users; others should receive empty array.
+        public int[] cheatRows = new int[0];
+
         // "a" = sorted userId[0], "b" = sorted userId[1]
         public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd, aShieldCd, aFuryCd;
         public int aMaxHp;
