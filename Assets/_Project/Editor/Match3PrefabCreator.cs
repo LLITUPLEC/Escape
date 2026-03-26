@@ -21,6 +21,7 @@ using Project.Match3;
 public static class Match3PrefabCreator
 {
     private const string PrefabDir = "Assets/_Project/Prefabs/Match3";
+    private const string UiPrefabDir = "Assets/_Project/Prefabs/UI";
 
     [MenuItem("Tools/Match3/Создать префабы UI")]
     public static void CreateAll()
@@ -33,10 +34,21 @@ public static class Match3PrefabCreator
         CreateGameHUD();
         CreateSearchingPanel();
         CreateGameOverPanel();
+        CreateDamagePopup();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log($"[Match3] Префабы созданы в {PrefabDir}");
+    }
+
+    [MenuItem("Tools/Match3/Создать префаб попапа урона")]
+    public static void CreateDamagePopupMenu()
+    {
+        EnsureFolder();
+        CreateDamagePopup();
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log($"[Match3] Префаб попапа урона создан в {UiPrefabDir}");
     }
 
     // ─── Player Panel ─────────────────────────────────────────────────────────
@@ -241,6 +253,36 @@ public static class Match3PrefabCreator
         Save(root, "Match3GameOverPanel");
     }
 
+    // ─── Damage Popup ─────────────────────────────────────────────────────────
+
+    private static void CreateDamagePopup()
+    {
+        EnsureUiFolder();
+        var root = MakeRoot("DamagePopup");
+        var view = root.AddComponent<DamagePopupView>();
+        root.AddComponent<CanvasGroup>();
+
+        // Crit background (sprite can be assigned later)
+        var bg = MakeImg(root.transform, "CritBg", new Color(1f, 1f, 1f, 0.65f));
+        var bgImg = bg.GetComponent<Image>();
+        bgImg.enabled = false;
+        Stretch(bg.GetComponent<RectTransform>());
+
+        // Value
+        var txt = MakeTxt(root.transform, "Value", "-15", 22, new Color(1f, 0.22f, 0.22f, 1f));
+        txt.alignment = TextAnchor.MiddleCenter;
+        Stretch(txt.GetComponent<RectTransform>());
+
+        // Wire references
+        var so = new SerializedObject(view);
+        so.FindProperty("valueText").objectReferenceValue = txt;
+        so.FindProperty("critBackground").objectReferenceValue = bgImg;
+        so.FindProperty("canvasGroup").objectReferenceValue = root.GetComponent<CanvasGroup>();
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        SaveUi(root, "DamagePopup");
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Helpers
     // ═════════════════════════════════════════════════════════════════════════
@@ -253,9 +295,25 @@ public static class Match3PrefabCreator
             AssetDatabase.CreateFolder("Assets/_Project/Prefabs", "Match3");
     }
 
+    private static void EnsureUiFolder()
+    {
+        if (!AssetDatabase.IsValidFolder("Assets/_Project/Prefabs"))
+            AssetDatabase.CreateFolder("Assets/_Project", "Prefabs");
+        if (!AssetDatabase.IsValidFolder(UiPrefabDir))
+            AssetDatabase.CreateFolder("Assets/_Project/Prefabs", "UI");
+    }
+
     private static void Save(GameObject root, string prefabName)
     {
         string path = $"{PrefabDir}/{prefabName}.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        Debug.Log($"[Match3] Saved {path}");
+    }
+
+    private static void SaveUi(GameObject root, string prefabName)
+    {
+        string path = $"{UiPrefabDir}/{prefabName}.prefab";
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
         Debug.Log($"[Match3] Saved {path}");

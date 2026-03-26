@@ -10,13 +10,23 @@ local BOT_THINK_TICKS = math.max(1, math.floor(BOT_THINK_SECONDS * TICK_RATE + 0
 local CROSS_ABILITY_COST = 20
 local SQUARE_ABILITY_COST = 20
 local PETARD_ABILITY_COST = 30
+local SHIELD_ABILITY_COST = 40
+local FURY_ABILITY_COST = 30
 local CROSS_ABILITY_COOLDOWN = 2
 local SQUARE_ABILITY_COOLDOWN = 2
 local PETARD_ABILITY_COOLDOWN = 1
+local SHIELD_ABILITY_COOLDOWN = 1
+local FURY_ABILITY_COOLDOWN = 2
 local ABILITY_BASE_DAMAGE = 3
 local PETARD_DAMAGE = 15
 local SKULL_DAMAGE = 5
 local ANKH_HEAL = 1
+-- Balance tweak (adjust before server start): 1.0 = 100%
+local FURY_CRIT_CHANCE = 0.18
+local SHIELD_DURATION_TURNS = 3
+local SHIELD_MAX_STACKS = 3
+local SHIELD_ARMOR_PER_STACK = 4
+local SHIELD_HEAL_PER_STACK = 3
 local GEM_MANA = { [1] = 5, [2] = 3, [3] = 1 }
 local SPAWN_POOL = { 1, 2, 3, 4, 5 }
 
@@ -224,13 +234,98 @@ local function current_level_from_xp(xp)
 end
 
 local function new_stats()
-  return { hp = MAX_HP, mana = 0, cross_cd = 0, square_cd = 0, petard_cd = 0, max_hp = MAX_HP }
+  return {
+    hp = MAX_HP,
+    mana = 0,
+    cross_cd = 0,
+    square_cd = 0,
+    petard_cd = 0,
+    shield_cd = 0,
+    fury_cd = 0,
+    shield_t1 = 0,
+    shield_t2 = 0,
+    shield_t3 = 0,
+    fury_active = false,
+    max_hp = MAX_HP
+  }
 end
 
 local function tick_cooldowns(stats)
   if stats.cross_cd > 0 then stats.cross_cd = stats.cross_cd - 1 end
   if stats.square_cd > 0 then stats.square_cd = stats.square_cd - 1 end
   if stats.petard_cd > 0 then stats.petard_cd = stats.petard_cd - 1 end
+  if stats.shield_cd > 0 then stats.shield_cd = stats.shield_cd - 1 end
+  if stats.fury_cd > 0 then stats.fury_cd = stats.fury_cd - 1 end
+end
+
+local function get_shield_stacks(st)
+  local c = 0
+  if (st.shield_t1 or 0) > 0 then c = c + 1 end
+  if (st.shield_t2 or 0) > 0 then c = c + 1 end
+  if (st.shield_t3 or 0) > 0 then c = c + 1 end
+  return c
+end
+
+local function get_armor(st)
+  return get_shield_stacks(st) * SHIELD_ARMOR_PER_STACK
+end
+
+local function get_heal_bonus(st)
+  return get_shield_stacks(st) * SHIELD_HEAL_PER_STACK
+end
+
+local function count_skulls(board)
+  local n = 0
+  for y = 0, SIZE - 1 do
+    for x = 0, SIZE - 1 do
+      if bget(board, x, y) == 4 then n = n + 1 end
+    end
+  end
+  return n
+end
+
+local function roll_outgoing_damage(board, attacker, base_damage)
+  local dmg = math.max(0, tonumber(base_damage) or 0)
+  local crit = false
+  if attacker ~= nil and attacker.fury_active == true then
+    dmg = dmg + count_skulls(board)
+    if math.random() < FURY_CRIT_CHANCE then
+      dmg = dmg * 2
+      crit = true
+    end
+  end
+  return dmg, crit
+end
+
+local function deal_damage(board, attacker, target, base_damage)
+  local raw, crit = roll_outgoing_damage(board, attacker, base_damage)
+  local reduced = math.max(0, raw - get_armor(target))
+  target.hp = math.max(0, (target.hp or MAX_HP) - reduced)
+  return crit
+end
+
+local function apply_shield_stack(st)
+  st.shield_t1 = tonumber(st.shield_t1) or 0
+  st.shield_t2 = tonumber(st.shield_t2) or 0
+  st.shield_t3 = tonumber(st.shield_t3) or 0
+
+  -- Add a stack up to 3.
+  if st.shield_t1 <= 0 then st.shield_t1 = SHIELD_DURATION_TURNS
+  elseif st.shield_t2 <= 0 then st.shield_t2 = SHIELD_DURATION_TURNS
+  elseif st.shield_t3 <= 0 then st.shield_t3 = SHIELD_DURATION_TURNS
+  end
+
+  -- Refresh duration for ALL existing stacks on every cast.
+  if st.shield_t1 > 0 then st.shield_t1 = SHIELD_DURATION_TURNS end
+  if st.shield_t2 > 0 then st.shield_t2 = SHIELD_DURATION_TURNS end
+  if st.shield_t3 > 0 then st.shield_t3 = SHIELD_DURATION_TURNS end
+end
+
+local function tick_buffs_end_turn(st)
+  if (st.shield_t1 or 0) > 0 then st.shield_t1 = st.shield_t1 - 1 end
+  if (st.shield_t2 or 0) > 0 then st.shield_t2 = st.shield_t2 - 1 end
+  if (st.shield_t3 or 0) > 0 then st.shield_t3 = st.shield_t3 - 1 end
+  st.fury_active = false
 end
 
 local function would_create_match(board, x, y, t)
@@ -385,6 +480,10 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   local opp = state.stats[opponent_id]
   local sim = state._sim_metrics
 
+  local healed = false
+  local pending_heal = 0
+  local crit_triggered = false
+
   for _, m in ipairs(matches) do
     if m.count >= 5 then extra_turn = true end
     if sim ~= nil and m.count >= 5 then sim.extra_turn = true end
@@ -397,13 +496,19 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
         elseif m.type == 3 then sim.green = sim.green + m.count end
       end
     elseif m.type == 4 then
-      opp.hp = math.max(0, opp.hp - SKULL_DAMAGE * m.count)
+      if deal_damage(state.board, actor, opp, SKULL_DAMAGE * m.count) then crit_triggered = true end
     elseif m.type == 5 then
-      actor.hp = math.min(actor.max_hp or MAX_HP, actor.hp + ANKH_HEAL * m.count)
+      healed = true
+      pending_heal = pending_heal + ANKH_HEAL * m.count
     end
   end
 
-  return extra_turn
+  if healed then
+    pending_heal = pending_heal + get_heal_bonus(actor)
+    actor.hp = math.min(actor.max_hp or MAX_HP, (actor.hp or MAX_HP) + pending_heal)
+  end
+
+  return extra_turn, crit_triggered
 end
 
 local function other_player_id(state, uid)
@@ -420,10 +525,32 @@ local function make_sync_msg(state, action, extra_turn, anim_steps)
 
   return {
     board = clone_board(state.board),
-    aHp = a.hp, aMana = a.mana, aCrossCd = a.cross_cd, aSquareCd = a.square_cd, aPetardCd = a.petard_cd,
+    aHp = a.hp,
+    aMana = a.mana,
+    aCrossCd = a.cross_cd,
+    aSquareCd = a.square_cd,
+    aPetardCd = a.petard_cd,
+    aShieldCd = a.shield_cd or 0,
+    aFuryCd = a.fury_cd or 0,
     aMaxHp = a.max_hp or MAX_HP,
-    bHp = b.hp, bMana = b.mana, bCrossCd = b.cross_cd, bSquareCd = b.square_cd, bPetardCd = b.petard_cd,
+    aShieldT1 = a.shield_t1 or 0,
+    aShieldT2 = a.shield_t2 or 0,
+    aShieldT3 = a.shield_t3 or 0,
+    aFuryTurns = a.fury_active == true and 1 or 0,
+    aFuryBonus = 0,
+    bHp = b.hp,
+    bMana = b.mana,
+    bCrossCd = b.cross_cd,
+    bSquareCd = b.square_cd,
+    bPetardCd = b.petard_cd,
+    bShieldCd = b.shield_cd or 0,
+    bFuryCd = b.fury_cd or 0,
     bMaxHp = b.max_hp or MAX_HP,
+    bShieldT1 = b.shield_t1 or 0,
+    bShieldT2 = b.shield_t2 or 0,
+    bShieldT3 = b.shield_t3 or 0,
+    bFuryTurns = b.fury_active == true and 1 or 0,
+    bFuryBonus = 0,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     actionType = action and action.actionType or 0,
@@ -433,6 +560,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps)
     toY = action and action.toY or -1,
     abilityX = action and action.cx or -1,
     abilityY = action and action.cy or -1,
+    critTriggered = state.last_crit == true,
     animSteps = anim_steps or {},
   }
 end
@@ -473,6 +601,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   elseif extra_turn then
     state.active_user_id = actor
   else
+    tick_buffs_end_turn(state.stats[actor])
     state.active_user_id = opponent
     tick_cooldowns(state.stats[opponent])
   end
@@ -525,12 +654,14 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local opp = state.stats[opponent_id]
   local sim = state._sim_metrics
   if action_type == 4 then
-    opp.hp = math.max(0, opp.hp - PETARD_DAMAGE)
-    return
+    local crit = deal_damage(state.board, actor, opp, PETARD_DAMAGE)
+    return crit
   end
 
   local cells = collect_ability_cells(action_type, cx, cy)
   local skulls = 0
+  local healed = false
+  local pending_heal = 0
 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
@@ -542,29 +673,48 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
         elseif t == 3 then sim.green = sim.green + 1 end
       end
     elseif t == 5 then
-      actor.hp = math.min(actor.max_hp or MAX_HP, actor.hp + ANKH_HEAL)
+      healed = true
+      pending_heal = pending_heal + ANKH_HEAL
     elseif t == 4 then
       skulls = skulls + 1
     end
   end
 
-  opp.hp = math.max(0, opp.hp - ABILITY_BASE_DAMAGE - SKULL_DAMAGE * skulls)
+  if healed then
+    pending_heal = pending_heal + get_heal_bonus(actor)
+    actor.hp = math.min(actor.max_hp or MAX_HP, (actor.hp or MAX_HP) + pending_heal)
+  end
+
+  local crit = deal_damage(state.board, actor, opp, ABILITY_BASE_DAMAGE + SKULL_DAMAGE * skulls)
+  return crit
 end
 
 local function resolve_action(state, action, actor_id, opponent_id)
   local initial_matches = {}
   local anim_steps = {}
   local keep_turn = false
+  local crit_triggered = false
   if action.actionType == 1 then
     local ok, matches = try_swap(state.board, action.fromX, action.fromY, action.toX, action.toY)
     if not ok then return false, "invalid_swap", false, false, anim_steps end
     initial_matches = matches or {}
   elseif action.actionType == 4 then
-    apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1)
+    if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1) then crit_triggered = true end
     keep_turn = true
+    state.last_crit = crit_triggered
+    return true, nil, false, true, anim_steps
+  elseif action.actionType == 5 then
+    apply_shield_stack(state.stats[actor_id])
+    keep_turn = true
+    state.last_crit = false
+    return true, nil, false, true, anim_steps
+  elseif action.actionType == 6 then
+    state.stats[actor_id].fury_active = true
+    keep_turn = true
+    state.last_crit = false
     return true, nil, false, true, anim_steps
   else
-    apply_ability_rewards(state, actor_id, opponent_id, action.actionType, action.cx, action.cy)
+    if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, action.cx, action.cy) then crit_triggered = true end
     apply_ability(state.board, action.actionType, action.cx, action.cy)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
     initial_matches = {}
@@ -573,7 +723,9 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local extra_turn = false
 
   if #initial_matches > 0 then
-    extra_turn = apply_match_effects(state, actor_id, opponent_id, initial_matches, extra_turn)
+    local et, crit = apply_match_effects(state, actor_id, opponent_id, initial_matches, extra_turn)
+    extra_turn = et
+    if crit then crit_triggered = true end
     clear_matches(state.board, initial_matches)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
   end
@@ -582,11 +734,14 @@ local function resolve_action(state, action, actor_id, opponent_id)
     local cascade = apply_gravity_and_refill(state.board)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 2)
     if #cascade == 0 then break end
-    extra_turn = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
+    local et, crit = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
+    extra_turn = et
+    if crit then crit_triggered = true end
     clear_matches(state.board, cascade)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
   end
 
+  state.last_crit = crit_triggered
   return true, nil, extra_turn, keep_turn, anim_steps
 end
 
@@ -993,6 +1148,15 @@ local function validate_action_basic(state, sender_id, action)
     return true, nil
   end
 
+  if action.actionType == 5 or action.actionType == 6 then
+    local st = state.stats[sender_id]
+    local need_mana = action.actionType == 5 and SHIELD_ABILITY_COST or FURY_ABILITY_COST
+    if st.mana < need_mana then return false, "not_enough_mana" end
+    if action.actionType == 5 and (st.shield_cd or 0) > 0 then return false, "shield_on_cooldown" end
+    if action.actionType == 6 and (st.fury_cd or 0) > 0 then return false, "fury_on_cooldown" end
+    return true, nil
+  end
+
   return false, "unknown_action"
 end
 
@@ -1022,6 +1186,12 @@ local function copy_stats(src)
     cross_cd = src.cross_cd or 0,
     square_cd = src.square_cd or 0,
     petard_cd = src.petard_cd or 0,
+    shield_cd = src.shield_cd or 0,
+    fury_cd = src.fury_cd or 0,
+    shield_t1 = src.shield_t1 or 0,
+    shield_t2 = src.shield_t2 or 0,
+    shield_t3 = src.shield_t3 or 0,
+    fury_active = src.fury_active == true,
     max_hp = src.max_hp or MAX_HP,
   }
 end
@@ -1036,6 +1206,14 @@ local function spend_ability_for_sim(stats, action_type)
   elseif action_type == 4 then
     stats.mana = math.max(0, stats.mana - PETARD_ABILITY_COST)
     stats.petard_cd = PETARD_ABILITY_COOLDOWN
+  elseif action_type == 5 then
+    stats.mana = math.max(0, stats.mana - SHIELD_ABILITY_COST)
+    stats.shield_cd = SHIELD_ABILITY_COOLDOWN
+    apply_shield_stack(stats)
+  elseif action_type == 6 then
+    stats.mana = math.max(0, stats.mana - FURY_ABILITY_COST)
+    stats.fury_cd = FURY_ABILITY_COOLDOWN
+    stats.fury_active = true
   end
 end
 
@@ -1051,7 +1229,7 @@ local function simulate_and_score_action(state, bot_user_id, player_user_id, act
     _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0 },
   }
 
-  if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+  if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
     spend_ability_for_sim(sim_bot, action.actionType)
   end
 
@@ -1359,13 +1537,17 @@ local function match_loop(context, dispatcher, tick, state, messages)
         local opp_id = other_player_id(state, actor_id)
         local actor_stats = state.stats[actor_id]
 
-        if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+        if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
           local spend = action.actionType == 2 and CROSS_ABILITY_COST
-            or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+            or (action.actionType == 3 and SQUARE_ABILITY_COST
+              or (action.actionType == 4 and PETARD_ABILITY_COST
+                or (action.actionType == 5 and SHIELD_ABILITY_COST or FURY_ABILITY_COST)))
           actor_stats.mana = math.max(0, actor_stats.mana - spend)
           if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
           if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
           if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
+          if action.actionType == 5 then actor_stats.shield_cd = SHIELD_ABILITY_COOLDOWN end
+          if action.actionType == 6 then actor_stats.fury_cd = FURY_ABILITY_COOLDOWN end
         end
 
         local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
@@ -1415,13 +1597,17 @@ local function match_loop(context, dispatcher, tick, state, messages)
       broadcast_sync(dispatcher, state, nil, false)
     else
       local actor_stats = state.stats[actor_id]
-      if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 then
+      if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
         local spend = action.actionType == 2 and CROSS_ABILITY_COST
-          or (action.actionType == 3 and SQUARE_ABILITY_COST or PETARD_ABILITY_COST)
+          or (action.actionType == 3 and SQUARE_ABILITY_COST
+            or (action.actionType == 4 and PETARD_ABILITY_COST
+              or (action.actionType == 5 and SHIELD_ABILITY_COST or FURY_ABILITY_COST)))
         actor_stats.mana = math.max(0, actor_stats.mana - spend)
         if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
         if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
         if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
+        if action.actionType == 5 then actor_stats.shield_cd = SHIELD_ABILITY_COOLDOWN end
+        if action.actionType == 6 then actor_stats.fury_cd = FURY_ABILITY_COOLDOWN end
       end
 
       local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)

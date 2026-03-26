@@ -71,6 +71,12 @@ namespace Project.Match3
         [SerializeField] private Sprite petardAbilitySprite;
         [SerializeField] private Sprite crossAbilitySprite;
         [SerializeField] private Sprite squareAbilitySprite;
+        [SerializeField] private Sprite shieldAbilitySprite;
+        [SerializeField] private Sprite furyAbilitySprite;
+        [SerializeField] private Sprite spellBorderSprite;
+
+        [Header("UI Prefabs")]
+        [SerializeField] private DamagePopupView damagePopupPrefab;
 
         // ─── OpCodes (match-3 specific, 10+ to avoid collision with DuelRoom) ─────
         private static class M3Op
@@ -95,13 +101,24 @@ namespace Project.Match3
         private const int   CrossAbilityCost  = 20;
         private const int   SquareAbilityCost = 20;
         private const int   PetardAbilityCost = 30;
+        private const int   ShieldAbilityCost = 40;
+        private const int   FuryAbilityCost   = 30;
         private const int   CrossCooldownTurns = 2;
         private const int   SquareCooldownTurns = 2;
         private const int   PetardCooldownTurns = 1;
+        private const int   ShieldCooldownTurns = 1;
+        private const int   FuryCooldownTurns   = 2;
         private const int   AbilityBaseDamage = 3;
         private const int   PetardDamage = 15;
         private const int   SkullDamage = 5;
         private const int   AnkhHeal = 1;
+        [Header("Balance Tweaks (can adjust before launch)")]
+        [SerializeField, Range(0f, 1f)] private float furyCritChance = 0.18f; // 1.0 = 100%
+
+        private const int ShieldDurationTurns = 3;
+        private const int ShieldMaxStacks = 3;
+        private const int ShieldArmorPerStack = 4;
+        private const int ShieldHealPerStack = 3;
         private const string LocalPlayerId = "a-local-player";
         private const string BotPlayerId = "z-bot-player";
 
@@ -418,7 +435,7 @@ namespace Project.Match3
             _remoteSelX = _remoteSelY = -1;
             _boardView?.RefreshAll(_board);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—");
             _boardView?.SetDimmed(true);
@@ -448,7 +465,7 @@ namespace Project.Match3
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
             _boardView?.SetDimmed(false);
 
-            _abilityPanel?.Refresh(_myStats, true, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+            _abilityPanel?.Refresh(_myStats, true, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
         }
 
         private void BeginOpponentTurn()
@@ -466,7 +483,7 @@ namespace Project.Match3
             _hud?.SetTurn("Ход соперника…");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
             _boardView?.SetDimmed(true);
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
 
             if (_useLocalBotSimulation && !_gameEnded)
             {
@@ -562,7 +579,7 @@ namespace Project.Match3
 
             if (!IsAbilityAvailable(ability))
             {
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
                 return;
             }
 
@@ -572,16 +589,19 @@ namespace Project.Match3
         private IEnumerator SendAbilityRequestRoutine(AbilityType ability, int cx, int cy)
         {
             _inputBlocked = true;
-            if (_boardView != null && ability != AbilityType.Petard)
+            if (_boardView != null && (ability == AbilityType.Cross || ability == AbilityType.Square))
             {
                 yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
             }
             var req = new M3ActionRequest
             {
-                actionType = ability == AbilityType.Cross ? 2 : (ability == AbilityType.Square ? 3 : 4),
+                actionType = ability == AbilityType.Cross ? 2 :
+                             ability == AbilityType.Square ? 3 :
+                             ability == AbilityType.Petard ? 4 :
+                             ability == AbilityType.Shield ? 5 : 6,
                 fromX = -1, fromY = -1, toX = -1, toY = -1,
-                cx = ability == AbilityType.Petard ? -1 : cx,
-                cy = ability == AbilityType.Petard ? -1 : cy,
+                cx = (ability == AbilityType.Cross || ability == AbilityType.Square) ? cx : -1,
+                cy = (ability == AbilityType.Cross || ability == AbilityType.Square) ? cy : -1,
             };
             SendActionRequest(req);
         }
@@ -758,7 +778,7 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
                     if (!string.IsNullOrEmpty(msg.reason))
                         Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
                 });
@@ -853,6 +873,14 @@ namespace Project.Match3
                 {
                     PlaySfx(sfxAbilityPetard != null ? sfxAbilityPetard : sfxAbilitySquare);
                 }
+                else if (msg.actionType == 5)
+                {
+                    _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
+                }
+                else if (msg.actionType == 6)
+                {
+                    _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
+                }
             }
 
             bool usedAnimSteps = msg.animSteps != null && msg.animSteps.Count > 0;
@@ -897,13 +925,44 @@ namespace Project.Match3
             _myStats.crossCooldown  = amA ? msg.aCrossCd  : msg.bCrossCd;
             _myStats.squareCooldown = amA ? msg.aSquareCd : msg.bSquareCd;
             _myStats.petardCooldown = amA ? msg.aPetardCd : msg.bPetardCd;
+            _myStats.shieldCooldown = amA ? msg.aShieldCd : msg.bShieldCd;
+            _myStats.furyCooldown   = amA ? msg.aFuryCd   : msg.bFuryCd;
+            _myStats.shieldT1 = amA ? msg.aShieldT1 : msg.bShieldT1;
+            _myStats.shieldT2 = amA ? msg.aShieldT2 : msg.bShieldT2;
+            _myStats.shieldT3 = amA ? msg.aShieldT3 : msg.bShieldT3;
+            _myStats.furyTurnsRemaining = amA ? msg.aFuryTurns : msg.bFuryTurns;
+            _myStats.furyDamageBonus    = amA ? msg.aFuryBonus : msg.bFuryBonus;
             _opStats.hp             = amA ? msg.bHp       : msg.aHp;
             _opStats.mana           = amA ? msg.bMana      : msg.aMana;
+            _opStats.crossCooldown  = amA ? msg.bCrossCd  : msg.aCrossCd;
+            _opStats.squareCooldown = amA ? msg.bSquareCd : msg.aSquareCd;
+            _opStats.petardCooldown = amA ? msg.bPetardCd : msg.aPetardCd;
+            _opStats.shieldCooldown = amA ? msg.bShieldCd : msg.aShieldCd;
+            _opStats.furyCooldown   = amA ? msg.bFuryCd   : msg.aFuryCd;
+            _opStats.shieldT1 = amA ? msg.bShieldT1 : msg.aShieldT1;
+            _opStats.shieldT2 = amA ? msg.bShieldT2 : msg.aShieldT2;
+            _opStats.shieldT3 = amA ? msg.bShieldT3 : msg.aShieldT3;
+            _opStats.furyTurnsRemaining = amA ? msg.bFuryTurns : msg.aFuryTurns;
+            _opStats.furyDamageBonus    = amA ? msg.bFuryBonus : msg.aFuryBonus;
+
+            RecalcDerivedBuffs(_myStats);
+            RecalcDerivedBuffs(_opStats);
 
             _boardView?.RefreshAll(_board);
             if (!usedAnimSteps && _boardView != null)
                 yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
             RefreshStatsUI();
+
+            if (msg.critTriggered && _boardView != null)
+                _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
+
+            // Damage popups (computed by HP delta). Both clients see it on the damaged side.
+            var myDamageTaken = Mathf.Max(0, prevMyHp - _myStats.hp);
+            var opDamageTaken = Mathf.Max(0, prevOpHp - _opStats.hp);
+            if (myDamageTaken > 0 && _myPanel != null)
+                _myPanel.ShowDamagePopup(myDamageTaken, msg.critTriggered && opDamageTaken == 0);
+            if (opDamageTaken > 0 && _opPanel != null)
+                _opPanel.ShowDamagePopup(opDamageTaken, msg.critTriggered && myDamageTaken == 0);
 
             if (_myStats.hp < prevMyHp || _opStats.hp < prevOpHp)
                 PlaySfx(sfxDamageHit);
@@ -917,7 +976,7 @@ namespace Project.Match3
             if (petardKeepsTurn)
             {
                 _inputBlocked = !_isMyTurn;
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
                 if (_useLocalBotSimulation && !_isMyTurn && !_gameEnded)
                 {
                     if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
@@ -954,10 +1013,12 @@ namespace Project.Match3
 
         private M3ActionRequest BuildBotAction()
         {
-            var availableAbilities = new List<AbilityType>(3);
+            var availableAbilities = new List<AbilityType>(5);
             if (CanUseAbility(_opStats, AbilityType.Petard)) availableAbilities.Add(AbilityType.Petard);
             if (CanUseAbility(_opStats, AbilityType.Cross)) availableAbilities.Add(AbilityType.Cross);
             if (CanUseAbility(_opStats, AbilityType.Square)) availableAbilities.Add(AbilityType.Square);
+            if (CanUseAbility(_opStats, AbilityType.Shield)) availableAbilities.Add(AbilityType.Shield);
+            if (CanUseAbility(_opStats, AbilityType.Fury))   availableAbilities.Add(AbilityType.Fury);
 
             if (availableAbilities.Count > 0 && _botRandom.NextDouble() < 0.35d)
             {
@@ -974,11 +1035,19 @@ namespace Project.Match3
                         cx = _botRandom.Next(0, Match3BoardLogic.Size),
                         cy = _botRandom.Next(0, Match3BoardLogic.Size),
                     },
-                    _ => new M3ActionRequest
+                    AbilityType.Square => new M3ActionRequest
                     {
                         actionType = 3, fromX = -1, fromY = -1, toX = -1, toY = -1,
                         cx = _botRandom.Next(0, Match3BoardLogic.Size),
                         cy = _botRandom.Next(0, Match3BoardLogic.Size),
+                    },
+                    AbilityType.Shield => new M3ActionRequest
+                    {
+                        actionType = 5, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1,
+                    },
+                    _ => new M3ActionRequest
+                    {
+                        actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1,
                     },
                 };
             }
@@ -1055,7 +1124,7 @@ namespace Project.Match3
                 if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost);
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
                 }
                 return;
             }
@@ -1077,11 +1146,11 @@ namespace Project.Match3
                 if (!extraTurn)
                 {
                     SwitchActiveUser();
-                    TickCooldownsForActive();
+                    TickEndOfTurnForActive();
                 }
                 else
                 {
-                    TickCooldownsForActive();
+                    TickEndOfTurnForActive();
                 }
             }
 
@@ -1117,6 +1186,16 @@ namespace Project.Match3
                 return actorStats.mana >= PetardAbilityCost &&
                        actorStats.petardCooldown <= 0;
             }
+            if (req.actionType == 5)
+            {
+                return actorStats.mana >= ShieldAbilityCost &&
+                       actorStats.shieldCooldown <= 0;
+            }
+            if (req.actionType == 6)
+            {
+                return actorStats.mana >= FuryAbilityCost &&
+                       actorStats.furyCooldown <= 0;
+            }
             return false;
         }
 
@@ -1140,7 +1219,7 @@ namespace Project.Match3
 
                 if (initialMatches != null && initialMatches.Count > 0)
                 {
-                    extraTurn = ApplyMatchEffects(actorStats, oppStats, initialMatches, extraTurn);
+                    extraTurn = ApplyMatchEffects(board, actorStats, oppStats, initialMatches, extraTurn);
                     board.ClearMatchedCells(initialMatches);
                     msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
                 }
@@ -1149,14 +1228,31 @@ namespace Project.Match3
                 return true;
             }
 
-            if (req.actionType == 2 || req.actionType == 3 || req.actionType == 4)
+            if (req.actionType == 2 || req.actionType == 3 || req.actionType == 4 || req.actionType == 5 || req.actionType == 6)
             {
                 SpendAbility(actorStats, req.actionType);
 
                 if (req.actionType == 4)
                 {
-                    oppStats.hp = Mathf.Max(0, oppStats.hp - PetardDamage);
+                    var crit = DealDamage(board, actorStats, oppStats, PetardDamage);
+                    if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
                     keepTurn = true;
+                    return true;
+                }
+
+                if (req.actionType == 5)
+                {
+                    ApplyShield(actorStats);
+                    if (_boardView != null) _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
+                    keepTurn = true;
+                    return true;
+                }
+
+                if (req.actionType == 6)
+                {
+                    ApplyFury(actorStats);
+                    keepTurn = true;
+                    if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
                     return true;
                 }
 
@@ -1179,14 +1275,16 @@ namespace Project.Match3
                 msg.animSteps.Add(new M3AnimStep { phase = 2, board = board.ToArray() });
                 if (cascade == null || cascade.Count == 0) break;
 
-                extraTurn = ApplyMatchEffects(actorStats, oppStats, cascade, extraTurn);
+                extraTurn = ApplyMatchEffects(board, actorStats, oppStats, cascade, extraTurn);
                 board.ClearMatchedCells(cascade);
                 msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
             }
         }
 
-        private bool ApplyMatchEffects(PlayerStats actorStats, PlayerStats oppStats, List<MatchResult> matches, bool extraTurn)
+        private bool ApplyMatchEffects(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, List<MatchResult> matches, bool extraTurn)
         {
+            var healedAnyCrossThisTurn = false;
+            var pendingHeal = 0;
             foreach (var match in matches)
             {
                 if (match.count >= 5) extraTurn = true;
@@ -1196,19 +1294,30 @@ namespace Project.Match3
                 }
                 else if (match.type == PieceType.Skull)
                 {
-                    oppStats.hp = Mathf.Max(0, oppStats.hp - SkullDamage * match.count);
+                    var crit = DealDamage(board, actorStats, oppStats, SkullDamage * match.count);
+                    if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
                 }
                 else if (match.type == PieceType.Ankh)
                 {
-                    actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + AnkhHeal * match.count);
+                    pendingHeal += AnkhHeal * match.count;
+                    healedAnyCrossThisTurn = true;
                 }
             }
+
+            if (healedAnyCrossThisTurn)
+                pendingHeal += GetShieldHealBonus(actorStats);
+
+            if (pendingHeal > 0)
+                actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
+
             return extraTurn;
         }
 
         private void ApplyAbilityRewards(Match3BoardLogic board, int actionType, int cx, int cy, PlayerStats actorStats, PlayerStats oppStats)
         {
             var skulls = 0;
+            var healedAnyCrossThisTurn = false;
+            var pendingHeal = 0;
             var cells = CollectAbilityCells(actionType, cx, cy);
             foreach (var (x, y) in cells)
             {
@@ -1216,12 +1325,23 @@ namespace Project.Match3
                 if (type == PieceType.GemRed || type == PieceType.GemYellow || type == PieceType.GemGreen)
                     actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(type));
                 else if (type == PieceType.Ankh)
-                    actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + AnkhHeal);
+                {
+                    pendingHeal += AnkhHeal;
+                    healedAnyCrossThisTurn = true;
+                }
                 else if (type == PieceType.Skull)
                     skulls++;
             }
 
-            oppStats.hp = Mathf.Max(0, oppStats.hp - (AbilityBaseDamage + SkullDamage * skulls));
+            if (healedAnyCrossThisTurn)
+                pendingHeal += GetShieldHealBonus(actorStats);
+            if (pendingHeal > 0)
+                actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
+
+            {
+                var crit = DealDamage(board, actorStats, oppStats, AbilityBaseDamage + SkullDamage * skulls);
+                if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
+            }
         }
 
         private List<(int x, int y)> CollectAbilityCells(int actionType, int cx, int cy)
@@ -1267,11 +1387,15 @@ namespace Project.Match3
 
         private static bool CanUseAbility(PlayerStats stats, AbilityType ability)
         {
-            if (ability == AbilityType.Petard)
-                return stats.mana >= PetardAbilityCost && stats.petardCooldown <= 0;
-            if (ability == AbilityType.Cross)
-                return stats.mana >= CrossAbilityCost && stats.crossCooldown <= 0;
-            return stats.mana >= SquareAbilityCost && stats.squareCooldown <= 0;
+            return ability switch
+            {
+                AbilityType.Petard => stats.mana >= PetardAbilityCost && stats.petardCooldown <= 0,
+                AbilityType.Cross => stats.mana >= CrossAbilityCost && stats.crossCooldown <= 0,
+                AbilityType.Square => stats.mana >= SquareAbilityCost && stats.squareCooldown <= 0,
+                AbilityType.Shield => stats.mana >= ShieldAbilityCost && stats.shieldCooldown <= 0,
+                AbilityType.Fury => stats.mana >= FuryAbilityCost && stats.furyCooldown <= 0,
+                _ => false,
+            };
         }
 
         private static bool InBounds(int x, int y)
@@ -1296,15 +1420,29 @@ namespace Project.Match3
                 stats.mana = Mathf.Max(0, stats.mana - PetardAbilityCost);
                 stats.petardCooldown = PetardCooldownTurns;
             }
+            else if (actionType == 5)
+            {
+                stats.mana = Mathf.Max(0, stats.mana - ShieldAbilityCost);
+                stats.shieldCooldown = ShieldCooldownTurns;
+            }
+            else if (actionType == 6)
+            {
+                stats.mana = Mathf.Max(0, stats.mana - FuryAbilityCost);
+                stats.furyCooldown = FuryCooldownTurns;
+            }
         }
 
-        private void TickCooldownsForActive()
+        private void TickEndOfTurnForActive()
         {
             var active = GetActiveStats();
             if (active == null) return;
             if (active.crossCooldown > 0) active.crossCooldown--;
             if (active.squareCooldown > 0) active.squareCooldown--;
             if (active.petardCooldown > 0) active.petardCooldown--;
+            if (active.shieldCooldown > 0) active.shieldCooldown--;
+            if (active.furyCooldown > 0) active.furyCooldown--;
+            TickBuffDurations(active);
+            RecalcDerivedBuffs(active);
         }
 
         private void FillSyncStats(M3BoardSyncMsg msg)
@@ -1318,12 +1456,26 @@ namespace Project.Match3
                 msg.aCrossCd = _myStats.crossCooldown;
                 msg.aSquareCd = _myStats.squareCooldown;
                 msg.aPetardCd = _myStats.petardCooldown;
+                msg.aShieldCd = _myStats.shieldCooldown;
+                msg.aFuryCd = _myStats.furyCooldown;
+                msg.aShieldT1 = _myStats.shieldT1;
+                msg.aShieldT2 = _myStats.shieldT2;
+                msg.aShieldT3 = _myStats.shieldT3;
+                msg.aFuryTurns = _myStats.furyTurnsRemaining;
+                msg.aFuryBonus = _myStats.furyDamageBonus;
                 msg.bHp = _opStats.hp;
                 msg.bMaxHp = EffectiveMaxHp(_opStats);
                 msg.bMana = _opStats.mana;
                 msg.bCrossCd = _opStats.crossCooldown;
                 msg.bSquareCd = _opStats.squareCooldown;
                 msg.bPetardCd = _opStats.petardCooldown;
+                msg.bShieldCd = _opStats.shieldCooldown;
+                msg.bFuryCd = _opStats.furyCooldown;
+                msg.bShieldT1 = _opStats.shieldT1;
+                msg.bShieldT2 = _opStats.shieldT2;
+                msg.bShieldT3 = _opStats.shieldT3;
+                msg.bFuryTurns = _opStats.furyTurnsRemaining;
+                msg.bFuryBonus = _opStats.furyDamageBonus;
                 return;
             }
 
@@ -1336,19 +1488,33 @@ namespace Project.Match3
             msg.aCrossCd = first.crossCooldown;
             msg.aSquareCd = first.squareCooldown;
             msg.aPetardCd = first.petardCooldown;
+            msg.aShieldCd = first.shieldCooldown;
+            msg.aFuryCd = first.furyCooldown;
+            msg.aShieldT1 = first.shieldT1;
+            msg.aShieldT2 = first.shieldT2;
+            msg.aShieldT3 = first.shieldT3;
+            msg.aFuryTurns = first.furyTurnsRemaining;
+            msg.aFuryBonus = first.furyDamageBonus;
             msg.bHp = second.hp;
             msg.bMaxHp = EffectiveMaxHp(second);
             msg.bMana = second.mana;
             msg.bCrossCd = second.crossCooldown;
             msg.bSquareCd = second.squareCooldown;
             msg.bPetardCd = second.petardCooldown;
+            msg.bShieldCd = second.shieldCooldown;
+            msg.bFuryCd = second.furyCooldown;
+            msg.bShieldT1 = second.shieldT1;
+            msg.bShieldT2 = second.shieldT2;
+            msg.bShieldT3 = second.shieldT3;
+            msg.bFuryTurns = second.furyTurnsRemaining;
+            msg.bFuryBonus = second.furyDamageBonus;
         }
 
         private void AdvanceTurnWithoutAction(string actorId)
         {
             if (!string.Equals(actorId, GetActiveUserId(), StringComparison.Ordinal)) return;
             SwitchActiveUser();
-            TickCooldownsForActive();
+            TickEndOfTurnForActive();
             var msg = new M3BoardSyncMsg
             {
                 actionType = 0,
@@ -1391,9 +1557,127 @@ namespace Project.Match3
         {
             _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, MaxMana);
             _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, MaxMana);
+            RefreshCombatStatsUI();
+        }
+
+        private void RefreshCombatStatsUI()
+        {
+            if (_myPanel != null)
+            {
+                var myDamage = _myStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
+                _myPanel.UpdateCombatStats(myDamage, GetArmor(_myStats), GetShieldHealBonus(_myStats),
+                    _myStats.furyTurnsRemaining > 0 ? Mathf.RoundToInt(furyCritChance * 100f) : 0);
+                _myPanel.UpdateBuffState(GetShieldStacks(_myStats), Mathf.Max(_myStats.shieldT1, Mathf.Max(_myStats.shieldT2, _myStats.shieldT3)));
+            }
+
+            if (_opPanel != null)
+            {
+                var opDamage = _opStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
+                _opPanel.UpdateCombatStats(opDamage, GetArmor(_opStats), GetShieldHealBonus(_opStats),
+                    _opStats.furyTurnsRemaining > 0 ? Mathf.RoundToInt(furyCritChance * 100f) : 0);
+                _opPanel.UpdateBuffState(GetShieldStacks(_opStats), Mathf.Max(_opStats.shieldT1, Mathf.Max(_opStats.shieldT2, _opStats.shieldT3)));
+            }
         }
 
         private static int EffectiveMaxHp(PlayerStats s) => s != null && s.maxHp > 0 ? s.maxHp : MaxHp;
+
+        private static int GetShieldStacks(PlayerStats s)
+        {
+            if (s == null) return 0;
+            var c = 0;
+            if (s.shieldT1 > 0) c++;
+            if (s.shieldT2 > 0) c++;
+            if (s.shieldT3 > 0) c++;
+            return c;
+        }
+
+        private static int CountSkulls(Match3BoardLogic board)
+        {
+            if (board == null) return 0;
+            var skulls = 0;
+            for (var y = 0; y < Match3BoardLogic.Size; y++)
+            for (var x = 0; x < Match3BoardLogic.Size; x++)
+                if (board[x, y] == PieceType.Skull) skulls++;
+            return skulls;
+        }
+
+        private static int GetArmor(PlayerStats s) => GetShieldStacks(s) * ShieldArmorPerStack;
+        private static int GetShieldHealBonus(PlayerStats s) => GetShieldStacks(s) * ShieldHealPerStack;
+
+        private static void RecalcDerivedBuffs(PlayerStats s)
+        {
+            if (s == null) return;
+            if (s.shieldT1 < 0) s.shieldT1 = 0;
+            if (s.shieldT2 < 0) s.shieldT2 = 0;
+            if (s.shieldT3 < 0) s.shieldT3 = 0;
+            if (s.furyTurnsRemaining < 0) s.furyTurnsRemaining = 0;
+            if (s.furyTurnsRemaining == 0) s.furyDamageBonus = 0;
+        }
+
+        private static void TickBuffDurations(PlayerStats s)
+        {
+            if (s == null) return;
+            if (s.shieldT1 > 0) s.shieldT1--;
+            if (s.shieldT2 > 0) s.shieldT2--;
+            if (s.shieldT3 > 0) s.shieldT3--;
+            if (s.furyTurnsRemaining > 0) s.furyTurnsRemaining--;
+            if (s.furyTurnsRemaining <= 0)
+            {
+                s.furyTurnsRemaining = 0;
+                s.furyDamageBonus = 0;
+            }
+        }
+
+        private static void ApplyShield(PlayerStats actor)
+        {
+            if (actor == null) return;
+
+            // Add stack up to 3.
+            if (actor.shieldT1 <= 0) actor.shieldT1 = ShieldDurationTurns;
+            else if (actor.shieldT2 <= 0) actor.shieldT2 = ShieldDurationTurns;
+            else if (actor.shieldT3 <= 0) actor.shieldT3 = ShieldDurationTurns;
+
+            // Refresh duration for ALL existing stacks on every cast.
+            if (actor.shieldT1 > 0) actor.shieldT1 = ShieldDurationTurns;
+            if (actor.shieldT2 > 0) actor.shieldT2 = ShieldDurationTurns;
+            if (actor.shieldT3 > 0) actor.shieldT3 = ShieldDurationTurns;
+
+            RecalcDerivedBuffs(actor);
+        }
+
+        private static void ApplyFury(PlayerStats actor)
+        {
+            if (actor == null) return;
+            // Fury is a 1-turn buff that applies during the turn of activation.
+            actor.furyTurnsRemaining = 1;
+            actor.furyDamageBonus = 0;
+            RecalcDerivedBuffs(actor);
+        }
+
+        private int RollOutgoingDamage(Match3BoardLogic board, PlayerStats attacker, int baseDamage, out bool critTriggered)
+        {
+            critTriggered = false;
+            var dmg = Mathf.Max(0, baseDamage);
+            if (attacker != null && attacker.furyTurnsRemaining > 0)
+            {
+                dmg += CountSkulls(board);
+                if (UnityEngine.Random.value < Mathf.Clamp01(furyCritChance))
+                {
+                    dmg *= 2;
+                    critTriggered = true;
+                }
+            }
+            return dmg;
+        }
+
+        private bool DealDamage(Match3BoardLogic board, PlayerStats attacker, PlayerStats target, int baseDamage)
+        {
+            if (target == null) return false;
+            var raw = RollOutgoingDamage(board, attacker, baseDamage, out var critTriggered);
+            var reduced = Mathf.Max(0, raw - GetArmor(target));
+            target.hp = Mathf.Max(0, target.hp - reduced);
+            return critTriggered;
+        }
 
         private static int[] SwapCellsInBoard(int[] board, int x1, int y1, int x2, int y2)
         {
@@ -1446,37 +1730,83 @@ namespace Project.Match3
         private void TryAutoAssignAbilitySpritesInEditor()
         {
 #if UNITY_EDITOR
-            if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/ppp.png");
-            if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/qqq.png");
-            if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/qrr.png");
+            if (spellBorderSprite == null) spellBorderSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/border_spell.png");
+            if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/petarda.png");
+            if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/cross.png");
+            if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/square.png");
+            if (shieldAbilitySprite == null) shieldAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/shield.png");
+            if (furyAbilitySprite == null) furyAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/fury.png");
+#endif
+        }
+
+        private void TryAutoAssignUiPrefabsInEditor()
+        {
+#if UNITY_EDITOR
+            if (damagePopupPrefab == null)
+                damagePopupPrefab = AssetDatabase.LoadAssetAtPath<DamagePopupView>("Assets/_Project/Prefabs/UI/DamagePopup.prefab");
 #endif
         }
 
         private void ConfigureAbilityButtonsVisuals()
         {
             if (_abilityPanel == null) return;
-            EnsurePetardButtonExists();
-            ConfigureAbilityButtonIcon(_abilityPanel.petardButton, petardAbilitySprite);
-            ConfigureAbilityButtonIcon(_abilityPanel.crossButton, crossAbilitySprite);
-            ConfigureAbilityButtonIcon(_abilityPanel.squareButton, squareAbilitySprite);
+            EnsureAllAbilityButtonsExist();
+            ConfigureAbilityButtonVisual(_abilityPanel.petardButton, spellBorderSprite, petardAbilitySprite);
+            ConfigureAbilityButtonVisual(_abilityPanel.crossButton,  spellBorderSprite, crossAbilitySprite);
+            ConfigureAbilityButtonVisual(_abilityPanel.squareButton, spellBorderSprite, squareAbilitySprite);
+            ConfigureAbilityButtonVisual(_abilityPanel.shieldButton, spellBorderSprite, shieldAbilitySprite);
+            ConfigureAbilityButtonVisual(_abilityPanel.furyButton,   spellBorderSprite, furyAbilitySprite);
         }
 
-        private void EnsurePetardButtonExists()
+        private void EnsureAllAbilityButtonsExist()
         {
-            if (_abilityPanel == null || _abilityPanel.petardButton != null) return;
+            if (_abilityPanel == null) return;
             var panelRt = _abilityPanel.transform as RectTransform;
             if (panelRt == null) return;
 
-            // Re-layout existing two buttons to center/right and insert petard on the left.
-            ReanchorButton(_abilityPanel.crossButton, V2(0.35f, 0.34f), V2(0.65f, 0.80f));
-            ReanchorButton(_abilityPanel.squareButton, V2(0.68f, 0.34f), V2(0.98f, 0.80f));
+            // Layout 5 abilities in one row.
+            const float x0 = 0.02f;
+            const float w  = 0.18f;
+            const float g  = 0.015f;
+            Vector2 AMin(int i) => V2(x0 + i * (w + g), 0.18f);
+            Vector2 AMax(int i) => V2(x0 + i * (w + g) + w, 0.92f);
 
-            var petardButton = MakeButton(panelRt, "PetardBtn", string.Empty,
-                new Color(0.48f, 0.19f, 0.16f), Color.white, V2(0.02f, 0.34f), V2(0.32f, 0.80f));
-            _abilityPanel.petardButton = petardButton;
-            _abilityPanel.petardCooldownText = MakeTxt(
-                petardButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
-            _abilityPanel.petardCooldownText.gameObject.SetActive(false);
+            if (_abilityPanel.petardButton == null)
+            {
+                _abilityPanel.petardButton = MakeButton(panelRt, "PetardBtn", string.Empty, Color.white, Color.white, AMin(0), AMax(0));
+                _abilityPanel.petardCooldownText = MakeTxt(_abilityPanel.petardButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+                _abilityPanel.petardCooldownText.gameObject.SetActive(false);
+            }
+            if (_abilityPanel.crossButton == null)
+            {
+                _abilityPanel.crossButton = MakeButton(panelRt, "CrossBtn", string.Empty, Color.white, Color.white, AMin(1), AMax(1));
+                _abilityPanel.crossCooldownText = MakeTxt(_abilityPanel.crossButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+                _abilityPanel.crossCooldownText.gameObject.SetActive(false);
+            }
+            if (_abilityPanel.squareButton == null)
+            {
+                _abilityPanel.squareButton = MakeButton(panelRt, "SquareBtn", string.Empty, Color.white, Color.white, AMin(2), AMax(2));
+                _abilityPanel.squareCooldownText = MakeTxt(_abilityPanel.squareButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+                _abilityPanel.squareCooldownText.gameObject.SetActive(false);
+            }
+            if (_abilityPanel.shieldButton == null)
+            {
+                _abilityPanel.shieldButton = MakeButton(panelRt, "ShieldBtn", string.Empty, Color.white, Color.white, AMin(3), AMax(3));
+                _abilityPanel.shieldCooldownText = MakeTxt(_abilityPanel.shieldButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+                _abilityPanel.shieldCooldownText.gameObject.SetActive(false);
+            }
+            if (_abilityPanel.furyButton == null)
+            {
+                _abilityPanel.furyButton = MakeButton(panelRt, "FuryBtn", string.Empty, Color.white, Color.white, AMin(4), AMax(4));
+                _abilityPanel.furyCooldownText = MakeTxt(_abilityPanel.furyButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+                _abilityPanel.furyCooldownText.gameObject.SetActive(false);
+            }
+
+            ReanchorButton(_abilityPanel.petardButton, AMin(0), AMax(0));
+            ReanchorButton(_abilityPanel.crossButton,  AMin(1), AMax(1));
+            ReanchorButton(_abilityPanel.squareButton, AMin(2), AMax(2));
+            ReanchorButton(_abilityPanel.shieldButton, AMin(3), AMax(3));
+            ReanchorButton(_abilityPanel.furyButton,   AMin(4), AMax(4));
         }
 
         private static void ReanchorButton(Button button, Vector2 aMin, Vector2 aMax)
@@ -1489,7 +1819,7 @@ namespace Project.Match3
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
-        private static void ConfigureAbilityButtonIcon(Button button, Sprite iconSprite)
+        private static void ConfigureAbilityButtonVisual(Button button, Sprite borderSprite, Sprite iconSprite)
         {
             if (button == null) return;
 
@@ -1499,6 +1829,14 @@ namespace Project.Match3
             var root = button.transform as RectTransform;
             if (root == null) return;
 
+            var bgImg = button.targetGraphic as Image;
+            if (bgImg != null)
+            {
+                bgImg.sprite = borderSprite;
+                bgImg.type = Image.Type.Sliced;
+                bgImg.color = Color.white;
+            }
+
             var iconTf = root.Find("AbilityIcon");
             Image iconImg;
             if (iconTf == null)
@@ -1506,8 +1844,8 @@ namespace Project.Match3
                 var go = new GameObject("AbilityIcon");
                 var rt = go.AddComponent<RectTransform>();
                 rt.SetParent(root, false);
-                rt.anchorMin = new Vector2(0.08f, 0.08f);
-                rt.anchorMax = new Vector2(0.92f, 0.92f);
+                rt.anchorMin = new Vector2(0.16f, 0.16f);
+                rt.anchorMax = new Vector2(0.84f, 0.84f);
                 rt.offsetMin = rt.offsetMax = Vector2.zero;
                 iconImg = go.AddComponent<Image>();
                 iconImg.raycastTarget = false;
@@ -1516,11 +1854,20 @@ namespace Project.Match3
             {
                 iconImg = iconTf.GetComponent<Image>();
                 if (iconImg == null) iconImg = iconTf.gameObject.AddComponent<Image>();
+                var rt = iconTf as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(0.16f, 0.16f);
+                    rt.anchorMax = new Vector2(0.84f, 0.84f);
+                    rt.offsetMin = rt.offsetMax = Vector2.zero;
+                }
             }
 
             iconImg.sprite = iconSprite;
             iconImg.preserveAspect = true;
             iconImg.color = Color.white;
+            iconImg.type = Image.Type.Sliced;
+            iconImg.transform.localScale = Vector3.one * 0.7f;
         }
 
         private async void QuitToMenu()
@@ -1616,15 +1963,20 @@ namespace Project.Match3
             var leftTr = MakePanel(root, "LeftCol", Color.clear, V2(0f, 0f), V2(0.26f, 1f));
             _myPanel = BuildOrInstantiate(myPanelPrefab, leftTr, V2(0f, 0.27f), V2(1f, 1f));
             if (_myPanel == null) _myPanel = BuildPlayerPanelProcedural(leftTr, isLeft: true);
+            EnsureCombatWidgets(_myPanel);
 
             _abilityPanel = BuildOrInstantiate(abilityPanelPrefab, leftTr, V2(0f, 0f), V2(1f, 0.26f));
             if (_abilityPanel == null) _abilityPanel = BuildAbilityPanelProcedural(leftTr);
 
             TryAutoAssignAbilitySpritesInEditor();
+            TryAutoAssignUiPrefabsInEditor();
+            EnsureDamagePopupWidgets(_myPanel);
             ConfigureAbilityButtonsVisuals();
             _abilityPanel.OnPetardClicked += OnPetardClicked;
             _abilityPanel.OnCrossClicked  += OnCrossClicked;
             _abilityPanel.OnSquareClicked += OnSquareClicked;
+            _abilityPanel.OnShieldClicked += OnShieldClicked;
+            _abilityPanel.OnFuryClicked   += OnFuryClicked;
 
             // ── Board area ────────────────────────────────────────────────────────
             var boardColTr = MakePanel(root, "BoardCol", Color.clear, V2(0.26f, 0f), V2(0.74f, 1f));
@@ -1643,6 +1995,8 @@ namespace Project.Match3
             var rightTr = MakePanel(root, "RightCol", Color.clear, V2(0.74f, 0f), V2(1f, 1f));
             _opPanel = BuildOrInstantiate(opPanelPrefab, rightTr, V2(0f, 0.27f), V2(1f, 1f));
             if (_opPanel == null) _opPanel = BuildPlayerPanelProcedural(rightTr, isLeft: false);
+            EnsureCombatWidgets(_opPanel);
+            EnsureDamagePopupWidgets(_opPanel);
 
             // ── Quit button ───────────────────────────────────────────────────────
             var quitBtn = MakeButton(root, "QuitBtn", "← Выйти",
@@ -1713,9 +2067,86 @@ namespace Project.Match3
             panel.manaText = MakeTxt(bg, "MpVal", "0/100", 12, Color.white, V2(0.60f, 0.47f), V2(0.97f, 0.52f));
             panel.manaFill = BuildBar(bg, "MpBar", new Color(0.14f, 0.35f, 0.82f), V2(0.05f, 0.42f), V2(0.95f, 0.47f));
 
-            if (isLeft) BuildLegend(bg, V2(0.03f, 0.02f), V2(0.97f, 0.40f));
+            BuildCombatStatsFrame(panel, bg, V2(0.05f, 0.20f), V2(0.95f, 0.40f));
+            if (isLeft) BuildLegend(bg, V2(0.03f, 0.02f), V2(0.97f, 0.18f));
 
             return panel;
+        }
+
+        private static void BuildCombatStatsFrame(Match3PlayerPanel panel, RectTransform parent, Vector2 aMin, Vector2 aMax)
+        {
+            if (panel == null || parent == null) return;
+            var frame = MakePanel(parent, "CombatStatsFrame", new Color(0.07f, 0.08f, 0.15f, 0.72f), aMin, aMax);
+            var outline = frame.gameObject.GetComponent<Outline>();
+            if (outline == null) outline = frame.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            panel.combatStatsText = MakeTxt(frame, "CombatStatsText",
+                "Урон:   0\nБроня:  0\nХил:     0\nКрит:   0%", 11, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
+            panel.combatStatsText.alignment = TextAnchor.UpperLeft;
+
+            panel.buffStateText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f), V2(0.45f, 0.76f), V2(0.95f, 0.98f));
+            panel.buffStateText.alignment = TextAnchor.MiddleRight;
+        }
+
+        private static void EnsureCombatWidgets(Match3PlayerPanel panel)
+        {
+            if (panel == null) return;
+            if (panel.combatStatsText != null && panel.buffStateText != null) return;
+            var root = panel.transform as RectTransform;
+            if (root == null) return;
+
+            var existing = root.Find("CombatStatsFrame") as RectTransform;
+            if (existing != null)
+            {
+                if (panel.combatStatsText == null)
+                    panel.combatStatsText = existing.Find("CombatStatsText")?.GetComponent<Text>();
+                if (panel.buffStateText == null)
+                    panel.buffStateText = existing.Find("BuffStateText")?.GetComponent<Text>();
+            }
+
+            if (panel.combatStatsText == null || panel.buffStateText == null)
+                BuildCombatStatsFrame(panel, root, V2(0.05f, 0.20f), V2(0.95f, 0.40f));
+        }
+
+        private void EnsureDamagePopupWidgets(Match3PlayerPanel panel)
+        {
+            if (panel == null) return;
+            if (panel.damagePopupAnchor != null && panel.damagePopup != null) return;
+            if (panel.avatarImage == null) return;
+
+            var avatarRt = panel.avatarImage.rectTransform;
+            if (avatarRt == null) return;
+
+            var anchor = avatarRt.Find("DamagePopupAnchor") as RectTransform;
+            if (anchor == null)
+            {
+                var go = new GameObject("DamagePopupAnchor");
+                anchor = go.AddComponent<RectTransform>();
+                anchor.SetParent(avatarRt, false);
+                anchor.anchorMin = new Vector2(0.5f, 0.5f);
+                anchor.anchorMax = new Vector2(0.5f, 0.5f);
+                anchor.pivot = new Vector2(0.5f, 0.5f);
+                anchor.anchoredPosition = new Vector2(0f, 0f);
+                anchor.sizeDelta = new Vector2(0f, 0f);
+            }
+            panel.damagePopupAnchor = anchor;
+
+            if (panel.damagePopup == null && damagePopupPrefab != null)
+            {
+                var inst = Instantiate(damagePopupPrefab, anchor, false);
+                inst.name = "DamagePopup";
+                var rt = inst.transform as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax = new Vector2(0.5f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = new Vector2(0f, 40f);
+                }
+                panel.damagePopup = inst;
+            }
         }
 
         private Match3AbilityPanel BuildAbilityPanelProcedural(Transform parent)
@@ -1724,29 +2155,32 @@ namespace Project.Match3
                 new Color(0.09f, 0.09f, 0.17f, 0.97f), V2(0f, 0f), V2(1f, 1f));
             var ap = bg.gameObject.AddComponent<Match3AbilityPanel>();
 
-            // Petard (left)
-            var petardBg = MakeButton(bg, "PetardBtn", string.Empty,
-                new Color(0.48f, 0.19f, 0.16f), Color.white, V2(0.02f, 0.34f), V2(0.32f, 0.80f));
-            ap.petardButton = petardBg;
-            ap.petardCooldownText = MakeTxt(petardBg.transform, "Cd", string.Empty, 11,
-                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            // 5 abilities in one line.
+            const float x0 = 0.02f;
+            const float w  = 0.18f;
+            const float g  = 0.015f;
+            Vector2 AMin(int i) => V2(x0 + i * (w + g), 0.18f);
+            Vector2 AMax(int i) => V2(x0 + i * (w + g) + w, 0.92f);
+
+            ap.petardButton = MakeButton(bg, "PetardBtn", string.Empty, Color.white, Color.white, AMin(0), AMax(0));
+            ap.petardCooldownText = MakeTxt(ap.petardButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
             ap.petardCooldownText.gameObject.SetActive(false);
 
-            // Cross (center)
-            var crossBg = MakeButton(bg, "CrossBtn", string.Empty,
-                new Color(0.28f, 0.14f, 0.48f), Color.white, V2(0.35f, 0.34f), V2(0.65f, 0.80f));
-            ap.crossButton = crossBg;
-            ap.crossCooldownText = MakeTxt(crossBg.transform, "Cd", string.Empty, 11,
-                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.crossButton = MakeButton(bg, "CrossBtn", string.Empty, Color.white, Color.white, AMin(1), AMax(1));
+            ap.crossCooldownText = MakeTxt(ap.crossButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
             ap.crossCooldownText.gameObject.SetActive(false);
 
-            // Square (right)
-            var sqBg = MakeButton(bg, "SquareBtn", string.Empty,
-                new Color(0.14f, 0.25f, 0.48f), Color.white, V2(0.68f, 0.34f), V2(0.98f, 0.80f));
-            ap.squareButton = sqBg;
-            ap.squareCooldownText = MakeTxt(sqBg.transform, "Cd", string.Empty, 11,
-                new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.squareButton = MakeButton(bg, "SquareBtn", string.Empty, Color.white, Color.white, AMin(2), AMax(2));
+            ap.squareCooldownText = MakeTxt(ap.squareButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
             ap.squareCooldownText.gameObject.SetActive(false);
+
+            ap.shieldButton = MakeButton(bg, "ShieldBtn", string.Empty, Color.white, Color.white, AMin(3), AMax(3));
+            ap.shieldCooldownText = MakeTxt(ap.shieldButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.shieldCooldownText.gameObject.SetActive(false);
+
+            ap.furyButton = MakeButton(bg, "FuryBtn", string.Empty, Color.white, Color.white, AMin(4), AMax(4));
+            ap.furyCooldownText = MakeTxt(ap.furyButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
+            ap.furyCooldownText.gameObject.SetActive(false);
 
             // Hint (without text)
             var hintGo = new GameObject("AbilityHint");
@@ -1882,7 +2316,10 @@ namespace Project.Match3
             {
                 AbilityType.Petard => PetardAbilityCost,
                 AbilityType.Cross => CrossAbilityCost,
-                _ => SquareAbilityCost,
+                AbilityType.Square => SquareAbilityCost,
+                AbilityType.Shield => ShieldAbilityCost,
+                AbilityType.Fury => FuryAbilityCost,
+                _ => 0,
             };
         }
 
@@ -1892,7 +2329,10 @@ namespace Project.Match3
             {
                 AbilityType.Petard => _myStats.petardCooldown,
                 AbilityType.Cross => _myStats.crossCooldown,
-                _ => _myStats.squareCooldown,
+                AbilityType.Square => _myStats.squareCooldown,
+                AbilityType.Shield => _myStats.shieldCooldown,
+                AbilityType.Fury => _myStats.furyCooldown,
+                _ => 0,
             };
         }
 
@@ -1931,6 +2371,18 @@ namespace Project.Match3
         {
             if (!_isMyTurn || _gameEnded || _inputBlocked) return;
             SelectOrToggleAbility(AbilityType.Square);
+        }
+
+        private void OnShieldClicked()
+        {
+            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            ExecuteAbility(AbilityType.Shield, -1, -1);
+        }
+
+        private void OnFuryClicked()
+        {
+            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            ExecuteAbility(AbilityType.Fury, -1, -1);
         }
 
         // ═════════════════════════════════════════════════════════════════════════

@@ -24,6 +24,14 @@ namespace Project.Match3
         [SerializeField] public Image manaFill;
         [SerializeField] public Text  manaText;
 
+        [Header("Combat Stats")]
+        [SerializeField] public Text combatStatsText;
+        [SerializeField] public Text buffStateText;
+
+        [Header("Damage Popup")]
+        [SerializeField] public RectTransform damagePopupAnchor;
+        [SerializeField] public DamagePopupView damagePopup;
+
         // ─── API ──────────────────────────────────────────────────────────────────
 
         public void SetPlayerName(string playerName)
@@ -38,6 +46,28 @@ namespace Project.Match3
 
             if (hpText   != null) hpText.text   = $"{hp}/{maxHp}";
             if (manaText != null) manaText.text  = $"{mana}/{maxMana}";
+        }
+
+        public void UpdateCombatStats(int damageBonus, int armor, int healBonus, int critChancePercent)
+        {
+            if (combatStatsText == null) return;
+            combatStatsText.text =
+                $"Урон:   {Mathf.Max(0, damageBonus)}\n" +
+                $"Броня:  {Mathf.Max(0, armor)}\n" +
+                $"Хил:     {Mathf.Max(0, healBonus)}\n" +
+                $"Крит:   {Mathf.Max(0, critChancePercent)}%";
+        }
+
+        public void UpdateBuffState(int shieldStacks, int shieldTurnsRemaining)
+        {
+            if (buffStateText == null) return;
+            buffStateText.text = shieldStacks > 0 ? $"Щит x{shieldStacks} ({Mathf.Max(0, shieldTurnsRemaining)})" : string.Empty;
+        }
+
+        public void ShowDamagePopup(int damageAmount, bool isCrit)
+        {
+            if (damagePopup == null) return;
+            damagePopup.Play(damageAmount, isCrit);
         }
 
         private static void ApplyBarFill(Image fillImage, float ratio)

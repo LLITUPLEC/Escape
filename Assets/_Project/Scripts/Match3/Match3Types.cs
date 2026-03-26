@@ -4,7 +4,7 @@ namespace Project.Match3
 {
     public enum PieceType { None = 0, GemRed = 1, GemYellow = 2, GemGreen = 3, Skull = 4, Ankh = 5 }
 
-    public enum AbilityType { Cross = 0, Square = 1, Petard = 2 }
+    public enum AbilityType { Cross = 0, Square = 1, Petard = 2, Shield = 3, Fury = 4 }
 
     public class PlayerStats
     {
@@ -15,6 +15,18 @@ namespace Project.Match3
         public int crossCooldown  = 0;  // 0 = ready, >0 = turns remaining
         public int squareCooldown = 0;
         public int petardCooldown = 0;
+        public int shieldCooldown = 0;
+        public int furyCooldown   = 0;
+
+        // Buffs (client-authoritative; replicated via BoardSyncMsg).
+        // Shield stacks are represented as up to 3 independent durations.
+        public int shieldT1 = 0;
+        public int shieldT2 = 0;
+        public int shieldT3 = 0;
+
+        // Fury is a short-lived buff.
+        public int furyTurnsRemaining = 0;
+        public int furyDamageBonus    = 0;
     }
 
     // MatchResult used by Match3BoardLogic
@@ -35,20 +47,24 @@ namespace Project.Match3
         public int[] board = new int[36];
 
         // "a" = sorted userId[0], "b" = sorted userId[1]
-        public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd;
+        public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd, aShieldCd, aFuryCd;
         public int aMaxHp;
-        public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd;
+        public int aShieldT1, aShieldT2, aShieldT3, aFuryTurns, aFuryBonus;
+
+        public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
+        public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
 
         public bool extraTurn;      // active player gets another turn
         public string activeUserId; // who just acted
 
         // Animation metadata for remote client replay.
-        // actionType: 0 = none, 1 = swap, 2 = cross, 3 = square, 4 = petard
+        // actionType: 0 = none, 1 = swap, 2 = cross, 3 = square, 4 = petard, 5 = shield, 6 = fury
         public int actionType;
         public int fromX, fromY;
         public int toX, toY;
         public int abilityX, abilityY;
+        public bool critTriggered;
         public System.Collections.Generic.List<M3AnimStep> animSteps = new System.Collections.Generic.List<M3AnimStep>();
     }
 
@@ -73,7 +89,7 @@ namespace Project.Match3
     [Serializable]
     public class M3ActionRequest
     {
-        // 1 = swap, 2 = cross, 3 = square, 4 = petard
+        // 1 = swap, 2 = cross, 3 = square, 4 = petard, 5 = shield, 6 = fury
         public int actionType;
         public int fromX, fromY;
         public int toX, toY;
