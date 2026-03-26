@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,26 +12,61 @@ namespace Project.Match3
     {
         [Header("Avatar")]
         [SerializeField] public Image avatarImage;
-        [SerializeField] public Text  avatarPlaceholderText;  // shows "?" until real sprite assigned
+        [SerializeField] public TMP_Text  avatarPlaceholderText;  // shows "?" until real sprite assigned
 
         [Header("Name")]
-        [SerializeField] public Text nameText;
+        [SerializeField] public TMP_Text nameText;
 
         [Header("HP")]
         [SerializeField] public Image hpFill;   // Image.Type = Filled, Horizontal
-        [SerializeField] public Text  hpText;
+        [SerializeField] public TMP_Text  hpText;
 
         [Header("Mana")]
         [SerializeField] public Image manaFill;
-        [SerializeField] public Text  manaText;
+        [SerializeField] public TMP_Text  manaText;
 
         [Header("Combat Stats")]
-        [SerializeField] public Text combatStatsText;
-        [SerializeField] public Text buffStateText;
+        [SerializeField] public TMP_Text combatStatsText;
+        [SerializeField] public TMP_Text buffStateText;
 
         [Header("Damage Popup")]
         [SerializeField] public RectTransform damagePopupAnchor;
         [SerializeField] public DamagePopupView damagePopup;
+
+        private void Awake()
+        {
+            ResolveReferences();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            ResolveReferences();
+        }
+#endif
+
+        private void ResolveReferences()
+        {
+            if (avatarImage == null)
+                avatarImage = transform.Find("Avatar")?.GetComponent<Image>();
+
+            avatarPlaceholderText ??= FindTmpText("AvatarTxt") ?? FindTmpText("T");
+            nameText ??= FindTmpText("NameText");
+            hpText ??= FindTmpText("HpValue");
+            manaText ??= FindTmpText("MpValue");
+
+            // Optional widgets (may be created procedurally by DuelMatch3Manager)
+            combatStatsText ??= FindTmpText("CombatStatsText");
+            buffStateText ??= FindTmpText("BuffStateText");
+        }
+
+        private TMP_Text FindTmpText(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            foreach (var t in GetComponentsInChildren<TMP_Text>(true))
+                if (t != null && t.gameObject.name == name) return t;
+            return null;
+        }
 
         // ─── API ──────────────────────────────────────────────────────────────────
 

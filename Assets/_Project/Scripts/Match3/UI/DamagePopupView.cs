@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,7 +8,7 @@ namespace Project.Match3
     public sealed class DamagePopupView : MonoBehaviour
     {
         [Header("Wiring")]
-        [SerializeField] private Text valueText;
+        [SerializeField] private TMP_Text valueText;
         [SerializeField] private Image critBackground;
         [SerializeField] private CanvasGroup canvasGroup;
 
@@ -33,6 +34,8 @@ namespace Project.Match3
             _rt = transform as RectTransform;
             if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            if (valueText == null)
+                valueText = transform.Find("Value")?.GetComponent<TMP_Text>() ?? GetComponentInChildren<TMP_Text>(true);
             _baseScale = transform.localScale;
             if (_rt != null) _baseAnchoredPos = _rt.anchoredPosition;
             HideImmediate();
@@ -49,8 +52,7 @@ namespace Project.Match3
                 valueText.text = "-" + damageAmount;
                 valueText.color = isCrit ? critColor : normalColor;
                 valueText.fontSize = isCrit ? critFontSize : normalFontSize;
-                if (isCrit) valueText.fontStyle = FontStyle.Bold;
-                else valueText.fontStyle = FontStyle.Normal;
+                valueText.fontStyle = isCrit ? FontStyles.Bold : FontStyles.Normal;
             }
             if (critBackground != null) critBackground.enabled = isCrit;
 

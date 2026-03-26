@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -65,14 +66,14 @@ public static class Match3PrefabCreator
         panel.avatarImage = avatarGo.GetComponent<Image>();
 
         var avatarTxt = MakeTxt(avatarGo.transform, "AvatarTxt", "?", 52, new Color(0.5f, 0.5f, 0.6f));
-        avatarTxt.alignment = TextAnchor.MiddleCenter;
+        avatarTxt.alignment = TextAlignmentOptions.Center;
         Stretch(avatarTxt.GetComponent<RectTransform>());
         panel.avatarPlaceholderText = avatarTxt;
 
         // Name
         panel.nameText = MakeTxt(root.transform, "NameText", "Игрок", 17, Color.white);
         Anchor(panel.nameText.GetComponent<RectTransform>(), V2(0.05f, 0.62f), V2(0.95f, 0.67f));
-        panel.nameText.alignment = TextAnchor.MiddleCenter;
+        panel.nameText.alignment = TextAlignmentOptions.Center;
 
         // HP
         MakeTxt(root.transform, "HpLabel", "HP", 13, new Color(1f, 0.45f, 0.45f));
@@ -129,8 +130,8 @@ public static class Match3PrefabCreator
         hintRt.anchorMin = V2(0.05f, 0f); hintRt.anchorMax = V2(0.95f, 0.38f);
         hintRt.offsetMin = hintRt.offsetMax = Vector2.zero;
         hintGo.AddComponent<Image>().color = new Color(0.45f, 0.30f, 0f, 0.85f);
-        var hintTxt = MakeTxt(hintGo.transform, "HintTxt", "☞ Кликните клетку на поле", 12, Color.white);
-        hintTxt.alignment = TextAnchor.MiddleCenter;
+        var hintTxt = MakeTxt(hintGo.transform, "HintTxt", "→ Кликните клетку на поле", 12, Color.white);
+        hintTxt.alignment = TextAlignmentOptions.Center;
         Stretch(hintTxt.GetComponent<RectTransform>());
         ap.abilityHint = hintGo;
         hintGo.SetActive(false);
@@ -196,11 +197,11 @@ public static class Match3PrefabCreator
 
         hud.turnText = MakeTxt(root.transform, "TurnText", "Ваш ход!", 20, Color.white);
         Anchor(hud.turnText.GetComponent<RectTransform>(), V2(0f, 0f), V2(0.72f, 1f));
-        hud.turnText.alignment = TextAnchor.MiddleLeft;
+        hud.turnText.alignment = TextAlignmentOptions.Left;
 
         hud.timerText = MakeTxt(root.transform, "TimerText", "30", 26, new Color(1f, 0.85f, 0.2f));
         Anchor(hud.timerText.GetComponent<RectTransform>(), V2(0.74f, 0f), V2(1f, 1f));
-        hud.timerText.alignment = TextAnchor.MiddleRight;
+        hud.timerText.alignment = TextAlignmentOptions.Right;
 
         Save(root, "Match3GameHUD");
     }
@@ -215,7 +216,7 @@ public static class Match3PrefabCreator
 
         sp.statusText = MakeTxt(root.transform, "StatusText", "Поиск соперника…", 22, Color.white);
         Anchor(sp.statusText.GetComponent<RectTransform>(), V2(0.05f, 0.35f), V2(0.95f, 0.70f));
-        sp.statusText.alignment = TextAnchor.MiddleCenter;
+        sp.statusText.alignment = TextAlignmentOptions.Center;
 
         var cancelGo = MakeBtn(root.transform, "CancelBtn", "Отмена", new Color(0.45f, 0.12f, 0.12f));
         Anchor(cancelGo.GetComponent<RectTransform>(), V2(0.20f, 0.08f), V2(0.80f, 0.30f));
@@ -238,12 +239,12 @@ public static class Match3PrefabCreator
 
         gop.titleText = MakeTxt(root.transform, "TitleText", "Победа!", 38, Color.white);
         Anchor(gop.titleText.GetComponent<RectTransform>(), V2(0.05f, 0.60f), V2(0.95f, 0.88f));
-        gop.titleText.alignment = TextAnchor.MiddleCenter;
+        gop.titleText.alignment = TextAlignmentOptions.Center;
 
         gop.rewardText = MakeTxt(root.transform, "RewardText", "+100 опыта\n+50 золота", 19,
             new Color(1f, 0.90f, 0.30f));
         Anchor(gop.rewardText.GetComponent<RectTransform>(), V2(0.05f, 0.33f), V2(0.95f, 0.60f));
-        gop.rewardText.alignment = TextAnchor.MiddleCenter;
+        gop.rewardText.alignment = TextAlignmentOptions.Center;
 
         var backGo = MakeBtn(root.transform, "BackButton", "В главное меню",
             new Color(0.18f, 0.28f, 0.55f));
@@ -270,7 +271,7 @@ public static class Match3PrefabCreator
 
         // Value
         var txt = MakeTxt(root.transform, "Value", "-15", 22, new Color(1f, 0.22f, 0.22f, 1f));
-        txt.alignment = TextAnchor.MiddleCenter;
+        txt.alignment = TextAlignmentOptions.Center;
         Stretch(txt.GetComponent<RectTransform>());
 
         // Wire references
@@ -337,18 +338,18 @@ public static class Match3PrefabCreator
         return go;
     }
 
-    private static Text MakeTxt(Transform parent, string name, string text,
+    private static TMP_Text MakeTxt(Transform parent, string name, string text,
         int size, Color color)
     {
         var go = new GameObject(name);
         var rt = go.AddComponent<RectTransform>();
         rt.SetParent(parent, false);
-        var t = go.AddComponent<Text>();
+        var t = go.AddComponent<TextMeshProUGUI>();
         t.text      = text;
-        t.font      = GetFont();
+        t.font      = TMP_Settings.defaultFontAsset;
         t.fontSize  = size;
         t.color     = color;
-        t.alignment = TextAnchor.MiddleLeft;
+        t.alignment = TextAlignmentOptions.Left;
         return t;
     }
 
@@ -369,7 +370,7 @@ public static class Match3PrefabCreator
         if (!string.IsNullOrEmpty(label))
         {
             var lbl = MakeTxt(go.transform, "Label", label, 15, Color.white);
-            lbl.alignment = TextAnchor.MiddleCenter;
+            lbl.alignment = TextAlignmentOptions.Center;
             Stretch(lbl.GetComponent<RectTransform>());
         }
         return go;
@@ -410,13 +411,6 @@ public static class Match3PrefabCreator
 
     private static Vector2 V2(float x, float y) => new Vector2(x, y);
 
-    private static Font _font;
-    private static Font GetFont()
-    {
-        if (_font != null) return _font;
-        _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (_font == null) _font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        return _font;
-    }
+    // TMP uses TMP_Settings.defaultFontAsset
 }
 #endif

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Nakama;
 using Project.Utils;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
@@ -27,8 +28,8 @@ namespace Project.UI
         [Header("Необязательно: назначьте в инспекторе, иначе ищутся по имени под Panel")]
         [SerializeField] private RectTransform modalPanelRect;
         [SerializeField] private CanvasGroup modalPanelGroup;
-        [SerializeField] private Text statusText;
-        [SerializeField] private Text linkedEmailLineText;
+        [SerializeField] private TMP_Text statusText;
+        [SerializeField] private TMP_Text linkedEmailLineText;
         [SerializeField] private InputField emailInput;
         [SerializeField] private InputField passwordInput;
         [SerializeField] private RectTransform emailInputSlot;
@@ -133,9 +134,9 @@ namespace Project.UI
                 modalPanelGroup = panel.GetComponent<CanvasGroup>();
 
             if (statusText == null)
-                statusText = panel.Find("Status")?.GetComponent<Text>();
+                statusText = panel.Find("Status")?.GetComponent<TMP_Text>();
             if (linkedEmailLineText == null)
-                linkedEmailLineText = panel.Find("LinkedEmailLine")?.GetComponent<Text>();
+                linkedEmailLineText = panel.Find("LinkedEmailLine")?.GetComponent<TMP_Text>();
 
             if (emailInputSlot == null)
             {

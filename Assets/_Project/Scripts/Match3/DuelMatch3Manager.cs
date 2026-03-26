@@ -11,6 +11,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -113,7 +114,7 @@ namespace Project.Match3
         private const int   SkullDamage = 5;
         private const int   AnkhHeal = 1;
         [Header("Balance Tweaks (can adjust before launch)")]
-        [SerializeField, Range(0f, 1f)] private float furyCritChance = 0.18f; // 1.0 = 100%
+        [SerializeField, Range(0f, 1f)] private float furyCritChance = 0.25f; // 1.0 = 100%
 
         private const int ShieldDurationTurns = 3;
         private const int ShieldMaxStacks = 3;
@@ -167,8 +168,8 @@ namespace Project.Match3
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
         private GameObject _pveSelectorRoot;
-        private Text _pveBotTitleText;
-        private Text _pveBotStatsText;
+        private TMP_Text _pveBotTitleText;
+        private TMP_Text _pveBotStatsText;
         private Button _pvePrevButton;
         private Button _pveNextButton;
         private Button _pveStartButton;
@@ -1823,7 +1824,7 @@ namespace Project.Match3
         {
             if (button == null) return;
 
-            foreach (var text in button.GetComponentsInChildren<Text>(true))
+            foreach (var text in button.GetComponentsInChildren<TMP_Text>(true))
                 text.gameObject.SetActive(false);
 
             var root = button.transform as RectTransform;
@@ -2048,7 +2049,7 @@ namespace Project.Match3
 
             var avatar = MakeImg(bg, "Avatar", new Color(0.22f, 0.22f, 0.33f), V2(0.1f, 0.67f), V2(0.9f, 0.96f));
             var txt = MakeTxt(avatar, "T", "?", 52, new Color(0.5f, 0.5f, 0.6f), V2(0, 0), V2(1, 1));
-            txt.alignment = TextAnchor.MiddleCenter;
+            txt.alignment = TextAlignmentOptions.Center;
 
             var go = bg.gameObject;
             var panel = go.AddComponent<Match3PlayerPanel>();
@@ -2057,7 +2058,7 @@ namespace Project.Match3
 
             panel.nameText = MakeTxt(bg, "NameText", isLeft ? "Вы" : "Соперник", 17,
                 Color.white, V2(0.05f, 0.62f), V2(0.95f, 0.67f));
-            panel.nameText.alignment = TextAnchor.MiddleCenter;
+            panel.nameText.alignment = TextAlignmentOptions.Center;
 
             MakeTxt(bg, "HpLbl", "HP", 13, new Color(1f, 0.45f, 0.45f), V2(0.05f, 0.57f), V2(0.25f, 0.62f));
             panel.hpText = MakeTxt(bg, "HpVal", "150/150", 12, Color.white, V2(0.60f, 0.57f), V2(0.97f, 0.62f));
@@ -2083,11 +2084,11 @@ namespace Project.Match3
             outline.effectDistance = new Vector2(1f, -1f);
 
             panel.combatStatsText = MakeTxt(frame, "CombatStatsText",
-                "Урон:   0\nБроня:  0\nХил:     0\nКрит:   0%", 11, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
-            panel.combatStatsText.alignment = TextAnchor.UpperLeft;
+                "Урон:   0\nБроня:  0\nХил:     0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
+            panel.combatStatsText.alignment = TextAlignmentOptions.TopLeft;
 
             panel.buffStateText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f), V2(0.45f, 0.76f), V2(0.95f, 0.98f));
-            panel.buffStateText.alignment = TextAnchor.MiddleRight;
+            panel.buffStateText.alignment = TextAlignmentOptions.Right;
         }
 
         private static void EnsureCombatWidgets(Match3PlayerPanel panel)
@@ -2101,9 +2102,9 @@ namespace Project.Match3
             if (existing != null)
             {
                 if (panel.combatStatsText == null)
-                    panel.combatStatsText = existing.Find("CombatStatsText")?.GetComponent<Text>();
+                    panel.combatStatsText = existing.Find("CombatStatsText")?.GetComponent<TMP_Text>();
                 if (panel.buffStateText == null)
-                    panel.buffStateText = existing.Find("BuffStateText")?.GetComponent<Text>();
+                    panel.buffStateText = existing.Find("BuffStateText")?.GetComponent<TMP_Text>();
             }
 
             if (panel.combatStatsText == null || panel.buffStateText == null)
@@ -2201,8 +2202,8 @@ namespace Project.Match3
             var hud = bg.gameObject.AddComponent<Match3GameHUD>();
             hud.turnText  = MakeTxt(bg, "TurnText",  "Поиск...", 20, Color.white, V2(0f, 0f), V2(0.72f, 1f));
             hud.timerText = MakeTxt(bg, "TimerText", "—", 26, new Color(1f, 0.85f, 0.2f), V2(0.74f, 0f), V2(1f, 1f));
-            hud.timerText.alignment = TextAnchor.MiddleRight;
-            hud.turnText.alignment  = TextAnchor.MiddleLeft;
+            hud.timerText.alignment = TextAlignmentOptions.Right;
+            hud.turnText.alignment  = TextAlignmentOptions.Left;
             return hud;
         }
 
@@ -2234,11 +2235,11 @@ namespace Project.Match3
         {
             _pveSelectorRoot = MakePanel(root, "PveSelector", new Color(0f, 0f, 0f, 0.92f), V2(0f, 0f), V2(1f, 1f)).gameObject;
             var card = MakePanel(_pveSelectorRoot.transform, "Card", new Color(0.08f, 0.10f, 0.18f, 0.98f), V2(0.22f, 0.18f), V2(0.78f, 0.82f));
-            MakeTxt(card, "Title", "Выбор босса", 28, new Color(0.8f, 0.95f, 1f), V2(0.05f, 0.84f), V2(0.95f, 0.96f)).alignment = TextAnchor.MiddleCenter;
+            MakeTxt(card, "Title", "Выбор босса", 28, new Color(0.8f, 0.95f, 1f), V2(0.05f, 0.84f), V2(0.95f, 0.96f)).alignment = TextAlignmentOptions.Center;
             _pveBotTitleText = MakeTxt(card, "BossName", "Босс", 22, new Color(1f, 0.9f, 0.45f), V2(0.08f, 0.62f), V2(0.92f, 0.74f));
-            _pveBotTitleText.alignment = TextAnchor.MiddleCenter;
+            _pveBotTitleText.alignment = TextAlignmentOptions.Center;
             _pveBotStatsText = MakeTxt(card, "BossStats", "—", 16, Color.white, V2(0.10f, 0.26f), V2(0.90f, 0.62f));
-            _pveBotStatsText.alignment = TextAnchor.UpperLeft;
+            _pveBotStatsText.alignment = TextAlignmentOptions.TopLeft;
 
             _pvePrevButton = MakeButton(card, "PrevBoss", "←", new Color(0.18f, 0.28f, 0.55f), Color.white, V2(0.10f, 0.08f), V2(0.28f, 0.18f));
             _pveNextButton = MakeButton(card, "NextBoss", "→", new Color(0.18f, 0.28f, 0.55f), Color.white, V2(0.30f, 0.08f), V2(0.48f, 0.18f));
@@ -2256,7 +2257,7 @@ namespace Project.Match3
             var sp = bg.gameObject.AddComponent<Match3SearchingPanel>();
             sp.statusText = MakeTxt(bg, "ST", "Поиск соперника…", 22, Color.white,
                 V2(0.25f, 0.52f), V2(0.75f, 0.62f));
-            sp.statusText.alignment = TextAnchor.MiddleCenter;
+            sp.statusText.alignment = TextAlignmentOptions.Center;
             var btn = MakeButton(bg, "Cancel", "Отмена",
                 new Color(0.45f, 0.12f, 0.12f), Color.white, V2(0.35f, 0.40f), V2(0.65f, 0.47f));
             sp.cancelButton = btn;
@@ -2271,10 +2272,10 @@ namespace Project.Match3
             MakeImg(bg, "Stripe", new Color(0.35f, 0.28f, 0.12f), V2(0f, 0.85f), V2(1f, 1f));
             gop.titleText = MakeTxt(bg, "Title", "Победа!", 38, Color.white,
                 V2(0.05f, 0.60f), V2(0.95f, 0.88f));
-            gop.titleText.alignment = TextAnchor.MiddleCenter;
+            gop.titleText.alignment = TextAlignmentOptions.Center;
             gop.rewardText = MakeTxt(bg, "Reward", "+100 опыта\n+50 золота", 19,
                 new Color(1f, 0.90f, 0.30f), V2(0.05f, 0.33f), V2(0.95f, 0.60f));
-            gop.rewardText.alignment = TextAnchor.MiddleCenter;
+            gop.rewardText.alignment = TextAlignmentOptions.Center;
             var backBtn = MakeButton(bg, "Back", "В главное меню",
                 new Color(0.18f, 0.28f, 0.55f), Color.white, V2(0.15f, 0.06f), V2(0.85f, 0.28f));
             gop.backButton = backBtn;
@@ -2298,7 +2299,7 @@ namespace Project.Match3
                 var (sym, col, desc) = rows[i];
                 float y0 = 1f - (i + 1) * rh, y1 = 1f - i * rh;
                 var s = MakeTxt(bg, $"S{i}", sym,  13, col,        V2(0.02f, y0), V2(0.16f, y1));
-                s.alignment = TextAnchor.MiddleCenter;
+                s.alignment = TextAlignmentOptions.Center;
                 MakeTxt(bg, $"D{i}", desc, 10, Color.white, V2(0.18f, y0), V2(0.98f, y1));
             }
         }
@@ -2391,15 +2392,13 @@ namespace Project.Match3
 
         private static Vector2 V2(float x, float y) => new Vector2(x, y);
 
-        private static Font _defaultFont;
-        private static Font DefaultFont
+        private static TMP_FontAsset _defaultFont;
+        private static TMP_FontAsset DefaultFont
         {
             get
             {
                 if (_defaultFont != null) return _defaultFont;
-                _defaultFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                if (_defaultFont == null)
-                    _defaultFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                _defaultFont = TMP_Settings.defaultFontAsset;
                 return _defaultFont;
             }
         }
@@ -2427,7 +2426,7 @@ namespace Project.Match3
         private static RectTransform MakeImg(RectTransform p, string name, Color color,
             Vector2 aMin, Vector2 aMax) => MakeImg((Transform)p, name, color, aMin, aMax);
 
-        private static Text MakeTxt(Transform p, string name, string text,
+        private static TMP_Text MakeTxt(Transform p, string name, string text,
             int size, Color color, Vector2 aMin, Vector2 aMax)
         {
             var go = new GameObject(name);
@@ -2435,13 +2434,13 @@ namespace Project.Match3
             rt.SetParent(p, false);
             rt.anchorMin = aMin; rt.anchorMax = aMax;
             rt.offsetMin = rt.offsetMax = Vector2.zero;
-            var t = go.AddComponent<Text>();
+            var t = go.AddComponent<TextMeshProUGUI>();
             t.text = text; t.font = DefaultFont; t.fontSize = size; t.color = color;
-            t.alignment = TextAnchor.MiddleLeft;
+            t.alignment = TextAlignmentOptions.Left;
             return t;
         }
 
-        private static Text MakeTxt(RectTransform p, string name, string text,
+        private static TMP_Text MakeTxt(RectTransform p, string name, string text,
             int size, Color color, Vector2 aMin, Vector2 aMax)
             => MakeTxt((Transform)p, name, text, size, color, aMin, aMax);
 
@@ -2463,7 +2462,7 @@ namespace Project.Match3
             if (!string.IsNullOrEmpty(label))
             {
                 var lbl = MakeTxt(go.transform, "Lbl", label, 15, textColor, V2(0.04f, 0), V2(0.96f, 1));
-                lbl.alignment = TextAnchor.MiddleCenter;
+                lbl.alignment = TextAlignmentOptions.Center;
             }
             return btn;
         }

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using TMPro;
 using UnityEngine.UI;
 
 namespace Project.Match3
@@ -20,7 +21,7 @@ namespace Project.Match3
         [SerializeField] private bool applyPresetOnAwake = true;
 
         [Header("Core References")]
-        [SerializeField] public Text statusText;
+        [SerializeField] public TMP_Text statusText;
         [SerializeField] public Button cancelButton;
         [SerializeField] private RectTransform spinnerRect;
 
@@ -164,7 +165,7 @@ namespace Project.Match3
             if (statusText == null && modalWindowRect != null)
             {
                 var tf = modalWindowRect.Find("StatusText");
-                if (tf != null) statusText = tf.GetComponent<Text>();
+                if (tf != null) statusText = tf.GetComponent<TMP_Text>();
             }
 
             if (cancelButton == null && modalWindowRect != null)
@@ -210,7 +211,7 @@ namespace Project.Match3
                 rt.offsetMax = Vector2.zero;
                 statusText.color = statusTextColor;
                 statusText.fontSize = Mathf.Max(10, statusFontSize);
-                statusText.alignment = TextAnchor.MiddleCenter;
+                statusText.alignment = TextAlignmentOptions.Center;
             }
 
             if (cancelButton != null)
@@ -224,11 +225,11 @@ namespace Project.Match3
                     rt.offsetMax = Vector2.zero;
                 }
 
-                var btnText = cancelButton.GetComponentInChildren<Text>(true);
+                var btnText = cancelButton.GetComponentInChildren<TMP_Text>(true);
                 if (btnText != null)
                 {
                     btnText.fontSize = Mathf.Max(10, cancelFontSize);
-                    btnText.alignment = TextAnchor.MiddleCenter;
+                    btnText.alignment = TextAlignmentOptions.Center;
                 }
             }
 

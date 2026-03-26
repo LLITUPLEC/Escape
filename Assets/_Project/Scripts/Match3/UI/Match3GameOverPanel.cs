@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,8 +8,8 @@ namespace Project.Match3
     /// <summary>Game-over overlay with result, reward and a back-to-menu button.</summary>
     public sealed class Match3GameOverPanel : MonoBehaviour
     {
-        [SerializeField] public Text   titleText;
-        [SerializeField] public Text   rewardText;
+        [SerializeField] public TMP_Text   titleText;
+        [SerializeField] public TMP_Text   rewardText;
         [SerializeField] public Button backButton;
 
         /// <summary>Fired when the player presses "Back to menu".</summary>
@@ -16,8 +17,15 @@ namespace Project.Match3
 
         private void Awake()
         {
+            ResolveReferences();
             if (backButton != null)
                 backButton.onClick.AddListener(() => OnBackClicked?.Invoke());
+        }
+
+        private void ResolveReferences()
+        {
+            titleText ??= transform.Find("TitleText")?.GetComponent<TMP_Text>();
+            rewardText ??= transform.Find("RewardText")?.GetComponent<TMP_Text>();
         }
 
         public void Show(bool won, string customRewardText = null)

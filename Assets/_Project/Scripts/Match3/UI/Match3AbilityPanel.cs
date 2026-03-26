@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,23 +17,23 @@ namespace Project.Match3
 
         [Header("Petard ability")]
         [SerializeField] public Button petardButton;
-        [SerializeField] public Text   petardCooldownText;
+        [SerializeField] public TMP_Text   petardCooldownText;
 
         [Header("Cross ability")]
         [SerializeField] public Button crossButton;
-        [SerializeField] public Text   crossCooldownText;
+        [SerializeField] public TMP_Text   crossCooldownText;
 
         [Header("Square ability")]
         [SerializeField] public Button squareButton;
-        [SerializeField] public Text   squareCooldownText;
+        [SerializeField] public TMP_Text   squareCooldownText;
 
         [Header("Shield ability")]
         [SerializeField] public Button shieldButton;
-        [SerializeField] public Text   shieldCooldownText;
+        [SerializeField] public TMP_Text   shieldCooldownText;
 
         [Header("Fury ability")]
         [SerializeField] public Button furyButton;
-        [SerializeField] public Text   furyCooldownText;
+        [SerializeField] public TMP_Text   furyCooldownText;
 
         [Header("Hint bar (shown while waiting for cell click)")]
         [SerializeField] public GameObject abilityHint;

@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 using System.Collections;
 
 namespace Project.Match3
@@ -7,13 +7,14 @@ namespace Project.Match3
     /// <summary>Top HUD: whose turn it is and the countdown timer.</summary>
     public sealed class Match3GameHUD : MonoBehaviour
     {
-        [SerializeField] public Text turnText;
-        [SerializeField] public Text timerText;
-        [SerializeField] public Text extraTurnText;
+        [SerializeField] public TMP_Text turnText;
+        [SerializeField] public TMP_Text timerText;
+        [SerializeField] public TMP_Text extraTurnText;
         private Coroutine _extraTurnRoutine;
 
         private void Awake()
         {
+            ResolveReferences();
             if (extraTurnText != null) return;
 
             var go = new GameObject("ExtraTurnText");
@@ -23,12 +24,18 @@ namespace Project.Match3
             rt.anchorMax = new Vector2(1f, 0f);
             rt.offsetMin = rt.offsetMax = Vector2.zero;
 
-            extraTurnText = go.AddComponent<Text>();
-            extraTurnText.font = turnText != null ? turnText.font : Resources.GetBuiltinResource<Font>("Arial.ttf");
+            extraTurnText = go.AddComponent<TextMeshProUGUI>();
+            extraTurnText.font = TMP_Settings.defaultFontAsset;
             extraTurnText.fontSize = 22;
-            extraTurnText.alignment = TextAnchor.MiddleCenter;
+            extraTurnText.alignment = TextAlignmentOptions.Center;
             extraTurnText.text = string.Empty;
             extraTurnText.gameObject.SetActive(false);
+        }
+
+        private void ResolveReferences()
+        {
+            turnText ??= transform.Find("TurnText")?.GetComponent<TMP_Text>();
+            timerText ??= transform.Find("TimerText")?.GetComponent<TMP_Text>();
         }
 
         public void SetTurn(string text)
