@@ -53,6 +53,10 @@ namespace Project.Nakama
 
         [SerializeField] private bool keepOnlineHeartbeat = true;
         [SerializeField] private float onlineHeartbeatSeconds = 5f;
+
+        /// <summary>Старт меню вызывает EnsureConnectedAsync из нескольких async-цепочек сразу; без блокировки каждая создаёт сокет и даёт несколько «Socket connected».</summary>
+        private readonly SemaphoreSlim _ensureConnectedGate = new(1, 1);
+
         private CancellationTokenSource _cts;
         private volatile bool _skipOnlineHeartbeat;
         private bool _sessionReplacedFlowActive;
@@ -193,46 +197,54 @@ namespace Project.Nakama
         /// <summary>Подключение к Nakama: единый Client, сессия (e-mail с диска или устройство), сокет.</summary>
         public async Task EnsureConnectedAsync(CancellationToken ct)
         {
-            if (Socket != null && Socket.IsConnected && Session != null &&
-                !Session.HasExpired(DateTime.UtcNow.AddMinutes(1)))
-                return;
-
-            if (config == null)
+            await _ensureConnectedGate.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
+                if (Socket != null && Socket.IsConnected && Session != null &&
+                    !Session.HasExpired(DateTime.UtcNow.AddMinutes(1)))
+                    return;
+
                 if (config == null)
-                    throw new InvalidOperationException("NakamaConnectionConfig не найден в Resources.");
-            }
-
-            if (Client == null)
-            {
-                Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
-                Client.Timeout = 10;
-            }
-
-            await MaintainValidSessionAsync(ct).ConfigureAwait(false);
-
-            if (Socket != null && Socket.IsConnected)
-                return;
-
-            if (Socket != null)
-            {
-                try
                 {
-                    await Socket.CloseAsync();
-                }
-                catch
-                {
-                    // ignored
+                    config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
+                    if (config == null)
+                        throw new InvalidOperationException("NakamaConnectionConfig не найден в Resources.");
                 }
 
-                Socket = null;
-            }
+                if (Client == null)
+                {
+                    Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
+                    Client.Timeout = 10;
+                }
 
-            Socket = CreateAndWireSocket();
-            ct.ThrowIfCancellationRequested();
-            await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
-            await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+                await MaintainValidSessionAsync(ct).ConfigureAwait(false);
+
+                if (Socket != null && Socket.IsConnected)
+                    return;
+
+                if (Socket != null)
+                {
+                    try
+                    {
+                        await Socket.CloseAsync();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+
+                    Socket = null;
+                }
+
+                Socket = CreateAndWireSocket();
+                ct.ThrowIfCancellationRequested();
+                await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
+                await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+            }
+            finally
+            {
+                _ensureConnectedGate.Release();
+            }
         }
 
         /// <summary>Привязать e-mail к текущему user_id (прогресс на сервере остаётся тем же).</summary>
@@ -325,7 +337,11 @@ namespace Project.Nakama
 
         private ISocket CreateAndWireSocket()
         {
-            var socket = Client.NewSocket();
+            // WebSocketAdapter вместо WebSocketStdlibAdapter — меньше NRE в ReceiveAsync на Mono/Android.
+            // useMainThread: false — без UnitySocket: его Create() делает new GameObject только с главного потока,
+            // а EnsureConnectedAsync после await часто продолжается с thread pool.
+            // События матча в проекте уже прокидываются в main thread через MainThreadDispatcher где нужно.
+            var socket = Client.NewSocket(useMainThread: false, defaultAdapter: new WebSocketAdapter());
             socket.Connected += () =>
             {
                 if (config.verboseLogging) Debug.Log("[Nakama] Socket connected");

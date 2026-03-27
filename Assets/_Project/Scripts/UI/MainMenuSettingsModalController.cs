@@ -43,6 +43,10 @@ namespace Project.UI
         private GameObject _modalGo;
         private bool _busy;
 
+        /// <summary>Исходная позиция Panel до сдвига от IME (мобильная клавиатура).</summary>
+        private Vector2 _modalPanelBaseAnchoredPos;
+        private bool _hasStoredModalPanelBasePos;
+
         private void Awake()
         {
             var tr = transform.Find("SettingsButton");
@@ -98,6 +102,112 @@ namespace Project.UI
             }
 #endif
         }
+
+        private void LateUpdate()
+        {
+            if (_modalGo == null || !_modalGo.activeSelf || modalPanelRect == null || !_hasStoredModalPanelBasePos)
+                return;
+
+            float obscuringPx = ComputeKeyboardObscuringHeightPx();
+            float lift = KeyboardObscuringPixelsToPanelLift(obscuringPx);
+            modalPanelRect.anchoredPosition = _modalPanelBaseAnchoredPos + new Vector2(0f, lift);
+        }
+
+        private bool IsAnySettingsInputFocused()
+        {
+            return (emailInput != null && emailInput.isFocused) ||
+                   (passwordInput != null && passwordInput.isFocused);
+        }
+
+        /// <summary>Высота области экрана, перекрываемой клавиатурой (нижний край), в пикселях.</summary>
+        private float ComputeKeyboardObscuringHeightPx()
+        {
+            bool focused = IsAnySettingsInputFocused();
+            bool kbdVisible = TouchScreenKeyboard.visible;
+            if (!focused && !kbdVisible)
+                return 0f;
+
+            float h = 0f;
+
+            if (kbdVisible)
+            {
+                var area = TouchScreenKeyboard.area;
+                if (area.height > 1f)
+                    h = Mathf.Max(h, area.height);
+            }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if ((focused || kbdVisible) && TryGetAndroidKeyboardOverlapPx(out var androidH))
+                h = Mathf.Max(h, androidH);
+#elif UNITY_IOS || UNITY_IPHONE
+            if (focused || kbdVisible)
+            {
+                float inset = Screen.height - Screen.safeArea.yMax;
+                if (inset > 10f)
+                    h = Mathf.Max(h, inset);
+            }
+#endif
+
+            if ((focused || kbdVisible) && h < 80f)
+                h = Mathf.Max(h, Screen.height * 0.4f);
+
+            return h;
+        }
+
+        private float KeyboardObscuringPixelsToPanelLift(float obscuringPx)
+        {
+            if (obscuringPx <= 0f)
+                return 0f;
+
+            var canvas = modalPanelRect != null ? modalPanelRect.GetComponentInParent<Canvas>() : null;
+            float scale = canvas != null ? canvas.scaleFactor : 1f;
+            if (scale < 0.01f)
+                scale = 1f;
+
+            float lift = obscuringPx / scale;
+            var parent = modalPanelRect.parent as RectTransform;
+            if (parent != null)
+            {
+                float maxByParent = parent.rect.height * 0.42f;
+                if (maxByParent > 1f)
+                    lift = Mathf.Min(lift, maxByParent);
+            }
+
+            return lift;
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        private static bool TryGetAndroidKeyboardOverlapPx(out float heightPx)
+        {
+            heightPx = 0f;
+            try
+            {
+                using var unityClass = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                var activity = unityClass.GetStatic<AndroidJavaObject>("currentActivity");
+                var window = activity?.Call<AndroidJavaObject>("getWindow");
+                var decor = window?.Call<AndroidJavaObject>("getDecorView");
+                if (decor == null)
+                    return false;
+
+                using var rect = new AndroidJavaObject("android.graphics.Rect");
+                decor.Call("getWindowVisibleDisplayFrame", rect);
+                int visibleBottom = rect.Call<int>("bottom");
+                int screenH = Screen.height;
+                heightPx = Mathf.Max(0f, screenH - visibleBottom);
+                return heightPx > 2f;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+#else
+        private static bool TryGetAndroidKeyboardOverlapPx(out float heightPx)
+        {
+            heightPx = 0f;
+            return false;
+        }
+#endif
 
         private static bool TryBackPressed()
         {
@@ -195,11 +305,18 @@ namespace Project.UI
             _modalGo.SetActive(true);
             if (modalPanelGroup != null)
                 modalPanelGroup.alpha = 1f;
+            if (modalPanelRect != null)
+            {
+                _modalPanelBaseAnchoredPos = modalPanelRect.anchoredPosition;
+                _hasStoredModalPanelBasePos = true;
+            }
             _ = RefreshStatusAsync(CancellationToken.None);
         }
 
         private void CloseModal()
         {
+            if (modalPanelRect != null && _hasStoredModalPanelBasePos)
+                modalPanelRect.anchoredPosition = _modalPanelBaseAnchoredPos;
             if (_modalGo != null)
                 _modalGo.SetActive(false);
         }
