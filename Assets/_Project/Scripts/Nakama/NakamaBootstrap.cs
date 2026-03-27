@@ -7,6 +7,9 @@ using Nakama;
 using Project.UI;
 using Project.Utils;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Project.Nakama
 {
@@ -42,6 +45,9 @@ namespace Project.Nakama
         private const string PrefUseEmailSession = "nakama.use_email_session";
         private const string PrefAuthToken = "nakama.session.auth_token";
         private const string PrefRefreshToken = "nakama.session.refresh_token";
+        private const string PlayerUsernamePrefix = "Player_";
+        private const int PlayerUsernameSuffixLength = 10;
+        private const int PlayerUsernameMaxLength = 17;
         public const string SessionEpochLocalPrefKey = "nakama.session_epoch.local";
         private const long NotificationCodeSessionReplaced = 10001;
 
@@ -437,16 +443,26 @@ namespace Project.Nakama
             SessionReplacedModal.Show(
                 "Под вашим аккаунтом выполнили вход на другом устройстве.\n\n" +
                 "Эта сессия больше не считается активной. Чтобы снова играть под этим аккаунтом, войдите по e-mail.\n\n" +
-                "Нажмите «ОК»: будет выполнен выход, для этого устройства создан новый локальный игрок (гостевой профиль). " +
-                "Прогресс облачного аккаунта сохраняется — его можно снова открыть входом по почте.",
-                () => { _ = CompleteSessionReplacedAfterOkAsync(); });
+                "Нажмите «ОК», чтобы закрыть игру.",
+                () => { _ = QuitAfterSessionReplacedAsync(); });
         }
 
-        private async Task CompleteSessionReplacedAfterOkAsync()
+        private async Task QuitAfterSessionReplacedAsync()
         {
             try
             {
-                await PerformSessionReplacedLogoutAsync(_cts.Token).ConfigureAwait(false);
+                // Best-effort: close socket before quitting.
+                if (Socket != null && Socket.IsConnected)
+                {
+                    try
+                    {
+                        await Socket.CloseAsync().ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -457,37 +473,17 @@ namespace Project.Nakama
                 _sessionReplacedFlowActive = false;
                 _skipOnlineHeartbeat = false;
             }
+
+            await MainThreadDispatcher.RunAsync(QuitApplicationSync).ConfigureAwait(false);
         }
 
-        /// <summary>Сброс локальной привязки к аккаунту и новый device id, переподключение.</summary>
-        private async Task PerformSessionReplacedLogoutAsync(CancellationToken ct)
+        private static void QuitApplicationSync()
         {
-            await MainThreadDispatcher.RunAsync(() =>
-            {
-                ClearEmailSessionPrefsSync();
-                PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
-                RegenerateDeviceIdentitySync();
-                PlayerPrefs.Save();
-            }).ConfigureAwait(false);
-
-            Session = null;
-
-            if (Socket != null)
-            {
-                try
-                {
-                    if (Socket.IsConnected)
-                        await Socket.CloseAsync().ConfigureAwait(false);
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                Socket = null;
-            }
-
-            await EnsureConnectedAsync(ct).ConfigureAwait(false);
+#if UNITY_EDITOR
+            EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         /// <summary>Новый гостевой device id в PlayerPrefs (не полагаемся на hardware id), иначе на телефоне снова тот же Nakama-пользователь.</summary>
@@ -572,7 +568,49 @@ namespace Project.Nakama
             }
 
             var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
-            return await Client.AuthenticateDeviceAsync(deviceId, create: true, canceller: ct).ConfigureAwait(false);
+            return await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, ct).ConfigureAwait(false);
+        }
+
+        private async Task<ISession> AuthenticateDeviceWithGeneratedUsernameAsync(string deviceId, CancellationToken ct)
+        {
+            const int maxAttempts = 6;
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                var username = CreatePlayerUsername();
+                try
+                {
+                    return await Client.AuthenticateDeviceAsync(
+                        deviceId,
+                        username: username,
+                        create: true,
+                        canceller: ct).ConfigureAwait(false);
+                }
+                catch (ApiResponseException ex) when (ex.StatusCode == 409 && attempt < maxAttempts - 1)
+                {
+                    // Rare username collision, regenerate and retry.
+                }
+            }
+
+            // Final attempt: surface any server error to caller.
+            return await Client.AuthenticateDeviceAsync(
+                deviceId,
+                username: CreatePlayerUsername(),
+                create: true,
+                canceller: ct).ConfigureAwait(false);
+        }
+
+        private static string CreatePlayerUsername()
+        {
+            const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var chars = new char[PlayerUsernameSuffixLength];
+            for (var i = 0; i < chars.Length; i++)
+                chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+
+            var suffix = new string(chars);
+            var username = PlayerUsernamePrefix + suffix;
+            return username.Length <= PlayerUsernameMaxLength
+                ? username
+                : username.Substring(0, PlayerUsernameMaxLength);
         }
 
         private static string GetDeviceId()

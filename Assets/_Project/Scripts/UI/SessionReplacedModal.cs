@@ -26,8 +26,13 @@ namespace Project.UI
             DontDestroyOnLoad(root);
             var canvas = root.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 50000;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = short.MaxValue;
             root.AddComponent<GraphicRaycaster>();
+            var scaler = root.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
             root.AddComponent<SessionReplacedModal>();
 
             var dim = new GameObject("Dim");
@@ -100,8 +105,11 @@ namespace Project.UI
             var es = new GameObject("EventSystem");
             DontDestroyOnLoad(es);
             es.AddComponent<EventSystem>();
+#if ENABLE_INPUT_SYSTEM
             es.AddComponent<InputSystemUIInputModule>();
+#else
             es.AddComponent<StandaloneInputModule>();
+#endif
         }
     }
 }

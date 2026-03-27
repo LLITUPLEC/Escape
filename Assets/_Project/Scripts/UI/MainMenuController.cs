@@ -26,12 +26,18 @@ namespace Project.UI
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
         private const string RpcMatch3PveCatalogGet = "duel_match3_pve_catalog_get";
+        private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
+        private const string PrefLastKnownUserId = "nakama.ui.last_known_user_id";
+        private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
         private Text _onlineCountText;
         private TMP_Text _onlineCountTmp;
+        private Text _playerUsernameText;
+        private TMP_Text _playerUsernameTmp;
         private CancellationTokenSource _onlineCts;
         private GameObject _onlineBadgeInstance;
         private RectTransform _onlineBadgeRect;
         private int _lastOnlineCount = -1;
+        private string _lastUsername = "";
         private Coroutine _badgePulseRoutine;
         private RectTransform _match3StatsRoot;
         private Text _match3PlayedText;
@@ -51,6 +57,7 @@ namespace Project.UI
         {
             TryAutoAssignEyeSpritesInEditor();
             EnsureOnlineBadge();
+            EnsurePlayerUsernameLabel();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
             ApplySafeAreaClamp();
@@ -68,6 +75,7 @@ namespace Project.UI
             _onlineCts = new CancellationTokenSource();
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
+            _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
             ApplySafeAreaClamp();
         }
 
@@ -416,9 +424,27 @@ namespace Project.UI
             }
         }
 
+        private void EnsurePlayerUsernameLabel()
+        {
+            if (_playerUsernameText != null || _playerUsernameTmp != null) return;
+
+            var parent = ResolveMainMenuHudLayoutRoot();
+            if (parent == null) return;
+
+            var logoRoot = FindRectTransformChildByName(parent, "BottomHeaderLogo");
+            if (logoRoot == null) return;
+
+            _playerUsernameText = FindTextUnder(logoRoot, "Label");
+            _playerUsernameTmp = FindTmpTextUnder(logoRoot, "Label");
+            var cached = GetCachedUsernameForCurrentContext();
+            _lastUsername = string.IsNullOrWhiteSpace(cached) ? "—" : cached;
+            SetPlayerUsernameText(_lastUsername);
+        }
+
         private async Task OnlineLoopAsync(CancellationToken ct)
         {
             var nextStatsRefreshAt = 0f;
+            var nextUsernameRefreshAt = 0f;
             while (!ct.IsCancellationRequested)
             {
                 await RefreshOnlineCountAsync(ct);
@@ -426,6 +452,11 @@ namespace Project.UI
                 {
                     await RefreshMatch3StatsCardAsync(ct);
                     nextStatsRefreshAt = Time.unscaledTime + Mathf.Max(2f, match3StatsPollSeconds);
+                }
+                if (Time.unscaledTime >= nextUsernameRefreshAt)
+                {
+                    await RefreshPlayerUsernameAsync(ct);
+                    nextUsernameRefreshAt = Time.unscaledTime + Mathf.Max(2f, onlinePollSeconds);
                 }
                 try
                 {
@@ -492,6 +523,55 @@ namespace Project.UI
             {
                 SetOnlineCountText("—");
                 if (debugUiStats) Debug.Log("[MainMenu] OnlineCount exception (see previous).");
+            }
+        }
+
+        private async Task RefreshPlayerUsernameAsync(CancellationToken ct)
+        {
+            EnsurePlayerUsernameLabel();
+            if (_playerUsernameText == null && _playerUsernameTmp == null) return;
+
+            try
+            {
+                if (NakamaBootstrap.Instance == null)
+                {
+                    SetPlayerUsernameText("—");
+                    return;
+                }
+
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+                if (NakamaBootstrap.Instance.Session == null || NakamaBootstrap.Instance.Client == null)
+                {
+                    SetPlayerUsernameText("—");
+                    return;
+                }
+
+                var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
+                    NakamaBootstrap.Instance.Session,
+                    canceller: ct);
+                var username = acc?.User?.Username;
+                var nextUsername = string.IsNullOrWhiteSpace(username) ? "—" : username;
+                if (!string.Equals(_lastUsername, nextUsername, StringComparison.Ordinal))
+                {
+                    _lastUsername = nextUsername;
+                    SetPlayerUsernameText(nextUsername);
+                }
+
+                if (!string.IsNullOrWhiteSpace(username))
+                {
+                    var userId = NakamaBootstrap.Instance.Session?.UserId;
+                    CacheKnownUsername(userId, username);
+                }
+            }
+            catch
+            {
+                var fallback = GetCachedUsernameForCurrentContext();
+                var next = string.IsNullOrWhiteSpace(fallback) ? "—" : fallback;
+                if (!string.Equals(_lastUsername, next, StringComparison.Ordinal))
+                {
+                    _lastUsername = next;
+                    SetPlayerUsernameText(next);
+                }
             }
         }
 
@@ -579,6 +659,47 @@ namespace Project.UI
         {
             if (_onlineCountText != null) _onlineCountText.text = value;
             if (_onlineCountTmp != null) _onlineCountTmp.text = value;
+        }
+
+        private void SetPlayerUsernameText(string value)
+        {
+            if (_playerUsernameText != null) _playerUsernameText.text = value;
+            if (_playerUsernameTmp != null) _playerUsernameTmp.text = value;
+        }
+
+        private static void CacheKnownUsername(string userId, string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return;
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                PlayerPrefs.SetString(PrefLastKnownUserId, userId);
+                PlayerPrefs.SetString(PrefUserNameByUserIdPrefix + userId, username);
+            }
+            PlayerPrefs.SetString(PrefLastKnownUsername, username);
+            PlayerPrefs.Save();
+        }
+
+        private static string GetCachedUsernameForCurrentContext()
+        {
+            var currentUserId = NakamaBootstrap.Instance?.Session?.UserId;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var perUser = PlayerPrefs.GetString(PrefUserNameByUserIdPrefix + currentUserId, "");
+                if (!string.IsNullOrWhiteSpace(perUser))
+                    return perUser;
+            }
+
+            var lastUserId = PlayerPrefs.GetString(PrefLastKnownUserId, "");
+            if (!string.IsNullOrWhiteSpace(currentUserId) &&
+                !string.IsNullOrWhiteSpace(lastUserId) &&
+                !string.Equals(currentUserId, lastUserId, StringComparison.Ordinal))
+            {
+                return "";
+            }
+
+            return PlayerPrefs.GetString(PrefLastKnownUsername, "");
         }
 
         private static RectTransform FindRectTransformChildByName(Transform root, string name)

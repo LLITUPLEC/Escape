@@ -60,11 +60,24 @@ namespace Project.Match3
         };
 
         public bool IsBuilt => _built;
+        public bool IsVisible => _overlayContainerRt != null && _overlayContainerRt.gameObject.activeSelf;
 
         public void SetCellContainerPrefab(Transform prefab)
         {
             if (_built) return;
             cellContainerPrefab = prefab;
+        }
+
+        public void SetVisible(bool visible)
+        {
+            if (_overlayContainerRt != null)
+            {
+                _overlayContainerRt.gameObject.SetActive(visible);
+                return;
+            }
+
+            if (cellContainer != null)
+                cellContainer.gameObject.SetActive(visible);
         }
 
         public void Build(Match3BoardView baseBoardView)

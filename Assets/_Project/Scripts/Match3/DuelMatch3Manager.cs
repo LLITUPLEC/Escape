@@ -170,6 +170,9 @@ namespace Project.Match3
         private Match3AbilityPanel  _abilityPanel;
         private Match3BoardView     _boardView;
         private Match3CheatRowsOverlayView _cheatRowsOverlayView;
+        private Match3LongPressActivator _cheatRowsLongPressActivator;
+        private int[] _latestCheatRows;
+        private bool _hasCheatRowsAccess;
         private Match3GameHUD       _hud;
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
@@ -182,6 +185,7 @@ namespace Project.Match3
         private List<PveBotInfo> _pveBots = new();
         private int _selectedPveBotIndex;
         private PveProgressInfo _pveProgress;
+        private const float CheatRowsHoldSeconds = 3f;
 
         // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -599,7 +603,7 @@ namespace Project.Match3
             if (_boardView != null && (ability == AbilityType.Cross || ability == AbilityType.Square))
             {
                 yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
-                if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
                     yield return _cheatRowsOverlayView.AnimateAbilityArea(ability, cx, cy, 0.24f);
             }
             var req = new M3ActionRequest
@@ -818,10 +822,21 @@ namespace Project.Match3
             bool shouldShow = msg != null && msg.cheatRows != null && msg.cheatRows.Length >= Match3BoardLogic.Size * 2;
             if (!shouldShow)
             {
+                _hasCheatRowsAccess = false;
+                _latestCheatRows = null;
+                if (_cheatRowsLongPressActivator != null)
+                {
+                    Destroy(_cheatRowsLongPressActivator.gameObject);
+                    _cheatRowsLongPressActivator = null;
+                }
                 if (_cheatRowsOverlayView != null)
-                    _cheatRowsOverlayView.gameObject.SetActive(false);
+                    _cheatRowsOverlayView.SetVisible(false);
                 return;
             }
+
+            _hasCheatRowsAccess = true;
+            _latestCheatRows = (int[])msg.cheatRows.Clone();
+            EnsureCheatRowsLongPressActivator();
 
             if (_boardView == null || _boardView.cellContainer == null) return;
 
@@ -832,12 +847,9 @@ namespace Project.Match3
                 _cheatRowsOverlayView = go.AddComponent<Match3CheatRowsOverlayView>();
                 if (cheatRowsOverlayCellsPrefab != null)
                     _cheatRowsOverlayView.SetCellContainerPrefab(cheatRowsOverlayCellsPrefab);
-                _cheatRowsOverlayView.gameObject.SetActive(true);
                 _cheatRowsOverlayView.Build(_boardView);
+                _cheatRowsOverlayView.SetVisible(false);
             }
-
-            if (_cheatRowsOverlayView.gameObject.activeSelf == false)
-                _cheatRowsOverlayView.gameObject.SetActive(true);
 
             _cheatRowsOverlayView.RefreshAll(msg.cheatRows);
         }
@@ -903,7 +915,7 @@ namespace Project.Match3
                 {
                     PlaySfx(sfxAbilityCross);
                     yield return _boardView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
-                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
                         yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
                 }
                 else if (msg.actionType == 3 &&
@@ -911,7 +923,7 @@ namespace Project.Match3
                 {
                     PlaySfx(sfxAbilitySquare);
                     yield return _boardView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
-                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.gameObject.activeSelf)
+                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
                         yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
                 }
                 else if (msg.actionType == 4)
@@ -1020,8 +1032,9 @@ namespace Project.Match3
                 _boardView?.ShowCenterAnnouncement("Дополнительный ход\nза 5+ камней", new Color(0.35f, 1f, 0.35f), 2f);
             }
 
-            bool petardKeepsTurn = msg.actionType == 4 && ((msg.activeUserId == _myUserId) == _isMyTurn);
-            if (petardKeepsTurn)
+            bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 6)
+                                             && ((msg.activeUserId == _myUserId) == _isMyTurn);
+            if (keepTurnWithoutTimerReset)
             {
                 _inputBlocked = !_isMyTurn;
                 _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
@@ -1561,8 +1574,22 @@ namespace Project.Match3
         private void AdvanceTurnWithoutAction(string actorId)
         {
             if (!string.Equals(actorId, GetActiveUserId(), StringComparison.Ordinal)) return;
+            var actorStats = GetActiveStats();
+            if (actorStats != null)
+            {
+                TickBuffDurations(actorStats);
+                RecalcDerivedBuffs(actorStats);
+            }
             SwitchActiveUser();
-            TickEndOfTurnForActive();
+            var nextStats = GetActiveStats();
+            if (nextStats != null)
+            {
+                if (nextStats.crossCooldown > 0) nextStats.crossCooldown--;
+                if (nextStats.squareCooldown > 0) nextStats.squareCooldown--;
+                if (nextStats.petardCooldown > 0) nextStats.petardCooldown--;
+                if (nextStats.shieldCooldown > 0) nextStats.shieldCooldown--;
+                if (nextStats.furyCooldown > 0) nextStats.furyCooldown--;
+            }
             var msg = new M3BoardSyncMsg
             {
                 actionType = 0,
@@ -2157,6 +2184,43 @@ namespace Project.Match3
 
             if (panel.combatStatsText == null || panel.buffStateText == null)
                 BuildCombatStatsFrame(panel, root, V2(0.05f, 0.20f), V2(0.95f, 0.40f));
+        }
+
+        private void EnsureCheatRowsLongPressActivator()
+        {
+            if (_opPanel?.avatarImage == null) return;
+            if (_cheatRowsLongPressActivator != null)
+            {
+                if (!_cheatRowsLongPressActivator.gameObject.activeSelf)
+                    _cheatRowsLongPressActivator.gameObject.SetActive(true);
+                return;
+            }
+            var avatarRt = _opPanel.avatarImage.rectTransform;
+            if (avatarRt == null) return;
+
+            var triggerGo = new GameObject("CheatRowsHoldArea");
+            var triggerRt = triggerGo.AddComponent<RectTransform>();
+            triggerRt.SetParent(avatarRt, false);
+            triggerRt.anchorMin = Vector2.zero;
+            triggerRt.anchorMax = Vector2.one;
+            triggerRt.offsetMin = Vector2.zero;
+            triggerRt.offsetMax = Vector2.zero;
+
+            var image = triggerGo.AddComponent<Image>();
+            image.color = new Color(1f, 1f, 1f, 0f);
+            image.raycastTarget = true;
+
+            _cheatRowsLongPressActivator = triggerGo.AddComponent<Match3LongPressActivator>();
+            _cheatRowsLongPressActivator.Configure(CheatRowsHoldSeconds, ToggleCheatRowsOverlayVisibility);
+        }
+
+        private void ToggleCheatRowsOverlayVisibility()
+        {
+            if (!_hasCheatRowsAccess || _cheatRowsOverlayView == null) return;
+            bool nextVisible = !_cheatRowsOverlayView.IsVisible;
+            _cheatRowsOverlayView.SetVisible(nextVisible);
+            if (nextVisible && _latestCheatRows != null)
+                _cheatRowsOverlayView.RefreshAll(_latestCheatRows);
         }
 
         private void EnsureDamagePopupWidgets(Match3PlayerPanel panel)

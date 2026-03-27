@@ -720,6 +720,7 @@ end
 local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, tick_rate, anim_steps)
   local actor = state.active_user_id
   local opponent = other_player_id(state, actor)
+  local action_type = action and tonumber(action.actionType) or 0
 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then
     local winner = state.stats[actor].hp > 0 and actor or opponent
@@ -739,7 +740,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 
   if keep_turn then
     state.active_user_id = actor
-    state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+    -- Fury keeps the turn, but must not refresh the turn timer.
+    if action_type ~= 6 then
+      state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+    end
   elseif extra_turn then
     state.active_user_id = actor
   else
@@ -1871,6 +1875,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     local current = state.active_user_id
     local next_player = other_player_id(state, current)
     if next_player then
+      tick_buffs_end_turn(state.stats[current])
       state.active_user_id = next_player
       tick_cooldowns(state.stats[next_player])
       state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
@@ -1894,6 +1899,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     local opp_id = state.owner_user_id
     local action = choose_bot_action(state, actor_id, opp_id)
     if action == nil then
+      tick_buffs_end_turn(state.stats[actor_id])
       state.active_user_id = opp_id
       tick_cooldowns(state.stats[opp_id])
       state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
@@ -1920,6 +1926,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
       else
         nk.logger_warn("bot action rejected: " .. tostring(err))
+        tick_buffs_end_turn(state.stats[actor_id])
         state.active_user_id = opp_id
         tick_cooldowns(state.stats[opp_id])
         state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE

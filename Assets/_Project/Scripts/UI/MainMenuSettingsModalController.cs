@@ -251,7 +251,9 @@ namespace Project.UI
                 var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(NakamaBootstrap.Instance.Session, canceller: ct);
                 var uid = NakamaBootstrap.Instance.Session.UserId ?? "";
                 var shortUid = uid.Length > 8 ? uid.Substring(0, 8) + "…" : uid;
-                var mailFromApi = TryGetUserEmail(acc.User);
+                // Nakama returns e-mail on ApiAccount.Email (not on ApiUser).
+                // Keep a tolerant fallback for older payloads / custom servers.
+                var mailFromApi = !string.IsNullOrWhiteSpace(acc?.Email) ? acc.Email : TryGetUserEmail(acc?.User);
                 var mailKnown = await MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetString(PrefKnownLinkedEmail, ""));
                 var emailMode = await NakamaBootstrap.Instance.UsesEmailSessionPersistenceAsync();
 
@@ -268,7 +270,8 @@ namespace Project.UI
                 }
                 else if (!string.IsNullOrWhiteSpace(mailKnown))
                 {
-                    linkedBody = $"Привязанный e-mail: {mailKnown}";
+                    // This is only a local hint: it does NOT prove that the current user_id has this email linked on server.
+                    linkedBody = $"Привязанный e-mail (локально сохранено): {mailKnown}";
                     linkedColor = new Color(1f, 0.92f, 0.6f);
                 }
                 else
