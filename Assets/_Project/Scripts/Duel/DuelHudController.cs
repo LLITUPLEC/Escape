@@ -1,4 +1,5 @@
 using System.Collections;
+using Project.Player;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,6 +8,7 @@ namespace Project.Duel
     public sealed class DuelHudController : MonoBehaviour
     {
         [SerializeField] private Button exitButton;
+        [SerializeField] private Button jumpButton;
         [SerializeField] private CanvasGroup confirmGroup;
         [SerializeField] private Button confirmYesButton;
         [SerializeField] private Button confirmNoButton;
@@ -22,6 +24,8 @@ namespace Project.Duel
         private Coroutine _bannerRoutine;
         private RectTransform _bannerRect;
         private Vector3 _bannerBaseScale = Vector3.one;
+        private PlayerMovementController _jumpMover;
+        private bool _jumpUiCreated;
 
         public void Bind(
             DuelRoomManager room,
@@ -49,12 +53,67 @@ namespace Project.Duel
             }
 
             if (exitButton != null) exitButton.onClick.AddListener(OnExitClicked);
+            WireJumpButton();
             if (confirmYesButton != null) confirmYesButton.onClick.AddListener(OnConfirmYes);
             if (confirmNoButton != null) confirmNoButton.onClick.AddListener(OnConfirmNo);
 
             SetConfirmVisible(false);
             SetBannerVisible(false);
             CacheBannerRect();
+        }
+
+        /// <summary> Вызывается после спавна локального игрока (кнопка «Прыжок» для тач-управления). </summary>
+        public void EnsureJumpButton(PlayerMovementController mover)
+        {
+            _jumpMover = mover;
+            if (jumpButton == null && !_jumpUiCreated && exitButton != null)
+            {
+                var canvasRt = exitButton.transform.parent as RectTransform;
+                if (canvasRt != null)
+                {
+                    var go = new GameObject("JumpButton", typeof(Image), typeof(Button));
+                    var rt = go.GetComponent<RectTransform>();
+                    rt.SetParent(canvasRt, false);
+                    rt.anchorMin = new Vector2(1f, 0f);
+                    rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(1f, 0f);
+                    rt.anchoredPosition = new Vector2(-40f, 40f);
+                    rt.sizeDelta = new Vector2(220f, 100f);
+                    go.GetComponent<Image>().color = new Color(0.2f, 0.55f, 0.95f, 1f);
+
+                    var textGo = new GameObject("Text", typeof(Text));
+                    textGo.transform.SetParent(go.transform, false);
+                    var txt = textGo.GetComponent<Text>();
+                    txt.text = "Прыжок";
+                    txt.alignment = TextAnchor.MiddleCenter;
+                    txt.color = Color.white;
+                    txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    txt.fontSize = 40;
+                    var trt = textGo.GetComponent<RectTransform>();
+                    trt.anchorMin = Vector2.zero;
+                    trt.anchorMax = Vector2.one;
+                    trt.offsetMin = Vector2.zero;
+                    trt.offsetMax = Vector2.zero;
+
+                    jumpButton = go.GetComponent<Button>();
+                    _jumpUiCreated = true;
+                    WireJumpButton();
+                }
+            }
+            else
+                WireJumpButton();
+        }
+
+        private void WireJumpButton()
+        {
+            if (jumpButton == null) return;
+            jumpButton.onClick.RemoveListener(OnJumpClicked);
+            jumpButton.onClick.AddListener(OnJumpClicked);
+        }
+
+        private void OnJumpClicked()
+        {
+            _jumpMover?.RequestJump();
         }
 
         private void OnExitClicked()

@@ -26,10 +26,14 @@ namespace Project.Player
 
         private CharacterController _cc;
         private float _vy;
+        private bool _jumpRequested;
 
         public float MoveSpeed => moveSpeed;
         public float RunMultiplier => runMultiplier;
         public void SetVirtualJoystick(Joystick joystick) => virtualJoystick = joystick;
+
+        /// <summary> Кнопка «Прыжок» на тач-интерфейсе и т.п. </summary>
+        public void RequestJump() => _jumpRequested = true;
 
         private void Awake()
         {
@@ -142,8 +146,13 @@ namespace Project.Player
 #endif
         }
 
-        private static bool ReadJumpPressed()
+        private bool ReadJumpPressed()
         {
+            if (_jumpRequested)
+            {
+                _jumpRequested = false;
+                return true;
+            }
 #if ENABLE_INPUT_SYSTEM
             var k = Keyboard.current;
             if (k == null) return false;

@@ -9,6 +9,9 @@ namespace Project
         [SerializeField] private float distance = 3.75f;
         [SerializeField] private float lookHeight = 1.4f;
         [SerializeField] private float smooth = 10f;
+        [Tooltip("Если включено — позиция камеры сзади задаётся только горизонтальным углом (орбита), без поворота вместе с персонажем.")]
+        [SerializeField] private bool useOrbitYawForOffset;
+        private float _orbitYawDeg;
         [Header("Коллизия со стенами")]
         [SerializeField] private LayerMask obstacleMask = ~0;
         [SerializeField] private float probeRadius = 0.22f;
@@ -20,7 +23,28 @@ namespace Project
         public void SetTarget(Transform target)
         {
             _target = target;
+            if (useOrbitYawForOffset)
+                SyncOrbitYawFromTargetForward();
             SnapToTarget();
+        }
+
+        /// <summary> Режим дуэли: камера не «крутится» за поворотом персонажа; горизонтальный угол задаётся орбитой (перетаскивание). </summary>
+        public void ConfigureForDuelOrbitCamera()
+        {
+            useOrbitYawForOffset = true;
+            if (_target != null)
+                SyncOrbitYawFromTargetForward();
+        }
+
+        public void AddOrbitYawDegrees(float delta) => _orbitYawDeg += delta;
+
+        private void SyncOrbitYawFromTargetForward()
+        {
+            if (_target == null) return;
+            var f = Vector3.ProjectOnPlane(_target.forward, Vector3.up);
+            if (f.sqrMagnitude < 1e-8f) return;
+            f.Normalize();
+            _orbitYawDeg = Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
         }
 
         private void SnapToTarget()
@@ -33,7 +57,14 @@ namespace Project
 
         private Vector3 GetDesiredPositionRaw()
         {
-            var back = -_target.forward * distance;
+            Vector3 back;
+            if (useOrbitYawForOffset)
+            {
+                var yawRot = Quaternion.Euler(0f, _orbitYawDeg, 0f);
+                back = yawRot * (Vector3.back * distance);
+            }
+            else
+                back = -_target.forward * distance;
             var up = Vector3.up * height;
             return _target.position + up + back;
         }

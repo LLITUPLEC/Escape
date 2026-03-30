@@ -1032,7 +1032,7 @@ namespace Project.Match3
                 _boardView?.ShowCenterAnnouncement("Дополнительный ход\nза 5+ камней", new Color(0.35f, 1f, 0.35f), 2f);
             }
 
-            bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 6)
+            bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 5 || msg.actionType == 6)
                                              && ((msg.activeUserId == _myUserId) == _isMyTurn);
             if (keepTurnWithoutTimerReset)
             {

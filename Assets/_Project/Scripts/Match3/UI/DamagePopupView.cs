@@ -36,6 +36,17 @@ namespace Project.Match3
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
             if (valueText == null)
                 valueText = transform.Find("Value")?.GetComponent<TMP_Text>() ?? GetComponentInChildren<TMP_Text>(true);
+            if (valueText != null)
+            {
+                valueText.overflowMode = TMPro.TextOverflowModes.Overflow;
+                valueText.enableWordWrapping = false;
+            }
+            if (_rt != null)
+            {
+                var w = Mathf.Max(_rt.sizeDelta.x, 280f);
+                var h = Mathf.Max(_rt.sizeDelta.y, 120f);
+                _rt.sizeDelta = new Vector2(w, h);
+            }
             _baseScale = transform.localScale;
             if (_rt != null) _baseAnchoredPos = _rt.anchoredPosition;
             HideImmediate();

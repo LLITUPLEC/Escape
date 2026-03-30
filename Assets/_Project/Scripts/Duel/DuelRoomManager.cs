@@ -11,6 +11,7 @@ using Project.Networking;
 using Project.Utils;
 using Project.Player;
 using UnityEngine;
+using Project;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -101,6 +102,7 @@ namespace Project.Duel
         private Quaternion _camWorldRotRestore;
         private Transform _camParentRestore;
         private SimpleFollowCamera _playerFollowCam;
+        private DuelCameraDragOrbit _duelCameraDragOrbit;
         private KeypadInteractionFPV _runtimeKeypadFpv;
         private bool _runtimeKeypadFpvOwned;
         private Coroutine _keypadFocusCameraCo;
@@ -834,6 +836,8 @@ namespace Project.Duel
 
             _playerFollowCam = cam.GetComponent<SimpleFollowCamera>();
             if (_playerFollowCam != null) _playerFollowCam.enabled = false;
+            _duelCameraDragOrbit = cam.GetComponent<DuelCameraDragOrbit>();
+            if (_duelCameraDragOrbit != null) _duelCameraDragOrbit.enabled = false;
 
             _runtimeKeypadFpv = cam.GetComponent<KeypadInteractionFPV>();
             if (_runtimeKeypadFpv == null)
@@ -1060,6 +1064,11 @@ namespace Project.Duel
             {
                 _playerFollowCam.enabled = true;
                 _playerFollowCam = null;
+            }
+
+            if (_duelCameraDragOrbit != null)
+            {
+                _duelCameraDragOrbit.enabled = true;
             }
 
             _keypadFocusActive = false;
@@ -1496,7 +1505,13 @@ namespace Project.Duel
             }
             var follow = cam.GetComponent<SimpleFollowCamera>();
             if (follow == null) follow = cam.gameObject.AddComponent<SimpleFollowCamera>();
+            follow.ConfigureForDuelOrbitCamera();
             follow.SetTarget(target);
+            _duelCameraDragOrbit = cam.GetComponent<DuelCameraDragOrbit>();
+            if (_duelCameraDragOrbit == null)
+                _duelCameraDragOrbit = cam.gameObject.AddComponent<DuelCameraDragOrbit>();
+            if (hud != null)
+                hud.EnsureJumpButton(_localMover);
         }
 
         private void OnMatchPresence(IMatchPresenceEvent e)
