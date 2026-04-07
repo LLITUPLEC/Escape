@@ -1,0 +1,37 @@
+{
+  "items": {
+    "helm_rusty": {
+      "slot": "Helmet",
+      "hp": 10,
+      "damage": 0,
+      "armor": 0,
+      "crit_chance": 0,
+      "healing": 0
+    },
+    "sword_basic": {
+      "slot": "WeaponRight",
+      "hp": 0,
+      "damage": 5,
+      "armor": 0,
+      "crit_chance": 0,
+      "healing": 0
+    },
+    "boots_basic": {
+      "slot": "Feet",
+      "hp": 0,
+      "damage": 0,
+      "armor": 2,
+      "crit_chance": 0,
+      "healing": 0
+    },
+    "gloves_basic": {
+      "slot": "Gloves",
+      "hp": 0,
+      "damage": 0,
+      "armor": 0,
+      "crit_chance": 0,
+      "healing": 3
+    }
+  },
+  "version": 1
+}

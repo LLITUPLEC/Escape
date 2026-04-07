@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Project.Character;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,8 @@ namespace Project.Character.UI
         [SerializeField] private Button openButton;
         [SerializeField] private Button closeButton;
         [SerializeField] private TMP_Text levelText;
+        [SerializeField] private ItemCatalog itemCatalog;
+        [SerializeField] private CharacterSheetDragController dragController;
 
         [Header("Start")]
         [SerializeField] private bool startHidden = true;
@@ -24,6 +27,9 @@ namespace Project.Character.UI
         {
             if (openButton != null) openButton.onClick.AddListener(Open);
             if (closeButton != null) closeButton.onClick.AddListener(Close);
+
+            if (dragController == null) dragController = GetComponent<CharacterSheetDragController>();
+            if (dragController == null) dragController = gameObject.AddComponent<CharacterSheetDragController>();
 
             _cts = new CancellationTokenSource();
             if (startHidden) SetVisible(false);
@@ -75,8 +81,16 @@ namespace Project.Character.UI
                 if (levelText != null && profile.progression != null)
                     levelText.text = profile.progression.level.ToString();
 
-                if (view != null && profile.stats != null)
-                    view.SetStats(profile.stats.hp, profile.stats.damage, profile.stats.armor, profile.stats.healing, profile.stats.crit_chance);
+                if (view != null)
+                {
+                    if (dragController != null)
+                    {
+                        dragController.Initialize(view, itemCatalog, _cts);
+                        view.SetupDrag(dragController);
+                    }
+
+                    view.ApplyCharacterResponse(profile, itemCatalog);
+                }
             });
         }
 

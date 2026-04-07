@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace Project.Character
 {
@@ -12,9 +11,11 @@ namespace Project.Character
         public Progression progression;
         public StatsMap stats;
 
-        // placeholders for future server-backed data
-        public object equipment;
-        public Inventory inventory;
+        /// <summary>8 строк в порядке EquipmentSlotId (0..7); пустая строка — пустой слот.</summary>
+        public string[] equipment_def_ids;
+
+        /// <summary>25 ячеек сундука; пустая строка — пусто.</summary>
+        public string[] inventory_def_ids;
     }
 
     [Serializable]
@@ -38,13 +39,6 @@ namespace Project.Character
         public int armor;
         public float crit_chance;
         public int healing;
-    }
-
-    [Serializable]
-    public sealed class Inventory
-    {
-        public int size = 25;
-        public List<object> items;
     }
 }
 

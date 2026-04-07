@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using Project.Character;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Project.Character.UI
 {
@@ -28,6 +30,8 @@ namespace Project.Character.UI
         private readonly List<EquipmentSlotView> _equipmentSlots = new();
         private readonly List<ItemSlotView> _inventorySlots = new();
 
+        private bool _dragConfigured;
+
         public void SetVisible(bool visible)
         {
             if (root == null)
@@ -53,6 +57,82 @@ namespace Project.Character.UI
             if (armorText != null) armorText.text = armor.ToString();
             if (healText != null) healText.text = healing.ToString();
             if (critText != null) critText.text = Mathf.RoundToInt(Mathf.Clamp01(critChance01) * 100f) + "%";
+        }
+
+        public void ApplyCharacterResponse(CharacterGetRpcResponse profile, ItemCatalog catalog)
+        {
+            if (profile == null || !profile.ok) return;
+            if (profile.stats != null)
+                SetStats(profile.stats.hp, profile.stats.damage, profile.stats.armor, profile.stats.healing, profile.stats.crit_chance);
+            BindEquipmentAndInventory(profile.equipment_def_ids, profile.inventory_def_ids, catalog);
+        }
+
+        public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, ItemCatalog catalog)
+        {
+            EnsureBuilt();
+            var bySlot = new EquipmentSlotView[8];
+            foreach (var s in _equipmentSlots)
+            {
+                var idx = (int)s.SlotId;
+                if (idx >= 0 && idx < 8) bySlot[idx] = s;
+            }
+
+            for (var i = 0; i < 8; i++)
+            {
+                var id = equipmentDefIds != null && i < equipmentDefIds.Length ? equipmentDefIds[i] : null;
+                var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
+                if (bySlot[i] != null) bySlot[i].Set(def);
+            }
+
+            for (var i = 0; i < _inventorySlots.Count && i < 25; i++)
+            {
+                var id = inventoryDefIds != null && i < inventoryDefIds.Length ? inventoryDefIds[i] : null;
+                var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
+                _inventorySlots[i].SetIcon(def != null ? def.Icon : null);
+            }
+        }
+
+        public void SetupDrag(CharacterSheetDragController drag)
+        {
+            if (drag == null || _dragConfigured) return;
+            EnsureBuilt();
+
+            for (var i = 0; i < _inventorySlots.Count; i++)
+            {
+                var slot = _inventorySlots[i];
+                slot.SetIconRaycast(false);
+                var root = slot.gameObject;
+                EnsureRaycastTarget(root);
+                var h = root.GetComponent<CharacterDragSlotHandle>() ?? root.AddComponent<CharacterDragSlotHandle>();
+                h.Configure(drag, CharacterDragSlotKind.Inventory, i, default);
+            }
+
+            foreach (var eq in _equipmentSlots)
+            {
+                eq.SetItemIconRaycast(false);
+                var btn = eq.GetComponentInChildren<UnityEngine.UI.Button>(true);
+                var target = btn != null ? btn.gameObject : eq.gameObject;
+                EnsureRaycastTarget(target);
+                var h = target.GetComponent<CharacterDragSlotHandle>() ?? target.AddComponent<CharacterDragSlotHandle>();
+                h.Configure(drag, CharacterDragSlotKind.Equipment, -1, eq.SlotId);
+            }
+
+            _dragConfigured = true;
+        }
+
+        private static void EnsureRaycastTarget(GameObject root)
+        {
+            if (root.GetComponent<Graphic>() == null)
+            {
+                var img = root.AddComponent<Image>();
+                img.color = new Color(1f, 1f, 1f, 0.001f);
+                img.raycastTarget = true;
+            }
+            else
+            {
+                foreach (var g in root.GetComponents<Graphic>())
+                    g.raycastTarget = true;
+            }
         }
 
         private void CollectOrBuildEquipment()

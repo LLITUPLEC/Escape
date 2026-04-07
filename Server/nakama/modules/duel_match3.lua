@@ -60,6 +60,13 @@ local STATS_COLLECTION = "duel_match3_stats"
 local STATS_KEY = "summary"
 local PVE_PROGRESS_COLLECTION = "duel_match3_progress"
 local PVE_PROGRESS_KEY = "profile"
+local CHARACTER_SHEET_COLLECTION = "duel_match3_character"
+local CHARACTER_SHEET_KEY = "sheet"
+-- Глобальный каталог предметов (лежит в Nakama Storage → PostgreSQL). См. ITEM_DEFS_FALLBACK и duel_match3_item_catalog.example.json.
+local ITEM_DEFS_COLLECTION = "duel_match3_item_defs"
+local ITEM_DEFS_KEY = "catalog"
+-- Пустая строка: каталог только из ITEM_DEFS_FALLBACK в этом файле. Иначе укажите UUID пользователя, под которым в Console создан storage-объект каталога.
+local ITEM_DEFS_STORAGE_USER_ID = ""
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
 local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
@@ -1031,6 +1038,187 @@ local function decode_storage_value(obj)
   return nil
 end
 
+-- Equipment slot order must match client enum EquipmentSlotId (0..7).
+local EQUIP_ORDER = {
+  "Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight",
+}
+
+-- Fallback, если в Storage нет записи или ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
+local ITEM_DEFS_FALLBACK = {
+  helm_rusty = { slot = "Helmet", hp = 10 },
+  sword_basic = { slot = "WeaponRight", damage = 5 },
+  boots_basic = { slot = "Feet", armor = 2 },
+  gloves_basic = { slot = "Gloves", healing = 3 },
+}
+
+local ITEM_DEFS_CACHE_TTL_SEC = 30
+local _item_defs_merged_cache = nil
+local _item_defs_merged_cache_at = 0
+
+local function normalize_stored_item_def(def)
+  if type(def) ~= "table" then return nil end
+  local slot = tostring(def.slot or "")
+  if slot == "" then return nil end
+  return {
+    slot = slot,
+    hp = tonumber(def.hp) or 0,
+    damage = tonumber(def.damage) or 0,
+    armor = tonumber(def.armor) or 0,
+    crit_chance = tonumber(def.crit_chance) or 0.0,
+    healing = tonumber(def.healing) or 0,
+  }
+end
+
+local function read_item_defs_from_storage()
+  local uid = ITEM_DEFS_STORAGE_USER_ID
+  if uid == nil or uid == "" then return nil end
+  local ok, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = ITEM_DEFS_COLLECTION,
+        key = ITEM_DEFS_KEY,
+        user_id = uid,
+      },
+    })
+  end)
+  if not ok or rows == nil or #rows == 0 then return nil end
+  local val = decode_storage_value(rows[1]) or {}
+  local items = val.items
+  if type(items) ~= "table" then return nil end
+  local out = {}
+  for id, def in pairs(items) do
+    if type(id) == "string" then
+      local n = normalize_stored_item_def(def)
+      if n ~= nil then out[id] = n end
+    end
+  end
+  if next(out) == nil then return nil end
+  return out
+end
+
+-- Единый каталог для валидации экипировки и суммирования статов: fallback + Storage (Storage перекрывает совпадающие id).
+local function get_merged_item_defs()
+  local now = os.time()
+  if _item_defs_merged_cache ~= nil and (now - _item_defs_merged_cache_at) < ITEM_DEFS_CACHE_TTL_SEC then
+    return _item_defs_merged_cache
+  end
+  local merged = {}
+  for k, v in pairs(ITEM_DEFS_FALLBACK) do
+    merged[k] = v
+  end
+  local from_st = read_item_defs_from_storage()
+  if from_st ~= nil then
+    for k, v in pairs(from_st) do
+      merged[k] = v
+    end
+  end
+  _item_defs_merged_cache = merged
+  _item_defs_merged_cache_at = now
+  return merged
+end
+
+local function normalize_character_sheet(val)
+  val = val or {}
+  local eq = val.equipment
+  if type(eq) ~= "table" then eq = {} end
+  for i = 1, 8 do
+    if eq[i] == nil or eq[i] == false then eq[i] = "" end
+    if type(eq[i]) ~= "string" then eq[i] = tostring(eq[i]) end
+  end
+  local inv = val.inventory
+  if type(inv) ~= "table" then inv = {} end
+  for i = 1, 25 do
+    if inv[i] == nil or inv[i] == false then inv[i] = "" end
+    if type(inv[i]) ~= "string" then inv[i] = tostring(inv[i]) end
+  end
+  return { equipment = eq, inventory = inv }
+end
+
+local function read_character_sheet(user_id)
+  if user_id == nil or user_id == "" then
+    return normalize_character_sheet({})
+  end
+  local ok, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = CHARACTER_SHEET_COLLECTION,
+        key = CHARACTER_SHEET_KEY,
+        user_id = user_id,
+      },
+    })
+  end)
+  if not ok or rows == nil or #rows == 0 then
+    return normalize_character_sheet({})
+  end
+  local val = decode_storage_value(rows[1]) or {}
+  return normalize_character_sheet(val)
+end
+
+local function write_character_sheet(user_id, sheet)
+  nk.storage_write({
+    {
+      collection = CHARACTER_SHEET_COLLECTION,
+      key = CHARACTER_SHEET_KEY,
+      user_id = user_id,
+      value = {
+        equipment = sheet.equipment,
+        inventory = sheet.inventory,
+        updated_at = os.time(),
+      },
+      permission_read = 1,
+      permission_write = 0,
+    },
+  })
+end
+
+local function sum_equipment_bonuses(sheet)
+  local defs = get_merged_item_defs()
+  local hp = 0
+  local damage = 0
+  local armor = 0
+  local crit = 0.0
+  local healing = 0
+  local eq = sheet.equipment
+  for i = 1, 8 do
+    local def_id = eq[i]
+    if def_id ~= nil and def_id ~= "" then
+      local d = defs[def_id]
+      if d ~= nil then
+        hp = hp + (tonumber(d.hp) or 0)
+        damage = damage + (tonumber(d.damage) or 0)
+        armor = armor + (tonumber(d.armor) or 0)
+        crit = crit + (tonumber(d.crit_chance) or 0.0)
+        healing = healing + (tonumber(d.healing) or 0)
+      end
+    end
+  end
+  return {
+    hp = hp,
+    damage = damage,
+    armor = armor,
+    crit_chance = crit,
+    healing = healing,
+  }
+end
+
+local function merge_stats_with_equipment(base_stats, bonus)
+  return {
+    hp = (base_stats.hp or 0) + (bonus.hp or 0),
+    damage = (base_stats.damage or 0) + (bonus.damage or 0),
+    armor = (base_stats.armor or 0) + (bonus.armor or 0),
+    crit_chance = (base_stats.crit_chance or 0) + (bonus.crit_chance or 0),
+    healing = (base_stats.healing or 0) + (bonus.healing or 0),
+  }
+end
+
+local function character_sheet_payload_arrays(sheet)
+  local eq = {}
+  local inv = {}
+  for i = 1, 8 do eq[i] = sheet.equipment[i] or "" end
+  for i = 1, 25 do inv[i] = sheet.inventory[i] or "" end
+  return eq, inv
+end
+
 local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
   -- Fallback for local dev / empty storage.
   local emails = {}
@@ -1420,6 +1608,126 @@ local function duel_match3_pve_catalog_get(ctx, payload)
   return result
 end
 
+local function duel_character_item_move(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local op = tostring(p.op or "")
+    local sheet = read_character_sheet(user_id)
+    local defs = get_merged_item_defs()
+
+    local function json_fail(err)
+      return nk.json_encode({ ok = false, err = err })
+    end
+
+    if op == "inv_to_equip" then
+      local inv_index = tonumber(p.inv_index)
+      local slot_index = tonumber(p.slot_index)
+      if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
+      inv_index = math.floor(inv_index)
+      slot_index = math.floor(slot_index)
+      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
+      if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
+      local i = inv_index + 1
+      local s = slot_index + 1
+      local item = sheet.inventory[i]
+      if item == nil or item == "" then return json_fail("empty_source") end
+      local def = defs[item]
+      if def == nil then return json_fail("unknown_item") end
+      if def.slot ~= EQUIP_ORDER[s] then return json_fail("wrong_slot") end
+      local cur = sheet.equipment[s] or ""
+      sheet.inventory[i] = cur
+      sheet.equipment[s] = item
+    elseif op == "equip_to_inv" then
+      local slot_index = tonumber(p.slot_index)
+      local inv_index = tonumber(p.inv_index)
+      if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
+      inv_index = math.floor(inv_index)
+      slot_index = math.floor(slot_index)
+      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
+      if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
+      local i = inv_index + 1
+      local s = slot_index + 1
+      local item = sheet.equipment[s]
+      if item == nil or item == "" then return json_fail("empty_source") end
+      local cur_inv = sheet.inventory[i] or ""
+      if cur_inv == "" then
+        sheet.equipment[s] = ""
+        sheet.inventory[i] = item
+      else
+        local def_inv = defs[cur_inv]
+        if def_inv == nil then return json_fail("unknown_item") end
+        if def_inv.slot ~= EQUIP_ORDER[s] then return json_fail("cannot_swap") end
+        sheet.equipment[s] = cur_inv
+        sheet.inventory[i] = item
+      end
+    elseif op == "inv_swap" then
+      local a = tonumber(p.inv_a)
+      local b = tonumber(p.inv_b)
+      if a == nil or b == nil then return json_fail("bad_indices") end
+      a = math.floor(a)
+      b = math.floor(b)
+      if a < 0 or a > 24 or b < 0 or b > 24 then return json_fail("bad_inv_index") end
+      if a ~= b then
+        local ia, ib = a + 1, b + 1
+        sheet.inventory[ia], sheet.inventory[ib] = sheet.inventory[ib], sheet.inventory[ia]
+      end
+    elseif op == "equip_swap" then
+      local a = tonumber(p.slot_a)
+      local b = tonumber(p.slot_b)
+      if a == nil or b == nil then return json_fail("bad_indices") end
+      a = math.floor(a)
+      b = math.floor(b)
+      if a < 0 or a > 7 or b < 0 or b > 7 then return json_fail("bad_slot_index") end
+      if a ~= b then
+        local sa, sb = a + 1, b + 1
+        sheet.equipment[sa], sheet.equipment[sb] = sheet.equipment[sb], sheet.equipment[sa]
+      end
+    else
+      return json_fail("unknown_op")
+    end
+
+    write_character_sheet(user_id, sheet)
+
+    local progress = read_pve_progress(user_id)
+    local level = clamp_int(progress.level or 1, 1, 10)
+    local base_stats = character_stats_base_for_level(level)
+    local bonus = sum_equipment_bonuses(sheet)
+    local stats = merge_stats_with_equipment(base_stats, bonus)
+    local eq_arr, inv_arr = character_sheet_payload_arrays(sheet)
+    return nk.json_encode({
+      ok = true,
+      progression = {
+        level = level,
+        xp = progress.xp or 0,
+        gold = progress.gold or 0,
+        max_level = 10,
+      },
+      stats = stats,
+      equipment_def_ids = eq_arr,
+      inventory_def_ids = inv_arr,
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_character_item_move: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 local function duel_character_get(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -1429,7 +1737,11 @@ local function duel_character_get(ctx, payload)
 
     local progress = read_pve_progress(user_id)
     local level = clamp_int(progress.level or 1, 1, 10)
+    local sheet = read_character_sheet(user_id)
     local base_stats = character_stats_base_for_level(level)
+    local bonus = sum_equipment_bonuses(sheet)
+    local stats = merge_stats_with_equipment(base_stats, bonus)
+    local eq_arr, inv_arr = character_sheet_payload_arrays(sheet)
 
     return nk.json_encode({
       ok = true,
@@ -1439,10 +1751,9 @@ local function duel_character_get(ctx, payload)
         gold = progress.gold or 0,
         max_level = 10,
       },
-      stats = base_stats,
-      -- Equipment/inventory will be added as storage-backed collections later.
-      equipment = {},
-      inventory = { size = 25, items = {} },
+      stats = stats,
+      equipment_def_ids = eq_arr,
+      inventory_def_ids = inv_arr,
     })
   end)
 
@@ -1823,12 +2134,14 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[state.bot_user_id] = new_stats()
       local player_level = math.max(1, math.min(10, tonumber(state.owner_level) or 1))
       local base = character_stats_base_for_level(player_level)
-      state.stats[player_id].max_hp = tonumber(base.hp) or MAX_HP
+      local sheet = read_character_sheet(player_id)
+      local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
+      state.stats[player_id].max_hp = tonumber(merged.hp) or MAX_HP
       state.stats[player_id].hp = state.stats[player_id].max_hp
-      state.stats[player_id].base_damage = tonumber(base.damage) or 0
-      state.stats[player_id].base_armor = tonumber(base.armor) or 0
-      state.stats[player_id].base_crit = tonumber(base.crit_chance) or 0
-      state.stats[player_id].base_heal = tonumber(base.healing) or 0
+      state.stats[player_id].base_damage = tonumber(merged.damage) or 0
+      state.stats[player_id].base_armor = tonumber(merged.armor) or 0
+      state.stats[player_id].base_crit = tonumber(merged.crit_chance) or 0
+      state.stats[player_id].base_heal = tonumber(merged.healing) or 0
 
       local bot_hp_bonus = bot_profile.hp_bonus or 0
       local bot_start_mana = math.max(0, tonumber(bot_profile.start_mana) or 0)
@@ -2079,11 +2392,43 @@ local function match_signal(context, dispatcher, tick, state, data)
   return state, "ok"
 end
 
+-- Сводный каталог (fallback + Storage) для отладки и синхронизации с клиентом по id/slot/статам.
+local function duel_match3_item_catalog_get(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local defs = get_merged_item_defs()
+    local list = {}
+    for id, d in pairs(defs) do
+      list[#list + 1] = {
+        id = id,
+        slot = d.slot,
+        hp = d.hp or 0,
+        damage = d.damage or 0,
+        armor = d.armor or 0,
+        crit_chance = d.crit_chance or 0,
+        healing = d.healing or 0,
+      }
+    end
+    table.sort(list, function(a, b) return tostring(a.id) < tostring(b.id) end)
+    return nk.json_encode({ ok = true, items = list })
+  end)
+  if not ok then
+    nk.logger_error("duel_match3_item_catalog_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
 nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_character_get, "duel_character_get")
+nk.register_rpc(duel_character_item_move, "duel_character_item_move")
+nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 
 return {
   match_init = match_init,

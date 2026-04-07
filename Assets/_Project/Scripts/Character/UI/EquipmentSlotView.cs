@@ -26,6 +26,11 @@ namespace Project.Character.UI
         {
             if (button != null) button.interactable = interactable;
         }
+
+        public void SetItemIconRaycast(bool raycast)
+        {
+            if (itemView != null) itemView.SetIconRaycast(raycast);
+        }
     }
 }
 
