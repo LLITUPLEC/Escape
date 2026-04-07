@@ -90,7 +90,7 @@ namespace Project.Match3
             combatStatsText.text =
                 $"Урон:   {Mathf.Max(0, damageBonus)}\n" +
                 $"Броня:  {Mathf.Max(0, armor)}\n" +
-                $"Хил:     {Mathf.Max(0, healBonus)}\n" +
+                $"Лечение: {Mathf.Max(0, healBonus)}\n" +
                 $"Крит:   {Mathf.Max(0, critChancePercent)}%";
         }
 

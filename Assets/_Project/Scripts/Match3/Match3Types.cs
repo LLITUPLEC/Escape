@@ -27,6 +27,12 @@ namespace Project.Match3
         // Fury is a short-lived buff.
         public int furyTurnsRemaining = 0;
         public int furyDamageBonus    = 0;
+
+        // Server-authoritative character stats (applied only in PVE).
+        public int baseDamage = 0;
+        public int baseArmor = 0;
+        public float baseCrit = 0f; // 0..1
+        public int baseHeal = 0;
     }
 
     // MatchResult used by Match3BoardLogic
@@ -54,10 +60,18 @@ namespace Project.Match3
         // "a" = sorted userId[0], "b" = sorted userId[1]
         public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd, aShieldCd, aFuryCd;
         public int aMaxHp;
+        public int aBaseDamage;
+        public int aBaseArmor;
+        public float aBaseCrit; // 0..1
+        public int aBaseHeal;
         public int aShieldT1, aShieldT2, aShieldT3, aFuryTurns, aFuryBonus;
 
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
+        public int bBaseDamage;
+        public int bBaseArmor;
+        public float bBaseCrit; // 0..1
+        public int bBaseHeal;
         public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
 
         public bool extraTurn;      // active player gets another turn

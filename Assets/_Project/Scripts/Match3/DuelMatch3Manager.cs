@@ -984,6 +984,10 @@ namespace Project.Match3
             _myStats.petardCooldown = amA ? msg.aPetardCd : msg.bPetardCd;
             _myStats.shieldCooldown = amA ? msg.aShieldCd : msg.bShieldCd;
             _myStats.furyCooldown   = amA ? msg.aFuryCd   : msg.bFuryCd;
+            _myStats.baseDamage = amA ? msg.aBaseDamage : msg.bBaseDamage;
+            _myStats.baseArmor  = amA ? msg.aBaseArmor  : msg.bBaseArmor;
+            _myStats.baseCrit   = amA ? msg.aBaseCrit   : msg.bBaseCrit;
+            _myStats.baseHeal   = amA ? msg.aBaseHeal   : msg.bBaseHeal;
             _myStats.shieldT1 = amA ? msg.aShieldT1 : msg.bShieldT1;
             _myStats.shieldT2 = amA ? msg.aShieldT2 : msg.bShieldT2;
             _myStats.shieldT3 = amA ? msg.aShieldT3 : msg.bShieldT3;
@@ -996,6 +1000,10 @@ namespace Project.Match3
             _opStats.petardCooldown = amA ? msg.bPetardCd : msg.aPetardCd;
             _opStats.shieldCooldown = amA ? msg.bShieldCd : msg.aShieldCd;
             _opStats.furyCooldown   = amA ? msg.bFuryCd   : msg.aFuryCd;
+            _opStats.baseDamage = amA ? msg.bBaseDamage : msg.aBaseDamage;
+            _opStats.baseArmor  = amA ? msg.bBaseArmor  : msg.aBaseArmor;
+            _opStats.baseCrit   = amA ? msg.bBaseCrit   : msg.aBaseCrit;
+            _opStats.baseHeal   = amA ? msg.bBaseHeal   : msg.aBaseHeal;
             _opStats.shieldT1 = amA ? msg.bShieldT1 : msg.aShieldT1;
             _opStats.shieldT2 = amA ? msg.bShieldT2 : msg.aShieldT2;
             _opStats.shieldT3 = amA ? msg.bShieldT3 : msg.aShieldT3;
@@ -1366,7 +1374,7 @@ namespace Project.Match3
             }
 
             if (healedAnyCrossThisTurn)
-                pendingHeal += GetShieldHealBonus(actorStats);
+                pendingHeal += GetTotalHealBonus(actorStats);
 
             if (pendingHeal > 0)
                 actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
@@ -1395,7 +1403,7 @@ namespace Project.Match3
             }
 
             if (healedAnyCrossThisTurn)
-                pendingHeal += GetShieldHealBonus(actorStats);
+                pendingHeal += GetTotalHealBonus(actorStats);
             if (pendingHeal > 0)
                 actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
 
@@ -1519,6 +1527,10 @@ namespace Project.Match3
                 msg.aPetardCd = _myStats.petardCooldown;
                 msg.aShieldCd = _myStats.shieldCooldown;
                 msg.aFuryCd = _myStats.furyCooldown;
+                msg.aBaseDamage = _myStats.baseDamage;
+                msg.aBaseArmor = _myStats.baseArmor;
+                msg.aBaseCrit = _myStats.baseCrit;
+                msg.aBaseHeal = _myStats.baseHeal;
                 msg.aShieldT1 = _myStats.shieldT1;
                 msg.aShieldT2 = _myStats.shieldT2;
                 msg.aShieldT3 = _myStats.shieldT3;
@@ -1532,6 +1544,10 @@ namespace Project.Match3
                 msg.bPetardCd = _opStats.petardCooldown;
                 msg.bShieldCd = _opStats.shieldCooldown;
                 msg.bFuryCd = _opStats.furyCooldown;
+                msg.bBaseDamage = _opStats.baseDamage;
+                msg.bBaseArmor = _opStats.baseArmor;
+                msg.bBaseCrit = _opStats.baseCrit;
+                msg.bBaseHeal = _opStats.baseHeal;
                 msg.bShieldT1 = _opStats.shieldT1;
                 msg.bShieldT2 = _opStats.shieldT2;
                 msg.bShieldT3 = _opStats.shieldT3;
@@ -1551,6 +1567,10 @@ namespace Project.Match3
             msg.aPetardCd = first.petardCooldown;
             msg.aShieldCd = first.shieldCooldown;
             msg.aFuryCd = first.furyCooldown;
+            msg.aBaseDamage = first.baseDamage;
+            msg.aBaseArmor = first.baseArmor;
+            msg.aBaseCrit = first.baseCrit;
+            msg.aBaseHeal = first.baseHeal;
             msg.aShieldT1 = first.shieldT1;
             msg.aShieldT2 = first.shieldT2;
             msg.aShieldT3 = first.shieldT3;
@@ -1564,6 +1584,10 @@ namespace Project.Match3
             msg.bPetardCd = second.petardCooldown;
             msg.bShieldCd = second.shieldCooldown;
             msg.bFuryCd = second.furyCooldown;
+            msg.bBaseDamage = second.baseDamage;
+            msg.bBaseArmor = second.baseArmor;
+            msg.bBaseCrit = second.baseCrit;
+            msg.bBaseHeal = second.baseHeal;
             msg.bShieldT1 = second.shieldT1;
             msg.bShieldT2 = second.shieldT2;
             msg.bShieldT3 = second.shieldT3;
@@ -1639,17 +1663,21 @@ namespace Project.Match3
         {
             if (_myPanel != null)
             {
-                var myDamage = _myStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
-                _myPanel.UpdateCombatStats(myDamage, GetArmor(_myStats), GetShieldHealBonus(_myStats),
-                    _myStats.furyTurnsRemaining > 0 ? Mathf.RoundToInt(furyCritChance * 100f) : 0);
+                var furySkulls = _myStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
+                var dmg = Mathf.Max(0, _myStats.baseDamage) + furySkulls;
+                var armor = Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats);
+                var crit = Mathf.Max(0f, _myStats.baseCrit) + (_myStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
+                _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
                 _myPanel.UpdateBuffState(GetShieldStacks(_myStats), Mathf.Max(_myStats.shieldT1, Mathf.Max(_myStats.shieldT2, _myStats.shieldT3)));
             }
 
             if (_opPanel != null)
             {
-                var opDamage = _opStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
-                _opPanel.UpdateCombatStats(opDamage, GetArmor(_opStats), GetShieldHealBonus(_opStats),
-                    _opStats.furyTurnsRemaining > 0 ? Mathf.RoundToInt(furyCritChance * 100f) : 0);
+                var furySkulls = _opStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
+                var dmg = Mathf.Max(0, _opStats.baseDamage) + furySkulls;
+                var armor = Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats);
+                var crit = Mathf.Max(0f, _opStats.baseCrit) + (_opStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
+                _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
                 _opPanel.UpdateBuffState(GetShieldStacks(_opStats), Mathf.Max(_opStats.shieldT1, Mathf.Max(_opStats.shieldT2, _opStats.shieldT3)));
             }
         }
@@ -1676,8 +1704,14 @@ namespace Project.Match3
             return skulls;
         }
 
-        private static int GetArmor(PlayerStats s) => GetShieldStacks(s) * ShieldArmorPerStack;
+        private static int GetShieldArmor(PlayerStats s) => GetShieldStacks(s) * ShieldArmorPerStack;
         private static int GetShieldHealBonus(PlayerStats s) => GetShieldStacks(s) * ShieldHealPerStack;
+
+        private static int GetTotalHealBonus(PlayerStats s)
+        {
+            if (s == null) return 0;
+            return Mathf.Max(0, s.baseHeal) + GetShieldHealBonus(s);
+        }
 
         private static void RecalcDerivedBuffs(PlayerStats s)
         {
@@ -1733,10 +1767,13 @@ namespace Project.Match3
         {
             critTriggered = false;
             var dmg = Mathf.Max(0, baseDamage);
-            if (attacker != null && attacker.furyTurnsRemaining > 0)
+            if (attacker != null)
             {
-                dmg += CountSkulls(board);
-                if (UnityEngine.Random.value < Mathf.Clamp01(furyCritChance))
+                dmg += Mathf.Max(0, attacker.baseDamage);
+                if (attacker.furyTurnsRemaining > 0)
+                    dmg += CountSkulls(board);
+                var p = Mathf.Clamp01(attacker.baseCrit + (attacker.furyTurnsRemaining > 0 ? furyCritChance : 0f));
+                if (p > 0f && UnityEngine.Random.value < p)
                 {
                     dmg *= 2;
                     critTriggered = true;
@@ -1749,9 +1786,15 @@ namespace Project.Match3
         {
             if (target == null) return false;
             var raw = RollOutgoingDamage(board, attacker, baseDamage, out var critTriggered);
-            var reduced = Mathf.Max(0, raw - GetArmor(target));
+            var reduced = Mathf.Max(0, raw - GetTotalArmorForDamage(target));
             target.hp = Mathf.Max(0, target.hp - reduced);
             return critTriggered;
+        }
+
+        private static int GetTotalArmorForDamage(PlayerStats s)
+        {
+            if (s == null) return 0;
+            return Mathf.Max(0, s.baseArmor) + GetShieldArmor(s);
         }
 
         private static int[] SwapCellsInBoard(int[] board, int x1, int y1, int x2, int y2)
@@ -2159,7 +2202,7 @@ namespace Project.Match3
             outline.effectDistance = new Vector2(1f, -1f);
 
             panel.combatStatsText = MakeTxt(frame, "CombatStatsText",
-                "Урон:   0\nБроня:  0\nХил:     0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
+                "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
             panel.combatStatsText.alignment = TextAlignmentOptions.TopLeft;
 
             panel.buffStateText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f), V2(0.45f, 0.76f), V2(0.95f, 0.98f));

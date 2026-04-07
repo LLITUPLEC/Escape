@@ -39,7 +39,7 @@ namespace Project.Match3
             if (valueText != null)
             {
                 valueText.overflowMode = TMPro.TextOverflowModes.Overflow;
-                valueText.enableWordWrapping = false;
+                valueText.textWrappingMode = TextWrappingModes.NoWrap;
             }
             if (_rt != null)
             {

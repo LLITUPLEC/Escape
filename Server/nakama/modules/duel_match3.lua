@@ -67,6 +67,66 @@ local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
 -- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
 local SESSION_EPOCH_ACCOUNT_META = "session_epoch"
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Character progression (server-authoritative).
+--
+-- We keep stats extensible by returning a string-keyed map in RPC.
+-- For now the game uses: hp, damage, armor, crit_chance (0..1).
+-- ─────────────────────────────────────────────────────────────────────────────
+local function clamp_int(v, lo, hi)
+  local n = tonumber(v) or 0
+  n = math.floor(n)
+  if lo ~= nil and n < lo then n = lo end
+  if hi ~= nil and n > hi then n = hi end
+  return n
+end
+
+local function character_stats_base_for_level(level)
+  local lvl = clamp_int(level, 1, 10)
+
+  -- Level 1 baseline.
+  local hp = 150
+  local damage = 0
+  local armor = 0
+  local crit = 0.0
+  -- Лечение: +3 за каждый уровень выше 1-го (на 1-м уровне 0).
+  local healing = math.max(0, (lvl - 1) * 3)
+
+  -- Level 2 adds: +50 hp, +5 dmg, +5 armor, +1% crit.
+  if lvl >= 2 then
+    hp = hp + 50
+    damage = damage + 5
+    armor = armor + 5
+    crit = crit + 0.01
+  end
+
+  -- Level 3 adds: +75 hp, +10 dmg, +10 armor, +1% crit (cumulative from lvl2).
+  if lvl >= 3 then
+    hp = hp + 75
+    damage = damage + 10
+    armor = armor + 10
+    crit = crit + 0.01
+  end
+
+  -- Future levels: keep last known increments (+75/+10/+10/+1%) as a reasonable default.
+  -- User will tweak later; this keeps progression monotonic and server-authoritative.
+  if lvl >= 4 then
+    local extra = lvl - 3
+    hp = hp + 75 * extra
+    damage = damage + 10 * extra
+    armor = armor + 10 * extra
+    crit = crit + 0.01 * extra
+  end
+
+  return {
+    hp = hp,
+    damage = damage,
+    armor = armor,
+    crit_chance = crit,
+    healing = healing,
+  }
+end
+
 local function guard_read_metadata_epoch(user_id)
   if user_id == nil or user_id == "" then
     return 0
@@ -298,11 +358,13 @@ local function get_shield_stacks(st)
 end
 
 local function get_armor(st)
-  return get_shield_stacks(st) * SHIELD_ARMOR_PER_STACK
+  local base = tonumber(st and st.base_armor) or 0
+  return math.max(0, base) + get_shield_stacks(st) * SHIELD_ARMOR_PER_STACK
 end
 
 local function get_heal_bonus(st)
-  return get_shield_stacks(st) * SHIELD_HEAL_PER_STACK
+  local base = tonumber(st and st.base_heal) or 0
+  return math.max(0, base) + get_shield_stacks(st) * SHIELD_HEAL_PER_STACK
 end
 
 local function count_skulls(board)
@@ -317,14 +379,27 @@ end
 
 local function roll_outgoing_damage(board, attacker, base_damage)
   local dmg = math.max(0, tonumber(base_damage) or 0)
-  local crit = false
+
+  -- Character base damage (PVE only; in PVP base_damage is 0).
+  if attacker ~= nil then
+    dmg = dmg + math.max(0, tonumber(attacker.base_damage) or 0)
+  end
+
+  -- Fury: add skulls as bonus damage.
   if attacker ~= nil and attacker.fury_active == true then
     dmg = dmg + count_skulls(board)
-    if math.random() < FURY_CRIT_CHANCE then
-      dmg = dmg * 2
-      crit = true
-    end
   end
+
+  -- Crit chance: base crit (PVE) + fury crit (existing mechanic).
+  local crit = false
+  local baseCrit = attacker ~= nil and (tonumber(attacker.base_crit) or 0) or 0
+  local furyCrit = attacker ~= nil and attacker.fury_active == true and FURY_CRIT_CHANCE or 0
+  local critChance = math.max(0, baseCrit + furyCrit)
+  if critChance > 0 and math.random() < critChance then
+    dmg = dmg * 2
+    crit = true
+  end
+
   return dmg, crit
 end
 
@@ -649,6 +724,10 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     aShieldCd = a.shield_cd or 0,
     aFuryCd = a.fury_cd or 0,
     aMaxHp = a.max_hp or MAX_HP,
+    aBaseDamage = tonumber(a.base_damage) or 0,
+    aBaseArmor = tonumber(a.base_armor) or 0,
+    aBaseCrit = tonumber(a.base_crit) or 0,
+    aBaseHeal = tonumber(a.base_heal) or 0,
     aShieldT1 = a.shield_t1 or 0,
     aShieldT2 = a.shield_t2 or 0,
     aShieldT3 = a.shield_t3 or 0,
@@ -662,6 +741,10 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bShieldCd = b.shield_cd or 0,
     bFuryCd = b.fury_cd or 0,
     bMaxHp = b.max_hp or MAX_HP,
+    bBaseDamage = tonumber(b.base_damage) or 0,
+    bBaseArmor = tonumber(b.base_armor) or 0,
+    bBaseCrit = tonumber(b.base_crit) or 0,
+    bBaseHeal = tonumber(b.base_heal) or 0,
     bShieldT1 = b.shield_t1 or 0,
     bShieldT2 = b.shield_t2 or 0,
     bShieldT3 = b.shield_t3 or 0,
@@ -682,6 +765,11 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
 end
 
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
+  -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
+  if action == nil then
+    state.last_crit = false
+  end
+
   local allowed_presences = {}
   local other_presences = {}
   if state.cheat_rows_allowed ~= nil then
@@ -843,6 +931,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
 end
 
 local function resolve_action(state, action, actor_id, opponent_id)
+  state.last_crit = false
   local initial_matches = {}
   local anim_steps = {}
   local keep_turn = false
@@ -1331,6 +1420,39 @@ local function duel_match3_pve_catalog_get(ctx, payload)
   return result
 end
 
+local function duel_character_get(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local progress = read_pve_progress(user_id)
+    local level = clamp_int(progress.level or 1, 1, 10)
+    local base_stats = character_stats_base_for_level(level)
+
+    return nk.json_encode({
+      ok = true,
+      progression = {
+        level = level,
+        xp = progress.xp or 0,
+        gold = progress.gold or 0,
+        max_level = 10,
+      },
+      stats = base_stats,
+      -- Equipment/inventory will be added as storage-backed collections later.
+      equipment = {},
+      inventory = { size = 25, items = {} },
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_character_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 -- Must mirror duel_matchmaker.lua: Nakama resolves Lua match modules under different names per version.
 local function try_match_create(setup)
   local names = { "duel_match3", "modules/duel_match3", "modules.duel_match3" }
@@ -1644,6 +1766,7 @@ local function match_init(context, params)
     ended = false,
     active_user_id = nil,
     turn_deadline_tick = 0,
+    last_crit = false,
     last_reward = nil,
     bot_turn_pending = false,
     bot_turn_ready_tick = 0,
@@ -1699,15 +1822,23 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[player_id] = new_stats()
       state.stats[state.bot_user_id] = new_stats()
       local player_level = math.max(1, math.min(10, tonumber(state.owner_level) or 1))
-      local player_hp_bonus = (player_level - 1) * 5
-      state.stats[player_id].max_hp = MAX_HP + player_hp_bonus
+      local base = character_stats_base_for_level(player_level)
+      state.stats[player_id].max_hp = tonumber(base.hp) or MAX_HP
       state.stats[player_id].hp = state.stats[player_id].max_hp
+      state.stats[player_id].base_damage = tonumber(base.damage) or 0
+      state.stats[player_id].base_armor = tonumber(base.armor) or 0
+      state.stats[player_id].base_crit = tonumber(base.crit_chance) or 0
+      state.stats[player_id].base_heal = tonumber(base.healing) or 0
 
       local bot_hp_bonus = bot_profile.hp_bonus or 0
       local bot_start_mana = math.max(0, tonumber(bot_profile.start_mana) or 0)
       state.stats[state.bot_user_id].max_hp = MAX_HP + bot_hp_bonus
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
       state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
+      state.stats[state.bot_user_id].base_damage = 0
+      state.stats[state.bot_user_id].base_armor = 0
+      state.stats[state.bot_user_id].base_crit = 0
+      state.stats[state.bot_user_id].base_heal = 0
       state.board = init_board()
 
       state.cheat_rows = init_cheat_rows()
@@ -1952,6 +2083,7 @@ nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
 nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
+nk.register_rpc(duel_character_get, "duel_character_get")
 
 return {
   match_init = match_init,
