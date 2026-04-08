@@ -17,7 +17,7 @@ namespace Project.UI
         private void Start()
         {
             if (characterScreen == null)
-                characterScreen = FindObjectOfType<CharacterScreenController>(true);
+                characterScreen = FindFirstObjectByType<CharacterScreenController>(FindObjectsInactive.Include);
 
             if (characterScreen == null) return;
 

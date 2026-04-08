@@ -12,7 +12,7 @@ local ACTIVE_ROWS = 6     -- rows in active area (=HEIGHT-ACTIVE_Y_MIN)
 local MAX_HP = 150
 local MAX_MANA = 100
 local TURN_SECONDS = 30
-local TICK_RATE = 5
+local TICK_RATE = 6
 local BOT_THINK_SECONDS = 5.0
 local BOT_THINK_TICKS = math.max(1, math.floor(BOT_THINK_SECONDS * TICK_RATE + 0.5))
 local CROSS_ABILITY_COST = 20
@@ -66,10 +66,14 @@ local CHARACTER_SHEET_KEY = "sheet"
 local ITEM_DEFS_COLLECTION = "duel_match3_item_defs"
 local ITEM_DEFS_KEY = "catalog"
 -- Пустая строка: каталог только из ITEM_DEFS_FALLBACK в этом файле. Иначе укажите UUID пользователя, под которым в Console создан storage-объект каталога.
-local ITEM_DEFS_STORAGE_USER_ID = ""
+local ITEM_DEFS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c"
+-- Каталог PVE-ботов (Storage). См. BOTS_FALLBACK и data/duel_match3_bots_catalog.example.json.
+local BOTS_COLLECTION = "duel_match3_bot_defs"
+local BOTS_KEY = "catalog"
+local BOTS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c"
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
-local LEVEL_XP = { 0, 100, 240, 420, 650, 940, 1300, 1740, 2280, 2920 }
+local LEVEL_XP = { 0, 100, 440, 820, 1650, 1940, 2300, 3740, 4280, 5920 }
 
 -- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
 local SESSION_EPOCH_ACCOUNT_META = "session_epoch"
@@ -184,7 +188,9 @@ end
 
 local award_pve_victory
 
-local BOTS = {
+-- Поведенческие поля ai_ability_chance / *_bias заданы для баланса и будущего тюнинга ИИ;
+-- текущий choose_bot_action оценивает только свапы и способности через симуляцию (см. choose_bot_action).
+local BOTS_FALLBACK = {
   slime_1 = {
     id = "slime_1", name = "Слизень-разведчик", difficulty = 1,
     hp_bonus = 0, start_mana = 0,
@@ -307,10 +313,6 @@ local function sorted_two_players(presences_map)
     ids = { ids[1], ids[2] }
   end
   return ids
-end
-
-local function get_bot_profile(bot_id)
-  return BOTS[bot_id] or BOTS["slime_1"]
 end
 
 local function make_bot_user_id(bot_id)
@@ -1117,6 +1119,88 @@ local function get_merged_item_defs()
   return merged
 end
 
+local BOTS_CACHE_TTL_SEC = 30
+local _bots_merged_cache = nil
+local _bots_merged_cache_at = 0
+
+local function normalize_stored_bot(id_key, def)
+  if type(def) ~= "table" then return nil end
+  local bid = tostring(def.id or id_key or "")
+  if bid == "" then return nil end
+  local name = tostring(def.name or "")
+  if name == "" then return nil end
+  return {
+    id = bid,
+    name = name,
+    difficulty = math.max(1, tonumber(def.difficulty) or 1),
+    hp_bonus = tonumber(def.hp_bonus) or 0,
+    start_mana = tonumber(def.start_mana) or 0,
+    ai_ability_chance = tonumber(def.ai_ability_chance) or 0,
+    petard_bias = tonumber(def.petard_bias) or 0,
+    cross_bias = tonumber(def.cross_bias) or 0,
+    square_bias = tonumber(def.square_bias) or 0,
+    reward_xp = tonumber(def.reward_xp) or 0,
+    reward_gold = tonumber(def.reward_gold) or 0,
+    base_damage = tonumber(def.base_damage) or tonumber(def.damage) or 0,
+    base_armor = tonumber(def.base_armor) or tonumber(def.armor) or 0,
+    base_crit = tonumber(def.base_crit) or tonumber(def.crit_chance) or 0,
+    base_heal = tonumber(def.base_heal) or tonumber(def.healing) or 0,
+  }
+end
+
+local function read_bots_from_storage()
+  local uid = BOTS_STORAGE_USER_ID
+  if uid == nil or uid == "" then return nil end
+  local ok, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = BOTS_COLLECTION,
+        key = BOTS_KEY,
+        user_id = uid,
+      },
+    })
+  end)
+  if not ok or rows == nil or #rows == 0 then return nil end
+  local val = decode_storage_value(rows[1]) or {}
+  local bots = val.bots
+  if type(bots) ~= "table" then return nil end
+  local out = {}
+  for id, def in pairs(bots) do
+    if type(id) == "string" then
+      local n = normalize_stored_bot(id, def)
+      if n ~= nil then out[n.id] = n end
+    end
+  end
+  if next(out) == nil then return nil end
+  return out
+end
+
+-- Fallback в файле + Storage (записи Storage перекрывают совпадающие id).
+local function get_merged_bots()
+  local now = os.time()
+  if _bots_merged_cache ~= nil and (now - _bots_merged_cache_at) < BOTS_CACHE_TTL_SEC then
+    return _bots_merged_cache
+  end
+  local merged = {}
+  for k, v in pairs(BOTS_FALLBACK) do
+    merged[k] = v
+  end
+  local from_st = read_bots_from_storage()
+  if from_st ~= nil then
+    for kid, bot in pairs(from_st) do
+      merged[kid] = bot
+    end
+  end
+  _bots_merged_cache = merged
+  _bots_merged_cache_at = now
+  return merged
+end
+
+local function get_bot_profile(bot_id)
+  local bots = get_merged_bots()
+  return bots[bot_id] or bots["slime_1"]
+end
+
 local function normalize_character_sheet(val)
   val = val or {}
   local eq = val.equipment
@@ -1169,6 +1253,25 @@ local function write_character_sheet(user_id, sheet)
       permission_write = 0,
     },
   })
+end
+
+--- Создаёт пустой лист в Storage, если записи ещё нет (как duel_match3_stats / progress при первой игре).
+local function ensure_character_sheet_initialized(user_id)
+  if user_id == nil or user_id == "" then
+    return
+  end
+  local ok, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = CHARACTER_SHEET_COLLECTION,
+        key = CHARACTER_SHEET_KEY,
+        user_id = user_id,
+      },
+    })
+  end)
+  if not ok or rows == nil or #rows == 0 then
+    write_character_sheet(user_id, normalize_character_sheet({}))
+  end
 end
 
 local function sum_equipment_bonuses(sheet)
@@ -1402,6 +1505,8 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot)
     }
   end
 
+  ensure_character_sheet_initialized(user_id)
+
   local bot = get_bot_profile(bot_id)
   local reward_xp = bot.reward_xp or 0
   local reward_gold = bot.reward_gold or 0
@@ -1504,6 +1609,8 @@ local function duel_match3_stats_record(ctx, payload)
       return nk.json_encode({ ok = false, err = err_epoch })
     end
 
+    ensure_character_sheet_initialized(user_id)
+
     local won = false
     if payload ~= nil and payload ~= "" then
       local p = nk.json_decode(payload)
@@ -1575,7 +1682,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
 
     local progress = read_pve_progress(user_id)
     local bots = {}
-    for _, bot in pairs(BOTS) do
+    for _, bot in pairs(get_merged_bots()) do
       bots[#bots + 1] = {
         id = bot.id,
         name = bot.name,
@@ -1584,6 +1691,10 @@ local function duel_match3_pve_catalog_get(ctx, payload)
         start_mana = bot.start_mana or 0,
         reward_xp = bot.reward_xp,
         reward_gold = bot.reward_gold,
+        base_damage = tonumber(bot.base_damage) or tonumber(bot.damage) or 0,
+        base_armor = tonumber(bot.base_armor) or tonumber(bot.armor) or 0,
+        base_crit = tonumber(bot.base_crit) or tonumber(bot.crit_chance) or 0,
+        base_heal = tonumber(bot.base_heal) or tonumber(bot.healing) or 0,
       }
     end
     table.sort(bots, function(a, b) return tostring(a.id) < tostring(b.id) end)
@@ -2148,10 +2259,10 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[state.bot_user_id].max_hp = MAX_HP + bot_hp_bonus
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
       state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
-      state.stats[state.bot_user_id].base_damage = 0
-      state.stats[state.bot_user_id].base_armor = 0
-      state.stats[state.bot_user_id].base_crit = 0
-      state.stats[state.bot_user_id].base_heal = 0
+      state.stats[state.bot_user_id].base_damage = tonumber(bot_profile.base_damage) or tonumber(bot_profile.damage) or 0
+      state.stats[state.bot_user_id].base_armor = tonumber(bot_profile.base_armor) or tonumber(bot_profile.armor) or 0
+      state.stats[state.bot_user_id].base_crit = tonumber(bot_profile.base_crit) or tonumber(bot_profile.crit_chance) or 0
+      state.stats[state.bot_user_id].base_heal = tonumber(bot_profile.base_heal) or tonumber(bot_profile.healing) or 0
       state.board = init_board()
 
       state.cheat_rows = init_cheat_rows()
