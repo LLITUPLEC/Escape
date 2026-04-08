@@ -2056,7 +2056,12 @@ namespace Project.Match3
             var cvGo = new GameObject("Canvas");
             cvGo.transform.SetParent(transform);
             var canvas = cvGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // Needed for world-rendered VFX (ParticleSystem) to appear above UI.
+            // ScreenSpaceOverlay ignores camera rendering, so particles won't be visible.
+            EnsureCamera();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = Camera.main;
+            canvas.planeDistance = 10f;
             var scaler = cvGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1280, 720);

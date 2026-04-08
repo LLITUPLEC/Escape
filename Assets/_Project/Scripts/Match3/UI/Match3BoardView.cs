@@ -25,6 +25,16 @@ namespace Project.Match3
         [SerializeField] private float selectionRingScale = 1.4f;
         [SerializeField] private float selectionRingRotationSpeed = -99f;
 
+        [Header("VFX (optional)")]
+        [SerializeField] private Project.Match3.UI.Match3ClearBurstFx clearBurstFx;
+
+        [Header("VFX Colors (optional overrides)")]
+        [SerializeField] private Color vfxGemRedColor = new Color(0.90f, 0.18f, 0.18f);
+        [SerializeField] private Color vfxGemYellowColor = new Color(0.95f, 0.82f, 0.12f);
+        [SerializeField] private Color vfxGemGreenColor = new Color(0.18f, 0.80f, 0.18f);
+        [SerializeField] private Color vfxSkullColor = new Color(0.28f, 0.28f, 0.30f);
+        [SerializeField] private Color vfxAnkhColor = new Color(0.90f, 0.75f, 0.15f);
+
         private const int Size = Match3BoardLogic.Size;
         private static readonly string[] BallsAtlasResourceCandidates =
         {
@@ -302,19 +312,19 @@ namespace Project.Match3
             if (_icon == null || beforeBoard == null || afterBoard == null) yield break;
             if (beforeBoard.Length < Size * Size || afterBoard.Length < Size * Size) yield break;
 
-            var cells = new List<(int x, int y)>();
+            var cells = new List<(int x, int y, PieceType t)>();
             for (int y = 0; y < Size; y++)
             for (int x = 0; x < Size; x++)
             {
                 int b = beforeBoard[y * Size + x];
                 int a = afterBoard[y * Size + x];
-                if (b != 0 && a == 0) cells.Add((x, y));
+                if (b != 0 && a == 0) cells.Add((x, y, (PieceType)b));
             }
             if (cells.Count == 0) yield break;
 
             var iconStart = new Dictionary<int, Color>();
             var lblStart = new Dictionary<int, Color>();
-            foreach (var (x, y) in cells)
+            foreach (var (x, y, _) in cells)
             {
                 int id = y * Size + x;
                 if (_icon[x, y] != null) iconStart[id] = _icon[x, y].color;
@@ -328,7 +338,7 @@ namespace Project.Match3
                 float p = Mathf.Clamp01(t / duration);
                 float scale = Mathf.Lerp(1f, 0.15f, p);
                 float alpha = 1f - p;
-                foreach (var (x, y) in cells)
+                foreach (var (x, y, _) in cells)
                 {
                     int id = y * Size + x;
                     if (_iconRt[x, y] != null) _iconRt[x, y].localScale = new Vector3(scale, scale, 1f);
@@ -346,8 +356,20 @@ namespace Project.Match3
                 yield return null;
             }
 
-            foreach (var (x, y) in cells)
+            foreach (var (x, y, _) in cells)
                 if (_iconRt[x, y] != null) _iconRt[x, y].localScale = Vector3.one;
+
+            // Optional burst VFX after the clear finished.
+            if (clearBurstFx != null)
+            {
+                foreach (var (x, y, pieceType) in cells)
+                {
+                    if (_iconRt[x, y] == null) continue;
+                    // When using atlas, icon color is usually white and bg is dark.
+                    // Use piece type color instead so the burst matches the cleared piece.
+                    clearBurstFx.EmitBurst(_iconRt[x, y].position, VfxColorOf(pieceType));
+                }
+            }
         }
 
         public IEnumerator AnimateDrop(int[] beforeBoard, Match3BoardLogic afterBoard, float duration = 0.48f)
@@ -596,6 +618,16 @@ namespace Project.Match3
         private bool InRange(int x, int y) => x >= 0 && x < Size && y >= 0 && y < Size;
 
         // ─── Piece Visuals (static helpers shared with PrefabCreator) ─────────────
+
+        private Color VfxColorOf(PieceType t) => t switch
+        {
+            PieceType.GemRed    => vfxGemRedColor,
+            PieceType.GemYellow => vfxGemYellowColor,
+            PieceType.GemGreen  => vfxGemGreenColor,
+            PieceType.Skull     => vfxSkullColor,
+            PieceType.Ankh      => vfxAnkhColor,
+            _                   => new Color(0.14f, 0.14f, 0.18f),
+        };
 
         public static Color ColorOf(PieceType t) => t switch
         {
