@@ -5005,7 +5005,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a2c4f6b1d3e4a5f8c7b6a5d4e3f2c1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.UI.Match3ClearBurstFx
-  particleSystem: {fileID: 0}
+  ps: {fileID: 0}
   minParticles: 8
   maxParticles: 12
   minSpeed: 1.6
@@ -5015,6 +5015,10 @@ MonoBehaviour:
   maxLifetime: 0.65
   minSize: 0.06
   maxSize: 0.12
+  horizontalSpread: 0.55
+  maxTravelDistance: 220
+  autoScaleLegacyValues: 1
+  legacyScaleMultiplier: 120
 --- !u!1 &3881703224493003550
 GameObject:
   m_ObjectHideFlags: 0
@@ -5066,11 +5070,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.Match3BoardView
   cellContainer: {fileID: 6281085174558679260}
-  ballsAtlas: {fileID: 2800000, guid: b7660594331a05844a0dc97b81f766de, type: 3}
+  ballsAtlas: {fileID: 2800000, guid: 7671da78a897a42429d33f4f12734450, type: 3}
   selectionRingTexture: {fileID: 2800000, guid: aff15b6b355e4664791da90ac12a6a2e, type: 3}
   selectionRingScale: 1.4
   selectionRingRotationSpeed: -99
   clearBurstFx: {fileID: 7977308116787144937}
+  vfxGemRedColor: {r: 0.9150943, g: 0.13381095, b: 0.13381095, a: 1}
+  vfxGemYellowColor: {r: 0.95, g: 0.82, b: 0.12, a: 1}
+  vfxGemGreenColor: {r: 0.18, g: 0.8, b: 0.18, a: 1}
+  vfxSkullColor: {r: 0.037869345, g: 0.037869345, b: 0.21698111, a: 1}
+  vfxAnkhColor: {r: 0.9245283, g: 0.9023827, b: 0.8155037, a: 1}
 --- !u!1 &5060342242228243028
 GameObject:
   m_ObjectHideFlags: 0
