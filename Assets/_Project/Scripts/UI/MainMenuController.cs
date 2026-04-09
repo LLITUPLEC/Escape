@@ -1,7 +1,9 @@
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Character;
 using Project.Nakama;
 using TMPro;
 using UnityEngine;
@@ -19,13 +21,13 @@ namespace Project.UI
         [SerializeField] private GameObject onlineBadgePrefab;
         [Header("Resources UI")]
         [SerializeField] private float onlinePollSeconds = 5f;
+        [SerializeField] private float resourcesPollSeconds = 5f;
         [SerializeField] private float match3StatsPollSeconds = 5f;
         [Header("Debug")]
         [SerializeField] private bool debugUiStats = false;
 
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
-        private const string RpcMatch3PveCatalogGet = "duel_match3_pve_catalog_get";
         private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
         private const string PrefLastKnownUserId = "nakama.ui.last_known_user_id";
         private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
@@ -52,12 +54,20 @@ namespace Project.UI
         [SerializeField] private Sprite eyeOpenSprite;
         [SerializeField] private Sprite eyeClosedSprite;
         private bool _match3StatsVisible;
+        private Transform _headerResourcesRoot;
+        private readonly ResourceValueBinding _energyBinding = new("Energy");
+        private readonly ResourceValueBinding _oreBinding = new("ore");
+        private readonly ResourceValueBinding _goldBinding = new("Gold");
+        private readonly ResourceValueBinding _ingotsBinding = new("ingots");
+        private readonly ResourceValueBinding _matterBinding = new("matter");
+        private readonly ResourceValueBinding _keysBinding = new("keys");
 
         private void Awake()
         {
             TryAutoAssignEyeSpritesInEditor();
             EnsureOnlineBadge();
             EnsurePlayerUsernameLabel();
+            EnsureHeaderResources();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
             ApplySafeAreaClamp();
@@ -74,6 +84,7 @@ namespace Project.UI
         {
             _onlineCts = new CancellationTokenSource();
             _ = OnlineLoopAsync(_onlineCts.Token);
+            _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
             ApplySafeAreaClamp();
@@ -441,10 +452,90 @@ namespace Project.UI
             SetPlayerUsernameText(_lastUsername);
         }
 
+        private void EnsureHeaderResources()
+        {
+            if (_headerResourcesRoot == null)
+            {
+                var parent = ResolveMainMenuHudLayoutRoot();
+                if (parent == null) return;
+
+                _headerResourcesRoot = FindChildByName(parent, "HeaderResources", StringComparison.OrdinalIgnoreCase);
+                if (_headerResourcesRoot == null)
+                {
+                    if (debugUiStats)
+                        Debug.Log("[MainMenu] HeaderResources root not found under HUD/Canvas.");
+                    return;
+                }
+            }
+
+            BindHeaderResource(_energyBinding, _headerResourcesRoot);
+            BindHeaderResource(_oreBinding, _headerResourcesRoot);
+            BindHeaderResource(_goldBinding, _headerResourcesRoot);
+            BindHeaderResource(_ingotsBinding, _headerResourcesRoot);
+            BindHeaderResource(_matterBinding, _headerResourcesRoot);
+            BindHeaderResource(_keysBinding, _headerResourcesRoot);
+        }
+
+        private async Task RefreshHeaderResourcesAsync(CancellationToken ct)
+        {
+            EnsureHeaderResources();
+            if (!HasAnyHeaderResourceBindings()) return;
+
+            try
+            {
+                var model = await PlayerResourcesService.GetAsync(ct);
+                if (model == null || !model.ok)
+                {
+                    SetHeaderResourcesUnknown();
+                    if (debugUiStats)
+                        Debug.Log($"[MainMenu] PlayerResources RPC not ok. err={model?.err}");
+                    return;
+                }
+
+                SetHeaderResourceText(_energyBinding, FormatEnergy(model.energy, model.energy_max));
+                SetHeaderResourceText(_oreBinding, FormatCompact(model.ore));
+                SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
+                SetHeaderResourceText(_ingotsBinding, FormatCompact(model.ingots));
+                SetHeaderResourceText(_matterBinding, FormatCompact(model.matter));
+                SetHeaderResourceText(_keysBinding, FormatCompact(model.keys));
+            }
+            catch (OperationCanceledException)
+            {
+                // Scene is closing or object was disabled.
+            }
+            catch (Exception e)
+            {
+                SetHeaderResourcesUnknown();
+                if (debugUiStats)
+                    Debug.Log("[MainMenu] PlayerResources exception: " + e.Message);
+            }
+        }
+
+        private void SetHeaderResourcesUnknown()
+        {
+            SetHeaderResourceText(_energyBinding, "—");
+            SetHeaderResourceText(_oreBinding, "—");
+            SetHeaderResourceText(_goldBinding, "—");
+            SetHeaderResourceText(_ingotsBinding, "—");
+            SetHeaderResourceText(_matterBinding, "—");
+            SetHeaderResourceText(_keysBinding, "—");
+        }
+
+        private bool HasAnyHeaderResourceBindings()
+        {
+            return _energyBinding.IsBound ||
+                   _oreBinding.IsBound ||
+                   _goldBinding.IsBound ||
+                   _ingotsBinding.IsBound ||
+                   _matterBinding.IsBound ||
+                   _keysBinding.IsBound;
+        }
+
         private async Task OnlineLoopAsync(CancellationToken ct)
         {
             var nextStatsRefreshAt = 0f;
             var nextUsernameRefreshAt = 0f;
+            var nextResourcesRefreshAt = 0f;
             while (!ct.IsCancellationRequested)
             {
                 await RefreshOnlineCountAsync(ct);
@@ -457,6 +548,11 @@ namespace Project.UI
                 {
                     await RefreshPlayerUsernameAsync(ct);
                     nextUsernameRefreshAt = Time.unscaledTime + Mathf.Max(2f, onlinePollSeconds);
+                }
+                if (Time.unscaledTime >= nextResourcesRefreshAt)
+                {
+                    await RefreshHeaderResourcesAsync(ct);
+                    nextResourcesRefreshAt = Time.unscaledTime + Mathf.Max(2f, resourcesPollSeconds);
                 }
                 try
                 {
@@ -640,10 +736,85 @@ namespace Project.UI
             return null;
         }
 
+        private static Transform FindChildByName(Transform root, string name, StringComparison comparison = StringComparison.Ordinal)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(name)) return null;
+            var all = root.GetComponentsInChildren<Transform>(true);
+            foreach (var t in all)
+            {
+                if (t != null && string.Equals(t.gameObject.name, name, comparison))
+                    return t;
+            }
+            return null;
+        }
+
+        private static Text FindAnyTextOnOrUnder(Transform root)
+        {
+            if (root == null) return null;
+            var self = root.GetComponent<Text>();
+            return self != null ? self : root.GetComponentInChildren<Text>(true);
+        }
+
+        private static TMP_Text FindAnyTmpTextOnOrUnder(Transform root)
+        {
+            if (root == null) return null;
+            var self = root.GetComponent<TMP_Text>();
+            return self != null ? self : root.GetComponentInChildren<TMP_Text>(true);
+        }
+
+        private static void BindHeaderResource(ResourceValueBinding binding, Transform headerRoot)
+        {
+            if (binding == null || headerRoot == null || binding.IsBound) return;
+
+            var entryRoot = FindChildByName(headerRoot, binding.entryName, StringComparison.OrdinalIgnoreCase);
+            if (entryRoot == null) return;
+
+            var valueRoot = FindChildByName(entryRoot, "Value", StringComparison.OrdinalIgnoreCase) ?? entryRoot;
+            binding.uiText = FindAnyTextOnOrUnder(valueRoot);
+            binding.tmpText = FindAnyTmpTextOnOrUnder(valueRoot);
+        }
+
+        private static void SetHeaderResourceText(ResourceValueBinding binding, string value)
+        {
+            if (binding == null) return;
+            if (binding.uiText != null) binding.uiText.text = value;
+            if (binding.tmpText != null) binding.tmpText.text = value;
+        }
+
         private static void SetMatch3Text(ref Text uiText, ref TMP_Text tmpText, string value)
         {
             if (uiText != null) uiText.text = value;
             if (tmpText != null) tmpText.text = value;
+        }
+
+        private static string FormatEnergy(int current, int max)
+        {
+            var safeCurrent = Mathf.Max(0, current);
+            var safeMax = Mathf.Max(0, max);
+            if (safeMax <= 0)
+                return safeCurrent.ToString(CultureInfo.InvariantCulture);
+            return safeCurrent.ToString(CultureInfo.InvariantCulture) + "/" +
+                   safeMax.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatCompact(long value)
+        {
+            var safeValue = Math.Max(0L, value);
+            var abs = Math.Abs((double)safeValue);
+            if (abs < 1_000d)
+                return safeValue.ToString(CultureInfo.InvariantCulture);
+            if (abs < 1_000_000d)
+                return FormatCompactScaled(safeValue / 1_000d, "К");
+            if (abs < 1_000_000_000d)
+                return FormatCompactScaled(safeValue / 1_000_000d, "М");
+            if (abs < 1_000_000_000_000d)
+                return FormatCompactScaled(safeValue / 1_000_000_000d, "Млрд");
+            return FormatCompactScaled(safeValue / 1_000_000_000_000d, "Т");
+        }
+
+        private static string FormatCompactScaled(double value, string suffix)
+        {
+            return value.ToString("0.#", CultureInfo.InvariantCulture) + suffix;
         }
 
         private bool HasMatch3StatsBindings()
@@ -796,6 +967,20 @@ namespace Project.UI
             _badgePulseRoutine = null;
         }
 
+        private sealed class ResourceValueBinding
+        {
+            public readonly string entryName;
+            public Text uiText;
+            public TMP_Text tmpText;
+
+            public ResourceValueBinding(string entryName)
+            {
+                this.entryName = entryName;
+            }
+
+            public bool IsBound => uiText != null || tmpText != null;
+        }
+
         [Serializable]
         private sealed class OnlineCountRpcResponse
         {
@@ -812,23 +997,6 @@ namespace Project.UI
             public int wins;
             public int losses;
             public string err;
-        }
-
-        [Serializable]
-        private sealed class PveCatalogHudRpcResponse
-        {
-            public bool ok;
-            public PveProgressHudInfo progression;
-            public int[] level_xp;
-            public string err;
-        }
-
-        [Serializable]
-        private sealed class PveProgressHudInfo
-        {
-            public int level = 1;
-            public int xp;
-            public int gold;
         }
     }
 }

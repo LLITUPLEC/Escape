@@ -5008,15 +5008,15 @@ MonoBehaviour:
   ps: {fileID: 0}
   minParticles: 8
   maxParticles: 12
-  minSpeed: 1.6
-  maxSpeed: 3.4
+  minSpeed: 152
+  maxSpeed: 308
   upwardBias: 0.65
-  minLifetime: 0.35
-  maxLifetime: 0.65
-  minSize: 0.06
-  maxSize: 0.12
-  horizontalSpread: 0.55
-  maxTravelDistance: 220
+  minLifetime: 0.15
+  maxLifetime: 0.35
+  minSize: 0.2
+  maxSize: 0.5
+  horizontalSpread: 0.15
+  maxTravelDistance: 0.5
   autoScaleLegacyValues: 1
   legacyScaleMultiplier: 120
 --- !u!1 &3881703224493003550

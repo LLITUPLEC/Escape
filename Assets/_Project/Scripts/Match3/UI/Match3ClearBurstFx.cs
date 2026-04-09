@@ -26,7 +26,8 @@ namespace Project.Match3.UI
         [SerializeField] private float maxTravelDistance = 220f; // in UI units (approx pixels); 0 = unlimited
 
         [Header("Auto-fix legacy tiny settings")]
-        [SerializeField] private bool autoScaleLegacyValues = true;
+        [Tooltip("If enabled, only very small shipped defaults (~0.06/0.12 size, slow speed) are multiplied to UI pixels. Intentional values like 0.2–0.5 are NOT changed.")]
+        [SerializeField] private bool autoScaleLegacyValues = false;
         [SerializeField] private float legacyScaleMultiplier = 120f;
 
         private ParticleSystem.EmitParams _emit;
@@ -35,16 +36,16 @@ namespace Project.Match3.UI
         {
             if (ps == null) ps = GetComponentInChildren<ParticleSystem>(true);
 
-            // If this component was created with the old "world-like" defaults (e.g. size 0.1, speed 3),
-            // auto-scale them to UI-friendly units so the effect is visible without manual tuning.
+            // Old first version used world-like sizes (e.g. 0.06–0.12) and speeds (~3–20).
+            // Do NOT treat every value ≤1 as "legacy" — that breaks intentional 0.2 / 0.5 UI sizes.
             if (autoScaleLegacyValues)
             {
-                if (maxSize > 0f && maxSize <= 1f)
+                if (maxSize > 0f && maxSize <= 0.15f && minSize > 0f && minSize <= 0.12f)
                 {
                     minSize *= legacyScaleMultiplier;
                     maxSize *= legacyScaleMultiplier;
                 }
-                if (maxSpeed > 0f && maxSpeed <= 20f)
+                if (maxSpeed > 0f && maxSpeed <= 20f && minSpeed > 0f && minSpeed <= 12f)
                 {
                     minSpeed *= legacyScaleMultiplier;
                     maxSpeed *= legacyScaleMultiplier;

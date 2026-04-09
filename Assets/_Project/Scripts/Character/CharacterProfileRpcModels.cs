@@ -23,8 +23,14 @@ namespace Project.Character
     {
         public int level;
         public int xp;
-        public int gold;
+        public long gold;
         public int max_level;
+        public int energy;
+        public int energy_max;
+        public long ore;
+        public long ingots;
+        public long matter;
+        public long keys;
     }
 
     /// <summary>

@@ -74,6 +74,8 @@ local BOTS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c"
 local BOT_USER_ID_PREFIX = "zz-bot-"
 
 local LEVEL_XP = { 0, 100, 440, 820, 1650, 1940, 2300, 3740, 4280, 5920 }
+local PVE_ENERGY_MAX_BASE = 100
+local PVE_ENERGY_REGEN_SECONDS = 60
 
 -- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
 local SESSION_EPOCH_ACCOUNT_META = "session_epoch"
@@ -1443,6 +1445,11 @@ local function is_user_allowed_for_cheat_rows(user_id, whitelist_set)
   return set[email] == true
 end
 
+local function pve_energy_max_for_user(user_id)
+  -- Future hook: include equipment bonuses here when energy capacity becomes gear-dependent.
+  return PVE_ENERGY_MAX_BASE
+end
+
 local function read_pve_progress(user_id)
   local rows = nk.storage_read({
     {
@@ -1452,21 +1459,109 @@ local function read_pve_progress(user_id)
     },
   })
 
+  local function apply_energy_regen(progress, energy_max, now)
+    local max_energy = clamp_int(energy_max, 0, nil)
+    if max_energy <= 0 then
+      progress.energy = 0
+      progress.energy_updated_at = now
+      return
+    end
+
+    local energy = clamp_int(progress.energy, 0, max_energy)
+    local updated_at = math.floor(tonumber(progress.energy_updated_at) or now)
+    if updated_at <= 0 then updated_at = now end
+    if updated_at > now then updated_at = now end
+
+    if energy >= max_energy then
+      progress.energy = max_energy
+      progress.energy_updated_at = now
+      return
+    end
+
+    local gained = math.floor(math.max(0, now - updated_at) / PVE_ENERGY_REGEN_SECONDS)
+    if gained <= 0 then
+      progress.energy = energy
+      progress.energy_updated_at = updated_at
+      return
+    end
+
+    energy = math.min(max_energy, energy + gained)
+    progress.energy = energy
+    if energy >= max_energy then
+      progress.energy_updated_at = now
+    else
+      progress.energy_updated_at = updated_at + gained * PVE_ENERGY_REGEN_SECONDS
+    end
+  end
+
+  local now = os.time()
+  local energy_max = pve_energy_max_for_user(user_id)
   if rows == nil or #rows == 0 then
-    local base = { xp = 0, gold = 0, level = 1, defeated = {} }
+    local base = {
+      xp = 0,
+      gold = 0,
+      level = 1,
+      defeated = {},
+      ore = 0,
+      ingots = 0,
+      matter = 0,
+      keys = 0,
+      energy = energy_max,
+      energy_updated_at = now,
+    }
     return base, nil
   end
 
   local row = rows[1]
   local val = decode_storage_value(row) or {}
+  local has_energy_field = val.energy ~= nil
+  local initial_energy = has_energy_field and val.energy or energy_max
   local progress = {
     xp = math.max(0, tonumber(val.xp) or 0),
     gold = math.max(0, tonumber(val.gold) or 0),
     level = math.max(1, tonumber(val.level) or 1),
     defeated = type(val.defeated) == "table" and val.defeated or {},
+    ore = math.max(0, tonumber(val.ore) or 0),
+    ingots = math.max(0, tonumber(val.ingots) or 0),
+    matter = math.max(0, tonumber(val.matter) or 0),
+    keys = math.max(0, tonumber(val.keys) or 0),
+    -- Backward compatibility: old rows had no energy field.
+    -- If missing, start from full energy instead of 0.
+    energy = clamp_int(initial_energy, 0, energy_max),
+    energy_updated_at = math.floor(tonumber(val.energy_updated_at) or now),
   }
   progress.level = current_level_from_xp(progress.xp)
+  apply_energy_regen(progress, energy_max, now)
   return progress, row.version
+end
+
+local function build_resource_payload(progress, user_id)
+  local energy_max = pve_energy_max_for_user(user_id)
+  return {
+    energy = clamp_int(progress.energy, 0, energy_max),
+    energy_max = energy_max,
+    ore = math.max(0, tonumber(progress.ore) or 0),
+    gold = math.max(0, tonumber(progress.gold) or 0),
+    ingots = math.max(0, tonumber(progress.ingots) or 0),
+    matter = math.max(0, tonumber(progress.matter) or 0),
+    keys = math.max(0, tonumber(progress.keys) or 0),
+  }
+end
+
+local function build_progression_payload(progress, user_id)
+  local resources = build_resource_payload(progress, user_id)
+  return {
+    level = progress.level or 1,
+    xp = progress.xp or 0,
+    gold = resources.gold,
+    max_level = 10,
+    energy = resources.energy,
+    energy_max = resources.energy_max,
+    ore = resources.ore,
+    ingots = resources.ingots,
+    matter = resources.matter,
+    keys = resources.keys,
+  }
 end
 
 local function write_pve_progress(user_id, progress, version)
@@ -1479,6 +1574,12 @@ local function write_pve_progress(user_id, progress, version)
       gold = progress.gold,
       level = progress.level,
       defeated = progress.defeated,
+      ore = progress.ore,
+      ingots = progress.ingots,
+      matter = progress.matter,
+      keys = progress.keys,
+      energy = progress.energy,
+      energy_updated_at = progress.energy_updated_at,
       updated_at = os.time(),
     },
     permission_read = 1,
@@ -1701,12 +1802,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
 
     return nk.json_encode({
       ok = true,
-      progression = {
-        level = progress.level,
-        xp = progress.xp,
-        gold = progress.gold,
-        max_level = 10,
-      },
+      progression = build_progression_payload(progress, user_id),
       level_xp = LEVEL_XP,
       bots = bots,
     })
@@ -1820,12 +1916,7 @@ local function duel_character_item_move(ctx, payload)
     local eq_arr, inv_arr = character_sheet_payload_arrays(sheet)
     return nk.json_encode({
       ok = true,
-      progression = {
-        level = level,
-        xp = progress.xp or 0,
-        gold = progress.gold or 0,
-        max_level = 10,
-      },
+      progression = build_progression_payload(progress, user_id),
       stats = stats,
       equipment_def_ids = eq_arr,
       inventory_def_ids = inv_arr,
@@ -1856,12 +1947,7 @@ local function duel_character_get(ctx, payload)
 
     return nk.json_encode({
       ok = true,
-      progression = {
-        level = level,
-        xp = progress.xp or 0,
-        gold = progress.gold or 0,
-        max_level = 10,
-      },
+      progression = build_progression_payload(progress, user_id),
       stats = stats,
       equipment_def_ids = eq_arr,
       inventory_def_ids = inv_arr,
@@ -1870,6 +1956,100 @@ local function duel_character_get(ctx, payload)
 
   if not ok then
     nk.logger_error("duel_character_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_player_resources_get(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local progress = read_pve_progress(user_id)
+    local resources = build_resource_payload(progress, user_id)
+    resources.ok = true
+    return nk.json_encode(resources)
+  end)
+
+  if not ok then
+    nk.logger_error("duel_player_resources_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_player_resources_spend(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+
+    local resource = tostring(p.resource or "")
+    local amount = clamp_int(p.amount, 0, nil)
+    local reason = tostring(p.reason or "")
+    if resource ~= "energy" then
+      return nk.json_encode({ ok = false, err = "unsupported_resource" })
+    end
+    if amount <= 0 then
+      return nk.json_encode({ ok = false, err = "bad_amount" })
+    end
+
+    local max_retries = 5
+    for i = 1, max_retries do
+      local now = os.time()
+      local progress, version = read_pve_progress(user_id)
+      local energy_max = pve_energy_max_for_user(user_id)
+      local available = clamp_int(progress.energy, 0, energy_max)
+      if available < amount then
+        local resources = build_resource_payload(progress, user_id)
+        resources.ok = false
+        resources.err = "not_enough_energy"
+        resources.resource = resource
+        resources.reason = reason
+        resources.required = amount
+        return nk.json_encode(resources)
+      end
+
+      progress.energy = available - amount
+      progress.energy_updated_at = now
+
+      local write_ok, write_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if write_ok then
+        local resources = build_resource_payload(progress, user_id)
+        resources.ok = true
+        resources.resource = resource
+        resources.reason = reason
+        resources.spent = amount
+        return nk.json_encode(resources)
+      end
+
+      local err_text = tostring(write_err)
+      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+        error(write_err)
+      end
+    end
+
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_player_resources_spend: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -2539,6 +2719,8 @@ nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_character_get, "duel_character_get")
 nk.register_rpc(duel_character_item_move, "duel_character_item_move")
+nk.register_rpc(duel_player_resources_get, "duel_player_resources_get")
+nk.register_rpc(duel_player_resources_spend, "duel_player_resources_spend")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 
 return {
