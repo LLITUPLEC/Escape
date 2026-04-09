@@ -18,9 +18,12 @@ namespace Project.UI
     {
         [SerializeField] private MonsterCatalog monsterCatalog;
         [SerializeField] private MonsterFrameCatalog monsterFrameCatalog;
+        [SerializeField] private AffixCatalog affixCatalog;
         private const string RpcPveCatalogGet = "duel_match3_pve_catalog_get";
         private const string RpcMineSummon = "duel_mine_summon";
+        private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
         private const string RpcMineBarrierUnlock = "duel_mine_barrier_unlock";
+        private const int AffixRerollGoldCost = 100;
         private const int SummonEnergyCost = 5;
         private const int SummonGoldCost = 50;
         private const float CountdownTickSeconds = 1f;
@@ -51,6 +54,7 @@ namespace Project.UI
         private bool _modalCanUnlock;
         private bool _refreshInFlight;
         private bool _summonInFlight;
+        private bool _rerollInFlight;
         private bool _unlockInFlight;
         private float _countdownAccumulator;
         private float _serverRefreshAccumulator;
@@ -95,6 +99,8 @@ namespace Project.UI
 
         private void Awake()
         {
+            if (affixCatalog == null)
+                affixCatalog = Resources.Load<AffixCatalog>("Match3/AffixCatalog");
             _cardsScroll = FindFirstObjectByType<ScrollRect>(FindObjectsInactive.Include);
             CacheRows();
             EnsureModal();
@@ -115,6 +121,7 @@ namespace Project.UI
             _cts = null;
             _refreshInFlight = false;
             _summonInFlight = false;
+            _rerollInFlight = false;
             _unlockInFlight = false;
             _countdownAccumulator = 0f;
             _serverRefreshAccumulator = 0f;
@@ -237,7 +244,12 @@ namespace Project.UI
                 var refs = new FloorRowRefs();
                 refs.root = rowGo.transform;
                 refs.stateText = FindTextByName(refs.root, "StateText") ?? FindTextByName(refs.root, "Barrier");
-                refs.rewardText = FindTextByName(refs.root, "RewardText");
+                var rowLayout = refs.root.GetComponent<LayoutElement>();
+                if (rowLayout != null)
+                    rowLayout.preferredHeight = 500f;
+                var rewardsPanel = refs.root.Find("RewardsPanel");
+                if (rewardsPanel != null)
+                    Destroy(rewardsPanel.gameObject);
                 refs.monsterButton = EnsureMonsterButton(refs.root, floor);
                 refs.monsterButton.onClick.RemoveAllListeners();
                 var f = floor;
@@ -308,7 +320,6 @@ namespace Project.UI
                     if (refs.stateText != null) refs.stateText.text = "Барьер";
                     SetButtonLabel(refs.monsterButton, "🔒");
                     refs.monsterButton.interactable = true;
-                    if (refs.rewardText != null) refs.rewardText.text = "XP 0\nG 0\nOre 0";
                     continue;
                 }
 
@@ -326,13 +337,6 @@ namespace Project.UI
                 }
 
                 _botByFloor.TryGetValue(floor, out var bot);
-                if (refs.rewardText != null)
-                {
-                    var rx = bot != null ? bot.reward_xp : 0;
-                    var rg = bot != null ? bot.reward_gold : 0;
-                    var ro = bot != null ? bot.reward_ore : 0;
-                    refs.rewardText.text = $"XP {rx}\nG {rg}\nOre {ro}";
-                }
                 ApplyMonsterVisual(refs, bot, mf);
             }
         }
@@ -407,7 +411,7 @@ namespace Project.UI
             _modalCloseButton = CreateButton(_modalRoot.transform, "CloseButton", "X",
                 new Vector2(0.90f, 0.86f), new Vector2(0.98f, 0.96f));
             _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
-            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 18, TextAnchor.UpperLeft,
+            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 30, TextAnchor.UpperLeft,
                 new Vector2(0.06f, 0.46f), new Vector2(0.48f, 0.82f));
             var affixIconGo = new GameObject("AffixIcon", typeof(RectTransform), typeof(Image));
             var affixIconRt = affixIconGo.GetComponent<RectTransform>();
@@ -420,10 +424,18 @@ namespace Project.UI
             _modalAffixIcon.color = new Color(0.25f, 0.25f, 0.35f, 0.96f);
             _modalAffixIconText = CreateText(affixIconGo.transform, "Glyph", "?", 22, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one);
-            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 16, TextAnchor.UpperLeft,
+            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 30, TextAnchor.MiddleLeft,
                 new Vector2(0.68f, 0.46f), new Vector2(0.94f, 0.82f));
-            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 16, TextAnchor.UpperLeft,
+            _modalAffixText.resizeTextForBestFit = true;
+            _modalAffixText.resizeTextMinSize = 3;
+            _modalAffixText.resizeTextMaxSize = 30;
+            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 30, TextAnchor.UpperLeft,
                 new Vector2(0.06f, 0.22f), new Vector2(0.48f, 0.44f));
+            _modalRewards.resizeTextForBestFit = true;
+            _modalRewards.resizeTextMinSize = 5;
+            _modalRewards.resizeTextMaxSize = 30;
+            var rewardsRt = _modalRewards.rectTransform;
+            rewardsRt.offsetMax = new Vector2(rewardsRt.offsetMax.x, 60f);
 
             _modalFightButton = CreateButton(_modalRoot.transform, "FightButton", "В бой",
                 new Vector2(0.08f, 0.06f), new Vector2(0.46f, 0.18f));
@@ -470,7 +482,7 @@ namespace Project.UI
             var crit = bot != null ? bot.base_crit : 0f;
             var mana = bot != null ? bot.start_mana : 0;
 
-            _modalTitle.text = $"{name} (этаж {floor})";
+            _modalTitle.text = name;
             var sb = new StringBuilder();
             sb.AppendLine($"HP: {hp}");
             sb.AppendLine($"Урон: {dmg} | Броня: {armor}");
@@ -484,11 +496,11 @@ namespace Project.UI
                 : "Награды: —";
 
             _modalCanUnlock = false;
-            _modalCanSummon = respawn > 0 && bot != null;
+            _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(floor);
             _modalFightButton.interactable = respawn <= 0 && bot != null;
             SetButtonLabel(_modalDismissButton, _modalCanSummon
                 ? $"Призвать ({SummonEnergyCost} эн / {SummonGoldCost} зол)"
-                : "Прогнать");
+                : $"Прогнать ({AffixRerollGoldCost} зол)");
             _modalDismissButton.interactable = true;
             _modalRoot.SetActive(true);
         }
@@ -538,17 +550,27 @@ namespace Project.UI
                 return;
             }
 
-            if (!_modalCanSummon)
+            _mineByFloor.TryGetValue(_selectedFloor, out var mineUnlocked);
+            var unlockedFloor = mineUnlocked != null && mineUnlocked.unlocked;
+            if (!unlockedFloor)
             {
                 if (_modalRoot != null)
                     _modalRoot.SetActive(false);
                 return;
             }
 
-            if (_summonInFlight)
+            if (_modalCanSummon)
+            {
+                if (_summonInFlight)
+                    return;
+                await SummonSelectedFloorAsync();
+                return;
+            }
+
+            if (_rerollInFlight)
                 return;
 
-            await SummonSelectedFloorAsync();
+            await RerollAffixAsync();
         }
 
         private async Task SummonSelectedFloorAsync()
@@ -613,6 +635,69 @@ namespace Project.UI
             }
         }
 
+        private static bool IsMineBossFloor(int floor) => floor == 4 || floor == 8 || floor == 12;
+
+        private async Task RerollAffixAsync()
+        {
+            if (NakamaBootstrap.Instance == null || _cts == null || _cts.IsCancellationRequested)
+                return;
+
+            _rerollInFlight = true;
+            _modalDismissButton.interactable = false;
+
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var request = new AffixRerollRequest
+                {
+                    floor = _selectedFloor,
+                    difficulty = _difficulty,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch()
+                };
+                var reqJson = JsonUtility.ToJson(request);
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMineAffixReroll, reqJson, canceller: _cts.Token);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(payload))
+                    return;
+
+                var model = JsonUtility.FromJson<AffixRerollResponse>(payload);
+                if (model == null)
+                    return;
+
+                if (!model.ok)
+                {
+                    if (_modalInfo != null)
+                        _modalInfo.text += "\n\n" + DescribeAffixRerollError(model);
+                    return;
+                }
+
+                if (_mineByFloor.TryGetValue(_selectedFloor, out var mine) && mine != null && !string.IsNullOrWhiteSpace(model.affix))
+                    mine.affix = model.affix;
+
+                ApplyRows();
+                await RefreshResourcesAsync(_cts.Token);
+                OpenMonsterModal(_selectedFloor);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Affix reroll failed: " + e.Message);
+            }
+            finally
+            {
+                _rerollInFlight = false;
+                if (_modalDismissButton != null)
+                    _modalDismissButton.interactable = true;
+            }
+        }
+
         private static string DescribeSummonError(SummonResponse response)
         {
             if (response == null) return "Не удалось призвать монстра.";
@@ -624,8 +709,24 @@ namespace Project.UI
                     return $"Не хватает золота: нужно {response.required}, доступно {response.gold}.";
                 case "barrier_locked":
                     return "Этаж пока закрыт барьером.";
+                case "boss_summon_forbidden":
+                    return "Призыв недоступен на этажах с боссом (4, 8, 12): ждите окончания таймера.";
                 default:
                     return "Не удалось призвать монстра.";
+            }
+        }
+
+        private static string DescribeAffixRerollError(AffixRerollResponse response)
+        {
+            if (response == null) return "Не удалось сменить аффикс.";
+            switch (response.err)
+            {
+                case "not_enough_gold":
+                    return $"Не хватает золота: нужно {response.required}, доступно {response.gold}.";
+                case "barrier_locked":
+                    return "Этаж пока закрыт барьером.";
+                default:
+                    return "Не удалось сменить аффикс.";
             }
         }
 
@@ -896,42 +997,47 @@ namespace Project.UI
 
         private void ApplyAffixVisual(string affix)
         {
-            var (title, description) = GetAffixDisplay(affix);
+            var normalized = AffixCatalog.Normalize(affix);
+            var hasData = TryGetAffixData(normalized, out var title, out var description, out var iconSprite);
             if (_modalAffixText != null)
-                _modalAffixText.text = string.IsNullOrWhiteSpace(title) ? "Аффикс: —" : $"Аффикс: {title}\n{description}";
+                _modalAffixText.text = hasData && !string.IsNullOrWhiteSpace(title) ? $"Аффикс: {title}\n{description}" : "Аффикс: —";
 
             if (_modalAffixIcon != null)
             {
-                var has = !string.IsNullOrWhiteSpace(title);
-                _modalAffixIcon.color = has ? ColorFromString(affix) : new Color(0.22f, 0.22f, 0.28f, 0.96f);
+                var has = hasData && !string.IsNullOrWhiteSpace(title);
+                _modalAffixIcon.sprite = iconSprite;
+                _modalAffixIcon.type = iconSprite != null ? Image.Type.Simple : Image.Type.Sliced;
+                _modalAffixIcon.preserveAspect = iconSprite != null;
+                _modalAffixIcon.color = iconSprite != null
+                    ? Color.white
+                    : (has ? ColorFromString(normalized) : new Color(0.22f, 0.22f, 0.28f, 0.96f));
             }
 
             if (_modalAffixIconText != null)
-                _modalAffixIconText.text = string.IsNullOrWhiteSpace(title) ? "?" : title.Substring(0, 1).ToUpperInvariant();
-        }
-
-        private static (string title, string description) GetAffixDisplay(string affix)
-        {
-            switch (tostring(affix))
             {
-                case "acid": return ("Кислотный", "В конце каждого твоего хода теряешь 3% изначального ХП.");
-                case "energy_block": return ("Энергоблок", "Черепа не наносят урон и дают +5 урона за каждый уничтоженный череп.");
-                case "regeneration": return ("Регенерация", "Монстр лечит 3% ХП каждый свой ход.");
-                case "fragility": return ("Хрупкость", "У монстра вдвое меньше ХП, но +50 маны и +35% крита.");
-                case "stone_skin": return ("Каменная кожа", "Монстр получает +15 брони каждый третий свой ход.");
-                case "mana_vampire": return ("Мана-вампир", "Каждый уничтоженный анх даёт противнику 1 ману.");
-                case "frozen": return ("Ледяной", "Способности стоят на 10 маны дороже.");
-                case "monster_rage": return ("Ярость монстра", "Каждый уничтоженный монстром череп даёт ему +2 урона до конца боя.");
-                case "instability": return ("Нестабильность", "В начале каждого твоего хода камни на поле перемешиваются.");
-                default: return (string.Empty, string.Empty);
+                _modalAffixIconText.gameObject.SetActive(iconSprite == null);
+                _modalAffixIconText.text = hasData && !string.IsNullOrWhiteSpace(title) ? title.Substring(0, 1).ToUpperInvariant() : "?";
             }
         }
 
-        private static string tostring(string value) => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
+        private bool TryGetAffixData(string affix, out string title, out string description, out Sprite icon)
+        {
+            if (affixCatalog != null && affixCatalog.TryGet(affix, out title, out description, out icon))
+                return true;
+            if (AffixCatalog.TryGetBuiltin(affix, out title, out description))
+            {
+                icon = null;
+                return true;
+            }
+            title = string.Empty;
+            description = string.Empty;
+            icon = null;
+            return false;
+        }
 
         private static Color ColorFromString(string value)
         {
-            var s = tostring(value);
+            var s = AffixCatalog.Normalize(value);
             if (s.Length == 0) return new Color(0.22f, 0.22f, 0.28f, 0.96f);
             var hash = s.GetHashCode();
             var r = 0.35f + ((hash & 0xFF) / 255f) * 0.45f;
@@ -1084,6 +1190,24 @@ namespace Project.UI
         }
 
         [Serializable]
+        private sealed class AffixRerollRequest
+        {
+            public int floor;
+            public string difficulty;
+            public long session_epoch;
+        }
+
+        [Serializable]
+        private sealed class AffixRerollResponse
+        {
+            public bool ok;
+            public string err;
+            public string affix;
+            public int required;
+            public int gold;
+        }
+
+        [Serializable]
         private sealed class SummonResponse
         {
             public bool ok;
@@ -1152,7 +1276,6 @@ namespace Project.UI
         {
             public Transform root;
             public Text stateText;
-            public Text rewardText;
             public Button monsterButton;
         }
 

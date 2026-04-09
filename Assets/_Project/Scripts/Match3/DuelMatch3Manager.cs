@@ -79,6 +79,7 @@ namespace Project.Match3
 
         [Header("UI Prefabs")]
         [SerializeField] private DamagePopupView damagePopupPrefab;
+        [SerializeField] private AffixCatalog affixCatalog;
 
         [Header("Cheat Overlay (optional)")]
         [Tooltip("Optional prefab for the overlay cells container (CheatRowsOverlayCells). If null, created at runtime.")]
@@ -209,6 +210,8 @@ namespace Project.Match3
             Match3LaunchContext.ConsumeSoloMine(out _preferredSoloBotId, out _preferredSoloFloor, out _preferredSoloDifficulty, out _autoStartPreferredSolo);
             _useLocalBotSimulation = false;
             _botRandom = new System.Random(Environment.TickCount);
+            if (affixCatalog == null)
+                affixCatalog = Resources.Load<AffixCatalog>("Match3/AffixCatalog");
 
             EnsureCamera();
             BuildUI();
@@ -507,13 +510,14 @@ namespace Project.Match3
 
         private void BeginMyTurn()
         {
+            var turnDuration = HasAffix("scree") ? (TurnDuration / 3f) : TurnDuration;
             if (_botTurnRoutine != null)
             {
                 StopCoroutine(_botTurnRoutine);
                 _botTurnRoutine = null;
             }
             _isMyTurn    = true;
-            _turnTimer   = TurnDuration;
+            _turnTimer   = turnDuration;
             _inputBlocked = false;
             _pendingAbility = null;
             _selX = _selY = -1;
@@ -523,7 +527,7 @@ namespace Project.Match3
             _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ваш ход!");
-            _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            _hud?.SetTimer(Mathf.CeilToInt(turnDuration).ToString());
             UpdateAffixHud();
             _boardView?.SetDimmed(false);
 
@@ -532,8 +536,9 @@ namespace Project.Match3
 
         private void BeginOpponentTurn()
         {
+            var turnDuration = HasAffix("scree") ? (TurnDuration / 3f) : TurnDuration;
             _isMyTurn    = false;
-            _turnTimer   = TurnDuration;
+            _turnTimer   = turnDuration;
             _inputBlocked = true;
             _pendingAbility = null;
             _selX = _selY = -1;
@@ -543,7 +548,7 @@ namespace Project.Match3
             _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ход соперника…");
-            _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            _hud?.SetTimer(Mathf.CeilToInt(turnDuration).ToString());
             UpdateAffixHud();
             _boardView?.SetDimmed(true);
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
@@ -673,6 +678,28 @@ namespace Project.Match3
 
         // ─── Game Over ────────────────────────────────────────────────────────────
 
+        private static string BuildRewardLinesText(int xp, int gold, int ore, int matter)
+        {
+            var sb = new StringBuilder(64);
+            if (xp > 0) sb.Append("+").Append(xp).Append(" опыта");
+            if (gold > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(gold).Append(" золота");
+            }
+            if (ore > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(ore).Append(" руды");
+            }
+            if (matter > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(matter).Append(" материи");
+            }
+            return sb.ToString();
+        }
+
         private void ShowGameOver(bool won)
         {
             if (!_resultRecorded)
@@ -684,7 +711,7 @@ namespace Project.Match3
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
             PlaySfx(won ? sfxVictory : sfxDefeat);
-            var rewardText = won && !string.IsNullOrEmpty(_lastRewardText) ? _lastRewardText : null;
+            var rewardText = !string.IsNullOrEmpty(_lastRewardText) ? _lastRewardText : null;
             _gameOverPanel?.Show(won, rewardText);
         }
 
@@ -814,19 +841,16 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     if (_gameEnded || _pendingGameOver) return;
-                    if (_isSoloBotMode && string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal))
+                    if (_isSoloBotMode)
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
                         var rgold = Mathf.Max(0, msg.rewardGold);
                         var rore = Mathf.Max(0, msg.rewardOre);
                         var rmatter = Mathf.Max(0, msg.rewardMatter);
-                        if (rxp > 0 || rgold > 0 || rore > 0 || rmatter > 0)
-                        {
-                            _pveProgress.xp += rxp;
-                            _pveProgress.gold += rgold;
-                            if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
-                            _lastRewardText = $"+{rxp} опыта\n+{rgold} золота\n+{rore} руды\n+{rmatter} материи";
-                        }
+                        _pveProgress.xp += rxp;
+                        _pveProgress.gold += rgold;
+                        if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
+                        _lastRewardText = BuildRewardLinesText(rxp, rgold, rore, rmatter);
                     }
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
@@ -2679,37 +2703,17 @@ namespace Project.Match3
             if (_hud == null || !_isSoloBotMode)
                 return;
 
-            var (title, effect) = GetAffixDisplay(_activePveAffix);
-            var icon = string.IsNullOrWhiteSpace(title) ? string.Empty : title.Substring(0, 1).ToUpperInvariant();
-            _hud.SetAffixInfo(icon, string.IsNullOrWhiteSpace(title) ? string.Empty : (title + ": " + effect));
-        }
-
-        private static (string title, string effect) GetAffixDisplay(string affixId)
-        {
-            if (string.IsNullOrWhiteSpace(affixId)) return (string.Empty, string.Empty);
-            switch (affixId.Trim().ToLowerInvariant())
+            string title = string.Empty;
+            string effect = string.Empty;
+            Sprite iconSprite = null;
+            var found = affixCatalog != null && affixCatalog.TryGet(_activePveAffix, out title, out effect, out iconSprite);
+            if (!found)
             {
-                case "acid":
-                    return ("Кислотный", "В конце каждого твоего хода теряешь 3% изначального ХП.");
-                case "energy_block":
-                    return ("Энергоблок", "Черепа не наносят урон и дают +5 урона за каждый уничтоженный череп.");
-                case "regeneration":
-                    return ("Регенерация", "Монстр лечит 3% ХП каждый свой ход.");
-                case "fragility":
-                    return ("Хрупкость", "У монстра вдвое меньше ХП, но +50 маны и +35% крита.");
-                case "stone_skin":
-                    return ("Каменная кожа", "Монстр получает +15 брони каждый третий свой ход.");
-                case "mana_vampire":
-                    return ("Мана-вампир", "За каждый уничтоженный анх противник получает 1 ману.");
-                case "frozen":
-                    return ("Ледяной", "Способности стоят на 10 маны дороже.");
-                case "monster_rage":
-                    return ("Ярость монстра", "Каждый череп монстра даёт ему +2 урона до конца боя.");
-                case "instability":
-                    return ("Нестабильность", "В начале твоего хода камни на поле перемешиваются.");
-                default:
-                    return (affixId, string.Empty);
+                found = AffixCatalog.TryGetBuiltin(_activePveAffix, out title, out effect);
+                iconSprite = null;
             }
+            var icon = string.IsNullOrWhiteSpace(title) ? string.Empty : title.Substring(0, 1).ToUpperInvariant();
+            _hud.SetAffixInfo(icon, found && !string.IsNullOrWhiteSpace(title) ? (title + ": " + effect) : string.Empty, iconSprite);
         }
 
         private int GetAbilityCooldown(AbilityType ability)

@@ -41,9 +41,10 @@ namespace Project.Match3
             }
 
             if (rewardText != null)
-                rewardText.text = string.IsNullOrEmpty(customRewardText)
-                    ? (won ? "+100 опыта\n+50 золота" : "+25 опыта")
-                    : customRewardText;
+            {
+                rewardText.text = string.IsNullOrEmpty(customRewardText) ? string.Empty : customRewardText;
+                rewardText.gameObject.SetActive(!string.IsNullOrEmpty(rewardText.text));
+            }
         }
 
         public void Hide() => gameObject.SetActive(false);

@@ -97,6 +97,9 @@ local MINE_AFFIX_POOL = {
   "frozen",
   "monster_rage",
   "instability",
+  "overload",
+  "bare_current",
+  "scree",
 }
 
 -- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
@@ -461,7 +464,7 @@ local function count_skulls(board)
   return n
 end
 
-local function roll_outgoing_damage(board, attacker, base_damage)
+local function roll_outgoing_damage(state, board, attacker, base_damage)
   local dmg = math.max(0, tonumber(base_damage) or 0)
 
   -- Character base damage (PVE only; in PVP base_damage is 0).
@@ -484,11 +487,16 @@ local function roll_outgoing_damage(board, attacker, base_damage)
     crit = true
   end
 
+  local affix = tostring((((state or {}).pve_run or {}).affix) or "")
+  if affix == "bare_current" then
+    dmg = dmg * 2
+  end
+
   return dmg, crit
 end
 
-local function deal_damage(board, attacker, target, base_damage)
-  local raw, crit = roll_outgoing_damage(board, attacker, base_damage)
+local function deal_damage(state, board, attacker, target, base_damage)
+  local raw, crit = roll_outgoing_damage(state, board, attacker, base_damage)
   local reduced = math.max(0, raw - get_armor(target))
   target.hp = math.max(0, (target.hp or MAX_HP) - reduced)
   return crit
@@ -545,26 +553,19 @@ local function action_mana_cost(state, action_type)
   return base
 end
 
-local function shuffle_active_board(state)
-  if state == nil or state.board == nil then return end
-  local vals = {}
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
-      vals[#vals + 1] = bget(state.board, x, y)
-    end
+function mana_gain_per_object(state, base_gain)
+  local g = math.max(0, tonumber(base_gain) or 0)
+  if g <= 0 then return 0 end
+  if has_affix(state, "bare_current") then return 0 end
+  if has_affix(state, "overload") then return 1 end
+  return g
+end
+
+function turn_seconds_for_state(state)
+  if has_affix(state, "scree") then
+    return math.max(1, math.floor(TURN_SECONDS / 3))
   end
-  for i = #vals, 2, -1 do
-    local j = math.random(1, i)
-    vals[i], vals[j] = vals[j], vals[i]
-  end
-  local k = 1
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
-      bset(state.board, x, y, vals[k] or SPAWN_POOL[math.random(1, #SPAWN_POOL)])
-      k = k + 1
-    end
-  end
-  update_cheat_rows_from_board(state)
+  return TURN_SECONDS
 end
 
 local function apply_turn_end_affix_effects(state, actor_id, opponent_id)
@@ -685,6 +686,28 @@ local function update_cheat_rows_from_board(state)
     end
   end
   state.cheat_rows = out
+end
+
+local function shuffle_active_board(state)
+  if state == nil or state.board == nil then return end
+  local vals = {}
+  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
+    for x = 0, SIZE - 1 do
+      vals[#vals + 1] = bget(state.board, x, y)
+    end
+  end
+  for i = #vals, 2, -1 do
+    local j = math.random(1, i)
+    vals[i], vals[j] = vals[j], vals[i]
+  end
+  local k = 1
+  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
+    for x = 0, SIZE - 1 do
+      bset(state.board, x, y, vals[k] or SPAWN_POOL[math.random(1, #SPAWN_POOL)])
+      k = k + 1
+    end
+  end
+  update_cheat_rows_from_board(state)
 end
 
 local function do_swap(board, x1, y1, x2, y2)
@@ -832,7 +855,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     if m.count >= 5 then extra_turn = true end
     if sim ~= nil and m.count >= 5 then sim.extra_turn = true end
     if m.type == 1 or m.type == 2 or m.type == 3 then
-      local gain = (GEM_MANA[m.type] or 0) * m.count
+      local gain = mana_gain_per_object(state, GEM_MANA[m.type] or 0) * m.count
       actor.mana = math.min(MAX_MANA, actor.mana + gain)
       if sim ~= nil then
         if m.type == 1 then sim.red = sim.red + m.count
@@ -843,16 +866,17 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
       if affix == "energy_block" then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * m.count
       else
-        if deal_damage(state.board, actor, opp, SKULL_DAMAGE * m.count) then crit_triggered = true end
+        if deal_damage(state, state.board, actor, opp, SKULL_DAMAGE * m.count) then crit_triggered = true end
       end
       if affix == "monster_rage" and actor_id == state.bot_user_id then
-        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 2 * m.count
+        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * m.count
       end
     elseif m.type == 5 then
       healed = true
       pending_heal = pending_heal + ANKH_HEAL * m.count
       if affix == "mana_vampire" and opp ~= nil then
-        opp.mana = math.min(MAX_MANA, (tonumber(opp.mana) or 0) + m.count)
+        local vamp_gain = mana_gain_per_object(state, 2) * m.count
+        opp.mana = math.min(MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
       end
     end
   end
@@ -1018,7 +1042,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     state.active_user_id = actor
     -- Fury keeps the turn, but must not refresh the turn timer.
     if action_type ~= 6 then
-      state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
     end
   elseif extra_turn then
     state.active_user_id = actor
@@ -1029,7 +1053,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   end
 
   if not keep_turn then
-    state.turn_deadline_tick = tick + TURN_SECONDS * tick_rate
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
   end
   if state.mode == "pve" then
     if state.active_user_id == state.bot_user_id then
@@ -1088,7 +1112,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local opp = state.stats[opponent_id]
   local sim = state._sim_metrics
   if action_type == 4 then
-    local crit = deal_damage(state.board, actor, opp, PETARD_DAMAGE)
+    local crit = deal_damage(state, state.board, actor, opp, PETARD_DAMAGE)
     return crit
   end
 
@@ -1100,7 +1124,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
     if t == 1 or t == 2 or t == 3 then
-      actor.mana = math.min(MAX_MANA, actor.mana + (GEM_MANA[t] or 0))
+      actor.mana = math.min(MAX_MANA, actor.mana + mana_gain_per_object(state, GEM_MANA[t] or 0))
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + 1
         elseif t == 2 then sim.yellow = sim.yellow + 1
@@ -1119,7 +1143,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     actor.hp = math.min(actor.max_hp or MAX_HP, (actor.hp or MAX_HP) + pending_heal)
   end
 
-  local crit = deal_damage(state.board, actor, opp, ABILITY_BASE_DAMAGE + SKULL_DAMAGE * skulls)
+  local crit = deal_damage(state, state.board, actor, opp, ABILITY_BASE_DAMAGE + SKULL_DAMAGE * skulls)
   return crit
 end
 
@@ -1951,7 +1975,16 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     local state_key = make_floor_state_key(diff, floor)
     local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
     cur_state.next_spawn_at = os.time() + (is_boss and MINE_RESPAWN_BOSS_SECONDS or MINE_RESPAWN_NORMAL_SECONDS)
-    cur_state.last_affix = tostring((run_meta and run_meta.affix) or cur_state.last_affix or random_affix_for_floor(floor))
+    local fought_affix = tostring((run_meta and run_meta.affix) or "")
+    local next_affix = random_affix_for_floor(floor)
+    if #MINE_AFFIX_POOL > 1 then
+      local guard = 0
+      while next_affix == fought_affix and guard < 12 do
+        next_affix = random_affix_for_floor(floor)
+        guard = guard + 1
+      end
+    end
+    cur_state.last_affix = next_affix
     cur_state.wins = (tonumber(cur_state.wins) or 0) + 1
     progress.mine.floor_states[state_key] = cur_state
     if floor >= PVE_MAX_LEVEL and is_boss then
@@ -2618,10 +2651,13 @@ local function duel_match3_pve_create(ctx, payload)
 
       progress.energy = available - PVE_ENTRY_ENERGY_COST
       progress.energy_updated_at = now
-      local affix = random_affix_for_floor(floor)
       local state_key = make_floor_state_key(diff, floor)
       local fstate = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
-      fstate.last_affix = affix
+      local affix = tostring(fstate.last_affix or "")
+      if affix == "" then
+        affix = random_affix_for_floor(floor)
+        fstate.last_affix = affix
+      end
       progress.mine.floor_states[state_key] = fstate
 
       local write_ok, write_err = pcall(function()
@@ -2720,6 +2756,15 @@ local function duel_mine_summon(ctx, payload)
         })
       end
 
+      if is_boss_floor(requested_floor) then
+        return nk.json_encode({
+          ok = false,
+          err = "boss_summon_forbidden",
+          floor = requested_floor,
+          difficulty = requested_diff,
+        })
+      end
+
       local respawn_left = floor_respawn_left_seconds(progress, requested_diff, requested_floor)
       if respawn_left <= 0 then
         return nk.json_encode({
@@ -2792,6 +2837,109 @@ local function duel_mine_summon(ctx, payload)
 
   if not ok then
     nk.logger_error("duel_mine_summon: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+function duel_mine_affix_reroll(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+
+    local requested_floor = clamp_int(p.floor, 1, PVE_MAX_LEVEL)
+    local requested_diff = normalize_mine_difficulty(p.difficulty)
+    local max_retries = 5
+    local reroll_gold = 100
+
+    for i = 1, max_retries do
+      local progress, version = read_pve_progress(user_id)
+      progress.mine = progress.mine or {}
+      progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
+      progress.mine.current_difficulty = requested_diff
+      progress.mine.selected_floor = requested_floor
+      if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
+
+      local unlocked_floor = get_unlocked_floor(progress, requested_diff)
+      if requested_floor > unlocked_floor then
+        return nk.json_encode({
+          ok = false,
+          err = "barrier_locked",
+          floor = requested_floor,
+          unlocked_floor = unlocked_floor,
+          difficulty = requested_diff,
+        })
+      end
+
+      local available_gold = math.max(0, tonumber(progress.gold) or 0)
+      if available_gold < reroll_gold then
+        return nk.json_encode({
+          ok = false,
+          err = "not_enough_gold",
+          required = reroll_gold,
+          gold = available_gold,
+        })
+      end
+
+      progress.gold = available_gold - reroll_gold
+
+      local state_key = make_floor_state_key(requested_diff, requested_floor)
+      local floor_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
+      local cur = tostring(floor_state.last_affix or "")
+      local next_affix = cur
+      if #MINE_AFFIX_POOL == 0 then
+        next_affix = ""
+      elseif #MINE_AFFIX_POOL == 1 then
+        next_affix = tostring(MINE_AFFIX_POOL[1] or "")
+      else
+        local g = 0
+        while next_affix == cur and g < 32 do
+          local ri = math.random(1, #MINE_AFFIX_POOL)
+          next_affix = tostring(MINE_AFFIX_POOL[ri] or "")
+          g = g + 1
+        end
+      end
+      floor_state.last_affix = next_affix
+      progress.mine.floor_states[state_key] = floor_state
+
+      local write_ok, write_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if write_ok then
+        return nk.json_encode({
+          ok = true,
+          floor = requested_floor,
+          difficulty = requested_diff,
+          affix = floor_state.last_affix,
+          reroll_cost = { gold = reroll_gold },
+          resources = build_resource_payload(progress, user_id),
+          progression = build_progression_payload(progress, user_id),
+        })
+      end
+
+      local err_text = tostring(write_err)
+      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+        error(write_err)
+      end
+    end
+
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_mine_affix_reroll: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -3264,6 +3412,10 @@ local function match_join(context, dispatcher, tick, state, presences)
         bot.mana = math.min(MAX_MANA, (tonumber(bot.mana) or 0) + 50)
         bot.base_crit = math.max(0, tonumber(bot.base_crit) or 0) + 0.35
       end
+      if has_affix(state, "bare_current") then
+        state.stats[player_id].mana = 0
+        state.stats[state.bot_user_id].mana = 0
+      end
       state.stats[state.bot_user_id].initial_hp = state.stats[state.bot_user_id].max_hp
       state.board = init_board()
 
@@ -3283,7 +3435,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
       tick_cooldowns(state.stats[state.active_user_id])
-      state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
       if state.active_user_id == state.bot_user_id then
         state.bot_turn_pending = true
         state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
@@ -3320,7 +3472,7 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
 
     tick_cooldowns(state.stats[state.active_user_id])
-    state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
     broadcast_sync(dispatcher, state, nil, false)
   end
 
@@ -3432,7 +3584,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       tick_buffs_end_turn(state.stats[current])
       state.active_user_id = next_player
       tick_cooldowns(state.stats[next_player])
-      state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
       if state.mode == "pve" then
         if state.active_user_id == state.bot_user_id then
           state.bot_turn_pending = true
@@ -3456,7 +3608,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       tick_buffs_end_turn(state.stats[actor_id])
       state.active_user_id = opp_id
       tick_cooldowns(state.stats[opp_id])
-      state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
       state.bot_turn_pending = false
       state.bot_turn_ready_tick = 0
       broadcast_sync(dispatcher, state, nil, false)
@@ -3480,7 +3632,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         tick_buffs_end_turn(state.stats[actor_id])
         state.active_user_id = opp_id
         tick_cooldowns(state.stats[opp_id])
-        state.turn_deadline_tick = tick + TURN_SECONDS * TICK_RATE
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
         broadcast_sync(dispatcher, state, nil, false)
@@ -3534,6 +3686,7 @@ nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")
+nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
 nk.register_rpc(duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
 nk.register_rpc(duel_character_get, "duel_character_get")
 nk.register_rpc(duel_character_item_move, "duel_character_item_move")

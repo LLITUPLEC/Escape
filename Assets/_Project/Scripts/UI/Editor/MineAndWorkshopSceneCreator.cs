@@ -108,7 +108,7 @@ namespace Project.UI.Editor
                     Vector2.zero, Vector2.one);
                 var le = row.gameObject.AddComponent<LayoutElement>();
                 le.minHeight = 110f;
-                le.preferredHeight = 110f;
+                le.preferredHeight = 500f;
 
                 CreateText(row, "Label", floor + " этаж", 22, Color.white, TextAnchor.UpperLeft,
                     new Vector2(0.03f, 0.60f), new Vector2(0.22f, 0.96f));
@@ -122,14 +122,9 @@ namespace Project.UI.Editor
                 CreateText(silhouette, "SilhouetteLabel", "?", 28, new Color(0.75f, 0.75f, 0.82f), TextAnchor.MiddleCenter,
                     Vector2.zero, Vector2.one);
 
-                var rewards = CreatePanel(row, "RewardsPanel", new Color(0.10f, 0.10f, 0.16f, 0.85f),
-                    new Vector2(0.63f, 0.14f), new Vector2(0.79f, 0.86f));
-                CreateText(rewards, "RewardText", "XP 0\nG 0\nOre 0", 14, new Color(0.95f, 0.90f, 0.70f),
-                    TextAnchor.MiddleLeft, new Vector2(0.10f, 0.05f), new Vector2(0.90f, 0.95f));
-
                 CreateText(row, "StateText", floor == 1 ? "Монстр готов" : "Барьер",
                     18, new Color(0.96f, 0.78f, 0.45f), TextAnchor.MiddleCenter,
-                    new Vector2(0.81f, 0.14f), new Vector2(0.97f, 0.86f));
+                    new Vector2(0.63f, 0.14f), new Vector2(0.97f, 0.86f));
             }
 
             CreateSceneLoadButton(bg, "BackButton", "Назад", "MainMenu",
