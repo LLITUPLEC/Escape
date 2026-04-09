@@ -1,0 +1,1182 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Nakama;
+using Project.Character;
+using Project.Match3;
+using Project.Nakama;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+namespace Project.UI
+{
+    [DisallowMultipleComponent]
+    public sealed class MineSceneController : MonoBehaviour
+    {
+        [SerializeField] private MonsterCatalog monsterCatalog;
+        [SerializeField] private MonsterFrameCatalog monsterFrameCatalog;
+        private const string RpcPveCatalogGet = "duel_match3_pve_catalog_get";
+        private const string RpcMineSummon = "duel_mine_summon";
+        private const string RpcMineBarrierUnlock = "duel_mine_barrier_unlock";
+        private const int SummonEnergyCost = 5;
+        private const int SummonGoldCost = 50;
+        private const float CountdownTickSeconds = 1f;
+        private const float ServerRefreshIntervalSeconds = 15f;
+        private const float ResourcesRefreshIntervalSeconds = 5f;
+        private const string DuelMatch3SceneName = "DuelMatch3";
+
+        private readonly Dictionary<int, FloorRowRefs> _rows = new();
+        private readonly Dictionary<int, Button> _liftButtons = new();
+        private readonly Dictionary<int, PveBotInfo> _botByFloor = new();
+        private readonly Dictionary<int, MineFloorInfo> _mineByFloor = new();
+        private string _difficulty = "easy";
+        private CancellationTokenSource _cts;
+        private ScrollRect _cardsScroll;
+
+        private GameObject _modalRoot;
+        private Text _modalTitle;
+        private Text _modalInfo;
+        private Text _modalRewards;
+        private Button _modalFightButton;
+        private Button _modalDismissButton;
+        private Button _modalCloseButton;
+        private Image _modalAffixIcon;
+        private Text _modalAffixIconText;
+        private Text _modalAffixText;
+        private int _selectedFloor;
+        private bool _modalCanSummon;
+        private bool _modalCanUnlock;
+        private bool _refreshInFlight;
+        private bool _summonInFlight;
+        private bool _unlockInFlight;
+        private float _countdownAccumulator;
+        private float _serverRefreshAccumulator;
+        private float _resourcesRefreshAccumulator;
+        private ProgressionInfo _progression;
+        private PlayerResourcesRpcResponse _lastResources;
+        private Transform _headerResourcesRoot;
+        private readonly ResourceValueBinding _energyBinding = new("Energy");
+        private readonly ResourceValueBinding _oreBinding = new("ore");
+        private readonly ResourceValueBinding _goldBinding = new("Gold");
+        private readonly ResourceValueBinding _ingotsBinding = new("ingots");
+        private readonly ResourceValueBinding _matterBinding = new("matter");
+        private readonly ResourceValueBinding _keysBinding = new("keys");
+        private static readonly Dictionary<int, BarrierRequirement> BarrierRequirements = new()
+        {
+            [2] = new BarrierRequirement { ore = 100 },
+            [3] = new BarrierRequirement { ore = 350 },
+            [4] = new BarrierRequirement { ore = 800 },
+            [5] = new BarrierRequirement { ore = 1500, key_id = "miner_key", key_amount = 1, gold = 2000 },
+            [6] = new BarrierRequirement { ore = 2500 },
+            [7] = new BarrierRequirement { ore = 3800 },
+            [8] = new BarrierRequirement { ore = 5500 },
+            [9] = new BarrierRequirement { ore = 7500, key_id = "dark_key", key_amount = 1, gold = 10000 },
+            [10] = new BarrierRequirement { ore = 10000 },
+            [11] = new BarrierRequirement { ore = 13000 },
+            [12] = new BarrierRequirement { ore = 17000, matter = 500, gold = 25000 },
+        };
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoInstall()
+        {
+            var scene = SceneManager.GetActiveScene();
+            if (!string.Equals(scene.name, "MineScene", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (FindFirstObjectByType<MineSceneController>(FindObjectsInactive.Include) != null)
+                return;
+
+            var go = new GameObject("MineSceneController");
+            go.AddComponent<MineSceneController>();
+        }
+
+        private void Awake()
+        {
+            _cardsScroll = FindFirstObjectByType<ScrollRect>(FindObjectsInactive.Include);
+            CacheRows();
+            EnsureModal();
+            EnsureHeaderResources();
+        }
+
+        private void OnEnable()
+        {
+            _cts = new CancellationTokenSource();
+            _ = RefreshAsync(_cts.Token);
+            _ = RefreshResourcesAsync(_cts.Token);
+        }
+
+        private void OnDisable()
+        {
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = null;
+            _refreshInFlight = false;
+            _summonInFlight = false;
+            _unlockInFlight = false;
+            _countdownAccumulator = 0f;
+            _serverRefreshAccumulator = 0f;
+            _resourcesRefreshAccumulator = 0f;
+        }
+
+        private void Update()
+        {
+            if (_rows.Count == 0 || _cts == null || _cts.IsCancellationRequested)
+                return;
+
+            var dt = Mathf.Max(0f, Time.unscaledDeltaTime);
+            _countdownAccumulator += dt;
+            _serverRefreshAccumulator += dt;
+            _resourcesRefreshAccumulator += dt;
+
+            var changed = false;
+            while (_countdownAccumulator >= CountdownTickSeconds)
+            {
+                _countdownAccumulator -= CountdownTickSeconds;
+                foreach (var kv in _mineByFloor)
+                {
+                    var floorInfo = kv.Value;
+                    if (floorInfo == null || floorInfo.respawn_left_seconds <= 0) continue;
+                    floorInfo.respawn_left_seconds = Mathf.Max(0, floorInfo.respawn_left_seconds - 1);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                ApplyRows();
+                if (_modalRoot != null && _modalRoot.activeSelf)
+                    OpenMonsterModal(_selectedFloor);
+            }
+
+            if (_serverRefreshAccumulator >= ServerRefreshIntervalSeconds && !_refreshInFlight)
+            {
+                _serverRefreshAccumulator = 0f;
+                _ = RefreshAsync(_cts.Token);
+            }
+
+            if (_resourcesRefreshAccumulator >= ResourcesRefreshIntervalSeconds)
+            {
+                _resourcesRefreshAccumulator = 0f;
+                _ = RefreshResourcesAsync(_cts.Token);
+            }
+        }
+
+        private async Task RefreshAsync(CancellationToken ct)
+        {
+            if (_refreshInFlight) return;
+            _refreshInFlight = true;
+            try
+            {
+                if (NakamaBootstrap.Instance == null) return;
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcPveCatalogGet, "{}", canceller: ct);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(payload)) return;
+
+                var model = JsonUtility.FromJson<MineCatalogResponse>(payload);
+                if (model == null || !model.ok) return;
+                _progression = model.progression;
+
+                _botByFloor.Clear();
+                _mineByFloor.Clear();
+                if (model.bots != null)
+                {
+                    foreach (var b in model.bots)
+                    {
+                        if (b == null) continue;
+                        _botByFloor[Mathf.Max(1, b.floor)] = b;
+                    }
+                }
+                if (model.mine_floors != null)
+                {
+                    foreach (var m in model.mine_floors)
+                    {
+                        if (m == null) continue;
+                        _mineByFloor[Mathf.Max(1, m.floor)] = m;
+                    }
+                }
+                _difficulty = model.mine_difficulty;
+                if (string.IsNullOrWhiteSpace(_difficulty))
+                    _difficulty = model.progression != null && model.progression.mine != null ? model.progression.mine.current_difficulty : "easy";
+                if (string.IsNullOrWhiteSpace(_difficulty))
+                    _difficulty = "easy";
+
+                ApplyRows();
+                ApplyResourcesFallbackFromProgression();
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Refresh failed: " + e.Message);
+            }
+            finally
+            {
+                _refreshInFlight = false;
+            }
+        }
+
+        private void CacheRows()
+        {
+            _rows.Clear();
+            _liftButtons.Clear();
+            for (var floor = 1; floor <= 12; floor++)
+            {
+                var rowGo = GameObject.Find("Floor_" + floor);
+                if (rowGo == null) continue;
+
+                var refs = new FloorRowRefs();
+                refs.root = rowGo.transform;
+                refs.stateText = FindTextByName(refs.root, "StateText") ?? FindTextByName(refs.root, "Barrier");
+                refs.rewardText = FindTextByName(refs.root, "RewardText");
+                refs.monsterButton = EnsureMonsterButton(refs.root, floor);
+                refs.monsterButton.onClick.RemoveAllListeners();
+                var f = floor;
+                refs.monsterButton.onClick.AddListener(() => OpenMonsterModal(f));
+                refs.root.SetSiblingIndex(floor - 1); // 1-й этаж вверху, глубже — ниже.
+                _rows[floor] = refs;
+
+                var lift = GameObject.Find("LiftFloor_" + floor);
+                if (lift != null)
+                {
+                    var btn = lift.GetComponent<Button>();
+                    if (btn != null)
+                    {
+                        btn.onClick.RemoveAllListeners();
+                        btn.onClick.AddListener(() => FocusFloor(f));
+                        _liftButtons[floor] = btn;
+                    }
+                }
+            }
+        }
+
+        private Button EnsureMonsterButton(Transform rowRoot, int floor)
+        {
+            var existing = rowRoot.Find("MonsterButton");
+            if (existing != null)
+                return existing.GetComponent<Button>() ?? existing.gameObject.AddComponent<Button>();
+
+            var go = new GameObject("MonsterButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(rowRoot, false);
+            rt.anchorMin = new Vector2(0.36f, 0.15f);
+            rt.anchorMax = new Vector2(0.64f, 0.85f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            go.GetComponent<Image>().color = new Color(0.50f, 0.20f, 0.20f, 0.95f);
+            var btn = go.GetComponent<Button>();
+
+            var txtGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var txtRt = txtGo.GetComponent<RectTransform>();
+            txtRt.SetParent(go.transform, false);
+            txtRt.anchorMin = Vector2.zero;
+            txtRt.anchorMax = Vector2.one;
+            txtRt.offsetMin = Vector2.zero;
+            txtRt.offsetMax = Vector2.zero;
+            var txt = txtGo.GetComponent<Text>();
+            txt.font = GetBuiltinFont();
+            txt.fontSize = 16;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = Color.white;
+            txt.text = "БОТ";
+            txt.raycastTarget = false;
+
+            return btn;
+        }
+
+        private void ApplyRows()
+        {
+            foreach (var kv in _rows)
+            {
+                var floor = kv.Key;
+                var refs = kv.Value;
+                _mineByFloor.TryGetValue(floor, out var mf);
+                var unlocked = mf != null && mf.unlocked;
+                var respawn = mf != null ? Mathf.Max(0, mf.respawn_left_seconds) : 0;
+
+                if (!unlocked)
+                {
+                    if (refs.stateText != null) refs.stateText.text = "Барьер";
+                    SetButtonLabel(refs.monsterButton, "🔒");
+                    refs.monsterButton.interactable = true;
+                    if (refs.rewardText != null) refs.rewardText.text = "XP 0\nG 0\nOre 0";
+                    continue;
+                }
+
+                if (respawn > 0)
+                {
+                    if (refs.stateText != null) refs.stateText.text = "До появления: " + FormatSeconds(respawn);
+                    SetButtonLabel(refs.monsterButton, "КД");
+                    refs.monsterButton.interactable = true;
+                }
+                else
+                {
+                    if (refs.stateText != null) refs.stateText.text = "Монстр готов";
+                    SetButtonLabel(refs.monsterButton, "БОТ");
+                    refs.monsterButton.interactable = true;
+                }
+
+                _botByFloor.TryGetValue(floor, out var bot);
+                if (refs.rewardText != null)
+                {
+                    var rx = bot != null ? bot.reward_xp : 0;
+                    var rg = bot != null ? bot.reward_gold : 0;
+                    var ro = bot != null ? bot.reward_ore : 0;
+                    refs.rewardText.text = $"XP {rx}\nG {rg}\nOre {ro}";
+                }
+                ApplyMonsterVisual(refs, bot, mf);
+            }
+        }
+
+        private void ApplyMonsterVisual(FloorRowRefs refs, PveBotInfo bot, MineFloorInfo floorInfo)
+        {
+            if (refs == null || refs.monsterButton == null) return;
+
+            var frame = refs.monsterButton.GetComponent<Image>();
+            var icon = FindImageByName(refs.monsterButton.transform, "Icon");
+            if (icon == null) icon = EnsureIconImage(refs.monsterButton.transform);
+
+            var def = ResolveMonsterDefinition(bot);
+            if (icon != null)
+            {
+                icon.sprite = def != null ? def.Icon : null;
+                icon.color = icon.sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            }
+
+            if (frame != null)
+            {
+                var isBoss = floorInfo != null && floorInfo.is_boss;
+                var frameSprite = monsterFrameCatalog != null
+                    ? monsterFrameCatalog.GetFrame(_difficulty, isBoss)
+                    : (def != null ? def.GetFrame(_difficulty, isBoss) : null);
+                frame.sprite = frameSprite;
+                frame.type = frameSprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            }
+        }
+
+        private MonsterDefinition ResolveMonsterDefinition(PveBotInfo bot)
+        {
+            if (monsterCatalog == null || bot == null) return null;
+            var byId = monsterCatalog.GetByBotId(bot.id);
+            if (byId != null) return byId;
+            return monsterCatalog.GetByFloor(bot.floor);
+        }
+
+        private void FocusFloor(int floor)
+        {
+            if (!_rows.ContainsKey(floor))
+                return;
+
+            if (_cardsScroll != null && _cardsScroll.content != null)
+            {
+                var normalized = 1f - Mathf.Clamp01((floor - 1f) / 11f);
+                _cardsScroll.verticalNormalizedPosition = normalized;
+            }
+
+            OpenMonsterModal(floor);
+        }
+
+        private void EnsureModal()
+        {
+            if (_modalRoot != null) return;
+
+            var bg = GameObject.Find("MineBackground");
+            var parent = bg != null ? bg.transform : FindFirstObjectByType<Canvas>()?.transform;
+            if (parent == null) return;
+
+            _modalRoot = new GameObject("MonsterModal", typeof(RectTransform), typeof(Image));
+            var rt = _modalRoot.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = new Vector2(0.25f, 0.20f);
+            rt.anchorMax = new Vector2(0.75f, 0.80f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            _modalRoot.GetComponent<Image>().color = new Color(0.08f, 0.08f, 0.12f, 0.98f);
+
+            _modalTitle = CreateText(_modalRoot.transform, "Title", "Монстр", 32, TextAnchor.MiddleCenter,
+                new Vector2(0.04f, 0.84f), new Vector2(0.96f, 0.98f));
+            _modalCloseButton = CreateButton(_modalRoot.transform, "CloseButton", "X",
+                new Vector2(0.90f, 0.86f), new Vector2(0.98f, 0.96f));
+            _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
+            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 18, TextAnchor.UpperLeft,
+                new Vector2(0.06f, 0.46f), new Vector2(0.48f, 0.82f));
+            var affixIconGo = new GameObject("AffixIcon", typeof(RectTransform), typeof(Image));
+            var affixIconRt = affixIconGo.GetComponent<RectTransform>();
+            affixIconRt.SetParent(_modalRoot.transform, false);
+            affixIconRt.anchorMin = new Vector2(0.54f, 0.54f);
+            affixIconRt.anchorMax = new Vector2(0.66f, 0.72f);
+            affixIconRt.offsetMin = Vector2.zero;
+            affixIconRt.offsetMax = Vector2.zero;
+            _modalAffixIcon = affixIconGo.GetComponent<Image>();
+            _modalAffixIcon.color = new Color(0.25f, 0.25f, 0.35f, 0.96f);
+            _modalAffixIconText = CreateText(affixIconGo.transform, "Glyph", "?", 22, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one);
+            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 16, TextAnchor.UpperLeft,
+                new Vector2(0.68f, 0.46f), new Vector2(0.94f, 0.82f));
+            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 16, TextAnchor.UpperLeft,
+                new Vector2(0.06f, 0.22f), new Vector2(0.48f, 0.44f));
+
+            _modalFightButton = CreateButton(_modalRoot.transform, "FightButton", "В бой",
+                new Vector2(0.08f, 0.06f), new Vector2(0.46f, 0.18f));
+            _modalDismissButton = CreateButton(_modalRoot.transform, "DismissButton", "Прогнать",
+                new Vector2(0.54f, 0.06f), new Vector2(0.92f, 0.18f));
+            _modalFightButton.onClick.AddListener(OnFightClicked);
+            _modalDismissButton.onClick.AddListener(HandleSecondaryButtonClicked);
+            _modalRoot.SetActive(false);
+        }
+
+        private void OpenMonsterModal(int floor)
+        {
+            if (_modalRoot == null) return;
+            _selectedFloor = floor;
+            _mineByFloor.TryGetValue(floor, out var mine);
+            _botByFloor.TryGetValue(floor, out var bot);
+
+            var unlocked = mine != null && mine.unlocked;
+            var respawn = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0;
+            var affix = mine != null ? mine.affix : "";
+            ApplyAffixVisual(affix);
+
+            if (!unlocked)
+            {
+                var req = GetBarrierRequirement(floor);
+                _modalTitle.text = $"Барьер этажа {floor}";
+                _modalInfo.text = BuildBarrierInfoText(floor, req);
+                _modalRewards.text = req != null
+                    ? "Требуется:\n" + BuildBarrierRequirementLine(req)
+                    : "Требования не найдены.";
+                _modalCanUnlock = req != null;
+                _modalCanSummon = false;
+                _modalFightButton.interactable = false;
+                SetButtonLabel(_modalDismissButton, req != null ? "Разбить" : "Закрыть");
+                _modalDismissButton.interactable = true;
+                _modalRoot.SetActive(true);
+                return;
+            }
+
+            var name = bot != null ? bot.name : ("Монстр " + floor);
+            var hp = 150 + Mathf.Max(0, bot != null ? bot.hp_bonus : 0);
+            var dmg = bot != null ? bot.base_damage : 0;
+            var armor = bot != null ? bot.base_armor : 0;
+            var crit = bot != null ? bot.base_crit : 0f;
+            var mana = bot != null ? bot.start_mana : 0;
+
+            _modalTitle.text = $"{name} (этаж {floor})";
+            var sb = new StringBuilder();
+            sb.AppendLine($"HP: {hp}");
+            sb.AppendLine($"Урон: {dmg} | Броня: {armor}");
+            sb.AppendLine($"Крит: {Mathf.RoundToInt(crit * 100f)}% | Мана: {mana}");
+            if (respawn > 0)
+                sb.AppendLine($"Появится через: {FormatSeconds(respawn)}");
+            _modalInfo.text = sb.ToString();
+
+            _modalRewards.text = bot != null
+                ? $"Награды:\nXP +{bot.reward_xp}\nЗолото +{bot.reward_gold}\nРуда +{bot.reward_ore}"
+                : "Награды: —";
+
+            _modalCanUnlock = false;
+            _modalCanSummon = respawn > 0 && bot != null;
+            _modalFightButton.interactable = respawn <= 0 && bot != null;
+            SetButtonLabel(_modalDismissButton, _modalCanSummon
+                ? $"Призвать ({SummonEnergyCost} эн / {SummonGoldCost} зол)"
+                : "Прогнать");
+            _modalDismissButton.interactable = true;
+            _modalRoot.SetActive(true);
+        }
+
+        private async void OnFightClicked()
+        {
+            _botByFloor.TryGetValue(_selectedFloor, out var bot);
+            if (bot == null) return;
+
+            try
+            {
+                if (_cts != null && !_cts.IsCancellationRequested)
+                {
+                    var resources = _lastResources ?? await PlayerResourcesService.GetAsync(_cts.Token);
+                    if (resources != null && resources.ok)
+                    {
+                        _lastResources = resources;
+                        ApplyHeaderResourceValues(resources);
+                        if (resources.energy < 15)
+                        {
+                            if (_modalInfo != null)
+                                _modalInfo.text += $"\n\nНе хватает энергии: нужно 15, доступно {resources.energy}.";
+                            return;
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch
+            {
+                // if precheck fails, allow server-authoritative check below
+            }
+
+            Match3LaunchContext.SetSoloMine(bot.id, _selectedFloor, _difficulty, true);
+            SceneManager.LoadScene(DuelMatch3SceneName);
+        }
+
+        private async void HandleSecondaryButtonClicked()
+        {
+            if (_modalCanUnlock)
+            {
+                if (_unlockInFlight) return;
+                await UnlockSelectedFloorAsync();
+                return;
+            }
+
+            if (!_modalCanSummon)
+            {
+                if (_modalRoot != null)
+                    _modalRoot.SetActive(false);
+                return;
+            }
+
+            if (_summonInFlight)
+                return;
+
+            await SummonSelectedFloorAsync();
+        }
+
+        private async Task SummonSelectedFloorAsync()
+        {
+            if (NakamaBootstrap.Instance == null || _cts == null || _cts.IsCancellationRequested)
+                return;
+
+            _summonInFlight = true;
+            _modalDismissButton.interactable = false;
+
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var request = new SummonRequest
+                {
+                    floor = _selectedFloor,
+                    difficulty = _difficulty,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch()
+                };
+                var reqJson = JsonUtility.ToJson(request);
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMineSummon, reqJson, canceller: _cts.Token);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(payload))
+                    return;
+
+                var model = JsonUtility.FromJson<SummonResponse>(payload);
+                if (model == null)
+                    return;
+
+                if (!model.ok)
+                {
+                    if (_modalInfo != null)
+                        _modalInfo.text += "\n\n" + DescribeSummonError(model);
+                    return;
+                }
+
+                if (_mineByFloor.TryGetValue(_selectedFloor, out var mine) && mine != null)
+                {
+                    mine.respawn_left_seconds = 0;
+                }
+
+                ApplyRows();
+                OpenMonsterModal(_selectedFloor);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Summon failed: " + e.Message);
+            }
+            finally
+            {
+                _summonInFlight = false;
+                if (_modalDismissButton != null)
+                    _modalDismissButton.interactable = true;
+            }
+        }
+
+        private static string DescribeSummonError(SummonResponse response)
+        {
+            if (response == null) return "Не удалось призвать монстра.";
+            switch (response.err)
+            {
+                case "not_enough_energy":
+                    return $"Не хватает энергии: нужно {response.required}, доступно {response.energy}.";
+                case "not_enough_gold":
+                    return $"Не хватает золота: нужно {response.required}, доступно {response.gold}.";
+                case "barrier_locked":
+                    return "Этаж пока закрыт барьером.";
+                default:
+                    return "Не удалось призвать монстра.";
+            }
+        }
+
+        private async Task UnlockSelectedFloorAsync()
+        {
+            if (NakamaBootstrap.Instance == null || _cts == null || _cts.IsCancellationRequested)
+                return;
+
+            _unlockInFlight = true;
+            _modalDismissButton.interactable = false;
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var request = new BarrierUnlockRequest
+                {
+                    floor = _selectedFloor,
+                    difficulty = _difficulty,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch()
+                };
+                var reqJson = JsonUtility.ToJson(request);
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMineBarrierUnlock, reqJson, canceller: _cts.Token);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(payload))
+                    return;
+
+                var model = JsonUtility.FromJson<BarrierUnlockResponse>(payload);
+                if (model == null)
+                    return;
+
+                if (!model.ok)
+                {
+                    if (_modalInfo != null)
+                        _modalInfo.text += "\n\n" + DescribeUnlockError(model);
+                    return;
+                }
+
+                await RefreshAsync(_cts.Token);
+                await RefreshResourcesAsync(_cts.Token);
+                OpenMonsterModal(_selectedFloor);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Unlock failed: " + e.Message);
+            }
+            finally
+            {
+                _unlockInFlight = false;
+                if (_modalDismissButton != null)
+                    _modalDismissButton.interactable = true;
+            }
+        }
+
+        private static string DescribeUnlockError(BarrierUnlockResponse response)
+        {
+            if (response == null) return "Не удалось разбить барьер.";
+            switch (response.err)
+            {
+                case "level_too_low":
+                    return $"Нужен уровень {response.required_level}.";
+                case "prev_floor_locked":
+                    return "Сначала разбейте барьер на предыдущем этаже.";
+                case "not_enough_ore":
+                    return $"Не хватает руды: нужно {response.required}, есть {response.ore}.";
+                case "not_enough_gold":
+                    return $"Не хватает золота: нужно {response.required}, есть {response.gold}.";
+                case "not_enough_matter":
+                    return $"Не хватает материи: нужно {response.required}, есть {response.matter}.";
+                case "not_enough_key_item":
+                    return $"Не хватает ключа {response.key_id}: нужно {response.required}, есть {response.have}.";
+                default:
+                    return "Не удалось разбить барьер.";
+            }
+        }
+
+        private async Task RefreshResourcesAsync(CancellationToken ct)
+        {
+            try
+            {
+                var model = await PlayerResourcesService.GetAsync(ct);
+                if (model == null || !model.ok)
+                    return;
+                _lastResources = model;
+                ApplyHeaderResourceValues(model);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Resource refresh failed: " + e.Message);
+            }
+        }
+
+        private void ApplyResourcesFallbackFromProgression()
+        {
+            if (_lastResources != null || _progression == null)
+                return;
+
+            _lastResources = new PlayerResourcesRpcResponse
+            {
+                ok = true,
+                energy = _progression.energy,
+                energy_max = _progression.energy_max,
+                ore = _progression.ore,
+                gold = _progression.gold,
+                ingots = _progression.ingots,
+                matter = _progression.matter,
+                keys = (_progression.key_items != null ? _progression.key_items.miner_key : 0) +
+                       (_progression.key_items != null ? _progression.key_items.dark_key : 0),
+            };
+            ApplyHeaderResourceValues(_lastResources);
+        }
+
+        private void EnsureHeaderResources()
+        {
+            if (_headerResourcesRoot == null)
+            {
+                _headerResourcesRoot = FindHeaderResourcesRoot();
+                if (_headerResourcesRoot == null)
+                    _headerResourcesRoot = CreateHeaderResourcesRoot();
+            }
+
+            BindHeaderResource(_energyBinding, _headerResourcesRoot);
+            BindHeaderResource(_oreBinding, _headerResourcesRoot);
+            BindHeaderResource(_goldBinding, _headerResourcesRoot);
+            BindHeaderResource(_ingotsBinding, _headerResourcesRoot);
+            BindHeaderResource(_matterBinding, _headerResourcesRoot);
+            BindHeaderResource(_keysBinding, _headerResourcesRoot);
+        }
+
+        private static Transform FindHeaderResourcesRoot()
+        {
+            var go = GameObject.Find("HeaderResources");
+            return go != null ? go.transform : null;
+        }
+
+        private Transform CreateHeaderResourcesRoot()
+        {
+            var bg = GameObject.Find("MineBackground");
+            var parent = bg != null ? bg.transform : FindFirstObjectByType<Canvas>()?.transform;
+            if (parent == null) return null;
+
+            var rootGo = new GameObject("HeaderResources", typeof(RectTransform), typeof(Image));
+            var rt = rootGo.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = new Vector2(0.20f, 0.90f);
+            rt.anchorMax = new Vector2(0.96f, 0.985f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            rootGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.12f, 0.92f);
+
+            var entries = new[] { "Energy", "ore", "Gold", "ingots", "matter", "keys" };
+            var width = 1f / entries.Length;
+            for (var i = 0; i < entries.Length; i++)
+            {
+                var entry = new GameObject(entries[i], typeof(RectTransform));
+                var entryRt = entry.GetComponent<RectTransform>();
+                entryRt.SetParent(rt, false);
+                entryRt.anchorMin = new Vector2(i * width, 0f);
+                entryRt.anchorMax = new Vector2((i + 1) * width, 1f);
+                entryRt.offsetMin = new Vector2(2f, 2f);
+                entryRt.offsetMax = new Vector2(-2f, -2f);
+
+                var label = CreateText(entryRt, "Label", entries[i], 12, TextAnchor.UpperCenter, new Vector2(0f, 0.48f), new Vector2(1f, 1f));
+                label.color = new Color(0.82f, 0.88f, 0.98f);
+                var value = CreateText(entryRt, "Value", "—", 15, TextAnchor.LowerCenter, new Vector2(0f, 0f), new Vector2(1f, 0.58f));
+                value.color = Color.white;
+            }
+
+            return rt;
+        }
+
+        private void ApplyHeaderResourceValues(PlayerResourcesRpcResponse model)
+        {
+            if (model == null) return;
+            SetHeaderResourceText(_energyBinding, $"{Mathf.Max(0, model.energy)}/{Mathf.Max(0, model.energy_max)}");
+            SetHeaderResourceText(_oreBinding, FormatCompact(model.ore));
+            SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
+            SetHeaderResourceText(_ingotsBinding, FormatCompact(model.ingots));
+            SetHeaderResourceText(_matterBinding, FormatCompact(model.matter));
+            SetHeaderResourceText(_keysBinding, FormatCompact(model.keys));
+        }
+
+        private static void BindHeaderResource(ResourceValueBinding binding, Transform headerRoot)
+        {
+            if (binding == null || headerRoot == null || binding.IsBound) return;
+            var entryRoot = FindChildByName(headerRoot, binding.entryName);
+            if (entryRoot == null) return;
+            var valueRoot = FindChildByName(entryRoot, "Value") ?? entryRoot;
+            binding.uiText = FindAnyTextOnOrUnder(valueRoot);
+        }
+
+        private static void SetHeaderResourceText(ResourceValueBinding binding, string value)
+        {
+            if (binding?.uiText != null)
+                binding.uiText.text = value;
+        }
+
+        private static Transform FindChildByName(Transform root, string name)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(name)) return null;
+            var all = root.GetComponentsInChildren<Transform>(true);
+            foreach (var t in all)
+                if (t != null && string.Equals(t.gameObject.name, name, StringComparison.OrdinalIgnoreCase))
+                    return t;
+            return null;
+        }
+
+        private static Text FindAnyTextOnOrUnder(Transform root)
+        {
+            if (root == null) return null;
+            var self = root.GetComponent<Text>();
+            return self != null ? self : root.GetComponentInChildren<Text>(true);
+        }
+
+        private static string FormatCompact(long value)
+        {
+            var safe = Math.Max(0L, value);
+            if (safe < 1000) return safe.ToString();
+            if (safe < 1000000) return (safe / 1000f).ToString("0.#") + "K";
+            return (safe / 1000000f).ToString("0.#") + "M";
+        }
+
+        private BarrierRequirement GetBarrierRequirement(int floor)
+        {
+            BarrierRequirements.TryGetValue(Mathf.Clamp(floor, 1, 12), out var req);
+            return req;
+        }
+
+        private string BuildBarrierInfoText(int floor, BarrierRequirement req)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Этаж {floor} закрыт барьером.");
+            if (_progression != null)
+                sb.AppendLine($"Ваш уровень: {_progression.level}");
+            if (_lastResources != null)
+            {
+                sb.AppendLine($"Ваши ресурсы: руда {_lastResources.ore}, золото {_lastResources.gold}, материя {_lastResources.matter}, ключи {_lastResources.keys}");
+            }
+            if (req != null)
+            {
+                sb.AppendLine("Нужно для разбития:");
+                sb.AppendLine(BuildBarrierRequirementLine(req));
+            }
+            return sb.ToString();
+        }
+
+        private static string BuildBarrierRequirementLine(BarrierRequirement req)
+        {
+            if (req == null) return "—";
+            var sb = new StringBuilder();
+            if (req.ore > 0) sb.Append($"Руда {req.ore}  ");
+            if (req.gold > 0) sb.Append($"Золото {req.gold}  ");
+            if (req.matter > 0) sb.Append($"Материя {req.matter}  ");
+            if (!string.IsNullOrWhiteSpace(req.key_id) && req.key_amount > 0)
+                sb.Append($"Ключ {req.key_id} x{req.key_amount}");
+            return sb.ToString().Trim();
+        }
+
+        private void ApplyAffixVisual(string affix)
+        {
+            var (title, description) = GetAffixDisplay(affix);
+            if (_modalAffixText != null)
+                _modalAffixText.text = string.IsNullOrWhiteSpace(title) ? "Аффикс: —" : $"Аффикс: {title}\n{description}";
+
+            if (_modalAffixIcon != null)
+            {
+                var has = !string.IsNullOrWhiteSpace(title);
+                _modalAffixIcon.color = has ? ColorFromString(affix) : new Color(0.22f, 0.22f, 0.28f, 0.96f);
+            }
+
+            if (_modalAffixIconText != null)
+                _modalAffixIconText.text = string.IsNullOrWhiteSpace(title) ? "?" : title.Substring(0, 1).ToUpperInvariant();
+        }
+
+        private static (string title, string description) GetAffixDisplay(string affix)
+        {
+            switch (tostring(affix))
+            {
+                case "acid": return ("Кислотный", "В конце каждого твоего хода теряешь 3% изначального ХП.");
+                case "energy_block": return ("Энергоблок", "Черепа не наносят урон и дают +5 урона за каждый уничтоженный череп.");
+                case "regeneration": return ("Регенерация", "Монстр лечит 3% ХП каждый свой ход.");
+                case "fragility": return ("Хрупкость", "У монстра вдвое меньше ХП, но +50 маны и +35% крита.");
+                case "stone_skin": return ("Каменная кожа", "Монстр получает +15 брони каждый третий свой ход.");
+                case "mana_vampire": return ("Мана-вампир", "Каждый уничтоженный анх даёт противнику 1 ману.");
+                case "frozen": return ("Ледяной", "Способности стоят на 10 маны дороже.");
+                case "monster_rage": return ("Ярость монстра", "Каждый уничтоженный монстром череп даёт ему +2 урона до конца боя.");
+                case "instability": return ("Нестабильность", "В начале каждого твоего хода камни на поле перемешиваются.");
+                default: return (string.Empty, string.Empty);
+            }
+        }
+
+        private static string tostring(string value) => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
+
+        private static Color ColorFromString(string value)
+        {
+            var s = tostring(value);
+            if (s.Length == 0) return new Color(0.22f, 0.22f, 0.28f, 0.96f);
+            var hash = s.GetHashCode();
+            var r = 0.35f + ((hash & 0xFF) / 255f) * 0.45f;
+            var g = 0.35f + (((hash >> 8) & 0xFF) / 255f) * 0.45f;
+            var b = 0.35f + (((hash >> 16) & 0xFF) / 255f) * 0.45f;
+            return new Color(r, g, b, 0.96f);
+        }
+
+        private static Text FindTextByName(Transform root, string name)
+        {
+            if (root == null) return null;
+            var all = root.GetComponentsInChildren<Text>(true);
+            foreach (var t in all)
+                if (t != null && t.gameObject.name == name)
+                    return t;
+            return null;
+        }
+
+        private static Image FindImageByName(Transform root, string name)
+        {
+            if (root == null) return null;
+            var all = root.GetComponentsInChildren<Image>(true);
+            foreach (var i in all)
+                if (i != null && i.gameObject.name == name)
+                    return i;
+            return null;
+        }
+
+        private static Image EnsureIconImage(Transform buttonRoot)
+        {
+            var go = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(buttonRoot, false);
+            rt.anchorMin = new Vector2(0.14f, 0.14f);
+            rt.anchorMax = new Vector2(0.86f, 0.86f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.color = new Color(1f, 1f, 1f, 0f);
+            return img;
+        }
+
+        private static void SetButtonLabel(Button btn, string value)
+        {
+            if (btn == null) return;
+            var t = btn.GetComponentInChildren<Text>(true);
+            if (t != null) t.text = value;
+        }
+
+        private static string FormatSeconds(int seconds)
+        {
+            var s = Mathf.Max(0, seconds);
+            var h = s / 3600;
+            var m = (s % 3600) / 60;
+            var sec = s % 60;
+            if (h > 0) return $"{h:D2}:{m:D2}:{sec:D2}";
+            return $"{m:D2}:{sec:D2}";
+        }
+
+        private static Text CreateText(Transform parent, string name, string value, int size, TextAnchor anchor, Vector2 aMin, Vector2 aMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = aMin;
+            rt.anchorMax = aMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var t = go.GetComponent<Text>();
+            t.font = GetBuiltinFont();
+            t.fontSize = size;
+            t.color = Color.white;
+            t.alignment = anchor;
+            t.text = value;
+            return t;
+        }
+
+        private static Button CreateButton(Transform parent, string name, string label, Vector2 aMin, Vector2 aMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = aMin;
+            rt.anchorMax = aMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            go.GetComponent<Image>().color = new Color(0.24f, 0.18f, 0.18f, 0.95f);
+            CreateText(go.transform, "Label", label, 22, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            return go.GetComponent<Button>();
+        }
+
+        private static Font GetBuiltinFont()
+        {
+            try
+            {
+                var f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (f != null) return f;
+            }
+            catch { }
+            try
+            {
+                return Resources.GetBuiltinResource<Font>("Arial.ttf");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [Serializable]
+        private sealed class MineCatalogResponse
+        {
+            public bool ok;
+            public PveBotInfo[] bots;
+            public MineFloorInfo[] mine_floors;
+            public ProgressionInfo progression;
+            public string mine_difficulty;
+            public string err;
+        }
+
+        [Serializable]
+        private sealed class ProgressionInfo
+        {
+            public int level;
+            public int gold;
+            public int ore;
+            public int ingots;
+            public int matter;
+            public int energy;
+            public int energy_max;
+            public KeyItemsInfo key_items;
+            public MineInfo mine;
+        }
+
+        [Serializable]
+        private sealed class KeyItemsInfo
+        {
+            public int miner_key;
+            public int dark_key;
+        }
+
+        [Serializable]
+        private sealed class SummonRequest
+        {
+            public int floor;
+            public string difficulty;
+            public long session_epoch;
+        }
+
+        [Serializable]
+        private sealed class SummonResponse
+        {
+            public bool ok;
+            public string err;
+            public int required;
+            public int energy;
+            public int gold;
+        }
+
+        [Serializable]
+        private sealed class BarrierUnlockRequest
+        {
+            public int floor;
+            public string difficulty;
+            public long session_epoch;
+        }
+
+        [Serializable]
+        private sealed class BarrierUnlockResponse
+        {
+            public bool ok;
+            public string err;
+            public int required;
+            public int required_level;
+            public int ore;
+            public int gold;
+            public int matter;
+            public int have;
+            public string key_id;
+        }
+
+        [Serializable]
+        private sealed class MineInfo
+        {
+            public string current_difficulty;
+        }
+
+        [Serializable]
+        private sealed class MineFloorInfo
+        {
+            public int floor;
+            public string bot_id;
+            public bool unlocked;
+            public int respawn_left_seconds;
+            public string affix;
+            public bool is_boss;
+        }
+
+        [Serializable]
+        private sealed class PveBotInfo
+        {
+            public string id;
+            public string name;
+            public int floor;
+            public int hp_bonus;
+            public int start_mana;
+            public int reward_xp;
+            public int reward_gold;
+            public int reward_ore;
+            public int base_damage;
+            public int base_armor;
+            public float base_crit;
+        }
+
+        private sealed class FloorRowRefs
+        {
+            public Transform root;
+            public Text stateText;
+            public Text rewardText;
+            public Button monsterButton;
+        }
+
+        [Serializable]
+        private sealed class BarrierRequirement
+        {
+            public int ore;
+            public int gold;
+            public int matter;
+            public string key_id;
+            public int key_amount;
+        }
+
+        private sealed class ResourceValueBinding
+        {
+            public readonly string entryName;
+            public Text uiText;
+
+            public ResourceValueBinding(string entryName)
+            {
+                this.entryName = entryName;
+            }
+
+            public bool IsBound => uiText != null;
+        }
+    }
+}

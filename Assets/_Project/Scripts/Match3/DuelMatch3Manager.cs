@@ -98,7 +98,8 @@ namespace Project.Match3
 
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
-        private const string DefaultPveBotId = "slime_1";
+        private const string DefaultPveBotId = "mine_1";
+        private const int FrozenAffixAbilityPenalty = 10;
 
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
@@ -158,6 +159,11 @@ namespace Project.Match3
         private bool _useLocalBotSimulation;
         private System.Random _botRandom;
         private Coroutine _botTurnRoutine;
+        private string _preferredSoloBotId;
+        private int _preferredSoloFloor;
+        private string _preferredSoloDifficulty;
+        private bool _autoStartPreferredSolo;
+        private string _activePveAffix = string.Empty;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -182,6 +188,9 @@ namespace Project.Match3
         private Button _pvePrevButton;
         private Button _pveNextButton;
         private Button _pveStartButton;
+        private TMP_Text _pveErrorToastText;
+        private CanvasGroup _pveErrorToastCanvasGroup;
+        private Coroutine _pveErrorToastRoutine;
         private List<PveBotInfo> _pveBots = new();
         private int _selectedPveBotIndex;
         private PveProgressInfo _pveProgress;
@@ -197,6 +206,7 @@ namespace Project.Match3
             _opStats = new PlayerStats();
             _launchMode = Match3LaunchContext.ConsumeMode();
             _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
+            Match3LaunchContext.ConsumeSoloMine(out _preferredSoloBotId, out _preferredSoloFloor, out _preferredSoloDifficulty, out _autoStartPreferredSolo);
             _useLocalBotSimulation = false;
             _botRandom = new System.Random(Environment.TickCount);
 
@@ -319,32 +329,62 @@ namespace Project.Match3
             _myUserId = NakamaBootstrap.Instance.Session.UserId;
             HookSocket(NakamaBootstrap.Instance.Socket);
             await LoadPveCatalogAsync(ct);
+            ApplyPreferredPveSelection();
             MainThreadDispatcher.Enqueue(() =>
             {
                 _searchingPanel?.Hide();
                 ShowPveSelector(true);
                 RefreshPveSelectorTexts();
+                if (_autoStartPreferredSolo)
+                    StartSelectedPveBot();
             });
+        }
+
+        private void ApplyPreferredPveSelection()
+        {
+            if (_pveBots == null || _pveBots.Count == 0) return;
+
+            if (!string.IsNullOrWhiteSpace(_preferredSoloDifficulty))
+            {
+                if (_pveProgress == null) _pveProgress = new PveProgressInfo();
+                if (_pveProgress.mine == null) _pveProgress.mine = new MineProgressInfo();
+                _pveProgress.mine.current_difficulty = _preferredSoloDifficulty;
+            }
+
+            var idx = -1;
+            if (!string.IsNullOrWhiteSpace(_preferredSoloBotId))
+                idx = _pveBots.FindIndex(x => x != null && x.id == _preferredSoloBotId);
+            if (idx < 0 && _preferredSoloFloor > 0)
+                idx = _pveBots.FindIndex(x => x != null && x.floor == _preferredSoloFloor);
+            if (idx >= 0)
+                _selectedPveBotIndex = idx;
         }
 
         private async Task StartSoloBotServerAsync(CancellationToken ct, string botId)
         {
             var safeBotId = string.IsNullOrWhiteSpace(botId) ? DefaultPveBotId : botId;
+            var bot = _pveBots != null ? _pveBots.Find(x => x != null && x.id == safeBotId) : null;
             var payload = JsonUtility.ToJson(new PveCreateRpcRequest
             {
                 bot_id = safeBotId,
+                floor = bot != null ? Mathf.Max(1, bot.floor) : 1,
+                difficulty = _pveProgress != null && _pveProgress.mine != null && !string.IsNullOrWhiteSpace(_pveProgress.mine.current_difficulty)
+                    ? _pveProgress.mine.current_difficulty
+                    : "easy",
                 session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
             });
             var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                NakamaBootstrap.Instance.Session, RpcMatch3PveCreate, payload);
+                NakamaBootstrap.Instance.Session, RpcMatch3PveCreate, payload, canceller: ct);
 
             var model = JsonUtility.FromJson<PveCreateRpcResponse>(rpc?.Payload ?? "");
             if (model == null || !model.ok || string.IsNullOrEmpty(model.match_id))
             {
                 var detail = model != null && !string.IsNullOrEmpty(model.err) ? model.err : "unknown";
-                Debug.LogWarning($"duel_match3_pve_create: ok={model?.ok} err={detail} payload={rpc?.Payload}");
-                throw new Exception($"pve_create_failed ({detail})");
+                throw new PveCreateFailedException(detail, model);
             }
+
+            _activePveAffix = string.IsNullOrWhiteSpace(model.affix) ? string.Empty : model.affix;
+            UpdateAffixHud();
 
             _opUserId = string.IsNullOrEmpty(model.bot_user_id) ? ("zz-bot-" + DefaultPveBotId) : model.bot_user_id;
             _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(model.match_id);
@@ -394,10 +434,11 @@ namespace Project.Match3
             if (_pveBotStatsText != null)
             {
                 _pveBotStatsText.text =
-                    $"Сложность: {bot.difficulty}\n" +
+                    $"Этаж: {Mathf.Max(1, bot.floor)} {(bot.is_boss ? "(босс)" : "")}\n" +
+                    $"Сложность: {(_pveProgress?.mine?.current_difficulty ?? "easy")}\n" +
                     $"HP бонус: +{bot.hp_bonus}\n" +
                     $"Старт. мана: {bot.start_mana}\n" +
-                    $"Награда: +{bot.reward_xp} XP, +{bot.reward_gold} золота";
+                    $"Награда: +{bot.reward_xp} XP, +{bot.reward_gold} золота, +{bot.reward_ore} руды";
             }
         }
 
@@ -426,11 +467,19 @@ namespace Project.Match3
                 var bot = _pveBots[Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1)];
                 await StartSoloBotServerAsync(_cts != null ? _cts.Token : CancellationToken.None, bot.id);
             }
+            catch (PveCreateFailedException e)
+            {
+                _searchingPanel?.Hide();
+                ShowPveSelector(true);
+                ShowPveCreateErrorToast(e);
+                if (_pveStartButton != null) _pveStartButton.interactable = true;
+            }
             catch (Exception e)
             {
                 Debug.LogException(e);
-                _searchingPanel?.Show("Не удалось создать PVE бой.\nПопробуйте ещё раз.");
+                _searchingPanel?.Hide();
                 ShowPveSelector(true);
+                ShowPveErrorToast("Не удалось создать PVE бой.\nПопробуйте ещё раз.");
                 if (_pveStartButton != null) _pveStartButton.interactable = true;
             }
         }
@@ -446,11 +495,12 @@ namespace Project.Match3
             _remoteSelX = _remoteSelY = -1;
             _boardView?.RefreshAll(_board);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—");
             _boardView?.SetDimmed(true);
             _inputBlocked = true;
+            UpdateAffixHud();
             if (_snapshotRetryRoutine != null) StopCoroutine(_snapshotRetryRoutine);
             _snapshotRetryRoutine = StartCoroutine(RequestSnapshotUntilSynced());
         }
@@ -474,9 +524,10 @@ namespace Project.Match3
 
             _hud?.SetTurn("Ваш ход!");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            UpdateAffixHud();
             _boardView?.SetDimmed(false);
 
-            _abilityPanel?.Refresh(_myStats, true, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+            _abilityPanel?.Refresh(_myStats, true, false, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
         }
 
         private void BeginOpponentTurn()
@@ -493,8 +544,9 @@ namespace Project.Match3
 
             _hud?.SetTurn("Ход соперника…");
             _hud?.SetTimer(Mathf.CeilToInt(TurnDuration).ToString());
+            UpdateAffixHud();
             _boardView?.SetDimmed(true);
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+            _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
 
             if (_useLocalBotSimulation && !_gameEnded)
             {
@@ -590,7 +642,7 @@ namespace Project.Match3
 
             if (!IsAbilityAvailable(ability))
             {
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
                 return;
             }
 
@@ -766,12 +818,14 @@ namespace Project.Match3
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
                         var rgold = Mathf.Max(0, msg.rewardGold);
-                        if (rxp > 0 || rgold > 0)
+                        var rore = Mathf.Max(0, msg.rewardOre);
+                        var rmatter = Mathf.Max(0, msg.rewardMatter);
+                        if (rxp > 0 || rgold > 0 || rore > 0 || rmatter > 0)
                         {
                             _pveProgress.xp += rxp;
                             _pveProgress.gold += rgold;
                             if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
-                            _lastRewardText = $"+{rxp} опыта\n+{rgold} золота";
+                            _lastRewardText = $"+{rxp} опыта\n+{rgold} золота\n+{rore} руды\n+{rmatter} материи";
                         }
                     }
                     _pendingGameOver = true;
@@ -791,7 +845,7 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
                     if (!string.IsNullOrEmpty(msg.reason))
                         Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
                 });
@@ -969,6 +1023,8 @@ namespace Project.Match3
             }
 
             _board.FromArray(msg.board);
+            _activePveAffix = string.IsNullOrWhiteSpace(msg.pveAffix) ? string.Empty : msg.pveAffix;
+            UpdateAffixHud();
 
             var ids  = GetSortedIds();
             bool amA = ids.Count > 0 && _myUserId == ids[0];
@@ -1045,7 +1101,7 @@ namespace Project.Match3
             if (keepTurnWithoutTimerReset)
             {
                 _inputBlocked = !_isMyTurn;
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
                 if (_useLocalBotSimulation && !_isMyTurn && !_gameEnded)
                 {
                     if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
@@ -1193,7 +1249,7 @@ namespace Project.Match3
                 if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, CrossAbilityCost, SquareAbilityCost, PetardAbilityCost, ShieldAbilityCost, FuryAbilityCost);
+                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
                 }
                 return;
             }
@@ -1241,28 +1297,28 @@ namespace Project.Match3
             if (req.actionType == 2)
             {
                 return InBounds(req.cx, req.cy) &&
-                       actorStats.mana >= CrossAbilityCost &&
+                       actorStats.mana >= GetCrossAbilityCost() &&
                        actorStats.crossCooldown <= 0;
             }
             if (req.actionType == 3)
             {
                 return InBounds(req.cx, req.cy) &&
-                       actorStats.mana >= SquareAbilityCost &&
+                       actorStats.mana >= GetSquareAbilityCost() &&
                        actorStats.squareCooldown <= 0;
             }
             if (req.actionType == 4)
             {
-                return actorStats.mana >= PetardAbilityCost &&
+                return actorStats.mana >= GetPetardAbilityCost() &&
                        actorStats.petardCooldown <= 0;
             }
             if (req.actionType == 5)
             {
-                return actorStats.mana >= ShieldAbilityCost &&
+                return actorStats.mana >= GetShieldAbilityCost() &&
                        actorStats.shieldCooldown <= 0;
             }
             if (req.actionType == 6)
             {
-                return actorStats.mana >= FuryAbilityCost &&
+                return actorStats.mana >= GetFuryAbilityCost() &&
                        actorStats.furyCooldown <= 0;
             }
             return false;
@@ -1454,15 +1510,15 @@ namespace Project.Match3
             };
         }
 
-        private static bool CanUseAbility(PlayerStats stats, AbilityType ability)
+        private bool CanUseAbility(PlayerStats stats, AbilityType ability)
         {
             return ability switch
             {
-                AbilityType.Petard => stats.mana >= PetardAbilityCost && stats.petardCooldown <= 0,
-                AbilityType.Cross => stats.mana >= CrossAbilityCost && stats.crossCooldown <= 0,
-                AbilityType.Square => stats.mana >= SquareAbilityCost && stats.squareCooldown <= 0,
-                AbilityType.Shield => stats.mana >= ShieldAbilityCost && stats.shieldCooldown <= 0,
-                AbilityType.Fury => stats.mana >= FuryAbilityCost && stats.furyCooldown <= 0,
+                AbilityType.Petard => stats.mana >= GetPetardAbilityCost() && stats.petardCooldown <= 0,
+                AbilityType.Cross => stats.mana >= GetCrossAbilityCost() && stats.crossCooldown <= 0,
+                AbilityType.Square => stats.mana >= GetSquareAbilityCost() && stats.squareCooldown <= 0,
+                AbilityType.Shield => stats.mana >= GetShieldAbilityCost() && stats.shieldCooldown <= 0,
+                AbilityType.Fury => stats.mana >= GetFuryAbilityCost() && stats.furyCooldown <= 0,
                 _ => false,
             };
         }
@@ -1476,27 +1532,27 @@ namespace Project.Match3
         {
             if (actionType == 2)
             {
-                stats.mana = Mathf.Max(0, stats.mana - CrossAbilityCost);
+                stats.mana = Mathf.Max(0, stats.mana - GetAbilityCostByActionType(actionType));
                 stats.crossCooldown = CrossCooldownTurns;
             }
             else if (actionType == 3)
             {
-                stats.mana = Mathf.Max(0, stats.mana - SquareAbilityCost);
+                stats.mana = Mathf.Max(0, stats.mana - GetAbilityCostByActionType(actionType));
                 stats.squareCooldown = SquareCooldownTurns;
             }
             else if (actionType == 4)
             {
-                stats.mana = Mathf.Max(0, stats.mana - PetardAbilityCost);
+                stats.mana = Mathf.Max(0, stats.mana - GetAbilityCostByActionType(actionType));
                 stats.petardCooldown = PetardCooldownTurns;
             }
             else if (actionType == 5)
             {
-                stats.mana = Mathf.Max(0, stats.mana - ShieldAbilityCost);
+                stats.mana = Mathf.Max(0, stats.mana - GetAbilityCostByActionType(actionType));
                 stats.shieldCooldown = ShieldCooldownTurns;
             }
             else if (actionType == 6)
             {
-                stats.mana = Mathf.Max(0, stats.mana - FuryAbilityCost);
+                stats.mana = Mathf.Max(0, stats.mana - GetAbilityCostByActionType(actionType));
                 stats.furyCooldown = FuryCooldownTurns;
             }
         }
@@ -2014,7 +2070,7 @@ namespace Project.Match3
                 }
             }
             catch { /* ignore */ }
-            finally { SceneManager.LoadScene("ArenaMenu"); }
+            finally { SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu"); }
         }
 
         private async Task CancelMatchmakerTicketAsync()
@@ -2135,7 +2191,7 @@ namespace Project.Match3
 
             _gameOverPanel = BuildOrInstantiate(gameOverPanelPrefab, root, V2(0.22f, 0.24f), V2(0.78f, 0.76f));
             if (_gameOverPanel == null) _gameOverPanel = BuildGameOverPanelProcedural(root);
-            _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene("ArenaMenu");
+            _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
             _gameOverPanel.Hide();
 
             if (_isSoloBotMode)
@@ -2397,8 +2453,8 @@ namespace Project.Match3
         {
             var bg  = MakePanel(parent, "HUD", Color.clear, V2(0f, 0f), V2(1f, 1f));
             var hud = bg.gameObject.AddComponent<Match3GameHUD>();
-            hud.turnText  = MakeTxt(bg, "TurnText",  "Поиск...", 20, Color.white, V2(0f, 0f), V2(0.72f, 1f));
-            hud.timerText = MakeTxt(bg, "TimerText", "—", 26, new Color(1f, 0.85f, 0.2f), V2(0.74f, 0f), V2(1f, 1f));
+            hud.turnText  = MakeTxt(bg, "TurnText",  "Поиск...", 20, Color.white, V2(0f, 0f), V2(0.55f, 1f));
+            hud.timerText = MakeTxt(bg, "TimerText", "—", 26, new Color(1f, 0.85f, 0.2f), V2(0.56f, 0f), V2(0.70f, 1f));
             hud.timerText.alignment = TextAlignmentOptions.Right;
             hud.turnText.alignment  = TextAlignmentOptions.Left;
             return hud;
@@ -2445,6 +2501,73 @@ namespace Project.Match3
             _pvePrevButton.onClick.AddListener(SelectPrevPveBot);
             _pveNextButton.onClick.AddListener(SelectNextPveBot);
             _pveStartButton.onClick.AddListener(StartSelectedPveBot);
+
+            var toast = MakePanel(card, "ErrorToast", new Color(0.16f, 0.02f, 0.03f, 0.94f), V2(0.08f, 0.02f), V2(0.92f, 0.16f));
+            _pveErrorToastCanvasGroup = toast.gameObject.AddComponent<CanvasGroup>();
+            _pveErrorToastCanvasGroup.alpha = 0f;
+            _pveErrorToastCanvasGroup.blocksRaycasts = false;
+            _pveErrorToastCanvasGroup.interactable = false;
+            _pveErrorToastText = MakeTxt(toast, "Text", string.Empty, 15, Color.white, V2(0.04f, 0.10f), V2(0.96f, 0.90f));
+            _pveErrorToastText.alignment = TextAlignmentOptions.Center;
+        }
+
+        private void ShowPveCreateErrorToast(PveCreateFailedException e)
+        {
+            if (e == null)
+            {
+                ShowPveErrorToast("Не удалось создать PVE бой.");
+                return;
+            }
+
+            switch (e.ErrorCode)
+            {
+                case "not_enough_energy":
+                    ShowPveErrorToast($"Не хватает энергии: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Energy)}.");
+                    break;
+                case "not_enough_gold":
+                    ShowPveErrorToast($"Не хватает золота: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Gold)}.");
+                    break;
+                case "barrier_locked":
+                    ShowPveErrorToast("Этаж закрыт барьером. Вернитесь в шахту и разбейте барьер.");
+                    break;
+                case "monster_respawn_pending":
+                    ShowPveErrorToast("Монстр ещё не возродился. Подождите или используйте Призвать.");
+                    break;
+                default:
+                    ShowPveErrorToast("Не удалось создать PVE бой.\nПопробуйте ещё раз.");
+                    break;
+            }
+        }
+
+        private void ShowPveErrorToast(string message)
+        {
+            if (_pveErrorToastCanvasGroup == null || _pveErrorToastText == null)
+                return;
+
+            _pveErrorToastText.text = string.IsNullOrWhiteSpace(message) ? "Ошибка." : message;
+            if (_pveErrorToastRoutine != null)
+                StopCoroutine(_pveErrorToastRoutine);
+            _pveErrorToastRoutine = StartCoroutine(PveErrorToastRoutine());
+        }
+
+        private IEnumerator PveErrorToastRoutine()
+        {
+            if (_pveErrorToastCanvasGroup == null) yield break;
+            _pveErrorToastCanvasGroup.alpha = 1f;
+            yield return new WaitForSecondsRealtime(2.6f);
+            var t = 0f;
+            const float fade = 0.22f;
+            while (t < fade)
+            {
+                t += Time.unscaledDeltaTime;
+                var k = 1f - Mathf.Clamp01(t / fade);
+                if (_pveErrorToastCanvasGroup != null)
+                    _pveErrorToastCanvasGroup.alpha = k;
+                yield return null;
+            }
+            if (_pveErrorToastCanvasGroup != null)
+                _pveErrorToastCanvasGroup.alpha = 0f;
+            _pveErrorToastRoutine = null;
         }
 
         private Match3SearchingPanel BuildSearchingPanelProcedural(Transform parent)
@@ -2508,17 +2631,85 @@ namespace Project.Match3
             return _myStats.mana >= GetAbilityCost(ability) && GetAbilityCooldown(ability) == 0;
         }
 
+        private bool HasAffix(string affixId)
+        {
+            return !string.IsNullOrWhiteSpace(_activePveAffix) &&
+                   string.Equals(_activePveAffix, affixId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private int AbilityCostBonus()
+        {
+            return HasAffix("frozen") ? FrozenAffixAbilityPenalty : 0;
+        }
+
+        private int GetCrossAbilityCost() => CrossAbilityCost + AbilityCostBonus();
+        private int GetSquareAbilityCost() => SquareAbilityCost + AbilityCostBonus();
+        private int GetPetardAbilityCost() => PetardAbilityCost + AbilityCostBonus();
+        private int GetShieldAbilityCost() => ShieldAbilityCost + AbilityCostBonus();
+        private int GetFuryAbilityCost() => FuryAbilityCost + AbilityCostBonus();
+
+        private int GetAbilityCostByActionType(int actionType)
+        {
+            return actionType switch
+            {
+                2 => GetCrossAbilityCost(),
+                3 => GetSquareAbilityCost(),
+                4 => GetPetardAbilityCost(),
+                5 => GetShieldAbilityCost(),
+                6 => GetFuryAbilityCost(),
+                _ => 0,
+            };
+        }
+
         private int GetAbilityCost(AbilityType ability)
         {
             return ability switch
             {
-                AbilityType.Petard => PetardAbilityCost,
-                AbilityType.Cross => CrossAbilityCost,
-                AbilityType.Square => SquareAbilityCost,
-                AbilityType.Shield => ShieldAbilityCost,
-                AbilityType.Fury => FuryAbilityCost,
+                AbilityType.Petard => GetPetardAbilityCost(),
+                AbilityType.Cross => GetCrossAbilityCost(),
+                AbilityType.Square => GetSquareAbilityCost(),
+                AbilityType.Shield => GetShieldAbilityCost(),
+                AbilityType.Fury => GetFuryAbilityCost(),
                 _ => 0,
             };
+        }
+
+        private void UpdateAffixHud()
+        {
+            if (_hud == null || !_isSoloBotMode)
+                return;
+
+            var (title, effect) = GetAffixDisplay(_activePveAffix);
+            var icon = string.IsNullOrWhiteSpace(title) ? string.Empty : title.Substring(0, 1).ToUpperInvariant();
+            _hud.SetAffixInfo(icon, string.IsNullOrWhiteSpace(title) ? string.Empty : (title + ": " + effect));
+        }
+
+        private static (string title, string effect) GetAffixDisplay(string affixId)
+        {
+            if (string.IsNullOrWhiteSpace(affixId)) return (string.Empty, string.Empty);
+            switch (affixId.Trim().ToLowerInvariant())
+            {
+                case "acid":
+                    return ("Кислотный", "В конце каждого твоего хода теряешь 3% изначального ХП.");
+                case "energy_block":
+                    return ("Энергоблок", "Черепа не наносят урон и дают +5 урона за каждый уничтоженный череп.");
+                case "regeneration":
+                    return ("Регенерация", "Монстр лечит 3% ХП каждый свой ход.");
+                case "fragility":
+                    return ("Хрупкость", "У монстра вдвое меньше ХП, но +50 маны и +35% крита.");
+                case "stone_skin":
+                    return ("Каменная кожа", "Монстр получает +15 брони каждый третий свой ход.");
+                case "mana_vampire":
+                    return ("Мана-вампир", "За каждый уничтоженный анх противник получает 1 ману.");
+                case "frozen":
+                    return ("Ледяной", "Способности стоят на 10 маны дороже.");
+                case "monster_rage":
+                    return ("Ярость монстра", "Каждый череп монстра даёт ему +2 урона до конца боя.");
+                case "instability":
+                    return ("Нестабильность", "В начале твоего хода камни на поле перемешиваются.");
+                default:
+                    return (affixId, string.Empty);
+            }
         }
 
         private int GetAbilityCooldown(AbilityType ability)
@@ -2707,13 +2898,37 @@ namespace Project.Match3
             public string bot_id;
             public string bot_name;
             public string bot_user_id;
+            public string affix;
             public string err;
+            public int required;
+            public int energy;
+            public int energy_max;
+            public int gold;
+        }
+
+        private sealed class PveCreateFailedException : Exception
+        {
+            public string ErrorCode { get; }
+            public int Required { get; }
+            public int Energy { get; }
+            public int Gold { get; }
+
+            public PveCreateFailedException(string errorCode, PveCreateRpcResponse response)
+                : base("pve_create_failed (" + (string.IsNullOrWhiteSpace(errorCode) ? "unknown" : errorCode) + ")")
+            {
+                ErrorCode = string.IsNullOrWhiteSpace(errorCode) ? "unknown" : errorCode;
+                Required = response != null ? response.required : 0;
+                Energy = response != null ? response.energy : 0;
+                Gold = response != null ? response.gold : 0;
+            }
         }
 
         [Serializable]
         private sealed class PveCreateRpcRequest
         {
             public string bot_id;
+            public int floor;
+            public string difficulty;
             public int session_epoch;
         }
 
@@ -2739,6 +2954,13 @@ namespace Project.Match3
             public int level = 1;
             public int xp;
             public int gold;
+            public MineProgressInfo mine;
+        }
+
+        [Serializable]
+        private sealed class MineProgressInfo
+        {
+            public string current_difficulty = "easy";
         }
 
         [Serializable]
@@ -2747,10 +2969,13 @@ namespace Project.Match3
             public string id;
             public string name;
             public int difficulty;
+            public int floor;
+            public bool is_boss;
             public int hp_bonus;
             public int start_mana;
             public int reward_xp;
             public int reward_gold;
+            public int reward_ore;
         }
     }
 }

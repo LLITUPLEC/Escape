@@ -7,6 +7,7 @@ using Project.Character;
 using Project.Nakama;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -25,6 +26,11 @@ namespace Project.UI
         [SerializeField] private float match3StatsPollSeconds = 5f;
         [Header("Debug")]
         [SerializeField] private bool debugUiStats = false;
+        [Header("Navigation")]
+        [SerializeField] private string mineSceneName = "MineScene";
+        [SerializeField] private string workshopSceneName = "WorkshopScene";
+        [SerializeField] private string mineButtonName = "MineButton";
+        [SerializeField] private string workshopButtonName = "BottomButtonWorkshop";
 
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
@@ -61,6 +67,8 @@ namespace Project.UI
         private readonly ResourceValueBinding _ingotsBinding = new("ingots");
         private readonly ResourceValueBinding _matterBinding = new("matter");
         private readonly ResourceValueBinding _keysBinding = new("keys");
+        private Button _mineButton;
+        private Button _workshopButton;
 
         private void Awake()
         {
@@ -70,6 +78,7 @@ namespace Project.UI
             EnsureHeaderResources();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
+            EnsureMainMenuNavigationButtons();
             ApplySafeAreaClamp();
         }
 
@@ -87,6 +96,7 @@ namespace Project.UI
             _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
+            EnsureMainMenuNavigationButtons();
             ApplySafeAreaClamp();
         }
 
@@ -102,6 +112,58 @@ namespace Project.UI
             }
             if (_onlineBadgeRect != null)
                 _onlineBadgeRect.localScale = Vector3.one;
+        }
+
+        private void OnDestroy()
+        {
+            if (_mineButton != null) _mineButton.onClick.RemoveListener(OpenMineScene);
+            if (_workshopButton != null) _workshopButton.onClick.RemoveListener(OpenWorkshopScene);
+        }
+
+        private void EnsureMainMenuNavigationButtons()
+        {
+            var layout = ResolveMainMenuHudLayoutRoot();
+            if (layout == null) return;
+
+            if (_mineButton == null)
+            {
+                var mineRoot = FindChildByName(layout, mineButtonName, StringComparison.OrdinalIgnoreCase);
+                if (mineRoot != null)
+                {
+                    _mineButton = mineRoot.GetComponent<Button>();
+                    if (_mineButton != null)
+                    {
+                        _mineButton.onClick.RemoveListener(OpenMineScene);
+                        _mineButton.onClick.AddListener(OpenMineScene);
+                    }
+                }
+            }
+
+            if (_workshopButton == null)
+            {
+                var workshopRoot = FindChildByName(layout, workshopButtonName, StringComparison.OrdinalIgnoreCase);
+                if (workshopRoot != null)
+                {
+                    _workshopButton = workshopRoot.GetComponent<Button>();
+                    if (_workshopButton != null)
+                    {
+                        _workshopButton.onClick.RemoveListener(OpenWorkshopScene);
+                        _workshopButton.onClick.AddListener(OpenWorkshopScene);
+                    }
+                }
+            }
+        }
+
+        private void OpenMineScene()
+        {
+            if (!string.IsNullOrWhiteSpace(mineSceneName) && Application.CanStreamedLevelBeLoaded(mineSceneName))
+                SceneManager.LoadScene(mineSceneName);
+        }
+
+        private void OpenWorkshopScene()
+        {
+            if (!string.IsNullOrWhiteSpace(workshopSceneName) && Application.CanStreamedLevelBeLoaded(workshopSceneName))
+                SceneManager.LoadScene(workshopSceneName);
         }
 
         private void EnsureMatch3StatsCard()

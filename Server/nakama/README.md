@@ -25,22 +25,26 @@
 - сервер рассылает итоговое состояние (`op=10`) и game over (`op=11`).
 
 Для PVE (боты) доступны RPC:
-- `duel_match3_pve_catalog_get` — возвращает список ботов и текущую прогрессию.
-- `duel_match3_pve_create` с payload `{"bot_id":"slime_1"}` — создаёт authoritative PVE-матч и возвращает `match_id`.
+- `duel_match3_pve_catalog_get` — возвращает список этажей шахты (1..12), барьеры и текущую прогрессию.
+- `duel_match3_pve_create` с payload `{"bot_id":"mine_1","floor":1,"difficulty":"easy"}` — создаёт authoritative PVE-матч и возвращает `match_id`.
   Клиент затем делает `JoinMatch` по `match_id`.
+- `duel_mine_summon` с payload `{"floor":1,"difficulty":"easy"}` — мгновенно снимает КД монстра на этаже (стоимость: 5 энергии и 50 золота).
+- `duel_mine_barrier_unlock` с payload `{"floor":2,"difficulty":"easy"}` — разблокирует переход на следующий этаж (с проверкой уровня и ресурсов).
 
 Прогрессия PVE хранится в `duel_match3_progress/profile`:
-- `level` (до 10),
+- `level` (до 12),
 - `xp`,
-- `gold`,
+- ресурсы (`gold`, `ore`, `matter`, `energy`, ключи/чертежи),
+- `mine` (сложность, открытые этажи, кд респавна/аффикс по этажам),
 - `defeated` (счётчик побед по bot_id).
 
-В `duel_match3.lua` заведена таблица из 10 боссов (`slime_1 ... emperor_10`) с параметрами:
-- `difficulty`,
+В `duel_match3.lua` используется каталог этажей шахты `mine_1 ... mine_12` (обычные + боссы 4/8/12) с параметрами:
+- `floor`,
+- `is_boss`,
 - `hp_bonus`,
 - `start_mana`,
 - поведенческие коэффициенты ИИ (`ai_ability_chance`, `petard_bias`, `cross_bias`, `square_bias`),
-- награды (`reward_xp`, `reward_gold`).
+- награды (`reward_xp`, `reward_gold`, `reward_ore`, `reward_matter_*`, ключи/чертежи/слитки).
 
 Серверная статистика Match3 (по `ctx.user_id`) также доступна через RPC:
 - `duel_match3_stats_get` → `{ ok, played, wins, losses }`

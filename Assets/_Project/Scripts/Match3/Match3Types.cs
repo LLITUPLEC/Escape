@@ -84,6 +84,7 @@ namespace Project.Match3
         public int toX, toY;
         public int abilityX, abilityY;
         public bool critTriggered;
+        public string pveAffix;
         public System.Collections.Generic.List<M3AnimStep> animSteps = new System.Collections.Generic.List<M3AnimStep>();
     }
 
@@ -102,6 +103,8 @@ namespace Project.Match3
         public string winnerUserId;
         public int rewardXp;
         public int rewardGold;
+        public int rewardOre;
+        public int rewardMatter;
         public int newLevel;
     }
 
