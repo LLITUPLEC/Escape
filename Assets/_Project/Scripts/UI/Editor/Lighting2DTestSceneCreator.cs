@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -67,11 +68,13 @@ namespace Project.UI.Editor
             point.lightType = Light2D.LightType.Point;
             point.color = new Color(1f, 0.74f, 0.42f, 1f);
             point.intensity = 1.35f;
+            point.blendStyleIndex = 0;
             point.pointLightInnerRadius = 0.35f;
             point.pointLightOuterRadius = 2.8f;
             point.falloffIntensity = 0.5f;
             point.shadowIntensity = 0f;
             pointGo.transform.position = new Vector3(0f, 0f, 0f);
+            ConfigurePointLightNormalMap(point);
 
             var follow = pointGo.GetComponent<MouseFollowLight2D>();
             var so = new SerializedObject(follow);
@@ -156,41 +159,246 @@ namespace Project.UI.Editor
             if (camData == null)
                 return false;
 
-            if (GraphicsSettings.currentRenderPipeline is not UniversalRenderPipelineAsset urpAsset)
+            var activePipeline = QualitySettings.renderPipeline ?? GraphicsSettings.currentRenderPipeline;
+            if (activePipeline is not UniversalRenderPipelineAsset urpAsset)
             {
-                note = "В GraphicsSettings не назначен URP Asset.";
+                note = "Активный Render Pipeline не является URP Asset.";
                 return false;
             }
 
-            var rendererDataListProp = typeof(UniversalRenderPipelineAsset).GetProperty("rendererDataList");
-            if (rendererDataListProp == null)
+            var urpSo = new SerializedObject(urpAsset);
+            var rendererListProp = urpSo.FindProperty("m_RendererDataList");
+            if (rendererListProp == null || !rendererListProp.isArray || rendererListProp.arraySize == 0)
             {
-                note = "Не удалось получить rendererDataList у URP Asset.";
+                note = "m_RendererDataList пуст или недоступен.";
                 return false;
             }
 
-            if (rendererDataListProp.GetValue(urpAsset) is not ScriptableRendererData[] list || list.Length == 0)
+            for (var i = 0; i < rendererListProp.arraySize; i++)
             {
-                note = "rendererDataList пуст.";
-                return false;
-            }
-
-            for (var i = 0; i < list.Length; i++)
-            {
-                var data = list[i];
+                var element = rendererListProp.GetArrayElementAtIndex(i);
+                var data = element != null ? element.objectReferenceValue as ScriptableRendererData : null;
                 if (data == null) continue;
 
-                var t = data.GetType().Name;
-                if (!t.Contains("2D"))
+                if (!Is2DRendererData(data))
                     continue;
 
                 camData.SetRenderer(i);
                 note = $"Назначен renderer index {i} ({data.name}).";
                 EditorUtility.SetDirty(camData);
+                var syncNote = SyncRendererIndexAcrossUsedUrpAssets(i, urpAsset);
+                if (!string.IsNullOrEmpty(syncNote))
+                    note = $"{note} {syncNote}";
                 return true;
             }
 
-            return false;
+            if (!TryCreateAndAssign2DRenderer(urpAsset, camData, rendererListProp, urpSo, out var createdIndex, out note))
+                return false;
+
+            var createdSyncNote = SyncRendererIndexAcrossUsedUrpAssets(createdIndex, urpAsset);
+            if (!string.IsNullOrEmpty(createdSyncNote))
+                note = $"{note} {createdSyncNote}";
+
+            return true;
+        }
+
+        private static bool TryCreateAndAssign2DRenderer(
+            UniversalRenderPipelineAsset urpAsset,
+            UniversalAdditionalCameraData camData,
+            SerializedProperty rendererListProp,
+            SerializedObject urpSo,
+            out int assignedIndex,
+            out string note)
+        {
+            assignedIndex = -1;
+            note = "2D Renderer отсутствует, автосоздание не удалось.";
+
+            if (!TryCreate2DRendererAsset(urpAsset, out var created, out note))
+                return false;
+
+            var newIndex = rendererListProp.arraySize;
+            rendererListProp.InsertArrayElementAtIndex(newIndex);
+            var newElement = rendererListProp.GetArrayElementAtIndex(newIndex);
+            newElement.objectReferenceValue = created;
+            urpSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(urpAsset);
+
+            camData.SetRenderer(newIndex);
+            EditorUtility.SetDirty(camData);
+
+            assignedIndex = newIndex;
+            note = $"Создан и назначен 2D Renderer: {created.name} (index {newIndex}).";
+            return true;
+        }
+
+        private static bool TryCreate2DRendererAsset(
+            UniversalRenderPipelineAsset urpAsset,
+            out ScriptableRendererData created,
+            out string note)
+        {
+            created = null;
+            note = string.Empty;
+
+            var renderer2DType = GetRenderer2DDataType();
+            if (renderer2DType == null || !typeof(ScriptableRendererData).IsAssignableFrom(renderer2DType))
+            {
+                note = "Тип Renderer2DData не найден в текущей версии URP.";
+                return false;
+            }
+
+            created = ScriptableObject.CreateInstance(renderer2DType) as ScriptableRendererData;
+            if (created == null)
+            {
+                note = "Не удалось создать экземпляр Renderer2DData.";
+                return false;
+            }
+
+            created.name = $"Auto_2D_Renderer_{urpAsset.name}";
+
+            var urpPath = AssetDatabase.GetAssetPath(urpAsset);
+            var urpDir = Path.GetDirectoryName(urpPath)?.Replace("\\", "/");
+            if (string.IsNullOrWhiteSpace(urpDir))
+            {
+                UnityEngine.Object.DestroyImmediate(created);
+                created = null;
+                note = "Не удалось определить директорию URP Asset.";
+                return false;
+            }
+
+            var rendererPath = AssetDatabase.GenerateUniqueAssetPath($"{urpDir}/{created.name}.asset");
+            AssetDatabase.CreateAsset(created, rendererPath);
+            AssetDatabase.SaveAssets();
+            return true;
+        }
+
+        private static string SyncRendererIndexAcrossUsedUrpAssets(int targetIndex, UniversalRenderPipelineAsset activeAsset)
+        {
+            if (targetIndex < 0)
+                return string.Empty;
+
+            var assets = GetUsedUrpAssets(activeAsset);
+            var synced = 0;
+            var skipped = 0;
+
+            foreach (var asset in assets)
+            {
+                if (asset == null || asset == activeAsset)
+                    continue;
+
+                if (Ensure2DRendererAtIndex(asset, targetIndex))
+                    synced++;
+                else
+                    skipped++;
+            }
+
+            if (synced == 0 && skipped == 0)
+                return string.Empty;
+
+            if (skipped > 0)
+                return $"Синхронизация quality-pipeline: добавлено {synced}, пропущено {skipped}.";
+
+            return $"Синхронизация quality-pipeline: добавлено {synced}.";
+        }
+
+        private static List<UniversalRenderPipelineAsset> GetUsedUrpAssets(UniversalRenderPipelineAsset activeAsset)
+        {
+            var assets = new List<UniversalRenderPipelineAsset>();
+
+            void AddIfUrp(RenderPipelineAsset pipelineAsset)
+            {
+                if (pipelineAsset is UniversalRenderPipelineAsset urp && !assets.Contains(urp))
+                    assets.Add(urp);
+            }
+
+            AddIfUrp(activeAsset);
+            AddIfUrp(GraphicsSettings.currentRenderPipeline);
+
+            var qualityNames = QualitySettings.names;
+            for (var i = 0; i < qualityNames.Length; i++)
+                AddIfUrp(QualitySettings.GetRenderPipelineAssetAt(i));
+
+            return assets;
+        }
+
+        private static bool Ensure2DRendererAtIndex(UniversalRenderPipelineAsset urpAsset, int targetIndex)
+        {
+            var urpSo = new SerializedObject(urpAsset);
+            var rendererListProp = urpSo.FindProperty("m_RendererDataList");
+            if (rendererListProp == null || !rendererListProp.isArray || targetIndex < 0)
+                return false;
+
+            if (targetIndex < rendererListProp.arraySize)
+            {
+                var existingAtIndex = rendererListProp.GetArrayElementAtIndex(targetIndex).objectReferenceValue as ScriptableRendererData;
+                if (Is2DRendererData(existingAtIndex))
+                    return true;
+                if (existingAtIndex != null)
+                    return false;
+            }
+
+            while (rendererListProp.arraySize <= targetIndex)
+            {
+                var insertAt = rendererListProp.arraySize;
+                rendererListProp.InsertArrayElementAtIndex(insertAt);
+                var inserted = rendererListProp.GetArrayElementAtIndex(insertAt);
+                inserted.objectReferenceValue = null;
+            }
+
+            if (!TryCreate2DRendererAsset(urpAsset, out var created, out _))
+                return false;
+
+            rendererListProp.GetArrayElementAtIndex(targetIndex).objectReferenceValue = created;
+            urpSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(urpAsset);
+            return true;
+        }
+
+        private static bool Is2DRendererData(ScriptableRendererData data)
+        {
+            if (data == null)
+                return false;
+
+            var typeName = data.GetType().Name;
+            return typeName.Contains("2D") || typeName.Contains("Renderer2DData");
+        }
+
+        private static void ConfigurePointLightNormalMap(Light2D pointLight)
+        {
+            if (pointLight == null)
+                return;
+
+            var lightSo = new SerializedObject(pointLight);
+
+            var useNormalMapProp = lightSo.FindProperty("m_UseNormalMap");
+            if (useNormalMapProp != null)
+                useNormalMapProp.boolValue = true;
+
+            var normalMapQualityProp = lightSo.FindProperty("m_NormalMapQuality");
+            if (normalMapQualityProp != null && normalMapQualityProp.propertyType == SerializedPropertyType.Enum)
+                normalMapQualityProp.enumValueIndex = Math.Max(normalMapQualityProp.enumValueIndex, 1);
+
+            var normalMapDistanceProp = lightSo.FindProperty("m_NormalMapDistance");
+            if (normalMapDistanceProp != null)
+                normalMapDistanceProp.floatValue = Mathf.Max(normalMapDistanceProp.floatValue, 6f);
+
+            lightSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(pointLight);
+        }
+
+        private static Type GetRenderer2DDataType()
+        {
+            var type = Type.GetType("UnityEngine.Rendering.Universal.Renderer2DData, Unity.RenderPipelines.Universal.Runtime");
+            if (type != null)
+                return type;
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                type = asm.GetType("UnityEngine.Rendering.Universal.Renderer2DData");
+                if (type != null)
+                    return type;
+            }
+
+            return null;
         }
 
         private static void CreateLabelAnchor(string name, Vector3 position)
