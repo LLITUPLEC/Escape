@@ -688,23 +688,17 @@ local function update_cheat_rows_from_board(state)
   state.cheat_rows = out
 end
 
-local function shuffle_active_board(state)
+local function regenerate_active_board_without_matches(state)
   if state == nil or state.board == nil then return end
-  local vals = {}
   for y = ACTIVE_Y_MIN, HEIGHT - 1 do
     for x = 0, SIZE - 1 do
-      vals[#vals + 1] = bget(state.board, x, y)
-    end
-  end
-  for i = #vals, 2, -1 do
-    local j = math.random(1, i)
-    vals[i], vals[j] = vals[j], vals[i]
-  end
-  local k = 1
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
-      bset(state.board, x, y, vals[k] or SPAWN_POOL[math.random(1, #SPAWN_POOL)])
-      k = k + 1
+      local t = 1
+      local tries = 0
+      repeat
+        t = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+        tries = tries + 1
+      until tries >= 20 or not would_create_match(state.board, x, y, t)
+      bset(state.board, x, y, t)
     end
   end
   update_cheat_rows_from_board(state)
@@ -1007,6 +1001,7 @@ end
 local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, tick_rate, anim_steps)
   local actor = state.active_user_id
   local opponent = other_player_id(state, actor)
+  local prev_active_user_id = state.active_user_id
   local action_type = action and tonumber(action.actionType) or 0
 
   if not keep_turn and actor ~= nil and opponent ~= nil then
@@ -1064,9 +1059,11 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       state.bot_turn_ready_tick = 0
     end
 
-    -- Instability: shuffle only at the start of player's turn.
-    if has_affix(state, "instability") and state.active_user_id == state.owner_user_id then
-      shuffle_active_board(state)
+    -- Instability: regenerate board only when player's new turn starts.
+    if has_affix(state, "instability")
+      and state.active_user_id == state.owner_user_id
+      and prev_active_user_id ~= state.owner_user_id then
+      regenerate_active_board_without_matches(state)
     end
   end
   broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)

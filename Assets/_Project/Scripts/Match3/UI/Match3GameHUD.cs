@@ -363,6 +363,7 @@ namespace Project.Match3
         public void SetAffixInfo(string iconText, string effectText, Sprite iconSprite = null)
         {
             var has = !string.IsNullOrWhiteSpace(effectText);
+            var hasIcon = iconSprite != null;
             if (affixButton != null)
                 affixButton.gameObject.SetActive(has);
             if (affixTooltipRoot != null && !has)
@@ -375,11 +376,15 @@ namespace Project.Match3
             LayoutAffixTooltip();
             WireAffixTooltipCloseButton();
             if (affixButtonLabel != null)
-                affixButtonLabel.text = string.IsNullOrWhiteSpace(iconText) ? "?" : iconText;
+            {
+                affixButtonLabel.gameObject.SetActive(!hasIcon);
+                if (!hasIcon)
+                    affixButtonLabel.text = string.IsNullOrWhiteSpace(iconText) ? "?" : iconText;
+            }
             if (affixButtonIconImage != null)
             {
                 affixButtonIconImage.sprite = iconSprite;
-                affixButtonIconImage.color = iconSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+                affixButtonIconImage.color = hasIcon ? Color.white : new Color(1f, 1f, 1f, 0f);
             }
         }
 
