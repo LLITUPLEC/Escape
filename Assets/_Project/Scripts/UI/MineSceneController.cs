@@ -30,6 +30,10 @@ namespace Project.UI
         private const float ServerRefreshIntervalSeconds = 15f;
         private const float ResourcesRefreshIntervalSeconds = 5f;
         private const string DuelMatch3SceneName = "DuelMatch3";
+        private const string HudKeyIconAssetPath = "Assets/_Project/img/resources_hud/key.png";
+        private const string HudOreIconAssetPath = "Assets/_Project/img/resources_hud/ore.png";
+        private const string HudGoldIconAssetPath = "Assets/_Project/img/resources_hud/gold.png";
+        private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
 
         private readonly Dictionary<int, FloorRowRefs> _rows = new();
         private readonly Dictionary<int, Button> _liftButtons = new();
@@ -49,6 +53,10 @@ namespace Project.UI
         private Image _modalAffixIcon;
         private Text _modalAffixIconText;
         private Text _modalAffixText;
+        private RectTransform _modalMonsterRewardsRoot;
+        private Text _modalMonsterRewardsTitle;
+        private RectTransform _modalBarrierRequirementsRoot;
+        private Text _modalBarrierRequirementsTitle;
         private int _selectedFloor;
         private bool _modalCanSummon;
         private bool _modalCanUnlock;
@@ -62,6 +70,10 @@ namespace Project.UI
         private ProgressionInfo _progression;
         private PlayerResourcesRpcResponse _lastResources;
         private Transform _headerResourcesRoot;
+        private Sprite _lockSprite;
+        private Sprite _oreSprite;
+        private Sprite _goldSprite;
+        private Sprite _matterSprite;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
         private readonly ResourceValueBinding _oreBinding = new("ore");
         private readonly ResourceValueBinding _goldBinding = new("Gold");
@@ -252,8 +264,14 @@ namespace Project.UI
                     Destroy(rewardsPanel.gameObject);
                 refs.monsterButton = EnsureMonsterButton(refs.root, floor);
                 refs.monsterButton.onClick.RemoveAllListeners();
+                refs.lockButton = EnsureLockButton(refs.root, floor);
+                refs.lockButton.onClick.RemoveAllListeners();
+                var lockImage = refs.lockButton.GetComponent<Image>();
+                var lockLabel = refs.lockButton.GetComponentInChildren<Text>(true);
+                ApplyLockButtonSprite(lockImage, lockLabel);
                 var f = floor;
                 refs.monsterButton.onClick.AddListener(() => OpenMonsterModal(f));
+                refs.lockButton.onClick.AddListener(() => OpenMonsterModal(f));
                 refs.root.SetSiblingIndex(floor - 1); // 1-й этаж вверху, глубже — ниже.
                 _rows[floor] = refs;
 
@@ -305,6 +323,65 @@ namespace Project.UI
             return btn;
         }
 
+        private Button EnsureLockButton(Transform rowRoot, int floor)
+        {
+            var existing = rowRoot.Find("LockButton");
+            if (existing != null)
+                return existing.GetComponent<Button>() ?? existing.gameObject.AddComponent<Button>();
+
+            var go = new GameObject("LockButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(rowRoot, false);
+            rt.anchorMin = new Vector2(0.43f, 0.22f);
+            rt.anchorMax = new Vector2(0.57f, 0.78f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.26f, 0.22f, 0.16f, 0.95f);
+            var btn = go.GetComponent<Button>();
+
+            var txtGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var txtRt = txtGo.GetComponent<RectTransform>();
+            txtRt.SetParent(go.transform, false);
+            txtRt.anchorMin = Vector2.zero;
+            txtRt.anchorMax = Vector2.one;
+            txtRt.offsetMin = Vector2.zero;
+            txtRt.offsetMax = Vector2.zero;
+            var txt = txtGo.GetComponent<Text>();
+            txt.font = GetBuiltinFont();
+            txt.fontSize = 30;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = new Color(1f, 0.94f, 0.75f, 1f);
+            txt.text = "🔒";
+            txt.raycastTarget = false;
+
+            ApplyLockButtonSprite(img, txt);
+            return btn;
+        }
+
+        private void ApplyLockButtonSprite(Image iconImage, Text fallbackLabel)
+        {
+            if (iconImage == null)
+                return;
+
+            _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
+            if (_lockSprite != null)
+            {
+                iconImage.sprite = _lockSprite;
+                iconImage.type = Image.Type.Simple;
+                iconImage.preserveAspect = true;
+                iconImage.color = Color.white;
+                if (fallbackLabel != null)
+                    fallbackLabel.gameObject.SetActive(false);
+                return;
+            }
+
+            iconImage.sprite = null;
+            iconImage.color = new Color(0.26f, 0.22f, 0.16f, 0.95f);
+            if (fallbackLabel != null)
+                fallbackLabel.gameObject.SetActive(true);
+        }
+
         private void ApplyRows()
         {
             foreach (var kv in _rows)
@@ -314,14 +391,19 @@ namespace Project.UI
                 _mineByFloor.TryGetValue(floor, out var mf);
                 var unlocked = mf != null && mf.unlocked;
                 var respawn = mf != null ? Mathf.Max(0, mf.respawn_left_seconds) : 0;
+                ApplyFloorLightingState(refs.root, !unlocked);
 
                 if (!unlocked)
                 {
                     if (refs.stateText != null) refs.stateText.text = "Барьер";
-                    SetButtonLabel(refs.monsterButton, "🔒");
-                    refs.monsterButton.interactable = true;
+                    SetButtonVisible(refs.monsterButton, false);
+                    SetButtonVisible(refs.lockButton, true);
+                    refs.lockButton.interactable = true;
                     continue;
                 }
+
+                SetButtonVisible(refs.monsterButton, true);
+                SetButtonVisible(refs.lockButton, false);
 
                 if (respawn > 0)
                 {
@@ -339,6 +421,16 @@ namespace Project.UI
                 _botByFloor.TryGetValue(floor, out var bot);
                 ApplyMonsterVisual(refs, bot, mf);
             }
+        }
+
+        private static void ApplyFloorLightingState(Transform rowRoot, bool isLocked)
+        {
+            if (rowRoot == null)
+                return;
+
+            var lighting = rowRoot.GetComponent<UiFloorTorchLighting>();
+            if (lighting != null)
+                lighting.SetLockedState(isLocked);
         }
 
         private void ApplyMonsterVisual(FloorRowRefs refs, PveBotInfo bot, MineFloorInfo floorInfo)
@@ -411,7 +503,7 @@ namespace Project.UI
             _modalCloseButton = CreateButton(_modalRoot.transform, "CloseButton", "X",
                 new Vector2(0.90f, 0.86f), new Vector2(0.98f, 0.96f));
             _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
-            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 30, TextAnchor.UpperLeft,
+            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 20, TextAnchor.UpperLeft,
                 new Vector2(0.06f, 0.46f), new Vector2(0.48f, 0.82f));
             var affixIconGo = new GameObject("AffixIcon", typeof(RectTransform), typeof(Image));
             var affixIconRt = affixIconGo.GetComponent<RectTransform>();
@@ -422,20 +514,57 @@ namespace Project.UI
             affixIconRt.offsetMax = Vector2.zero;
             _modalAffixIcon = affixIconGo.GetComponent<Image>();
             _modalAffixIcon.color = new Color(0.25f, 0.25f, 0.35f, 0.96f);
-            _modalAffixIconText = CreateText(affixIconGo.transform, "Glyph", "?", 22, TextAnchor.MiddleCenter,
+            _modalAffixIconText = CreateText(affixIconGo.transform, "Glyph", "?", 18, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one);
-            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 30, TextAnchor.MiddleLeft,
+            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 20, TextAnchor.UpperLeft,
                 new Vector2(0.68f, 0.46f), new Vector2(0.94f, 0.82f));
             _modalAffixText.resizeTextForBestFit = true;
-            _modalAffixText.resizeTextMinSize = 3;
-            _modalAffixText.resizeTextMaxSize = 30;
-            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 30, TextAnchor.UpperLeft,
+            _modalAffixText.resizeTextMinSize = 14;
+            _modalAffixText.resizeTextMaxSize = 22;
+            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 20, TextAnchor.UpperLeft,
                 new Vector2(0.06f, 0.22f), new Vector2(0.48f, 0.44f));
             _modalRewards.resizeTextForBestFit = true;
-            _modalRewards.resizeTextMinSize = 5;
-            _modalRewards.resizeTextMaxSize = 30;
-            var rewardsRt = _modalRewards.rectTransform;
-            rewardsRt.offsetMax = new Vector2(rewardsRt.offsetMax.x, 60f);
+            _modalRewards.resizeTextMinSize = 14;
+            _modalRewards.resizeTextMaxSize = 22;
+            _modalRewards.gameObject.SetActive(false);
+
+            _modalMonsterRewardsRoot = new GameObject("MonsterRewards", typeof(RectTransform)).GetComponent<RectTransform>();
+            _modalMonsterRewardsRoot.SetParent(_modalRoot.transform, false);
+            _modalMonsterRewardsRoot.anchorMin = new Vector2(0.06f, 0.22f);
+            _modalMonsterRewardsRoot.anchorMax = new Vector2(0.48f, 0.44f);
+            _modalMonsterRewardsRoot.offsetMin = Vector2.zero;
+            _modalMonsterRewardsRoot.offsetMax = Vector2.zero;
+            var monsterRewardsLayout = _modalMonsterRewardsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
+            monsterRewardsLayout.padding = new RectOffset(0, 0, 0, 0);
+            monsterRewardsLayout.spacing = 6f;
+            monsterRewardsLayout.childAlignment = TextAnchor.UpperLeft;
+            monsterRewardsLayout.childControlHeight = true;
+            monsterRewardsLayout.childControlWidth = true;
+            monsterRewardsLayout.childForceExpandHeight = false;
+            monsterRewardsLayout.childForceExpandWidth = true;
+            _modalMonsterRewardsTitle = CreateText(_modalMonsterRewardsRoot, "Title", "Награды:", 18, TextAnchor.UpperLeft,
+                new Vector2(0f, 0f), new Vector2(1f, 1f));
+            _modalMonsterRewardsTitle.resizeTextForBestFit = false;
+            _modalMonsterRewardsRoot.gameObject.SetActive(false);
+
+            _modalBarrierRequirementsRoot = new GameObject("BarrierRequirements", typeof(RectTransform)).GetComponent<RectTransform>();
+            _modalBarrierRequirementsRoot.SetParent(_modalRoot.transform, false);
+            _modalBarrierRequirementsRoot.anchorMin = new Vector2(0.06f, 0.24f);
+            _modalBarrierRequirementsRoot.anchorMax = new Vector2(0.48f, 0.44f);
+            _modalBarrierRequirementsRoot.offsetMin = Vector2.zero;
+            _modalBarrierRequirementsRoot.offsetMax = Vector2.zero;
+            var requirementsLayout = _modalBarrierRequirementsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
+            requirementsLayout.padding = new RectOffset(0, 0, 0, 0);
+            requirementsLayout.spacing = 6f;
+            requirementsLayout.childAlignment = TextAnchor.UpperLeft;
+            requirementsLayout.childControlHeight = true;
+            requirementsLayout.childControlWidth = true;
+            requirementsLayout.childForceExpandHeight = false;
+            requirementsLayout.childForceExpandWidth = true;
+            _modalBarrierRequirementsTitle = CreateText(_modalBarrierRequirementsRoot, "Title", "Требуется для разбития:", 18, TextAnchor.UpperLeft,
+                new Vector2(0f, 0f), new Vector2(1f, 1f));
+            _modalBarrierRequirementsTitle.resizeTextForBestFit = false;
+            _modalBarrierRequirementsRoot.gameObject.SetActive(false);
 
             _modalFightButton = CreateButton(_modalRoot.transform, "FightButton", "В бой",
                 new Vector2(0.08f, 0.06f), new Vector2(0.46f, 0.18f));
@@ -463,9 +592,10 @@ namespace Project.UI
                 var req = GetBarrierRequirement(floor);
                 _modalTitle.text = $"Барьер этажа {floor}";
                 _modalInfo.text = BuildBarrierInfoText(floor, req);
-                _modalRewards.text = req != null
-                    ? "Требуется:\n" + BuildBarrierRequirementLine(req)
-                    : "Требования не найдены.";
+                _modalRewards.gameObject.SetActive(false);
+                if (_modalMonsterRewardsRoot != null)
+                    _modalMonsterRewardsRoot.gameObject.SetActive(false);
+                PopulateBarrierRequirements(req);
                 _modalCanUnlock = req != null;
                 _modalCanSummon = false;
                 _modalFightButton.interactable = false;
@@ -491,9 +621,10 @@ namespace Project.UI
                 sb.AppendLine($"Появится через: {FormatSeconds(respawn)}");
             _modalInfo.text = sb.ToString();
 
-            _modalRewards.text = bot != null
-                ? $"Награды:\nXP +{bot.reward_xp}\nЗолото +{bot.reward_gold}\nРуда +{bot.reward_ore}"
-                : "Награды: —";
+            _modalRewards.gameObject.SetActive(false);
+            PopulateMonsterRewards(bot);
+            if (_modalBarrierRequirementsRoot != null)
+                _modalBarrierRequirementsRoot.gameObject.SetActive(false);
 
             _modalCanUnlock = false;
             _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(floor);
@@ -971,28 +1102,195 @@ namespace Project.UI
             sb.AppendLine($"Этаж {floor} закрыт барьером.");
             if (_progression != null)
                 sb.AppendLine($"Ваш уровень: {_progression.level}");
-            if (_lastResources != null)
-            {
-                sb.AppendLine($"Ваши ресурсы: руда {_lastResources.ore}, золото {_lastResources.gold}, материя {_lastResources.matter}, ключи {_lastResources.keys}");
-            }
-            if (req != null)
-            {
-                sb.AppendLine("Нужно для разбития:");
-                sb.AppendLine(BuildBarrierRequirementLine(req));
-            }
             return sb.ToString();
         }
 
-        private static string BuildBarrierRequirementLine(BarrierRequirement req)
+        private void PopulateBarrierRequirements(BarrierRequirement req)
         {
-            if (req == null) return "—";
-            var sb = new StringBuilder();
-            if (req.ore > 0) sb.Append($"Руда {req.ore}  ");
-            if (req.gold > 0) sb.Append($"Золото {req.gold}  ");
-            if (req.matter > 0) sb.Append($"Материя {req.matter}  ");
+            if (_modalBarrierRequirementsRoot == null)
+                return;
+
+            ClearRows(_modalBarrierRequirementsRoot);
+
+            if (_modalBarrierRequirementsTitle != null)
+                _modalBarrierRequirementsTitle.gameObject.SetActive(true);
+
+            if (req == null)
+            {
+                CreateIconValueRow(_modalBarrierRequirementsRoot, null, "Требования не найдены.", Color.white);
+                _modalBarrierRequirementsRoot.gameObject.SetActive(true);
+                return;
+            }
+
+            var hasAny = false;
+            if (req.level > 0)
+            {
+                var haveLevel = Mathf.Max(0, _progression != null ? _progression.level : 0);
+                var levelOk = haveLevel >= req.level;
+                CreateIconValueRow(_modalBarrierRequirementsRoot, null, $"Уровень {haveLevel}/{req.level}", GetEnoughColor(levelOk));
+                hasAny = true;
+            }
+
+            if (req.ore > 0)
+            {
+                _oreSprite ??= LoadSpriteAsset(HudOreIconAssetPath);
+                var haveOre = Mathf.Max(0L, _lastResources != null ? _lastResources.ore : (_progression != null ? _progression.ore : 0));
+                CreateIconValueRow(_modalBarrierRequirementsRoot, _oreSprite, $"{haveOre}/{req.ore}", GetEnoughColor(haveOre >= req.ore));
+                hasAny = true;
+            }
+
+            if (req.gold > 0)
+            {
+                _goldSprite ??= LoadSpriteAsset(HudGoldIconAssetPath);
+                var haveGold = Mathf.Max(0L, _lastResources != null ? _lastResources.gold : (_progression != null ? _progression.gold : 0));
+                CreateIconValueRow(_modalBarrierRequirementsRoot, _goldSprite, $"{haveGold}/{req.gold}", GetEnoughColor(haveGold >= req.gold));
+                hasAny = true;
+            }
+
+            if (req.matter > 0)
+            {
+                _matterSprite ??= LoadSpriteAsset(HudMatterIconAssetPath);
+                var haveMatter = Mathf.Max(0L, _lastResources != null ? _lastResources.matter : (_progression != null ? _progression.matter : 0));
+                CreateIconValueRow(_modalBarrierRequirementsRoot, _matterSprite, $"{haveMatter}/{req.matter}", GetEnoughColor(haveMatter >= req.matter));
+                hasAny = true;
+            }
+
             if (!string.IsNullOrWhiteSpace(req.key_id) && req.key_amount > 0)
-                sb.Append($"Ключ {req.key_id} x{req.key_amount}");
-            return sb.ToString().Trim();
+            {
+                _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
+                var haveKey = Mathf.Max(0, GetOwnedKeyAmount(req.key_id));
+                CreateIconValueRow(_modalBarrierRequirementsRoot, _lockSprite, $"{haveKey}/{req.key_amount}", GetEnoughColor(haveKey >= req.key_amount));
+                hasAny = true;
+            }
+
+            if (!hasAny)
+                CreateIconValueRow(_modalBarrierRequirementsRoot, null, "Без доп. условий", Color.white);
+
+            _modalBarrierRequirementsRoot.gameObject.SetActive(true);
+        }
+
+        private void PopulateMonsterRewards(PveBotInfo bot)
+        {
+            if (_modalMonsterRewardsRoot == null)
+                return;
+
+            ClearRows(_modalMonsterRewardsRoot);
+            if (_modalMonsterRewardsTitle != null)
+                _modalMonsterRewardsTitle.gameObject.SetActive(true);
+
+            if (bot == null)
+            {
+                CreateIconValueRow(_modalMonsterRewardsRoot, null, "Награды: —", Color.white);
+                _modalMonsterRewardsRoot.gameObject.SetActive(true);
+                return;
+            }
+
+            _oreSprite ??= LoadSpriteAsset(HudOreIconAssetPath);
+            _goldSprite ??= LoadSpriteAsset(HudGoldIconAssetPath);
+
+            CreateIconValueRow(_modalMonsterRewardsRoot, null, $"XP +{bot.reward_xp}", Color.white);
+            CreateIconValueRow(_modalMonsterRewardsRoot, _goldSprite, "+" + FormatCompact(bot.reward_gold), Color.white);
+            CreateIconValueRow(_modalMonsterRewardsRoot, _oreSprite, "+" + FormatCompact(bot.reward_ore), Color.white);
+            _modalMonsterRewardsRoot.gameObject.SetActive(true);
+        }
+
+        private static void ClearRows(RectTransform root)
+        {
+            if (root == null)
+                return;
+            for (var i = root.childCount - 1; i >= 0; i--)
+            {
+                var child = root.GetChild(i);
+                if (child == null || child.name == "Title")
+                    continue;
+                Destroy(child.gameObject);
+            }
+        }
+
+        private void CreateIconValueRow(RectTransform parent, Sprite icon, string value, Color textColor)
+        {
+            if (parent == null)
+                return;
+
+            var row = new GameObject("RequirementRow", typeof(RectTransform), typeof(LayoutElement));
+            var rowRt = row.GetComponent<RectTransform>();
+            rowRt.SetParent(parent, false);
+            var rowLayout = row.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.padding = new RectOffset(0, 0, 0, 0);
+            rowLayout.spacing = 8f;
+            rowLayout.childAlignment = TextAnchor.MiddleLeft;
+            rowLayout.childControlHeight = true;
+            rowLayout.childControlWidth = false;
+            rowLayout.childForceExpandWidth = false;
+            row.GetComponent<LayoutElement>().preferredHeight = 28f;
+
+            if (icon != null)
+            {
+                var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+                var iconRt = iconGo.GetComponent<RectTransform>();
+                iconRt.SetParent(rowRt, false);
+                var iconImage = iconGo.GetComponent<Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+                iconImage.color = Color.white;
+                var iconLe = iconGo.GetComponent<LayoutElement>();
+                iconLe.preferredWidth = 24f;
+                iconLe.preferredHeight = 24f;
+                iconLe.minWidth = 24f;
+                iconLe.minHeight = 24f;
+            }
+
+            var labelGo = new GameObject("Value", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            var labelRt = labelGo.GetComponent<RectTransform>();
+            labelRt.SetParent(rowRt, false);
+            var label = labelGo.GetComponent<Text>();
+            label.font = GetBuiltinFont();
+            label.fontSize = 20;
+            label.color = textColor;
+            label.alignment = TextAnchor.MiddleLeft;
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            label.text = value;
+            var labelLe = labelGo.GetComponent<LayoutElement>();
+            labelLe.flexibleWidth = 1f;
+        }
+
+        private static Color GetEnoughColor(bool isEnough)
+        {
+            return isEnough ? new Color(0.55f, 0.95f, 0.58f, 1f) : new Color(1f, 0.45f, 0.45f, 1f);
+        }
+
+        private int GetOwnedKeyAmount(string keyId)
+        {
+            if (_progression != null && _progression.key_items != null)
+            {
+                if (string.Equals(keyId, "miner_key", StringComparison.OrdinalIgnoreCase))
+                    return Mathf.Max(0, _progression.key_items.miner_key);
+                if (string.Equals(keyId, "dark_key", StringComparison.OrdinalIgnoreCase))
+                    return Mathf.Max(0, _progression.key_items.dark_key);
+            }
+
+            if (_lastResources != null)
+                return (int)Math.Max(0L, _lastResources.keys);
+            return 0;
+        }
+
+        private static Sprite LoadSpriteAsset(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+                return null;
+
+#if UNITY_EDITOR
+            var byAssetPath = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (byAssetPath != null)
+                return byAssetPath;
+#endif
+
+            var resourcesPath = assetPath.Replace("Assets/Resources/", string.Empty);
+            if (resourcesPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                resourcesPath = resourcesPath.Substring(0, resourcesPath.Length - 4);
+            return Resources.Load<Sprite>(resourcesPath);
         }
 
         private void ApplyAffixVisual(string affix)
@@ -1087,6 +1385,15 @@ namespace Project.UI
             if (btn == null) return;
             var t = btn.GetComponentInChildren<Text>(true);
             if (t != null) t.text = value;
+        }
+
+        private static void SetButtonVisible(Button btn, bool isVisible)
+        {
+            if (btn == null)
+                return;
+            if (btn.gameObject.activeSelf == isVisible)
+                return;
+            btn.gameObject.SetActive(isVisible);
         }
 
         private static string FormatSeconds(int seconds)
@@ -1277,11 +1584,13 @@ namespace Project.UI
             public Transform root;
             public Text stateText;
             public Button monsterButton;
+            public Button lockButton;
         }
 
         [Serializable]
         private sealed class BarrierRequirement
         {
+            public int level;
             public int ore;
             public int gold;
             public int matter;
