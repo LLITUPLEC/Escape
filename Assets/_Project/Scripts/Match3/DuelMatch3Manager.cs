@@ -77,6 +77,12 @@ namespace Project.Match3
         [SerializeField] private Sprite furyAbilitySprite;
         [SerializeField] private Sprite spellBorderSprite;
 
+        [Header("Reward Icon Sprites")]
+        [SerializeField] private Sprite rewardExpSprite;
+        [SerializeField] private Sprite rewardOreSprite;
+        [SerializeField] private Sprite rewardGoldSprite;
+        [SerializeField] private Sprite rewardMatterSprite;
+
         [Header("UI Prefabs")]
         [SerializeField] private DamagePopupView damagePopupPrefab;
         [SerializeField] private AffixCatalog affixCatalog;
@@ -100,6 +106,10 @@ namespace Project.Match3
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
         private const string DefaultPveBotId = "mine_1";
+        private const string RewardExpIconPath = "Assets/_Project/img/resources_hud/exp.png";
+        private const string RewardOreIconPath = "Assets/_Project/img/resources_hud/ore.png";
+        private const string RewardGoldIconPath = "Assets/_Project/img/resources_hud/gold.png";
+        private const string RewardMatterIconPath = "Assets/_Project/img/resources_hud/matter.png";
         private const int FrozenAffixAbilityPenalty = 10;
 
         // ─── Game Constants ───────────────────────────────────────────────────────
@@ -153,6 +163,10 @@ namespace Project.Match3
         private int _remoteSelX = -1, _remoteSelY = -1;
         private bool _resultRecorded;
         private string _lastRewardText;
+        private int _lastRewardXp;
+        private int _lastRewardGold;
+        private int _lastRewardOre;
+        private int _lastRewardMatter;
         private bool _pendingGameOver;
         private bool _pendingGameOverWon;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
@@ -183,6 +197,7 @@ namespace Project.Match3
         private Match3GameHUD       _hud;
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
+        private RectTransform _gameOverRewardRowsRoot;
         private GameObject _pveSelectorRoot;
         private TMP_Text _pveBotTitleText;
         private TMP_Text _pveBotStatsText;
@@ -323,6 +338,7 @@ namespace Project.Match3
             _opPanel?.SetPlayerName("Соперник");
             _resultRecorded = false;
             _lastRewardText = null;
+            _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
             StartGameWaitingServer();
         }
 
@@ -418,6 +434,7 @@ namespace Project.Match3
             _opPanel?.SetPlayerName(botName);
             _resultRecorded = false;
             _lastRewardText = null;
+            _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
             StartGameWaitingServer();
         }
 
@@ -700,6 +717,146 @@ namespace Project.Match3
             return sb.ToString();
         }
 
+        private void EnsureGameOverRewardRowsUI()
+        {
+            if (_gameOverRewardRowsRoot != null)
+                return;
+            if (_gameOverPanel == null || _gameOverPanel.rewardText == null)
+                return;
+
+            var rewardRt = _gameOverPanel.rewardText.rectTransform;
+            var parent = rewardRt.parent as RectTransform;
+            if (parent == null)
+                return;
+
+            var go = new GameObject("RewardRows", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = rewardRt.anchorMin;
+            rt.anchorMax = rewardRt.anchorMax;
+            rt.pivot = rewardRt.pivot;
+            rt.offsetMin = rewardRt.offsetMin;
+            rt.offsetMax = rewardRt.offsetMax;
+            rt.localScale = Vector3.one;
+
+            var layout = go.GetComponent<HorizontalLayoutGroup>();
+            layout.padding = new RectOffset(0, 0, 0, 0);
+            layout.spacing = 18f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = false;
+
+            _gameOverRewardRowsRoot = rt;
+            _gameOverRewardRowsRoot.gameObject.SetActive(false);
+        }
+
+        private void RefreshGameOverRewardRows(bool won)
+        {
+            EnsureGameOverRewardRowsUI();
+            if (_gameOverPanel == null || _gameOverPanel.rewardText == null)
+                return;
+
+            var fallback = _gameOverPanel.rewardText;
+            if (_gameOverRewardRowsRoot == null)
+            {
+                fallback.text = !string.IsNullOrEmpty(_lastRewardText) ? _lastRewardText : string.Empty;
+                fallback.gameObject.SetActive(!string.IsNullOrEmpty(fallback.text));
+                return;
+            }
+
+            ClearRewardRows();
+
+            if (!won)
+            {
+                _gameOverRewardRowsRoot.gameObject.SetActive(false);
+                fallback.gameObject.SetActive(false);
+                return;
+            }
+
+            fallback.gameObject.SetActive(false);
+            var count = 0;
+            count += AddRewardRow(rewardExpSprite, _lastRewardXp);
+            count += AddRewardRow(rewardGoldSprite, _lastRewardGold);
+            count += AddRewardRow(rewardOreSprite, _lastRewardOre);
+            count += AddRewardRow(rewardMatterSprite, _lastRewardMatter);
+
+            if (count == 0 && !string.IsNullOrEmpty(_lastRewardText))
+            {
+                fallback.text = _lastRewardText;
+                fallback.gameObject.SetActive(true);
+                _gameOverRewardRowsRoot.gameObject.SetActive(false);
+                return;
+            }
+
+            _gameOverRewardRowsRoot.gameObject.SetActive(count > 0);
+        }
+
+        private void ClearRewardRows()
+        {
+            if (_gameOverRewardRowsRoot == null)
+                return;
+            for (var i = _gameOverRewardRowsRoot.childCount - 1; i >= 0; i--)
+                Destroy(_gameOverRewardRowsRoot.GetChild(i).gameObject);
+        }
+
+        private int AddRewardRow(Sprite icon, int value)
+        {
+            if (_gameOverRewardRowsRoot == null || value <= 0)
+                return 0;
+
+            var row = new GameObject("RewardRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            var rowRt = row.GetComponent<RectTransform>();
+            rowRt.SetParent(_gameOverRewardRowsRoot, false);
+            var fitter = row.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(0, 0, 0, 0);
+            h.spacing = 8f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            h.childForceExpandHeight = false;
+            h.childForceExpandWidth = false;
+
+            if (icon != null)
+            {
+                var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+                var iconRt = iconGo.GetComponent<RectTransform>();
+                iconRt.SetParent(rowRt, false);
+                var iconImg = iconGo.GetComponent<Image>();
+                iconImg.sprite = icon;
+                iconImg.preserveAspect = true;
+                iconImg.raycastTarget = false;
+                iconImg.color = Color.white;
+                var iconLe = iconGo.GetComponent<LayoutElement>();
+                iconLe.preferredWidth = 30f;
+                iconLe.preferredHeight = 30f;
+                iconLe.minWidth = 30f;
+                iconLe.minHeight = 30f;
+            }
+
+            var textGo = new GameObject("Value", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            var textRt = textGo.GetComponent<RectTransform>();
+            textRt.SetParent(rowRt, false);
+            var text = textGo.GetComponent<TextMeshProUGUI>();
+            if (_gameOverPanel != null && _gameOverPanel.rewardText != null)
+                text.font = _gameOverPanel.rewardText.font;
+            text.fontSize = 30f;
+            text.color = new Color(1f, 0.90f, 0.30f);
+            text.alignment = TextAlignmentOptions.Center;
+            text.text = "+" + value;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            var textLe = textGo.GetComponent<LayoutElement>();
+            textLe.preferredWidth = -1f;
+            textLe.minWidth = 0f;
+            textLe.flexibleWidth = 0f;
+
+            return 1;
+        }
+
         private void ShowGameOver(bool won)
         {
             if (!_resultRecorded)
@@ -711,8 +868,8 @@ namespace Project.Match3
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
             PlaySfx(won ? sfxVictory : sfxDefeat);
-            var rewardText = !string.IsNullOrEmpty(_lastRewardText) ? _lastRewardText : null;
-            _gameOverPanel?.Show(won, rewardText);
+            _gameOverPanel?.Show(won, null);
+            RefreshGameOverRewardRows(won);
         }
 
         private async Task RecordMatch3ResultServerAsync(bool won)
@@ -847,6 +1004,10 @@ namespace Project.Match3
                         var rgold = Mathf.Max(0, msg.rewardGold);
                         var rore = Mathf.Max(0, msg.rewardOre);
                         var rmatter = Mathf.Max(0, msg.rewardMatter);
+                        _lastRewardXp = rxp;
+                        _lastRewardGold = rgold;
+                        _lastRewardOre = rore;
+                        _lastRewardMatter = rmatter;
                         _pveProgress.xp += rxp;
                         _pveProgress.gold += rgold;
                         if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
@@ -1938,6 +2099,36 @@ namespace Project.Match3
 #endif
         }
 
+        private void TryAutoAssignRewardSpritesInEditor()
+        {
+#if UNITY_EDITOR
+            if (rewardExpSprite == null) rewardExpSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardExpIconPath);
+            if (rewardOreSprite == null) rewardOreSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardOreIconPath);
+            if (rewardGoldSprite == null) rewardGoldSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardGoldIconPath);
+            if (rewardMatterSprite == null) rewardMatterSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardMatterIconPath);
+#endif
+        }
+
+        private void EnsureRewardSpritesAssigned()
+        {
+            if (rewardExpSprite == null) rewardExpSprite = LoadRewardSprite(RewardExpIconPath);
+            if (rewardOreSprite == null) rewardOreSprite = LoadRewardSprite(RewardOreIconPath);
+            if (rewardGoldSprite == null) rewardGoldSprite = LoadRewardSprite(RewardGoldIconPath);
+            if (rewardMatterSprite == null) rewardMatterSprite = LoadRewardSprite(RewardMatterIconPath);
+        }
+
+        private static Sprite LoadRewardSprite(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+                return null;
+#if UNITY_EDITOR
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (sprite != null)
+                return sprite;
+#endif
+            return null;
+        }
+
         private void TryAutoAssignUiPrefabsInEditor()
         {
 #if UNITY_EDITOR
@@ -2173,6 +2364,8 @@ namespace Project.Match3
             if (_abilityPanel == null) _abilityPanel = BuildAbilityPanelProcedural(leftTr);
 
             TryAutoAssignAbilitySpritesInEditor();
+            TryAutoAssignRewardSpritesInEditor();
+            EnsureRewardSpritesAssigned();
             TryAutoAssignUiPrefabsInEditor();
             EnsureDamagePopupWidgets(_myPanel);
             ConfigureAbilityButtonsVisuals();
@@ -2216,6 +2409,7 @@ namespace Project.Match3
             _gameOverPanel = BuildOrInstantiate(gameOverPanelPrefab, root, V2(0.22f, 0.24f), V2(0.78f, 0.76f));
             if (_gameOverPanel == null) _gameOverPanel = BuildGameOverPanelProcedural(root);
             _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+            EnsureGameOverRewardRowsUI();
             _gameOverPanel.Hide();
 
             if (_isSoloBotMode)

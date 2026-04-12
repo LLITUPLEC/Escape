@@ -18,3 +18,8 @@ MonoBehaviour:
   equippable: 1
   slot: 3
   modifiers: []
+  hp: 0
+  damage: 0
+  armor: 0
+  healing: 3
+  critChance: 0.4

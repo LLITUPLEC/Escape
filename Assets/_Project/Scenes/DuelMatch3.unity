@@ -325,7 +325,12 @@ MonoBehaviour:
   shieldAbilitySprite: {fileID: 21300000, guid: 54c5f9a2070a28e47838576b029a84f9, type: 3}
   furyAbilitySprite: {fileID: 21300000, guid: df9dbddaf3e01ad4aafec78602fd3ae5, type: 3}
   spellBorderSprite: {fileID: 21300000, guid: 12a9630a27055ac4fab7951b3737c9ea, type: 3}
+  rewardExpSprite: {fileID: 21300000, guid: 41b56324a2f799142893c434059c35f7, type: 3}
+  rewardOreSprite: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
+  rewardGoldSprite: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
+  rewardMatterSprite: {fileID: 21300000, guid: 98adc8eac42d30d4894322f3a75eae8e, type: 3}
   damagePopupPrefab: {fileID: 1563794341977534896, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
+  affixCatalog: {fileID: 0}
   cheatRowsOverlayCellsPrefab: {fileID: 8564567523557899235, guid: 2c5f112379cf13343935c7cab488f4b8, type: 3}
   furyCritChance: 0.25
 --- !u!1 &1921802989

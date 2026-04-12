@@ -19,6 +19,12 @@ namespace Project.UI
         [SerializeField] private MonsterCatalog monsterCatalog;
         [SerializeField] private MonsterFrameCatalog monsterFrameCatalog;
         [SerializeField] private AffixCatalog affixCatalog;
+        [SerializeField] private Sprite keyIconSprite;
+        [SerializeField] private Sprite oreIconSprite;
+        [SerializeField] private Sprite goldIconSprite;
+        [SerializeField] private Sprite matterIconSprite;
+        [SerializeField] private Sprite ingotsIconSprite;
+        [SerializeField] private Sprite expIconSprite;
         private const string RpcPveCatalogGet = "duel_match3_pve_catalog_get";
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
@@ -34,6 +40,8 @@ namespace Project.UI
         private const string HudOreIconAssetPath = "Assets/_Project/img/resources_hud/ore.png";
         private const string HudGoldIconAssetPath = "Assets/_Project/img/resources_hud/gold.png";
         private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
+        private const string HudIngotsIconAssetPath = "Assets/_Project/img/resources_hud/ingots.png";
+        private const string HudExpIconAssetPath = "Assets/_Project/img/resources_hud/exp.png";
 
         private readonly Dictionary<int, FloorRowRefs> _rows = new();
         private readonly Dictionary<int, Button> _liftButtons = new();
@@ -55,6 +63,7 @@ namespace Project.UI
         private Text _modalAffixText;
         private RectTransform _modalMonsterRewardsRoot;
         private Text _modalMonsterRewardsTitle;
+        private RectTransform _modalMonsterRewardsColumnsRoot;
         private RectTransform _modalBarrierRequirementsRoot;
         private Text _modalBarrierRequirementsTitle;
         private int _selectedFloor;
@@ -74,6 +83,8 @@ namespace Project.UI
         private Sprite _oreSprite;
         private Sprite _goldSprite;
         private Sprite _matterSprite;
+        private Sprite _ingotsSprite;
+        private Sprite _expSprite;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
         private readonly ResourceValueBinding _oreBinding = new("ore");
         private readonly ResourceValueBinding _goldBinding = new("Gold");
@@ -113,6 +124,7 @@ namespace Project.UI
         {
             if (affixCatalog == null)
                 affixCatalog = Resources.Load<AffixCatalog>("Match3/AffixCatalog");
+            EnsureHudIconReferences();
             _cardsScroll = FindFirstObjectByType<ScrollRect>(FindObjectsInactive.Include);
             CacheRows();
             EnsureModal();
@@ -272,6 +284,7 @@ namespace Project.UI
                 var f = floor;
                 refs.monsterButton.onClick.AddListener(() => OpenMonsterModal(f));
                 refs.lockButton.onClick.AddListener(() => OpenMonsterModal(f));
+                EnsureTorchViewportCulling(refs.root);
                 refs.root.SetSiblingIndex(floor - 1); // 1-й этаж вверху, глубже — ниже.
                 _rows[floor] = refs;
 
@@ -433,6 +446,23 @@ namespace Project.UI
                 lighting.SetLockedState(isLocked);
         }
 
+        private void EnsureTorchViewportCulling(Transform rowRoot)
+        {
+            if (rowRoot == null)
+                return;
+
+            var torchRoot = rowRoot.Find("Torch_Prefab");
+            if (torchRoot == null)
+                return;
+
+            var culler = torchRoot.GetComponent<UiViewportSpriteCuller>();
+            if (culler == null)
+                culler = torchRoot.gameObject.AddComponent<UiViewportSpriteCuller>();
+
+            if (_cardsScroll != null && _cardsScroll.viewport != null)
+                culler.SetViewport(_cardsScroll.viewport);
+        }
+
         private void ApplyMonsterVisual(FloorRowRefs refs, PveBotInfo bot, MineFloorInfo floorInfo)
         {
             if (refs == null || refs.monsterButton == null) return;
@@ -545,6 +575,19 @@ namespace Project.UI
             _modalMonsterRewardsTitle = CreateText(_modalMonsterRewardsRoot, "Title", "Награды:", 18, TextAnchor.UpperLeft,
                 new Vector2(0f, 0f), new Vector2(1f, 1f));
             _modalMonsterRewardsTitle.resizeTextForBestFit = false;
+            _modalMonsterRewardsColumnsRoot = new GameObject("RowsContainer", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
+            _modalMonsterRewardsColumnsRoot.SetParent(_modalMonsterRewardsRoot, false);
+            var columnsLayout = _modalMonsterRewardsColumnsRoot.GetComponent<HorizontalLayoutGroup>();
+            columnsLayout.padding = new RectOffset(0, 0, 0, 0);
+            columnsLayout.spacing = 10f;
+            columnsLayout.childAlignment = TextAnchor.UpperLeft;
+            columnsLayout.childControlHeight = true;
+            columnsLayout.childControlWidth = true;
+            columnsLayout.childForceExpandHeight = false;
+            columnsLayout.childForceExpandWidth = true;
+            var columnsLe = _modalMonsterRewardsColumnsRoot.GetComponent<LayoutElement>();
+            columnsLe.flexibleWidth = 1f;
+            columnsLe.flexibleHeight = 1f;
             _modalMonsterRewardsRoot.gameObject.SetActive(false);
 
             _modalBarrierRequirementsRoot = new GameObject("BarrierRequirements", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -983,11 +1026,9 @@ namespace Project.UI
         private void EnsureHeaderResources()
         {
             if (_headerResourcesRoot == null)
-            {
                 _headerResourcesRoot = FindHeaderResourcesRoot();
-                if (_headerResourcesRoot == null)
-                    _headerResourcesRoot = CreateHeaderResourcesRoot();
-            }
+            if (_headerResourcesRoot == null)
+                return;
 
             BindHeaderResource(_energyBinding, _headerResourcesRoot);
             BindHeaderResource(_oreBinding, _headerResourcesRoot);
@@ -996,6 +1037,75 @@ namespace Project.UI
             BindHeaderResource(_matterBinding, _headerResourcesRoot);
             BindHeaderResource(_keysBinding, _headerResourcesRoot);
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            TryAutoAssignHudIconReferencesInEditor();
+        }
+#endif
+
+        private void EnsureHudIconReferences()
+        {
+            _lockSprite = keyIconSprite;
+            _oreSprite = oreIconSprite;
+            _goldSprite = goldIconSprite;
+            _matterSprite = matterIconSprite;
+            _ingotsSprite = ingotsIconSprite;
+            _expSprite = expIconSprite;
+
+            if (_lockSprite == null) _lockSprite = LoadSpriteAsset(HudKeyIconAssetPath);
+            if (_oreSprite == null) _oreSprite = LoadSpriteAsset(HudOreIconAssetPath);
+            if (_goldSprite == null) _goldSprite = LoadSpriteAsset(HudGoldIconAssetPath);
+            if (_matterSprite == null) _matterSprite = LoadSpriteAsset(HudMatterIconAssetPath);
+            if (_ingotsSprite == null) _ingotsSprite = LoadSpriteAsset(HudIngotsIconAssetPath);
+            if (_expSprite == null) _expSprite = LoadSpriteAsset(HudExpIconAssetPath);
+        }
+
+#if UNITY_EDITOR
+        private void TryAutoAssignHudIconReferencesInEditor()
+        {
+            var changed = false;
+            if (keyIconSprite == null)
+            {
+                keyIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudKeyIconAssetPath);
+                changed |= keyIconSprite != null;
+            }
+
+            if (oreIconSprite == null)
+            {
+                oreIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudOreIconAssetPath);
+                changed |= oreIconSprite != null;
+            }
+
+            if (goldIconSprite == null)
+            {
+                goldIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudGoldIconAssetPath);
+                changed |= goldIconSprite != null;
+            }
+
+            if (matterIconSprite == null)
+            {
+                matterIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudMatterIconAssetPath);
+                changed |= matterIconSprite != null;
+            }
+
+            if (ingotsIconSprite == null)
+            {
+                ingotsIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudIngotsIconAssetPath);
+                changed |= ingotsIconSprite != null;
+            }
+
+            if (expIconSprite == null)
+            {
+                expIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudExpIconAssetPath);
+                changed |= expIconSprite != null;
+            }
+
+            if (changed)
+                UnityEditor.EditorUtility.SetDirty(this);
+        }
+#endif
 
         private static Transform FindHeaderResourcesRoot()
         {
@@ -1173,25 +1283,100 @@ namespace Project.UI
         {
             if (_modalMonsterRewardsRoot == null)
                 return;
-
-            ClearRows(_modalMonsterRewardsRoot);
             if (_modalMonsterRewardsTitle != null)
                 _modalMonsterRewardsTitle.gameObject.SetActive(true);
+            if (_modalMonsterRewardsColumnsRoot == null)
+                return;
+            ClearRows(_modalMonsterRewardsColumnsRoot);
+
+            var entries = new List<RewardEntry>(8);
 
             if (bot == null)
             {
-                CreateIconValueRow(_modalMonsterRewardsRoot, null, "Награды: —", Color.white);
+                entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
                 _modalMonsterRewardsRoot.gameObject.SetActive(true);
+                RenderRewardEntries(entries);
                 return;
             }
 
             _oreSprite ??= LoadSpriteAsset(HudOreIconAssetPath);
             _goldSprite ??= LoadSpriteAsset(HudGoldIconAssetPath);
+            _matterSprite ??= LoadSpriteAsset(HudMatterIconAssetPath);
+            _ingotsSprite ??= LoadSpriteAsset(HudIngotsIconAssetPath);
+            _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
 
-            CreateIconValueRow(_modalMonsterRewardsRoot, null, $"XP +{bot.reward_xp}", Color.white);
-            CreateIconValueRow(_modalMonsterRewardsRoot, _goldSprite, "+" + FormatCompact(bot.reward_gold), Color.white);
-            CreateIconValueRow(_modalMonsterRewardsRoot, _oreSprite, "+" + FormatCompact(bot.reward_ore), Color.white);
+            _expSprite ??= LoadSpriteAsset(HudExpIconAssetPath);
+            if (bot.reward_xp > 0)
+                entries.Add(new RewardEntry { icon = _expSprite, text = "+" + FormatCompact(bot.reward_xp), color = Color.white });
+            if (bot.reward_gold > 0)
+                entries.Add(new RewardEntry { icon = _goldSprite, text = "+" + FormatCompact(bot.reward_gold), color = Color.white });
+            if (bot.reward_ore > 0)
+                entries.Add(new RewardEntry { icon = _oreSprite, text = "+" + FormatCompact(bot.reward_ore), color = Color.white });
+            if (bot.reward_ingots > 0)
+                entries.Add(new RewardEntry { icon = _ingotsSprite, text = "+" + FormatCompact(bot.reward_ingots), color = Color.white });
+            if (!string.IsNullOrWhiteSpace(bot.reward_key_id) && bot.reward_key_amount > 0)
+                entries.Add(new RewardEntry { icon = _lockSprite, text = $"{bot.reward_key_id} x{bot.reward_key_amount}", color = Color.white });
+
+            if (bot.reward_matter_min > 0 || bot.reward_matter_max > 0)
+            {
+                var minMatter = Mathf.Max(0, bot.reward_matter_min);
+                var maxMatter = Mathf.Max(minMatter, bot.reward_matter_max);
+                var matterText = minMatter == maxMatter
+                    ? "+" + FormatCompact(minMatter)
+                    : $"{FormatCompact(minMatter)}-{FormatCompact(maxMatter)}";
+                entries.Add(new RewardEntry { icon = _matterSprite, text = matterText, color = Color.white });
+            }
+
+            if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
+                entries.Add(new RewardEntry { icon = null, text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
+
+            if (bot.reward_tesseract_chance > 0f)
+            {
+                var pct = Mathf.RoundToInt(bot.reward_tesseract_chance * 100f);
+                entries.Add(new RewardEntry { icon = null, text = $"Тессеракт: {pct}%", color = Color.white });
+            }
+
+            if (entries.Count == 0)
+                entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
+
+            RenderRewardEntries(entries);
             _modalMonsterRewardsRoot.gameObject.SetActive(true);
+        }
+
+        private void RenderRewardEntries(List<RewardEntry> entries)
+        {
+            if (_modalMonsterRewardsColumnsRoot == null)
+                return;
+
+            const int maxRowsPerColumn = 4;
+            var total = entries != null ? entries.Count : 0;
+            if (total <= 0)
+                return;
+
+            var columns = Mathf.Max(1, Mathf.CeilToInt(total / (float)maxRowsPerColumn));
+            var index = 0;
+            for (var col = 0; col < columns; col++)
+            {
+                var colGo = new GameObject("Column_" + col, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
+                var colRt = colGo.GetComponent<RectTransform>();
+                colRt.SetParent(_modalMonsterRewardsColumnsRoot, false);
+                var colLayout = colGo.GetComponent<VerticalLayoutGroup>();
+                colLayout.padding = new RectOffset(0, 0, 0, 0);
+                colLayout.spacing = 4f;
+                colLayout.childAlignment = TextAnchor.UpperLeft;
+                colLayout.childControlHeight = true;
+                colLayout.childControlWidth = true;
+                colLayout.childForceExpandHeight = false;
+                colLayout.childForceExpandWidth = true;
+                var colLe = colGo.GetComponent<LayoutElement>();
+                colLe.flexibleWidth = 1f;
+
+                for (var row = 0; row < maxRowsPerColumn && index < total; row++, index++)
+                {
+                    var e = entries[index];
+                    CreateIconValueRow(colRt, e.icon, e.text, e.color);
+                }
+            }
         }
 
         private static void ClearRows(RectTransform root)
@@ -1574,6 +1759,13 @@ namespace Project.UI
             public int reward_xp;
             public int reward_gold;
             public int reward_ore;
+            public int reward_ingots;
+            public string reward_key_id;
+            public int reward_key_amount;
+            public string reward_blueprint;
+            public int reward_matter_min;
+            public int reward_matter_max;
+            public float reward_tesseract_chance;
             public int base_damage;
             public int base_armor;
             public float base_crit;
@@ -1609,6 +1801,13 @@ namespace Project.UI
             }
 
             public bool IsBound => uiText != null;
+        }
+
+        private sealed class RewardEntry
+        {
+            public Sprite icon;
+            public string text;
+            public Color color;
         }
     }
 }

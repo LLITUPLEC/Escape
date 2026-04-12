@@ -51,7 +51,6 @@ namespace Project.UI.Editor
                 new Vector2(0f, 0f), new Vector2(1f, 1f));
             CreateText(bg, "Title", "Шахта", 44, Color.white, TextAnchor.MiddleCenter,
                 new Vector2(0.34f, 0.90f), new Vector2(0.80f, 0.98f));
-            CreateHeaderResources(bg);
 
             var liftPanel = CreatePanel(bg, "FloorLift", new Color(0.06f, 0.06f, 0.09f, 0.95f),
                 new Vector2(0.03f, 0.12f), new Vector2(0.17f, 0.88f));

@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: mine_1
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_1
-  displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0439 \u043C\u043E\u043D\u0441\u0442\u0440
+  displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0439 \u0433\u043E\u0431\u043B\u044F\u043D
     1"
   floor: 1
   icon: {fileID: 21300000, guid: e387d9e74521d2e41a0572bff50c9b1c, type: 3}
-  frameEasy: {fileID: 21300000, guid: 12a9630a27055ac4fab7951b3737c9ea, type: 3}
+  frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}
   frameBoss: {fileID: 0}

@@ -10,12 +10,13 @@ namespace Project.Character.UI
     }
 
     /// <summary>Точка drag/drop для ячейки инвентаря или слота экипировки.</summary>
-    public sealed class CharacterDragSlotHandle : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+    public sealed class CharacterDragSlotHandle : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerClickHandler
     {
         private CharacterSheetDragController _controller;
         private CharacterDragSlotKind _kind;
         private int _invIndex;
         private EquipmentSlotId _eqSlot;
+        private bool _dragStarted;
 
         public CharacterDragSlotKind Kind => _kind;
         public int InventoryIndex => _invIndex;
@@ -31,16 +32,27 @@ namespace Project.Character.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            _controller?.OnSlotBeginDrag(this);
+            if (_controller == null || !_controller.CanBeginInteraction(this))
+            {
+                _dragStarted = false;
+                return;
+            }
+
+            _dragStarted = true;
+            _controller.OnSlotBeginDrag(this, eventData);
         }
 
         public void OnDrag(PointerEventData eventData)
         {
+            if (!_dragStarted) return;
+            _controller?.OnSlotDrag(eventData);
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
-            _controller?.OnSlotEndDrag(this);
+            if (!_dragStarted) return;
+            _dragStarted = false;
+            _controller?.OnSlotEndDrag(this, eventData);
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -48,6 +60,12 @@ namespace Project.Character.UI
             var src = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<CharacterDragSlotHandle>() : null;
             if (src == null || _controller == null || src == this) return;
             _controller.TryMoveFromDrop(src, this);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_controller == null || !_controller.CanBeginInteraction(this)) return;
+            _controller.NotifySlotClick(this);
         }
     }
 }

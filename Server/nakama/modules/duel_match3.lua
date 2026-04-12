@@ -1108,6 +1108,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local actor = state.stats[actor_id]
   local opp = state.stats[opponent_id]
   local sim = state._sim_metrics
+  local affix = current_affix_id(state)
   if action_type == 4 then
     local crit = deal_damage(state, state.board, actor, opp, PETARD_DAMAGE)
     return crit
@@ -1130,8 +1131,19 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     elseif t == 5 then
       healed = true
       pending_heal = pending_heal + ANKH_HEAL
+      if affix == "mana_vampire" and opp ~= nil then
+        local vamp_gain = mana_gain_per_object(state, 2)
+        opp.mana = math.min(MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
+      end
     elseif t == 4 then
-      skulls = skulls + 1
+      if affix == "energy_block" then
+        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5
+      else
+        skulls = skulls + 1
+      end
+      if affix == "monster_rage" and actor_id == state.bot_user_id then
+        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3
+      end
     end
   end
 

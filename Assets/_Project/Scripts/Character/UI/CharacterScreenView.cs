@@ -10,6 +10,7 @@ namespace Project.Character.UI
     {
         [Header("Roots")]
         [SerializeField] private CanvasGroup root;
+        [SerializeField] private RectTransform panelRoot;
 
         [Header("Stats")]
         [SerializeField] private TMP_Text hpText;
@@ -29,6 +30,9 @@ namespace Project.Character.UI
 
         private readonly List<EquipmentSlotView> _equipmentSlots = new();
         private readonly List<ItemSlotView> _inventorySlots = new();
+        private string[] _equipmentDefIds = new string[8];
+        private string[] _inventoryDefIds = new string[25];
+        private ItemCatalog _activeCatalog;
 
         private bool _dragConfigured;
 
@@ -70,6 +74,7 @@ namespace Project.Character.UI
         public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, ItemCatalog catalog)
         {
             EnsureBuilt();
+            _activeCatalog = catalog;
             var bySlot = new EquipmentSlotView[8];
             foreach (var s in _equipmentSlots)
             {
@@ -82,14 +87,75 @@ namespace Project.Character.UI
                 var id = equipmentDefIds != null && i < equipmentDefIds.Length ? equipmentDefIds[i] : null;
                 var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
                 if (bySlot[i] != null) bySlot[i].Set(def);
+                _equipmentDefIds[i] = id;
             }
 
-            for (var i = 0; i < _inventorySlots.Count && i < 25; i++)
+            if (_inventoryDefIds.Length != _inventorySlots.Count)
+                _inventoryDefIds = new string[_inventorySlots.Count];
+
+            for (var i = 0; i < _inventorySlots.Count; i++)
             {
                 var id = inventoryDefIds != null && i < inventoryDefIds.Length ? inventoryDefIds[i] : null;
                 var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
                 _inventorySlots[i].SetIcon(def != null ? def.Icon : null);
+                _inventoryDefIds[i] = id;
             }
+        }
+
+        public bool TryGetInventoryItem(int inventoryIndex, out string itemId, out ItemDefinition itemDef)
+        {
+            itemId = null;
+            itemDef = null;
+            if (inventoryIndex < 0 || inventoryIndex >= _inventoryDefIds.Length) return false;
+            itemId = _inventoryDefIds[inventoryIndex];
+            if (string.IsNullOrEmpty(itemId)) return false;
+            itemDef = _activeCatalog != null ? _activeCatalog.Get(itemId) : null;
+            return itemDef != null;
+        }
+
+        public bool TryGetEquipmentItem(EquipmentSlotId slotId, out string itemId, out ItemDefinition itemDef)
+        {
+            itemId = null;
+            itemDef = null;
+            var index = (int)slotId;
+            if (index < 0 || index >= _equipmentDefIds.Length) return false;
+            itemId = _equipmentDefIds[index];
+            if (string.IsNullOrEmpty(itemId)) return false;
+            itemDef = _activeCatalog != null ? _activeCatalog.Get(itemId) : null;
+            return itemDef != null;
+        }
+
+        public bool HasInventoryItem(int inventoryIndex)
+        {
+            return inventoryIndex >= 0 && inventoryIndex < _inventoryDefIds.Length && !string.IsNullOrEmpty(_inventoryDefIds[inventoryIndex]);
+        }
+
+        public bool HasEquipmentItem(EquipmentSlotId slotId)
+        {
+            var index = (int)slotId;
+            return index >= 0 && index < _equipmentDefIds.Length && !string.IsNullOrEmpty(_equipmentDefIds[index]);
+        }
+
+        public int FindFirstEmptyInventoryIndex()
+        {
+            for (var i = 0; i < _inventoryDefIds.Length; i++)
+            {
+                if (string.IsNullOrEmpty(_inventoryDefIds[i])) return i;
+            }
+
+            return -1;
+        }
+
+        public RectTransform GetEquipmentRootRectTransform()
+        {
+            return equipmentRoot as RectTransform;
+        }
+
+        public RectTransform GetPanelRootRectTransform()
+        {
+            if (panelRoot != null) return panelRoot;
+            var tr = transform.Find("Panel");
+            return tr as RectTransform;
         }
 
         public void SetupDrag(CharacterSheetDragController drag)

@@ -12,6 +12,8 @@ namespace Project.Character.Editor
         private const string PrefabsDir = "Assets/_Project/Prefabs/CharacterUI";
         private const string ItemSlotPrefabPath = PrefabsDir + "/ItemSlotView.prefab";
         private const string EquipmentSlotPrefabPath = PrefabsDir + "/EquipmentSlotView.prefab";
+        private const string ItemActionModalPrefabPath = PrefabsDir + "/CharacterItemActionModal.prefab";
+        private const string ItemInfoModalPrefabPath = PrefabsDir + "/CharacterItemInfoModal.prefab";
         private const string CharacterHudPrefabPath = PrefabsDir + "/CharacterHudOverlay.prefab";
 
         [MenuItem("Tools/Character/Создать префабы персонажа (экипировка + мешок)")]
@@ -21,7 +23,9 @@ namespace Project.Character.Editor
 
             var itemSlotPrefab = CreateOrReplaceItemSlotPrefab();
             var equipmentSlotPrefab = CreateOrReplaceEquipmentSlotPrefab(itemSlotPrefab);
-            CreateOrReplaceCharacterHudPrefab(equipmentSlotPrefab, itemSlotPrefab);
+            var actionModalPrefab = CreateOrReplaceItemActionModalPrefab();
+            var infoModalPrefab = CreateOrReplaceItemInfoModalPrefab();
+            CreateOrReplaceCharacterHudPrefab(equipmentSlotPrefab, itemSlotPrefab, actionModalPrefab, infoModalPrefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -115,7 +119,58 @@ namespace Project.Character.Editor
             return AssetDatabase.LoadAssetAtPath<GameObject>(EquipmentSlotPrefabPath);
         }
 
-        private static void CreateOrReplaceCharacterHudPrefab(GameObject equipmentSlotPrefab, GameObject itemSlotPrefab)
+        private static GameObject CreateOrReplaceItemActionModalPrefab()
+        {
+            var root = new GameObject("CharacterItemActionModal", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(VerticalLayoutGroup), typeof(CharacterItemActionModalView));
+            var rt = root.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(380f, 220f);
+
+            var bg = root.GetComponent<Image>();
+            bg.color = new Color(0.11f, 0.11f, 0.17f, 0.98f);
+
+            var layout = root.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(24, 24, 24, 24);
+            layout.spacing = 14;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+
+            MakeLayoutButton(rt, "InfoButton", "Информация");
+            MakeLayoutButton(rt, "SellButton", "Продать");
+
+            ReplacePrefab(root, ItemActionModalPrefabPath);
+            Object.DestroyImmediate(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(ItemActionModalPrefabPath);
+        }
+
+        private static GameObject CreateOrReplaceItemInfoModalPrefab()
+        {
+            var root = new GameObject("CharacterItemInfoModal", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(CharacterItemInfoModalView));
+            var rt = root.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(680f, 560f);
+
+            var bg = root.GetComponent<Image>();
+            bg.color = new Color(0.10f, 0.10f, 0.15f, 0.99f);
+
+            MakeTmp(rt, "Title", "Предмет", 34, Color.white,
+                new Vector2(0.06f, 0.84f), new Vector2(0.84f, 0.96f), TextAlignmentOptions.Left);
+            MakeTmp(rt, "Slot", "Слот", 24, new Color(0.85f, 0.88f, 0.95f, 1f),
+                new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.84f), TextAlignmentOptions.Left);
+            MakeTmp(rt, "Stats", "-", 26, Color.white,
+                new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
+
+            MakeRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f), 24);
+            MakeRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.48f, 0.16f), 24);
+            MakeRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.52f, 0.05f), new Vector2(0.94f, 0.16f), 24);
+
+            ReplacePrefab(root, ItemInfoModalPrefabPath);
+            Object.DestroyImmediate(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(ItemInfoModalPrefabPath);
+        }
+
+        private static void CreateOrReplaceCharacterHudPrefab(GameObject equipmentSlotPrefab, GameObject itemSlotPrefab, GameObject actionModalPrefab, GameObject infoModalPrefab)
         {
             var root = new GameObject("CharacterHudOverlay", typeof(RectTransform));
             var rootRt = root.GetComponent<RectTransform>();
@@ -385,6 +440,7 @@ namespace Project.Character.Editor
             // Wire view + controller
             var view = screenGo.GetComponent<CharacterScreenView>();
             SetPrivateField(view, "root", cg);
+            SetPrivateField(view, "panelRoot", panelRt);
             SetPrivateField(view, "hpText", hpVal);
             SetPrivateField(view, "damageText", dmgVal);
             SetPrivateField(view, "armorText", armorVal);
@@ -402,6 +458,8 @@ namespace Project.Character.Editor
             SetPrivateField(controller, "closeButton", closeBtn);
             SetPrivateField(controller, "levelText", levelTmp);
             SetPrivateField(controller, "startHidden", true);
+            SetPrivateField(controller, "actionModalPrefab", actionModalPrefab != null ? actionModalPrefab.GetComponent<CharacterItemActionModalView>() : null);
+            SetPrivateField(controller, "infoModalPrefab", infoModalPrefab != null ? infoModalPrefab.GetComponent<CharacterItemInfoModalView>() : null);
 
             ReplacePrefab(root, CharacterHudPrefabPath);
             Object.DestroyImmediate(root);
@@ -423,6 +481,40 @@ namespace Project.Character.Editor
 
             MakeTmp(rt, "Text", text, 26, Color.white, Vector2.zero, Vector2.one, TextAlignmentOptions.Center);
             return go;
+        }
+
+        private static Button MakeRectButton(Transform parent, string name, string text, Vector2 aMin, Vector2 aMax, int fontSize)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = aMin;
+            rt.anchorMax = aMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            go.GetComponent<Image>().color = new Color(0.25f, 0.25f, 0.34f, 1f);
+            var outline = go.GetComponent<Outline>();
+            outline.effectColor = new Color(1f, 1f, 1f, 0.22f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            MakeTmp(rt, "Text", text, fontSize, Color.white, Vector2.zero, Vector2.one, TextAlignmentOptions.Center);
+            return go.GetComponent<Button>();
+        }
+
+        private static Button MakeLayoutButton(Transform parent, string name, string text)
+        {
+            var button = MakeRectButton(parent, name, text, new Vector2(0f, 1f), new Vector2(1f, 1f), 24);
+            var rt = button.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.sizeDelta = new Vector2(0f, 56f);
+
+            var le = button.gameObject.AddComponent<LayoutElement>();
+            le.minHeight = 56f;
+            le.preferredHeight = 56f;
+            return button;
         }
 
         private static TMP_Text MakeTmp(Transform parent, string name, string text, int size, Color color,

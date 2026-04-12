@@ -4,6 +4,9 @@ using Project.Character;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace Project.Character.UI
 {
@@ -20,8 +23,25 @@ namespace Project.Character.UI
         [Header("Start")]
         [SerializeField] private bool startHidden = true;
 
+        [Header("Item Modals (prefabs)")]
+        [SerializeField] private CharacterItemActionModalView actionModalPrefab;
+        [SerializeField] private CharacterItemInfoModalView infoModalPrefab;
+
         private CancellationTokenSource _cts;
         private bool _visible;
+        private CharacterDragSlotHandle _selectedHandle;
+
+        private GameObject _modalOverlay;
+        private RectTransform _modalOverlayRect;
+        private CharacterItemActionModalView _actionModal;
+        private CharacterItemInfoModalView _infoModal;
+        private int _modalOpenedFrame = -1000;
+        private int _screenOpenedFrame = -1000;
+        private Canvas _parentCanvas;
+        private bool _prevOverrideSorting;
+        private int _prevSortingOrder;
+        private const int CharacterScreenSortingOrder = 32760;
+        private Coroutine _hideOverlayRoutine;
 
         private void Awake()
         {
@@ -30,13 +50,45 @@ namespace Project.Character.UI
 
             if (dragController == null) dragController = GetComponent<CharacterSheetDragController>();
             if (dragController == null) dragController = gameObject.AddComponent<CharacterSheetDragController>();
+            dragController.SlotClicked += HandleSlotClicked;
+            dragController.ProfileUpdated += HandleProfileUpdated;
+            _parentCanvas = GetComponentInParent<Canvas>(true);
 
             _cts = new CancellationTokenSource();
+            EnsureModalUi();
             if (startHidden) SetVisible(false);
+        }
+
+        private void Update()
+        {
+            if (!_visible) return;
+            if (Time.frameCount <= _screenOpenedFrame) return;
+
+            if (TryGetPressPositionThisFrame(out var pressPos))
+            {
+                if (_modalOverlay != null && _modalOverlay.activeSelf)
+                {
+                    if (Time.frameCount <= _modalOpenedFrame) return;
+                    var overAction = _actionModal != null && _actionModal.gameObject.activeSelf && _actionModal.ContainsScreenPoint(pressPos, null);
+                    var overInfo = _infoModal != null && _infoModal.gameObject.activeSelf && _infoModal.ContainsScreenPoint(pressPos, null);
+                    if (!overAction && !overInfo) HideModals();
+                    return;
+                }
+
+                var panelRect = view != null ? view.GetPanelRootRectTransform() : null;
+                var isInsidePanel = panelRect != null && RectTransformUtility.RectangleContainsScreenPoint(panelRect, pressPos, null);
+                if (!isInsidePanel) Close();
+            }
         }
 
         private void OnDestroy()
         {
+            if (dragController != null)
+            {
+                dragController.SlotClicked -= HandleSlotClicked;
+                dragController.ProfileUpdated -= HandleProfileUpdated;
+            }
+
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
@@ -55,6 +107,7 @@ namespace Project.Character.UI
 
         public void Close()
         {
+            HideModals(true);
             SetVisible(false);
         }
 
@@ -97,8 +150,454 @@ namespace Project.Character.UI
         private void SetVisible(bool visible)
         {
             _visible = visible;
+            if (!visible) HideModals(true);
+            ConfigureCanvasSortingForScreen(visible);
             if (view != null) view.SetVisible(visible);
             else gameObject.SetActive(visible);
+            if (visible) _screenOpenedFrame = Time.frameCount;
+        }
+
+        private void HandleSlotClicked(CharacterDragSlotHandle handle)
+        {
+            if (!_visible || view == null || handle == null) return;
+            if (!TryResolveItem(handle, out _)) return;
+
+            _selectedHandle = handle;
+            EnsureModalUi();
+            ShowActionModalNear(handle.transform as RectTransform);
+        }
+
+        private void HandleProfileUpdated(CharacterGetRpcResponse _)
+        {
+            if (_infoModal != null && _infoModal.gameObject.activeSelf) UpdateInfoModal();
+        }
+
+        private bool TryResolveItem(CharacterDragSlotHandle handle, out ItemDefinition itemDef)
+        {
+            itemDef = null;
+            if (view == null || handle == null) return false;
+            if (handle.Kind == CharacterDragSlotKind.Inventory)
+                return view.TryGetInventoryItem(handle.InventoryIndex, out _, out itemDef);
+            return view.TryGetEquipmentItem(handle.EquipmentSlot, out _, out itemDef);
+        }
+
+        private void EnsureModalUi()
+        {
+            if (_modalOverlay != null) return;
+
+            var parent = view != null ? view.transform as RectTransform : transform as RectTransform;
+            if (parent == null) return;
+
+            _modalOverlay = new GameObject("ItemModalOverlay", typeof(RectTransform), typeof(Image));
+            _modalOverlayRect = _modalOverlay.GetComponent<RectTransform>();
+            _modalOverlayRect.SetParent(parent, false);
+            _modalOverlayRect.anchorMin = Vector2.zero;
+            _modalOverlayRect.anchorMax = Vector2.one;
+            _modalOverlayRect.offsetMin = Vector2.zero;
+            _modalOverlayRect.offsetMax = Vector2.zero;
+            var overlayImage = _modalOverlay.GetComponent<Image>();
+            overlayImage.color = new Color(0f, 0f, 0f, 0.35f);
+            overlayImage.raycastTarget = true;
+
+            _actionModal = InstantiateOrBuildActionModal(_modalOverlayRect);
+            _infoModal = InstantiateOrBuildInfoModal(_modalOverlayRect);
+
+            _actionModal.Bind(
+                onInfo: () =>
+                {
+                    if (_selectedHandle == null) return;
+                    _actionModal.HideImmediate();
+                    _infoModal.ShowCentered();
+                    UpdateInfoModal();
+                },
+                onSell: () =>
+                {
+                    Debug.Log("[CharacterScreen] Продажа предмета пока не реализована.");
+                    HideModals();
+                });
+
+            _infoModal.Bind(
+                onClose: () => HideModals(),
+                onEquipToggle: OnEquipTogglePressed,
+                onSalvage: () => { Debug.Log("[CharacterScreen] Разбор предмета пока не реализован."); });
+
+            _modalOverlay.SetActive(false);
+        }
+
+        private CharacterItemActionModalView InstantiateOrBuildActionModal(Transform parent)
+        {
+            if (actionModalPrefab != null)
+            {
+                var inst = Instantiate(actionModalPrefab, parent, false);
+                inst.name = "ItemActionModal";
+                return inst;
+            }
+
+            var go = new GameObject("ItemActionModal", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(VerticalLayoutGroup), typeof(CharacterItemActionModalView));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.sizeDelta = new Vector2(360f, 200f);
+            go.GetComponent<Image>().color = new Color(0.12f, 0.12f, 0.18f, 0.98f);
+            var layout = go.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(20, 20, 20, 20);
+            layout.spacing = 12;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+
+            CreateLayoutButton(rt, "InfoButton", "Информация");
+            CreateLayoutButton(rt, "SellButton", "Продать");
+            return go.GetComponent<CharacterItemActionModalView>();
+        }
+
+        private CharacterItemInfoModalView InstantiateOrBuildInfoModal(Transform parent)
+        {
+            if (infoModalPrefab != null)
+            {
+                var inst = Instantiate(infoModalPrefab, parent, false);
+                inst.name = "ItemInfoModal";
+                return inst;
+            }
+
+            var go = new GameObject("ItemInfoModal", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(CharacterItemInfoModalView));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.sizeDelta = new Vector2(640f, 520f);
+            go.GetComponent<Image>().color = new Color(0.10f, 0.10f, 0.15f, 0.99f);
+
+            CreateLabel(rt, "Title", "Предмет", 34, new Vector2(0.06f, 0.84f), new Vector2(0.84f, 0.96f), TextAlignmentOptions.Left);
+            CreateLabel(rt, "Slot", "Слот", 24, new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.84f), TextAlignmentOptions.Left);
+            var stats = CreateLabel(rt, "Stats", "-", 26, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
+            stats.richText = true;
+            CreateRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f));
+            CreateRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.48f, 0.16f));
+            CreateRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.52f, 0.05f), new Vector2(0.94f, 0.16f));
+            return go.GetComponent<CharacterItemInfoModalView>();
+        }
+
+        private void ShowActionModalNear(RectTransform source)
+        {
+            if (_modalOverlay == null || _actionModal == null || _infoModal == null || _modalOverlayRect == null) return;
+            _modalOverlay.SetActive(true);
+            if (_hideOverlayRoutine != null)
+            {
+                StopCoroutine(_hideOverlayRoutine);
+                _hideOverlayRoutine = null;
+            }
+            _infoModal.HideImmediate();
+            var actionRect = _actionModal.PanelRect;
+            if (actionRect == null) return;
+
+            _modalOpenedFrame = Time.frameCount;
+            if (source == null)
+            {
+                _actionModal.ShowAt(Vector2.zero);
+                return;
+            }
+
+            var worldCenter = source.TransformPoint(source.rect.center);
+            var screenPoint = RectTransformUtility.WorldToScreenPoint(null, worldCenter);
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_modalOverlayRect, screenPoint, null, out var local))
+                _actionModal.ShowAt(local);
+            else
+                _actionModal.ShowAt(Vector2.zero);
+        }
+
+        private void UpdateInfoModal()
+        {
+            if (_selectedHandle == null || view == null || _infoModal == null) return;
+            if (!TryResolveItem(_selectedHandle, out var selectedItem) || selectedItem == null)
+            {
+                HideModals();
+                return;
+            }
+
+            _infoModal.SetTitle(selectedItem.DisplayName);
+            _infoModal.SetSlot("Слот: " + (selectedItem.Equippable ? SlotName(selectedItem.Slot) : "Не экипируется"));
+            _infoModal.SetStats(BuildStatsDescription(selectedItem));
+
+            var canEquipAction = selectedItem.Equippable;
+            if (canEquipAction)
+            {
+                if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+                {
+                    _infoModal.SetEquipButton(true, true, "Надеть");
+                }
+                else
+                {
+                    var hasSpace = view.FindFirstEmptyInventoryIndex() >= 0;
+                    _infoModal.SetEquipButton(true, hasSpace, hasSpace ? "Снять" : "Снять (нет места)");
+                }
+            }
+            else _infoModal.SetEquipButton(false, false, string.Empty);
+        }
+
+        private void OnEquipTogglePressed()
+        {
+            if (_selectedHandle == null || dragController == null || view == null) return;
+            if (!TryResolveItem(_selectedHandle, out var selectedItem) || selectedItem == null || !selectedItem.Equippable) return;
+
+            if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+            {
+                dragController.TryEquipFromInventory(_selectedHandle.InventoryIndex);
+                HideModals(true);
+                return;
+            }
+
+            var freeInventoryIndex = view.FindFirstEmptyInventoryIndex();
+            if (freeInventoryIndex < 0) return;
+            dragController.TryUnequipToInventory(_selectedHandle.EquipmentSlot, freeInventoryIndex);
+            HideModals(true);
+        }
+
+        private string BuildStatsDescription(ItemDefinition selectedItem)
+        {
+            if (selectedItem == null) return "-";
+
+            var equipped = GetEquippedInSameSlot(selectedItem, _selectedHandle);
+            var showDelta = _selectedHandle == null || _selectedHandle.Kind != CharacterDragSlotKind.Equipment;
+            var order = new[] { StatId.Hp, StatId.Damage, StatId.Armor, StatId.Healing, StatId.CritChance };
+            var lines = new System.Collections.Generic.List<string>(order.Length);
+            foreach (var statId in order)
+            {
+                var selectedValue = SumStat(selectedItem, statId);
+                var equippedValue = SumStat(equipped, statId);
+                if (Mathf.Abs(selectedValue) < 0.0001f && Mathf.Abs(equippedValue) < 0.0001f) continue;
+
+                var delta = selectedValue - equippedValue;
+                lines.Add(FormatStatLine(statId, selectedValue, delta, showDelta));
+            }
+
+            return lines.Count == 0 ? "Нет характеристик" : string.Join("\n", lines);
+        }
+
+        private ItemDefinition GetEquippedInSameSlot(ItemDefinition selectedItem, CharacterDragSlotHandle selectedHandle)
+        {
+            if (view == null || selectedItem == null) return null;
+            if (!selectedItem.Equippable) return null;
+
+            if (!view.TryGetEquipmentItem(selectedItem.Slot, out _, out var equipped)) return null;
+            if (selectedHandle != null && selectedHandle.Kind == CharacterDragSlotKind.Equipment && selectedHandle.EquipmentSlot == selectedItem.Slot)
+                return selectedItem;
+            return equipped;
+        }
+
+        private static float SumStat(ItemDefinition item, string statId)
+        {
+            if (item == null || string.IsNullOrEmpty(statId)) return 0f;
+            return item.GetStatValue(statId);
+        }
+
+        private static string FormatStatLine(string statId, float value, float delta, bool showDelta)
+        {
+            var title = StatName(statId);
+            if (statId == StatId.CritChance)
+            {
+                var v = Mathf.RoundToInt(value * 100f);
+                var d = Mathf.RoundToInt(delta * 100f);
+                if (!showDelta) return $"{title} {v}%";
+                return $"{title} {v}%({ColoredSigned(d)}%)";
+            }
+
+            var iv = Mathf.RoundToInt(value);
+            var id = Mathf.RoundToInt(delta);
+            if (!showDelta) return $"{title} {iv}";
+            return $"{title} {iv}({ColoredSigned(id)})";
+        }
+
+        private static string Signed(int value)
+        {
+            return value >= 0 ? "+" + value : value.ToString();
+        }
+
+        private static string ColoredSigned(int value)
+        {
+            var color = value > 0 ? "#7CFF7C" : value < 0 ? "#FF7B7B" : "#D8D8D8";
+            return $"<color={color}>{Signed(value)}</color>";
+        }
+
+        private static string SlotName(EquipmentSlotId slot)
+        {
+            return slot switch
+            {
+                EquipmentSlotId.Helmet => "Шлем",
+                EquipmentSlotId.Shoulders => "Плечи",
+                EquipmentSlotId.Chest => "Тело",
+                EquipmentSlotId.Gloves => "Перчатки",
+                EquipmentSlotId.Legs => "Ноги",
+                EquipmentSlotId.Feet => "Ступни",
+                EquipmentSlotId.WeaponLeft => "Оружие (Л)",
+                EquipmentSlotId.WeaponRight => "Оружие (П)",
+                _ => slot.ToString(),
+            };
+        }
+
+        private static string StatName(string statId)
+        {
+            return statId switch
+            {
+                StatId.Hp => "Здоровье",
+                StatId.Damage => "Урон",
+                StatId.Armor => "Броня",
+                StatId.Healing => "Лечение",
+                StatId.CritChance => "Шанс крита",
+                _ => statId,
+            };
+        }
+
+        private void HideModals(bool immediate = false)
+        {
+            _selectedHandle = null;
+            if (_hideOverlayRoutine != null)
+            {
+                StopCoroutine(_hideOverlayRoutine);
+                _hideOverlayRoutine = null;
+            }
+
+            if (immediate)
+            {
+                if (_actionModal != null) _actionModal.HideImmediate();
+                if (_infoModal != null) _infoModal.HideImmediate();
+                if (_modalOverlay != null) _modalOverlay.SetActive(false);
+                return;
+            }
+
+            var hasAny = false;
+            var maxDelay = 0f;
+            if (_actionModal != null && _actionModal.gameObject.activeSelf)
+            {
+                _actionModal.HideAnimated();
+                hasAny = true;
+                maxDelay = Mathf.Max(maxDelay, _actionModal.HideDuration);
+            }
+            if (_infoModal != null && _infoModal.gameObject.activeSelf)
+            {
+                _infoModal.HideAnimated();
+                hasAny = true;
+                maxDelay = Mathf.Max(maxDelay, _infoModal.HideDuration);
+            }
+
+            if (!hasAny)
+            {
+                if (_modalOverlay != null) _modalOverlay.SetActive(false);
+                return;
+            }
+
+            _hideOverlayRoutine = StartCoroutine(HideOverlayAfterDelay(Mathf.Max(0.01f, maxDelay)));
+        }
+
+        private static Button CreateLayoutButton(Transform parent, string name, string text)
+        {
+            var btn = CreateRectButton(parent, name, text, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            var le = btn.gameObject.AddComponent<LayoutElement>();
+            le.minHeight = 54f;
+            le.preferredHeight = 54f;
+            return btn;
+        }
+
+        private static Button CreateRectButton(Transform parent, string name, string text, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.25f, 0.25f, 0.34f, 1f);
+            var btn = go.GetComponent<Button>();
+
+            var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var textRt = textGo.GetComponent<RectTransform>();
+            textRt.SetParent(rt, false);
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = Vector2.zero;
+            textRt.offsetMax = Vector2.zero;
+
+            var tmp = textGo.GetComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 24;
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+            return btn;
+        }
+
+        private static TMP_Text CreateLabel(Transform parent, string name, string text, int size, Vector2 anchorMin, Vector2 anchorMax, TextAlignmentOptions alignment)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = size;
+            tmp.alignment = alignment;
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+            return tmp;
+        }
+
+        private static bool TryGetPressPositionThisFrame(out Vector2 pointerPos)
+        {
+#if ENABLE_INPUT_SYSTEM
+            var ts = Touchscreen.current;
+            if (ts != null)
+            {
+                var t = ts.primaryTouch;
+                if (t.press.wasPressedThisFrame)
+                {
+                    pointerPos = t.position.ReadValue();
+                    return true;
+                }
+            }
+
+            var mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                pointerPos = mouse.position.ReadValue();
+                return true;
+            }
+#else
+            if (Input.GetMouseButtonDown(0))
+            {
+                pointerPos = Input.mousePosition;
+                return true;
+            }
+            if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                pointerPos = Input.GetTouch(0).position;
+                return true;
+            }
+#endif
+            pointerPos = default;
+            return false;
+        }
+
+        private void ConfigureCanvasSortingForScreen(bool visible)
+        {
+            if (_parentCanvas == null) _parentCanvas = GetComponentInParent<Canvas>(true);
+            if (_parentCanvas == null) return;
+
+            if (visible)
+            {
+                _prevOverrideSorting = _parentCanvas.overrideSorting;
+                _prevSortingOrder = _parentCanvas.sortingOrder;
+                _parentCanvas.overrideSorting = true;
+                _parentCanvas.sortingOrder = CharacterScreenSortingOrder;
+                return;
+            }
+
+            _parentCanvas.overrideSorting = _prevOverrideSorting;
+            _parentCanvas.sortingOrder = _prevSortingOrder;
         }
 
         private static Task RunOnMainThreadAsync(System.Action a)
@@ -119,6 +618,20 @@ namespace Project.Character.UI
                 return Task.CompletedTask;
             }
         }
+
+        private System.Collections.IEnumerator HideOverlayAfterDelay(float delay)
+        {
+            var elapsed = 0f;
+            while (elapsed < delay)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            if (_modalOverlay != null) _modalOverlay.SetActive(false);
+            _hideOverlayRoutine = null;
+        }
+
     }
 }
 
