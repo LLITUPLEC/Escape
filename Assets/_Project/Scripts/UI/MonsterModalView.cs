@@ -27,6 +27,8 @@ namespace Project.UI
         [SerializeField] private Text[] statTexts = new Text[6];
         [SerializeField] private Text rewardsSectionTitle;
         [SerializeField] private RectTransform rewardsDynamicRoot;
+        [Tooltip("Шрифт для подписей наград (рантайм-ячейки Icon/Value под RewardsDynamic).")]
+        [SerializeField] private Font monsterRewardsValueFont;
         [SerializeField] private Text anomalySectionTitle;
         [SerializeField] private Image affixIcon;
         [SerializeField] private Text affixIconGlyph;
@@ -51,6 +53,7 @@ namespace Project.UI
         public Text[] StatTexts => statTexts;
         public Text RewardsSectionTitle => rewardsSectionTitle;
         public RectTransform RewardsDynamicRoot => rewardsDynamicRoot;
+        public Font MonsterRewardsValueFont => monsterRewardsValueFont;
         public Text AnomalySectionTitle => anomalySectionTitle;
         public Image AffixIcon => affixIcon;
         public Text AffixIconGlyph => affixIconGlyph;

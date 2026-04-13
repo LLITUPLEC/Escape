@@ -1144,6 +1144,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
 
   local cells = collect_ability_cells(action_type, cx, cy)
   local skulls = 0
+  local monster_rage_bombs = 0
   local healed = false
   local pending_heal = 0
 
@@ -1170,7 +1171,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
         skulls = skulls + 1
       end
       if affix == "monster_rage" and actor_id == state.bot_user_id then
-        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3
+        monster_rage_bombs = monster_rage_bombs + 1
       end
     end
   end
@@ -1181,6 +1182,10 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   end
 
   local crit = deal_damage(state, state.board, actor, opp, ABILITY_BASE_DAMAGE + SKULL_DAMAGE * skulls)
+  -- monster_rage: apply +3 damage per bomb *after* this ability's damage (matches swap/cascade order in apply_match_effects).
+  if affix == "monster_rage" and actor_id == state.bot_user_id and monster_rage_bombs > 0 then
+    actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * monster_rage_bombs
+  end
   return crit
 end
 

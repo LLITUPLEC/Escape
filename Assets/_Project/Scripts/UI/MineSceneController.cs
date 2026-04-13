@@ -44,6 +44,10 @@ namespace Project.UI
         private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
         private const string HudIngotsIconAssetPath = "Assets/_Project/img/resources_hud/ingots.png";
         private const string HudExpIconAssetPath = "Assets/_Project/img/resources_hud/exp.png";
+        private const float BarrierDismissButtonMaxWidth = 450f;
+        /// <summary>Пропорции кнопок футера модалки (как у спрайта 230×65).</summary>
+        private const float ModalFooterButtonAspect = 230f / 65f;
+        private static readonly Color BarrierDismissLabelColor = new Color(224f / 255f, 204f / 255f, 137f / 255f, 1f);
 
         private readonly Dictionary<int, FloorRowRefs> _rows = new();
         private readonly Dictionary<int, Button> _liftButtons = new();
@@ -69,8 +73,20 @@ namespace Project.UI
         private GameObject _barrierContentRoot;
         private Text _modalMonsterRewardsTitle;
         private RectTransform _modalMonsterRewardsColumnsRoot;
+        private Font _modalMonsterRewardsValueFont;
         private RectTransform _modalBarrierRequirementsRoot;
         private Text _modalBarrierRequirementsTitle;
+        private HorizontalLayoutGroup _modalFooterHorizontalLayout;
+        private LayoutElement _modalDismissLayoutElement;
+        private Text _modalDismissLabel;
+        private bool _modalFooterLayoutCached;
+        private TextAnchor _modalFooterDefaultChildAlignment;
+        private bool _modalFooterDefaultChildForceExpandWidth;
+        private float _modalDismissDefaultPreferredWidth;
+        private float _modalDismissDefaultPreferredHeight;
+        private float _modalDismissDefaultFlexibleWidth;
+        private float _modalDismissDefaultFlexibleHeight;
+        private Color _modalDismissDefaultLabelColor;
         private int _selectedFloor;
         private bool _modalCanSummon;
         private bool _modalCanUnlock;
@@ -559,12 +575,14 @@ namespace Project.UI
             _barrierContentRoot = view.BarrierContentRoot;
             _modalMonsterRewardsTitle = view.RewardsSectionTitle;
             _modalMonsterRewardsColumnsRoot = view.RewardsDynamicRoot;
+            _modalMonsterRewardsValueFont = view.MonsterRewardsValueFont;
             _modalBarrierRequirementsTitle = view.BarrierRequirementsSectionTitle;
             _modalBarrierRequirementsRoot = view.BarrierRequirementsRoot;
 
             _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
             _modalFightButton.onClick.AddListener(OnFightClicked);
             _modalDismissButton.onClick.AddListener(HandleSecondaryButtonClicked);
+            CacheModalFooterDefaultsIfNeeded();
             _modalRoot.SetActive(false);
         }
 
@@ -607,12 +625,14 @@ namespace Project.UI
                 PopulateBarrierRequirements(req);
                 _modalCanUnlock = req != null;
                 _modalCanSummon = false;
-                _modalFightButton.interactable = false;
+                ApplyModalFooterBarrierLayout(barrierMode: true);
                 SetButtonLabel(_modalDismissButton, req != null ? "Разбить" : "Закрыть");
                 _modalDismissButton.interactable = true;
                 _modalRoot.SetActive(true);
                 return;
             }
+
+            ApplyModalFooterBarrierLayout(barrierMode: false);
 
             if (_monsterContentRoot != null)
                 _monsterContentRoot.SetActive(true);
@@ -1283,13 +1303,13 @@ namespace Project.UI
 
             _expSprite ??= LoadSpriteAsset(HudExpIconAssetPath);
             if (bot.reward_xp > 0)
-                entries.Add(new RewardEntry { icon = _expSprite, text = "+" + FormatCompact(bot.reward_xp), color = Color.white });
+                entries.Add(new RewardEntry { icon = _expSprite, text = FormatCompact(bot.reward_xp), color = Color.white });
             if (bot.reward_gold > 0)
-                entries.Add(new RewardEntry { icon = _goldSprite, text = "+" + FormatCompact(bot.reward_gold), color = Color.white });
+                entries.Add(new RewardEntry { icon = _goldSprite, text = FormatCompact(bot.reward_gold), color = Color.white });
             if (bot.reward_ore > 0)
-                entries.Add(new RewardEntry { icon = _oreSprite, text = "+" + FormatCompact(bot.reward_ore), color = Color.white });
+                entries.Add(new RewardEntry { icon = _oreSprite, text = FormatCompact(bot.reward_ore), color = Color.white });
             if (bot.reward_ingots > 0)
-                entries.Add(new RewardEntry { icon = _ingotsSprite, text = "+" + FormatCompact(bot.reward_ingots), color = Color.white });
+                entries.Add(new RewardEntry { icon = _ingotsSprite, text = FormatCompact(bot.reward_ingots), color = Color.white });
             if (!string.IsNullOrWhiteSpace(bot.reward_key_id) && bot.reward_key_amount > 0)
                 entries.Add(new RewardEntry { icon = _lockSprite, text = $"{bot.reward_key_id} x{bot.reward_key_amount}", color = Color.white });
 
@@ -1298,7 +1318,7 @@ namespace Project.UI
                 var minMatter = Mathf.Max(0, bot.reward_matter_min);
                 var maxMatter = Mathf.Max(minMatter, bot.reward_matter_max);
                 var matterText = minMatter == maxMatter
-                    ? "+" + FormatCompact(minMatter)
+                    ? FormatCompact(minMatter)
                     : $"{FormatCompact(minMatter)}-{FormatCompact(maxMatter)}";
                 entries.Add(new RewardEntry { icon = _matterSprite, text = matterText, color = Color.white });
             }
@@ -1324,7 +1344,7 @@ namespace Project.UI
             if (verticalParent == null || entries == null || entries.Count == 0)
                 return;
 
-            var rowPreferredHeight = stackIconOverValue ? 88f : 36f;
+            var rowPreferredHeight = stackIconOverValue ? 120f : 72f;
             var rowAlignment = stackIconOverValue ? TextAnchor.MiddleCenter : TextAnchor.MiddleLeft;
 
             for (var i = 0; i < entries.Count; i += columns)
@@ -1361,7 +1381,8 @@ namespace Project.UI
             if (parent == null)
                 return;
 
-            const float iconSize = 36f;
+            //const float iconSize = 36f;
+            const float iconSize = 60f;
 
             var cell = new GameObject("RewardCell", typeof(RectTransform), typeof(LayoutElement));
             var cellRt = cell.GetComponent<RectTransform>();
@@ -1390,10 +1411,10 @@ namespace Project.UI
                 iconImage.raycastTarget = false;
                 iconImage.color = Color.white;
                 var iconLe = iconGo.GetComponent<LayoutElement>();
-                iconLe.preferredWidth = iconSize;
-                iconLe.preferredHeight = iconSize;
                 iconLe.minWidth = iconSize;
                 iconLe.minHeight = iconSize;
+                iconLe.preferredWidth = iconSize;
+                iconLe.preferredHeight = iconSize;
                 iconLe.flexibleWidth = 0f;
                 iconLe.flexibleHeight = 0f;
             }
@@ -1402,15 +1423,17 @@ namespace Project.UI
             var labelRt = labelGo.GetComponent<RectTransform>();
             labelRt.SetParent(cellRt, false);
             var label = labelGo.GetComponent<Text>();
-            label.font = GetBuiltinFont();
-            label.fontSize = 15;
+            label.font = _modalMonsterRewardsValueFont != null ? _modalMonsterRewardsValueFont : GetBuiltinFont();
+            label.fontStyle = FontStyle.Bold;
+            label.fontSize = 30;
             label.color = textColor;
             label.alignment = TextAnchor.MiddleCenter;
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Truncate;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
             label.text = value;
             var labelLe = labelGo.GetComponent<LayoutElement>();
-            labelLe.preferredHeight = 22f;
+            labelLe.minHeight = 34f;
+            labelLe.preferredHeight = 36f;
             labelLe.flexibleWidth = 1f;
         }
 
@@ -1432,6 +1455,8 @@ namespace Project.UI
             if (parent == null)
                 return;
 
+            const float iconSize = 60f;
+
             var row = new GameObject("RequirementRow", typeof(RectTransform), typeof(LayoutElement));
             var rowRt = row.GetComponent<RectTransform>();
             rowRt.SetParent(parent, false);
@@ -1441,9 +1466,10 @@ namespace Project.UI
             rowLayout.childAlignment = TextAnchor.MiddleLeft;
             rowLayout.childControlHeight = true;
             rowLayout.childControlWidth = true;
-            rowLayout.childForceExpandWidth = true;
+            rowLayout.childForceExpandWidth = false;
+            rowLayout.childForceExpandHeight = false;
             var rowLe = row.GetComponent<LayoutElement>();
-            rowLe.preferredHeight = 28f;
+            rowLe.preferredHeight = iconSize;
             rowLe.flexibleWidth = 1f;
 
             if (icon != null)
@@ -1457,10 +1483,10 @@ namespace Project.UI
                 iconImage.raycastTarget = false;
                 iconImage.color = Color.white;
                 var iconLe = iconGo.GetComponent<LayoutElement>();
-                iconLe.preferredWidth = 24f;
-                iconLe.preferredHeight = 24f;
-                iconLe.minWidth = 24f;
-                iconLe.minHeight = 24f;
+                iconLe.minWidth = iconSize;
+                iconLe.minHeight = iconSize;
+                iconLe.preferredWidth = iconSize;
+                iconLe.preferredHeight = iconSize;
                 iconLe.flexibleWidth = 0f;
                 iconLe.flexibleHeight = 0f;
             }
@@ -1469,14 +1495,17 @@ namespace Project.UI
             var labelRt = labelGo.GetComponent<RectTransform>();
             labelRt.SetParent(rowRt, false);
             var label = labelGo.GetComponent<Text>();
-            label.font = GetBuiltinFont();
-            label.fontSize = 20;
+            label.font = _modalMonsterRewardsValueFont != null ? _modalMonsterRewardsValueFont : GetBuiltinFont();
+            label.fontStyle = FontStyle.Bold;
+            label.fontSize = 30;
             label.color = textColor;
             label.alignment = TextAnchor.MiddleLeft;
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Truncate;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
             label.text = value;
             var labelLe = labelGo.GetComponent<LayoutElement>();
+            labelLe.minHeight = 34f;
+            labelLe.preferredHeight = 36f;
             labelLe.flexibleWidth = 1f;
         }
 
@@ -1604,6 +1633,90 @@ namespace Project.UI
             img.raycastTarget = false;
             img.color = new Color(1f, 1f, 1f, 0f);
             return img;
+        }
+
+        private void CacheModalFooterDefaultsIfNeeded()
+        {
+            if (_modalFooterLayoutCached || _modalDismissButton == null)
+                return;
+
+            _modalFooterHorizontalLayout = _modalDismissButton.transform.parent != null
+                ? _modalDismissButton.transform.parent.GetComponent<HorizontalLayoutGroup>()
+                : null;
+            _modalDismissLayoutElement = _modalDismissButton.GetComponent<LayoutElement>();
+            _modalDismissLabel = _modalDismissButton.GetComponentInChildren<Text>(true);
+
+            if (_modalFooterHorizontalLayout != null)
+            {
+                _modalFooterDefaultChildAlignment = _modalFooterHorizontalLayout.childAlignment;
+                _modalFooterDefaultChildForceExpandWidth = _modalFooterHorizontalLayout.childForceExpandWidth;
+            }
+
+            if (_modalDismissLayoutElement != null)
+            {
+                _modalDismissDefaultPreferredWidth = _modalDismissLayoutElement.preferredWidth;
+                _modalDismissDefaultPreferredHeight = _modalDismissLayoutElement.preferredHeight;
+                _modalDismissDefaultFlexibleWidth = _modalDismissLayoutElement.flexibleWidth;
+                _modalDismissDefaultFlexibleHeight = _modalDismissLayoutElement.flexibleHeight;
+            }
+
+            if (_modalDismissLabel != null)
+                _modalDismissDefaultLabelColor = _modalDismissLabel.color;
+
+            _modalFooterLayoutCached = true;
+        }
+
+        private void ApplyModalFooterBarrierLayout(bool barrierMode)
+        {
+            CacheModalFooterDefaultsIfNeeded();
+            if (!_modalFooterLayoutCached)
+                return;
+
+            if (barrierMode)
+            {
+                if (_modalFightButton != null)
+                    _modalFightButton.gameObject.SetActive(false);
+
+                if (_modalFooterHorizontalLayout != null)
+                {
+                    _modalFooterHorizontalLayout.childAlignment = TextAnchor.MiddleCenter;
+                    _modalFooterHorizontalLayout.childForceExpandWidth = false;
+                }
+
+                if (_modalDismissLayoutElement != null)
+                {
+                    _modalDismissLayoutElement.minWidth = 0f;
+                    _modalDismissLayoutElement.preferredWidth = BarrierDismissButtonMaxWidth;
+                    _modalDismissLayoutElement.flexibleWidth = 0f;
+                    _modalDismissLayoutElement.preferredHeight = BarrierDismissButtonMaxWidth / ModalFooterButtonAspect;
+                }
+
+                if (_modalDismissLabel != null)
+                    _modalDismissLabel.color = BarrierDismissLabelColor;
+            }
+            else
+            {
+                if (_modalFightButton != null)
+                    _modalFightButton.gameObject.SetActive(true);
+
+                if (_modalFooterHorizontalLayout != null)
+                {
+                    _modalFooterHorizontalLayout.childAlignment = _modalFooterDefaultChildAlignment;
+                    _modalFooterHorizontalLayout.childForceExpandWidth = _modalFooterDefaultChildForceExpandWidth;
+                }
+
+                if (_modalDismissLayoutElement != null)
+                {
+                    _modalDismissLayoutElement.minWidth = -1f;
+                    _modalDismissLayoutElement.preferredWidth = _modalDismissDefaultPreferredWidth;
+                    _modalDismissLayoutElement.preferredHeight = _modalDismissDefaultPreferredHeight;
+                    _modalDismissLayoutElement.flexibleWidth = _modalDismissDefaultFlexibleWidth;
+                    _modalDismissLayoutElement.flexibleHeight = _modalDismissDefaultFlexibleHeight;
+                }
+
+                if (_modalDismissLabel != null)
+                    _modalDismissLabel.color = _modalDismissDefaultLabelColor;
+            }
         }
 
         private static void SetButtonLabel(Button btn, string value)

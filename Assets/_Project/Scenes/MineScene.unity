@@ -874,8 +874,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.03, y: 0.6}
   m_AnchorMax: {x: 0.22, y: 0.96}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -62.505, y: -83.95}
+  m_SizeDelta: {x: -125.009, y: 167.9}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &37717121
 MonoBehaviour:
@@ -904,7 +904,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 10
     m_MaxSize: 40
-    m_Alignment: 0
+    m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -2462,8 +2462,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.03, y: 0.6}
   m_AnchorMax: {x: 0.22, y: 0.96}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -60.113, y: -83.950005}
+  m_SizeDelta: {x: -120.226, y: 167.9}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &361554761
 MonoBehaviour:
@@ -2492,7 +2492,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 10
     m_MaxSize: 40
-    m_Alignment: 0
+    m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -7129,8 +7129,8 @@ MonoBehaviour:
   oreIconSprite: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
   goldIconSprite: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
   matterIconSprite: {fileID: 21300000, guid: 98adc8eac42d30d4894322f3a75eae8e, type: 3}
-  expIconSprite: {fileID: 21300000, guid: 41b56324a2f799142893c434059c35f7, type: 3}
   ingotsIconSprite: {fileID: 21300000, guid: 3d6e2f36ea74b40468de1343904c1104, type: 3}
+  expIconSprite: {fileID: 21300000, guid: 41b56324a2f799142893c434059c35f7, type: 3}
   monsterModalPrefab: {fileID: 0}
 --- !u!1 &1657868512
 GameObject:
@@ -9925,9 +9925,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: -20.132
       objectReference: {fileID: 0}
+    - target: {fileID: 5131613352865887052, guid: dbda31c914f7ba74d949257d891e528b, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5131613352865887052, guid: dbda31c914f7ba74d949257d891e528b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8169487975906819192, guid: dbda31c914f7ba74d949257d891e528b, type: 3}
       propertyPath: m_Name
       value: Torch_Prefab
+      objectReference: {fileID: 0}
+    - target: {fileID: 8169487975906819192, guid: dbda31c914f7ba74d949257d891e528b, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
