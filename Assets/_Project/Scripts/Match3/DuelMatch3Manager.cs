@@ -101,6 +101,8 @@ namespace Project.Match3
             public const long ActionReject  = 14;
             public const long SelectionSync = 15;
             public const long SnapshotRequest = 16;
+            /// <summary>Сервер запускает turn_deadline после анимаций на клиенте (см. duel_match3 turn_deadline_paused).</summary>
+            public const long TurnInputReady = 17;
         }
 
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
@@ -110,7 +112,10 @@ namespace Project.Match3
         private const string RewardOreIconPath = "Assets/_Project/img/resources_hud/ore.png";
         private const string RewardGoldIconPath = "Assets/_Project/img/resources_hud/gold.png";
         private const string RewardMatterIconPath = "Assets/_Project/img/resources_hud/matter.png";
+        private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
+        private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
         private const int FrozenAffixAbilityPenalty = 10;
+        private const int DefaultLossXpReward = 10;
 
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
@@ -144,6 +149,7 @@ namespace Project.Match3
         private IMatch    _match;
         private string    _myUserId;
         private string    _opUserId;
+        private string    _opDisplayName;
         private string    _matchmakerTicket;
         private bool      _isLeavingToMenu;
         private CancellationTokenSource _cts;
@@ -155,6 +161,9 @@ namespace Project.Match3
         private PlayerStats      _opStats;
         private bool  _isMyTurn;
         private float _turnTimer;
+        /// <summary>Абсолютный дедлайн текущего хода (UTC ms). Приходит из BoardSync; иначе локальная оценка.</summary>
+        private long _turnEndsAtUnixMs;
+        private bool _localTurnTimeoutDispatched;
         private bool  _gameEnded;
         private Coroutine _remoteSyncRoutine;
         private readonly Queue<M3BoardSyncMsg> _pendingBoardSyncs = new();
@@ -285,20 +294,91 @@ namespace Project.Match3
         private void Update()
         {
             if (_gameEnded) return;
+            UpdateHudTimerAndPhase();
+        }
 
-            if (_isMyTurn)
+        private static long UtcNowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        private float GetTurnDurationSeconds() => HasAffix("scree") ? TurnDuration / 3f : TurnDuration;
+
+        private float GetRemainingTurnSecondsForHud()
+        {
+            if (_turnEndsAtUnixMs > 0)
+                return Mathf.Max(0f, (_turnEndsAtUnixMs - UtcNowMs()) / 1000f);
+            // turnEndsAtUnixMs == 0: сервер ждёт OP 17 или локальный бот — не считать как «время вышло».
+            if (_hasInitialBoardSync)
+                return 999f;
+            return Mathf.Max(0f, _turnTimer);
+        }
+
+        /// <summary>Таймер с дедлайном из BoardSync; подпись «решение» vs «анимация». Истечение — только когда можно ходить и не ждём синк.</summary>
+        private void UpdateHudTimerAndPhase()
+        {
+            if (!_hasInitialBoardSync)
             {
-                if (_inputBlocked) return;
-                _turnTimer -= Time.deltaTime;
-                _hud?.SetTimer(Mathf.CeilToInt(Mathf.Max(0f, _turnTimer)).ToString());
-                if (_turnTimer <= 0f) OnTurnTimerExpired();
+                _hud?.SetTimerPhase(false);
+                return;
             }
+
+            if (_turnEndsAtUnixMs <= 0)
+            {
+                var resolvingPending = _remoteSyncRoutine != null || (_isMyTurn && _inputBlocked);
+                _hud?.SetTimerPhase(resolvingPending);
+                // Пусто вместо «—»: иначе при каждой смене хода на кадр мелькает чёрточка до прихода дедлайна.
+                _hud?.SetTimer(string.Empty);
+                return;
+            }
+
+            var resolving = _remoteSyncRoutine != null || (_isMyTurn && _inputBlocked);
+            _hud?.SetTimerPhase(resolving);
+
+            var rem = GetRemainingTurnSecondsForHud();
+            _hud?.SetTimer(Mathf.CeilToInt(rem).ToString());
+
+            if (!_isMyTurn || _inputBlocked || _remoteSyncRoutine != null) return;
+            if (rem > 0.05f) _localTurnTimeoutDispatched = false;
+            if (rem <= 0f && !_localTurnTimeoutDispatched)
+            {
+                _localTurnTimeoutDispatched = true;
+                OnTurnTimerExpired();
+            }
+        }
+
+        private void ApplyTurnDeadlineFromBoardSync(M3BoardSyncMsg msg)
+        {
+            if (msg == null) return;
+            _localTurnTimeoutDispatched = false;
+            if (msg.turnEndsAtUnixMs > 0)
+                _turnEndsAtUnixMs = msg.turnEndsAtUnixMs;
             else
+                _turnEndsAtUnixMs = 0;
+        }
+
+        /// <summary>Сервер стартует дедлайн хода только после этого (анимации на клиенте уже отыграны).</summary>
+        private async void SendTurnInputReadyToServerFireAndForget()
+        {
+            if (_gameEnded || _useLocalBotSimulation || _match == null) return;
+            var socket = NakamaBootstrap.Instance?.Socket;
+            if (socket == null) return;
+            try
             {
-                if (_turnTimer <= 0f) return;
-                _turnTimer -= Time.deltaTime;
-                _hud?.SetTimer(Mathf.CeilToInt(Mathf.Max(0f, _turnTimer)).ToString());
+                await socket.SendMatchStateAsync(_match.Id, M3Op.TurnInputReady, Array.Empty<byte>());
             }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"TurnInputReady send failed: {ex.Message}");
+            }
+        }
+
+        private void StampLocalBoardSyncTurnDeadline(M3BoardSyncMsg msg, bool keepTurn, M3ActionRequest req)
+        {
+            if (msg == null) return;
+            if (keepTurn && req != null && req.actionType == 6 && _turnEndsAtUnixMs > 0)
+            {
+                msg.turnEndsAtUnixMs = _turnEndsAtUnixMs;
+                return;
+            }
+            msg.turnEndsAtUnixMs = UtcNowMs() + (long)(GetTurnDurationSeconds() * 1000);
         }
 
         // ─── Matchmaking ──────────────────────────────────────────────────────────
@@ -328,14 +408,17 @@ namespace Project.Match3
             if (matched?.Users != null)
                 foreach (var u in matched.Users)
                     if (u.Presence.UserId != _myUserId)
+                    {
                         _opUserId = u.Presence.UserId;
+                        _opDisplayName = ReadPresenceUsername(u.Presence);
+                    }
         }
 
         private void OnMatchFound()
         {
             _searchingPanel?.Hide();
-            _myPanel?.SetPlayerName("Вы");
-            _opPanel?.SetPlayerName("Соперник");
+            _myPanel?.SetPlayerName(ResolveMyDisplayName());
+            _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
             _resultRecorded = false;
             _lastRewardText = null;
             _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
@@ -430,7 +513,7 @@ namespace Project.Match3
         {
             ShowPveSelector(false);
             _searchingPanel?.Hide();
-            _myPanel?.SetPlayerName("Вы");
+            _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(botName);
             _resultRecorded = false;
             _lastRewardText = null;
@@ -518,6 +601,10 @@ namespace Project.Match3
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—");
+            _turnEndsAtUnixMs = 0;
+            _turnTimer = 0f;
+            _localTurnTimeoutDispatched = false;
+            _hud?.SetTimerPhase(false);
             _boardView?.SetDimmed(true);
             _inputBlocked = true;
             UpdateAffixHud();
@@ -535,6 +622,8 @@ namespace Project.Match3
             }
             _isMyTurn    = true;
             _turnTimer   = turnDuration;
+            if (_turnEndsAtUnixMs <= 0 && _useLocalBotSimulation)
+                _turnEndsAtUnixMs = UtcNowMs() + (long)(turnDuration * 1000);
             _inputBlocked = false;
             _pendingAbility = null;
             _selX = _selY = -1;
@@ -544,7 +633,6 @@ namespace Project.Match3
             _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ваш ход!");
-            _hud?.SetTimer(Mathf.CeilToInt(turnDuration).ToString());
             UpdateAffixHud();
             _boardView?.SetDimmed(false);
 
@@ -556,6 +644,8 @@ namespace Project.Match3
             var turnDuration = HasAffix("scree") ? (TurnDuration / 3f) : TurnDuration;
             _isMyTurn    = false;
             _turnTimer   = turnDuration;
+            if (_turnEndsAtUnixMs <= 0 && _useLocalBotSimulation)
+                _turnEndsAtUnixMs = UtcNowMs() + (long)(turnDuration * 1000);
             _inputBlocked = true;
             _pendingAbility = null;
             _selX = _selY = -1;
@@ -565,7 +655,6 @@ namespace Project.Match3
             _abilityPanel?.SetSelectedAbility(null);
 
             _hud?.SetTurn("Ход соперника…");
-            _hud?.SetTimer(Mathf.CeilToInt(turnDuration).ToString());
             UpdateAffixHud();
             _boardView?.SetDimmed(true);
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
@@ -717,6 +806,40 @@ namespace Project.Match3
             return sb.ToString();
         }
 
+        private string ResolveMyDisplayName()
+        {
+            if (!string.IsNullOrWhiteSpace(_myUserId))
+            {
+                var perUserName = PlayerPrefs.GetString(PrefUserNameByUserIdPrefix + _myUserId, string.Empty);
+                if (!string.IsNullOrWhiteSpace(perUserName))
+                    return perUserName;
+            }
+
+            var session = NakamaBootstrap.Instance != null ? NakamaBootstrap.Instance.Session : null;
+            var sessionUsername = ReadUsernameFromObject(session);
+            if (!string.IsNullOrWhiteSpace(sessionUsername))
+                return sessionUsername;
+
+            var fallback = PlayerPrefs.GetString(PrefLastKnownUsername, string.Empty);
+            return string.IsNullOrWhiteSpace(fallback) ? "Вы" : fallback;
+        }
+
+        private static string ReadPresenceUsername(IUserPresence presence)
+            => ReadUsernameFromObject(presence);
+
+        private static string ReadUsernameFromObject(object source)
+        {
+            if (source == null) return string.Empty;
+
+            var type = source.GetType();
+            var prop = type.GetProperty("Username");
+            if (prop == null || prop.PropertyType != typeof(string))
+                return string.Empty;
+
+            var value = prop.GetValue(source, null) as string;
+            return string.IsNullOrWhiteSpace(value) ? string.Empty : value;
+        }
+
         private void EnsureGameOverRewardRowsUI()
         {
             if (_gameOverRewardRowsRoot != null)
@@ -767,20 +890,19 @@ namespace Project.Match3
             }
 
             ClearRewardRows();
-
-            if (!won)
-            {
-                _gameOverRewardRowsRoot.gameObject.SetActive(false);
-                fallback.gameObject.SetActive(false);
-                return;
-            }
-
             fallback.gameObject.SetActive(false);
+            var rewardXp = _lastRewardXp;
+            var rewardGold = _lastRewardGold;
+            var rewardOre = _lastRewardOre;
+            var rewardMatter = _lastRewardMatter;
+            if (!won && rewardXp <= 0 && rewardGold <= 0 && rewardOre <= 0 && rewardMatter <= 0 && string.IsNullOrWhiteSpace(_lastRewardText))
+                rewardXp = DefaultLossXpReward;
+
             var count = 0;
-            count += AddRewardRow(rewardExpSprite, _lastRewardXp);
-            count += AddRewardRow(rewardGoldSprite, _lastRewardGold);
-            count += AddRewardRow(rewardOreSprite, _lastRewardOre);
-            count += AddRewardRow(rewardMatterSprite, _lastRewardMatter);
+            count += AddRewardRow(rewardExpSprite, rewardXp);
+            count += AddRewardRow(rewardGoldSprite, rewardGold);
+            count += AddRewardRow(rewardOreSprite, rewardOre);
+            count += AddRewardRow(rewardMatterSprite, rewardMatter);
 
             if (count == 0 && !string.IsNullOrEmpty(_lastRewardText))
             {
@@ -1255,7 +1377,7 @@ namespace Project.Match3
             RecalcDerivedBuffs(_opStats);
 
             _boardView?.RefreshAll(_board);
-            if (!usedAnimSteps && _boardView != null)
+            if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
                 yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
             RefreshStatsUI();
 
@@ -1281,6 +1403,8 @@ namespace Project.Match3
                 _boardView?.ShowCenterAnnouncement("Дополнительный ход\nза 5+ камней", new Color(0.35f, 1f, 0.35f), 2f);
             }
 
+            ApplyTurnDeadlineFromBoardSync(msg);
+
             bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 5 || msg.actionType == 6)
                                              && ((msg.activeUserId == _myUserId) == _isMyTurn);
             if (keepTurnWithoutTimerReset)
@@ -1301,8 +1425,27 @@ namespace Project.Match3
             if (isMyTurnNow) BeginMyTurn();
             else             BeginOpponentTurn();
 
+            // Онлайн PVP и PVE: сервер ждёт OP 17 после анимаций. Активный игрок шлёт при своём ходе;
+            // в PVE против бота тот же сигнал с клиента владельца, когда на доске отыгран ход и активен бот.
+            if (_turnEndsAtUnixMs <= 0 && !_gameEnded)
+            {
+                if (isMyTurnNow)
+                    SendTurnInputReadyToServerFireAndForget();
+                else if (_isSoloBotMode && !string.IsNullOrEmpty(_opUserId) &&
+                         string.Equals(msg.activeUserId, _opUserId, StringComparison.Ordinal))
+                    SendTurnInputReadyToServerFireAndForget();
+            }
+
             _remoteSyncRoutine = null;
             TryStartNextBoardSync();
+        }
+
+        private static bool BoardArraysEqual(int[] a, int[] b)
+        {
+            if (a == null || b == null || a.Length != b.Length) return false;
+            for (var i = 0; i < a.Length; i++)
+                if (a[i] != b[i]) return false;
+            return true;
         }
 
         private IEnumerator BotTurnRoutine()
@@ -1445,6 +1588,7 @@ namespace Project.Match3
                 _gameEnded = true;
                 msg.activeUserId = winnerUserId;
                 FillSyncStats(msg);
+                StampLocalBoardSyncTurnDeadline(msg, false, req);
                 msg.board = simBoard.ToArray();
                 OnBoardSyncReceived(msg);
                 ShowGameOver(string.Equals(winnerUserId, _myUserId, StringComparison.Ordinal));
@@ -1468,6 +1612,7 @@ namespace Project.Match3
             msg.activeUserId = GetActiveUserId();
             msg.board = simBoard.ToArray();
             FillSyncStats(msg);
+            StampLocalBoardSyncTurnDeadline(msg, keepTurn, req);
             OnBoardSyncReceived(msg);
         }
 
@@ -1869,6 +2014,7 @@ namespace Project.Match3
                 board = _board.ToArray(),
             };
             FillSyncStats(msg);
+            StampLocalBoardSyncTurnDeadline(msg, false, null);
             OnBoardSyncReceived(msg);
         }
 

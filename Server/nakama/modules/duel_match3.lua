@@ -889,7 +889,7 @@ local function other_player_id(state, uid)
   return state.players_sorted[1]
 end
 
-local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser)
+local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser, tick)
   local a_id = state.players_sorted[1]
   local b_id = state.players_sorted[2]
   local a = state.stats[a_id]
@@ -903,6 +903,15 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
       end
     end
     return out
+  end
+
+  local turn_ends_at_unix_ms = 0
+  if state.turn_deadline_paused then
+    turn_ends_at_unix_ms = 0
+  elseif state.started and not state.ended and tick ~= nil and state.turn_deadline_tick ~= nil then
+    local rem_ticks = math.max(0, (state.turn_deadline_tick or 0) - tick)
+    local rem_ms = math.floor((rem_ticks * 1000) / TICK_RATE)
+    turn_ends_at_unix_ms = math.floor(os.time() * 1000) + rem_ms
   end
 
   return {
@@ -944,6 +953,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bFuryBonus = 0,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
+    turnEndsAtUnixMs = turn_ends_at_unix_ms,
     actionType = action and action.actionType or 0,
     fromX = action and action.fromX or -1,
     fromY = action and action.fromY or -1,
@@ -957,7 +967,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
   }
 end
 
-local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
+local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
   if action == nil then
     state.last_crit = false
@@ -977,13 +987,13 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
 
   -- If we don't have any permission map (edge cases), fallback to "send to all".
   if state.cheat_rows_allowed == nil then
-    local msg = make_sync_msg(state, action, extra_turn, anim_steps, {})
+    local msg = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
     dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
     return
   end
 
-  local msg_allowed = make_sync_msg(state, action, extra_turn, anim_steps, state.cheat_rows or {})
-  local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {})
+  local msg_allowed = make_sync_msg(state, action, extra_turn, anim_steps, state.cheat_rows or {}, tick)
+  local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
 
   if #allowed_presences > 0 then
     dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg_allowed), allowed_presences, nil)
@@ -1011,7 +1021,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then
     local winner = state.stats[actor].hp > 0 and actor or opponent
     state.ended = true
-    broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
+    broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
 
     local game_over_payload = { winnerUserId = winner }
     if state.mode == "pve" and winner == state.owner_user_id then
@@ -1035,8 +1045,8 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 
   if keep_turn then
     state.active_user_id = actor
-    -- Fury keeps the turn, but must not refresh the turn timer.
-    if action_type ~= 6 then
+    -- Ярость / Петарда / Щит: ход сохраняется, таймер хода не перезапускается.
+    if action_type ~= 4 and action_type ~= 5 and action_type ~= 6 then
       state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
     end
   elseif extra_turn then
@@ -1048,12 +1058,30 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   end
 
   if not keep_turn then
-    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+    if extra_turn then
+      state.turn_deadline_paused = false
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+    else
+      -- PVP и PVE: дедлайн стартует после OP 17 от клиента, отыгравшего анимации (активный игрок; в PVE при ходе бота — owner).
+      local need_ack = state.active_user_id ~= nil
+      if need_ack then
+        state.turn_deadline_paused = true
+        state.turn_pause_started_tick = tick
+        state.turn_deadline_tick = tick
+      else
+        state.turn_deadline_paused = false
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+      end
+    end
   end
   if state.mode == "pve" then
     if state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
-      state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+      if state.turn_deadline_paused then
+        state.bot_turn_ready_tick = 0
+      else
+        state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+      end
     else
       state.bot_turn_pending = false
       state.bot_turn_ready_tick = 0
@@ -1066,7 +1094,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       regenerate_active_board_without_matches(state)
     end
   end
-  broadcast_sync(dispatcher, state, action, extra_turn, anim_steps)
+  broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
 end
 
 local function clone_step(board, phase)
@@ -3334,6 +3362,8 @@ local function match_init(context, params)
     ended = false,
     active_user_id = nil,
     turn_deadline_tick = 0,
+    turn_deadline_paused = false,
+    turn_pause_started_tick = 0,
     last_crit = false,
     last_reward = nil,
     bot_turn_pending = false,
@@ -3444,15 +3474,17 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
       tick_cooldowns(state.stats[state.active_user_id])
-      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+      state.turn_deadline_paused = true
+      state.turn_pause_started_tick = tick
+      state.turn_deadline_tick = tick
       if state.active_user_id == state.bot_user_id then
         state.bot_turn_pending = true
-        state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+        state.bot_turn_ready_tick = 0
       else
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
       end
-      broadcast_sync(dispatcher, state, nil, false)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick)
     end
     return state
   end
@@ -3481,8 +3513,10 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
 
     tick_cooldowns(state.stats[state.active_user_id])
-    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
-    broadcast_sync(dispatcher, state, nil, false)
+    state.turn_deadline_paused = true
+    state.turn_pause_started_tick = tick
+    state.turn_deadline_tick = tick
+    broadcast_sync(dispatcher, state, nil, false, nil, tick)
   end
 
   return state
@@ -3515,8 +3549,31 @@ end
 
 local function match_loop(context, dispatcher, tick, state, messages)
   if state.ended then return nil end
+  if state.turn_deadline_paused == nil then state.turn_deadline_paused = false end
+  if state.turn_pause_started_tick == nil then state.turn_pause_started_tick = 0 end
 
   for _, m in ipairs(messages) do
+    if m.op_code == 17 then -- turn input ready (не local: лимит регистров Lua в чанке)
+      if state.started and not state.ended and state.turn_deadline_paused == true then
+        local sender_ok = false
+        if m.sender.user_id == state.active_user_id then
+          sender_ok = true
+        elseif state.mode == "pve" and state.owner_user_id ~= nil and state.owner_user_id ~= ""
+            and m.sender.user_id == state.owner_user_id
+            and state.active_user_id == state.bot_user_id then
+          sender_ok = true
+        end
+        if sender_ok then
+          state.turn_deadline_paused = false
+          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+          if state.mode == "pve" and state.active_user_id == state.bot_user_id then
+            state.bot_turn_pending = true
+            state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+          end
+          broadcast_sync(dispatcher, state, nil, false, nil, tick)
+        end
+      end
+    end
     if m.op_code == OP_PLAYER_LEFT then
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
@@ -3532,7 +3589,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[m.sender.user_id] == true then
           cheat = state.cheat_rows or {}
         end
-        local msg = make_sync_msg(state, nil, false, nil, cheat)
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
         dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), { m.sender }, nil)
       end
     end
@@ -3585,29 +3642,52 @@ local function match_loop(context, dispatcher, tick, state, messages)
     end
   end
 
+  if state.started and not state.ended and state.turn_deadline_paused and state.turn_pause_started_tick
+      and tick >= state.turn_pause_started_tick + 45 * TICK_RATE then
+    state.turn_deadline_paused = false
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+    if state.mode == "pve" and state.active_user_id == state.bot_user_id then
+      state.bot_turn_pending = true
+      state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+    end
+    broadcast_sync(dispatcher, state, nil, false, nil, tick)
+  end
+
   -- Сначала таймаут хода (человек не успел), затем ход бота — чтобы бот мог сходить в том же тике.
-  if state.started and not state.ended and tick >= state.turn_deadline_tick then
+  if state.started and not state.ended and not state.turn_deadline_paused and tick >= state.turn_deadline_tick then
     local current = state.active_user_id
     local next_player = other_player_id(state, current)
     if next_player then
       tick_buffs_end_turn(state.stats[current])
       state.active_user_id = next_player
       tick_cooldowns(state.stats[next_player])
-      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+      local need_ack = next_player ~= nil
+      if need_ack then
+        state.turn_deadline_paused = true
+        state.turn_pause_started_tick = tick
+        state.turn_deadline_tick = tick
+      else
+        state.turn_deadline_paused = false
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+      end
       if state.mode == "pve" then
         if state.active_user_id == state.bot_user_id then
           state.bot_turn_pending = true
-          state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+          if state.turn_deadline_paused then
+            state.bot_turn_ready_tick = 0
+          else
+            state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+          end
         else
           state.bot_turn_pending = false
           state.bot_turn_ready_tick = 0
         end
       end
-      broadcast_sync(dispatcher, state, nil, false)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick)
     end
   end
 
-  if state.mode == "pve" and state.started and not state.ended and state.active_user_id == state.bot_user_id and state.bot_turn_pending and tick >= (state.bot_turn_ready_tick or 0) then
+  if state.mode == "pve" and state.started and not state.ended and state.active_user_id == state.bot_user_id and state.bot_turn_pending and not state.turn_deadline_paused and tick >= (state.bot_turn_ready_tick or 0) then
     state.bot_turn_pending = false
     state.bot_turn_ready_tick = 0
     local actor_id = state.bot_user_id
@@ -3617,10 +3697,18 @@ local function match_loop(context, dispatcher, tick, state, messages)
       tick_buffs_end_turn(state.stats[actor_id])
       state.active_user_id = opp_id
       tick_cooldowns(state.stats[opp_id])
-      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+      local need_ack_o = opp_id ~= nil
+      if need_ack_o then
+        state.turn_deadline_paused = true
+        state.turn_pause_started_tick = tick
+        state.turn_deadline_tick = tick
+      else
+        state.turn_deadline_paused = false
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+      end
       state.bot_turn_pending = false
       state.bot_turn_ready_tick = 0
-      broadcast_sync(dispatcher, state, nil, false)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick)
     else
       local actor_stats = state.stats[actor_id]
       if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
@@ -3641,10 +3729,18 @@ local function match_loop(context, dispatcher, tick, state, messages)
         tick_buffs_end_turn(state.stats[actor_id])
         state.active_user_id = opp_id
         tick_cooldowns(state.stats[opp_id])
-        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+        local need_ack_e = opp_id ~= nil
+        if need_ack_e then
+          state.turn_deadline_paused = true
+          state.turn_pause_started_tick = tick
+          state.turn_deadline_tick = tick
+        else
+          state.turn_deadline_paused = false
+          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+        end
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
-        broadcast_sync(dispatcher, state, nil, false)
+        broadcast_sync(dispatcher, state, nil, false, nil, tick)
       end
     end
   end

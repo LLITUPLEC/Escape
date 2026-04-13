@@ -25,6 +25,8 @@ namespace Project.UI
         [SerializeField] private Sprite matterIconSprite;
         [SerializeField] private Sprite ingotsIconSprite;
         [SerializeField] private Sprite expIconSprite;
+        [Tooltip("Необязательно: если пусто, загружается Resources/UI/MonsterModal.")]
+        [SerializeField] private GameObject monsterModalPrefab;
         private const string RpcPveCatalogGet = "duel_match3_pve_catalog_get";
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
@@ -53,15 +55,18 @@ namespace Project.UI
 
         private GameObject _modalRoot;
         private Text _modalTitle;
-        private Text _modalInfo;
-        private Text _modalRewards;
+        private Text _modalSupplementalInfo;
+        private Text _modalBarrierInfo;
         private Button _modalFightButton;
         private Button _modalDismissButton;
         private Button _modalCloseButton;
         private Image _modalAffixIcon;
         private Text _modalAffixIconText;
-        private Text _modalAffixText;
-        private RectTransform _modalMonsterRewardsRoot;
+        private Text _modalAffixTitleText;
+        private Text _modalAffixDescriptionText;
+        private Text[] _modalStatTexts;
+        private GameObject _monsterContentRoot;
+        private GameObject _barrierContentRoot;
         private Text _modalMonsterRewardsTitle;
         private RectTransform _modalMonsterRewardsColumnsRoot;
         private RectTransform _modalBarrierRequirementsRoot;
@@ -515,107 +520,63 @@ namespace Project.UI
         {
             if (_modalRoot != null) return;
 
-            var bg = GameObject.Find("MineBackground");
-            var parent = bg != null ? bg.transform : FindFirstObjectByType<Canvas>()?.transform;
+            var parent = FindMonsterModalParent();
             if (parent == null) return;
 
-            _modalRoot = new GameObject("MonsterModal", typeof(RectTransform), typeof(Image));
-            var rt = _modalRoot.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = new Vector2(0.25f, 0.20f);
-            rt.anchorMax = new Vector2(0.75f, 0.80f);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            _modalRoot.GetComponent<Image>().color = new Color(0.08f, 0.08f, 0.12f, 0.98f);
+            var prefab = monsterModalPrefab != null
+                ? monsterModalPrefab
+                : Resources.Load<GameObject>("UI/MonsterModal");
+            if (prefab == null)
+            {
+                Debug.LogError(
+                    "[MineScene] Не найден префаб модалки. Выполните в редакторе: Tools/UI/Создать префаб Monster Modal " +
+                    "(создаёт Assets/_Project/Resources/UI/MonsterModal.prefab) или назначьте поле Monster Modal Prefab на MineSceneController.");
+                return;
+            }
 
-            _modalTitle = CreateText(_modalRoot.transform, "Title", "Монстр", 32, TextAnchor.MiddleCenter,
-                new Vector2(0.04f, 0.84f), new Vector2(0.96f, 0.98f));
-            _modalCloseButton = CreateButton(_modalRoot.transform, "CloseButton", "X",
-                new Vector2(0.90f, 0.86f), new Vector2(0.98f, 0.96f));
+            _modalRoot = Instantiate(prefab, parent, false);
+            var view = _modalRoot.GetComponent<MonsterModalView>();
+            if (view == null)
+            {
+                Debug.LogError("[MineScene] У префаба MonsterModal нет компонента MonsterModalView.");
+                Destroy(_modalRoot);
+                _modalRoot = null;
+                return;
+            }
+
+            _modalTitle = view.TitleText;
+            _modalCloseButton = view.CloseButton;
+            _modalSupplementalInfo = view.SupplementalInfoText;
+            _modalBarrierInfo = view.BarrierInfoText;
+            _modalFightButton = view.FightButton;
+            _modalDismissButton = view.DismissButton;
+            _modalAffixIcon = view.AffixIcon;
+            _modalAffixIconText = view.AffixIconGlyph;
+            _modalAffixTitleText = view.AffixTitleText;
+            _modalAffixDescriptionText = view.AffixDescriptionText;
+            _modalStatTexts = view.StatTexts;
+            _monsterContentRoot = view.MonsterContentRoot;
+            _barrierContentRoot = view.BarrierContentRoot;
+            _modalMonsterRewardsTitle = view.RewardsSectionTitle;
+            _modalMonsterRewardsColumnsRoot = view.RewardsDynamicRoot;
+            _modalBarrierRequirementsTitle = view.BarrierRequirementsSectionTitle;
+            _modalBarrierRequirementsRoot = view.BarrierRequirementsRoot;
+
             _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
-            _modalInfo = CreateText(_modalRoot.transform, "Info", "", 20, TextAnchor.UpperLeft,
-                new Vector2(0.06f, 0.46f), new Vector2(0.48f, 0.82f));
-            var affixIconGo = new GameObject("AffixIcon", typeof(RectTransform), typeof(Image));
-            var affixIconRt = affixIconGo.GetComponent<RectTransform>();
-            affixIconRt.SetParent(_modalRoot.transform, false);
-            affixIconRt.anchorMin = new Vector2(0.54f, 0.54f);
-            affixIconRt.anchorMax = new Vector2(0.66f, 0.72f);
-            affixIconRt.offsetMin = Vector2.zero;
-            affixIconRt.offsetMax = Vector2.zero;
-            _modalAffixIcon = affixIconGo.GetComponent<Image>();
-            _modalAffixIcon.color = new Color(0.25f, 0.25f, 0.35f, 0.96f);
-            _modalAffixIconText = CreateText(affixIconGo.transform, "Glyph", "?", 18, TextAnchor.MiddleCenter,
-                Vector2.zero, Vector2.one);
-            _modalAffixText = CreateText(_modalRoot.transform, "AffixText", "", 20, TextAnchor.UpperLeft,
-                new Vector2(0.68f, 0.46f), new Vector2(0.94f, 0.82f));
-            _modalAffixText.resizeTextForBestFit = true;
-            _modalAffixText.resizeTextMinSize = 14;
-            _modalAffixText.resizeTextMaxSize = 22;
-            _modalRewards = CreateText(_modalRoot.transform, "Rewards", "", 20, TextAnchor.UpperLeft,
-                new Vector2(0.06f, 0.22f), new Vector2(0.48f, 0.44f));
-            _modalRewards.resizeTextForBestFit = true;
-            _modalRewards.resizeTextMinSize = 14;
-            _modalRewards.resizeTextMaxSize = 22;
-            _modalRewards.gameObject.SetActive(false);
-
-            _modalMonsterRewardsRoot = new GameObject("MonsterRewards", typeof(RectTransform)).GetComponent<RectTransform>();
-            _modalMonsterRewardsRoot.SetParent(_modalRoot.transform, false);
-            _modalMonsterRewardsRoot.anchorMin = new Vector2(0.06f, 0.22f);
-            _modalMonsterRewardsRoot.anchorMax = new Vector2(0.48f, 0.44f);
-            _modalMonsterRewardsRoot.offsetMin = Vector2.zero;
-            _modalMonsterRewardsRoot.offsetMax = Vector2.zero;
-            var monsterRewardsLayout = _modalMonsterRewardsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-            monsterRewardsLayout.padding = new RectOffset(0, 0, 0, 0);
-            monsterRewardsLayout.spacing = 6f;
-            monsterRewardsLayout.childAlignment = TextAnchor.UpperLeft;
-            monsterRewardsLayout.childControlHeight = true;
-            monsterRewardsLayout.childControlWidth = true;
-            monsterRewardsLayout.childForceExpandHeight = false;
-            monsterRewardsLayout.childForceExpandWidth = true;
-            _modalMonsterRewardsTitle = CreateText(_modalMonsterRewardsRoot, "Title", "Награды:", 18, TextAnchor.UpperLeft,
-                new Vector2(0f, 0f), new Vector2(1f, 1f));
-            _modalMonsterRewardsTitle.resizeTextForBestFit = false;
-            _modalMonsterRewardsColumnsRoot = new GameObject("RowsContainer", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();
-            _modalMonsterRewardsColumnsRoot.SetParent(_modalMonsterRewardsRoot, false);
-            var columnsLayout = _modalMonsterRewardsColumnsRoot.GetComponent<HorizontalLayoutGroup>();
-            columnsLayout.padding = new RectOffset(0, 0, 0, 0);
-            columnsLayout.spacing = 10f;
-            columnsLayout.childAlignment = TextAnchor.UpperLeft;
-            columnsLayout.childControlHeight = true;
-            columnsLayout.childControlWidth = true;
-            columnsLayout.childForceExpandHeight = false;
-            columnsLayout.childForceExpandWidth = true;
-            var columnsLe = _modalMonsterRewardsColumnsRoot.GetComponent<LayoutElement>();
-            columnsLe.flexibleWidth = 1f;
-            columnsLe.flexibleHeight = 1f;
-            _modalMonsterRewardsRoot.gameObject.SetActive(false);
-
-            _modalBarrierRequirementsRoot = new GameObject("BarrierRequirements", typeof(RectTransform)).GetComponent<RectTransform>();
-            _modalBarrierRequirementsRoot.SetParent(_modalRoot.transform, false);
-            _modalBarrierRequirementsRoot.anchorMin = new Vector2(0.06f, 0.24f);
-            _modalBarrierRequirementsRoot.anchorMax = new Vector2(0.48f, 0.44f);
-            _modalBarrierRequirementsRoot.offsetMin = Vector2.zero;
-            _modalBarrierRequirementsRoot.offsetMax = Vector2.zero;
-            var requirementsLayout = _modalBarrierRequirementsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-            requirementsLayout.padding = new RectOffset(0, 0, 0, 0);
-            requirementsLayout.spacing = 6f;
-            requirementsLayout.childAlignment = TextAnchor.UpperLeft;
-            requirementsLayout.childControlHeight = true;
-            requirementsLayout.childControlWidth = true;
-            requirementsLayout.childForceExpandHeight = false;
-            requirementsLayout.childForceExpandWidth = true;
-            _modalBarrierRequirementsTitle = CreateText(_modalBarrierRequirementsRoot, "Title", "Требуется для разбития:", 18, TextAnchor.UpperLeft,
-                new Vector2(0f, 0f), new Vector2(1f, 1f));
-            _modalBarrierRequirementsTitle.resizeTextForBestFit = false;
-            _modalBarrierRequirementsRoot.gameObject.SetActive(false);
-
-            _modalFightButton = CreateButton(_modalRoot.transform, "FightButton", "В бой",
-                new Vector2(0.08f, 0.06f), new Vector2(0.46f, 0.18f));
-            _modalDismissButton = CreateButton(_modalRoot.transform, "DismissButton", "Прогнать",
-                new Vector2(0.54f, 0.06f), new Vector2(0.92f, 0.18f));
             _modalFightButton.onClick.AddListener(OnFightClicked);
             _modalDismissButton.onClick.AddListener(HandleSecondaryButtonClicked);
             _modalRoot.SetActive(false);
+        }
+
+        private static Transform FindMonsterModalParent()
+        {
+            var canvasGo = GameObject.Find("MineCanvas");
+            if (canvasGo != null)
+                return canvasGo.transform;
+            var bg = GameObject.Find("MineBackground");
+            if (bg != null)
+                return bg.transform;
+            return FindFirstObjectByType<Canvas>()?.transform;
         }
 
         private void OpenMonsterModal(int floor)
@@ -625,6 +586,9 @@ namespace Project.UI
             _mineByFloor.TryGetValue(floor, out var mine);
             _botByFloor.TryGetValue(floor, out var bot);
 
+            if (_modalSupplementalInfo != null)
+                _modalSupplementalInfo.text = string.Empty;
+
             var unlocked = mine != null && mine.unlocked;
             var respawn = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0;
             var affix = mine != null ? mine.affix : "";
@@ -633,11 +597,13 @@ namespace Project.UI
             if (!unlocked)
             {
                 var req = GetBarrierRequirement(floor);
+                if (_monsterContentRoot != null)
+                    _monsterContentRoot.SetActive(false);
+                if (_barrierContentRoot != null)
+                    _barrierContentRoot.SetActive(true);
                 _modalTitle.text = $"Барьер этажа {floor}";
-                _modalInfo.text = BuildBarrierInfoText(floor, req);
-                _modalRewards.gameObject.SetActive(false);
-                if (_modalMonsterRewardsRoot != null)
-                    _modalMonsterRewardsRoot.gameObject.SetActive(false);
+                if (_modalBarrierInfo != null)
+                    _modalBarrierInfo.text = BuildBarrierInfoText(floor, req);
                 PopulateBarrierRequirements(req);
                 _modalCanUnlock = req != null;
                 _modalCanSummon = false;
@@ -648,6 +614,11 @@ namespace Project.UI
                 return;
             }
 
+            if (_monsterContentRoot != null)
+                _monsterContentRoot.SetActive(true);
+            if (_barrierContentRoot != null)
+                _barrierContentRoot.SetActive(false);
+
             var name = bot != null ? bot.name : ("Монстр " + floor);
             var hp = 150 + Mathf.Max(0, bot != null ? bot.hp_bonus : 0);
             var dmg = bot != null ? bot.base_damage : 0;
@@ -656,18 +627,9 @@ namespace Project.UI
             var mana = bot != null ? bot.start_mana : 0;
 
             _modalTitle.text = name;
-            var sb = new StringBuilder();
-            sb.AppendLine($"HP: {hp}");
-            sb.AppendLine($"Урон: {dmg} | Броня: {armor}");
-            sb.AppendLine($"Крит: {Mathf.RoundToInt(crit * 100f)}% | Мана: {mana}");
-            if (respawn > 0)
-                sb.AppendLine($"Появится через: {FormatSeconds(respawn)}");
-            _modalInfo.text = sb.ToString();
+            ApplyMonsterStatTexts(hp, dmg, armor, crit, mana, respawn);
 
-            _modalRewards.gameObject.SetActive(false);
             PopulateMonsterRewards(bot);
-            if (_modalBarrierRequirementsRoot != null)
-                _modalBarrierRequirementsRoot.gameObject.SetActive(false);
 
             _modalCanUnlock = false;
             _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(floor);
@@ -677,6 +639,18 @@ namespace Project.UI
                 : $"Прогнать ({AffixRerollGoldCost} зол)");
             _modalDismissButton.interactable = true;
             _modalRoot.SetActive(true);
+        }
+
+        private void ApplyMonsterStatTexts(int hp, int dmg, int armor, float crit, int mana, int respawnSec)
+        {
+            if (_modalStatTexts == null || _modalStatTexts.Length < 6)
+                return;
+            _modalStatTexts[0].text = $"HP: {hp}";
+            _modalStatTexts[1].text = $"Урон: {dmg}";
+            _modalStatTexts[2].text = $"Броня: {armor}";
+            _modalStatTexts[3].text = $"Крит: {Mathf.RoundToInt(crit * 100f)}%";
+            _modalStatTexts[4].text = $"Мана: {mana}";
+            _modalStatTexts[5].text = respawnSec > 0 ? $"Появится: {FormatSeconds(respawnSec)}" : "—";
         }
 
         private async void OnFightClicked()
@@ -695,8 +669,8 @@ namespace Project.UI
                         ApplyHeaderResourceValues(resources);
                         if (resources.energy < 15)
                         {
-                            if (_modalInfo != null)
-                                _modalInfo.text += $"\n\nНе хватает энергии: нужно 15, доступно {resources.energy}.";
+                            if (_modalSupplementalInfo != null)
+                                _modalSupplementalInfo.text += $"\n\nНе хватает энергии: нужно 15, доступно {resources.energy}.";
                             return;
                         }
                     }
@@ -780,8 +754,8 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
-                    if (_modalInfo != null)
-                        _modalInfo.text += "\n\n" + DescribeSummonError(model);
+                    if (_modalSupplementalInfo != null)
+                        _modalSupplementalInfo.text += "\n\n" + DescribeSummonError(model);
                     return;
                 }
 
@@ -844,8 +818,8 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
-                    if (_modalInfo != null)
-                        _modalInfo.text += "\n\n" + DescribeAffixRerollError(model);
+                    if (_modalSupplementalInfo != null)
+                        _modalSupplementalInfo.text += "\n\n" + DescribeAffixRerollError(model);
                     return;
                 }
 
@@ -936,8 +910,8 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
-                    if (_modalInfo != null)
-                        _modalInfo.text += "\n\n" + DescribeUnlockError(model);
+                    if (_modalSupplementalInfo != null)
+                        _modalSupplementalInfo.text += "\n\n" + DescribeUnlockError(model);
                     return;
                 }
 
@@ -1220,14 +1194,17 @@ namespace Project.UI
             if (_modalBarrierRequirementsRoot == null)
                 return;
 
-            ClearRows(_modalBarrierRequirementsRoot);
+            ClearDynamicRows(_modalBarrierRequirementsRoot);
 
             if (_modalBarrierRequirementsTitle != null)
                 _modalBarrierRequirementsTitle.gameObject.SetActive(true);
 
+            var entries = new List<RewardEntry>(8);
+
             if (req == null)
             {
-                CreateIconValueRow(_modalBarrierRequirementsRoot, null, "Требования не найдены.", Color.white);
+                entries.Add(new RewardEntry { icon = null, text = "Требования не найдены.", color = Color.white });
+                RenderIconValueGrid(_modalBarrierRequirementsRoot, entries, 3, stackIconOverValue: false);
                 _modalBarrierRequirementsRoot.gameObject.SetActive(true);
                 return;
             }
@@ -1237,7 +1214,7 @@ namespace Project.UI
             {
                 var haveLevel = Mathf.Max(0, _progression != null ? _progression.level : 0);
                 var levelOk = haveLevel >= req.level;
-                CreateIconValueRow(_modalBarrierRequirementsRoot, null, $"Уровень {haveLevel}/{req.level}", GetEnoughColor(levelOk));
+                entries.Add(new RewardEntry { icon = null, text = $"Уровень {haveLevel}/{req.level}", color = GetEnoughColor(levelOk) });
                 hasAny = true;
             }
 
@@ -1245,7 +1222,7 @@ namespace Project.UI
             {
                 _oreSprite ??= LoadSpriteAsset(HudOreIconAssetPath);
                 var haveOre = Mathf.Max(0L, _lastResources != null ? _lastResources.ore : (_progression != null ? _progression.ore : 0));
-                CreateIconValueRow(_modalBarrierRequirementsRoot, _oreSprite, $"{haveOre}/{req.ore}", GetEnoughColor(haveOre >= req.ore));
+                entries.Add(new RewardEntry { icon = _oreSprite, text = $"{haveOre}/{req.ore}", color = GetEnoughColor(haveOre >= req.ore) });
                 hasAny = true;
             }
 
@@ -1253,7 +1230,7 @@ namespace Project.UI
             {
                 _goldSprite ??= LoadSpriteAsset(HudGoldIconAssetPath);
                 var haveGold = Mathf.Max(0L, _lastResources != null ? _lastResources.gold : (_progression != null ? _progression.gold : 0));
-                CreateIconValueRow(_modalBarrierRequirementsRoot, _goldSprite, $"{haveGold}/{req.gold}", GetEnoughColor(haveGold >= req.gold));
+                entries.Add(new RewardEntry { icon = _goldSprite, text = $"{haveGold}/{req.gold}", color = GetEnoughColor(haveGold >= req.gold) });
                 hasAny = true;
             }
 
@@ -1261,7 +1238,7 @@ namespace Project.UI
             {
                 _matterSprite ??= LoadSpriteAsset(HudMatterIconAssetPath);
                 var haveMatter = Mathf.Max(0L, _lastResources != null ? _lastResources.matter : (_progression != null ? _progression.matter : 0));
-                CreateIconValueRow(_modalBarrierRequirementsRoot, _matterSprite, $"{haveMatter}/{req.matter}", GetEnoughColor(haveMatter >= req.matter));
+                entries.Add(new RewardEntry { icon = _matterSprite, text = $"{haveMatter}/{req.matter}", color = GetEnoughColor(haveMatter >= req.matter) });
                 hasAny = true;
             }
 
@@ -1269,33 +1246,32 @@ namespace Project.UI
             {
                 _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
                 var haveKey = Mathf.Max(0, GetOwnedKeyAmount(req.key_id));
-                CreateIconValueRow(_modalBarrierRequirementsRoot, _lockSprite, $"{haveKey}/{req.key_amount}", GetEnoughColor(haveKey >= req.key_amount));
+                entries.Add(new RewardEntry { icon = _lockSprite, text = $"{haveKey}/{req.key_amount}", color = GetEnoughColor(haveKey >= req.key_amount) });
                 hasAny = true;
             }
 
             if (!hasAny)
-                CreateIconValueRow(_modalBarrierRequirementsRoot, null, "Без доп. условий", Color.white);
+                entries.Add(new RewardEntry { icon = null, text = "Без доп. условий", color = Color.white });
 
+            RenderIconValueGrid(_modalBarrierRequirementsRoot, entries, 3, stackIconOverValue: false);
             _modalBarrierRequirementsRoot.gameObject.SetActive(true);
         }
 
         private void PopulateMonsterRewards(PveBotInfo bot)
         {
-            if (_modalMonsterRewardsRoot == null)
+            if (_modalMonsterRewardsColumnsRoot == null)
                 return;
             if (_modalMonsterRewardsTitle != null)
                 _modalMonsterRewardsTitle.gameObject.SetActive(true);
-            if (_modalMonsterRewardsColumnsRoot == null)
-                return;
-            ClearRows(_modalMonsterRewardsColumnsRoot);
+            ClearDynamicRows(_modalMonsterRewardsColumnsRoot);
 
             var entries = new List<RewardEntry>(8);
 
             if (bot == null)
             {
                 entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
-                _modalMonsterRewardsRoot.gameObject.SetActive(true);
-                RenderRewardEntries(entries);
+                _modalMonsterRewardsColumnsRoot.gameObject.SetActive(true);
+                RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, 6, stackIconOverValue: true);
                 return;
             }
 
@@ -1339,54 +1315,113 @@ namespace Project.UI
             if (entries.Count == 0)
                 entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
 
-            RenderRewardEntries(entries);
-            _modalMonsterRewardsRoot.gameObject.SetActive(true);
+            RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, 6, stackIconOverValue: true);
+            _modalMonsterRewardsColumnsRoot.gameObject.SetActive(true);
         }
 
-        private void RenderRewardEntries(List<RewardEntry> entries)
+        private void RenderIconValueGrid(RectTransform verticalParent, List<RewardEntry> entries, int columns, bool stackIconOverValue)
         {
-            if (_modalMonsterRewardsColumnsRoot == null)
+            if (verticalParent == null || entries == null || entries.Count == 0)
                 return;
 
-            const int maxRowsPerColumn = 4;
-            var total = entries != null ? entries.Count : 0;
-            if (total <= 0)
-                return;
+            var rowPreferredHeight = stackIconOverValue ? 88f : 36f;
+            var rowAlignment = stackIconOverValue ? TextAnchor.MiddleCenter : TextAnchor.MiddleLeft;
 
-            var columns = Mathf.Max(1, Mathf.CeilToInt(total / (float)maxRowsPerColumn));
-            var index = 0;
-            for (var col = 0; col < columns; col++)
+            for (var i = 0; i < entries.Count; i += columns)
             {
-                var colGo = new GameObject("Column_" + col, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
-                var colRt = colGo.GetComponent<RectTransform>();
-                colRt.SetParent(_modalMonsterRewardsColumnsRoot, false);
-                var colLayout = colGo.GetComponent<VerticalLayoutGroup>();
-                colLayout.padding = new RectOffset(0, 0, 0, 0);
-                colLayout.spacing = 4f;
-                colLayout.childAlignment = TextAnchor.UpperLeft;
-                colLayout.childControlHeight = true;
-                colLayout.childControlWidth = true;
-                colLayout.childForceExpandHeight = false;
-                colLayout.childForceExpandWidth = true;
-                var colLe = colGo.GetComponent<LayoutElement>();
-                colLe.flexibleWidth = 1f;
+                var rowGo = new GameObject("GridRow", typeof(RectTransform));
+                var rowRt = rowGo.GetComponent<RectTransform>();
+                rowRt.SetParent(verticalParent, false);
+                var h = rowGo.AddComponent<HorizontalLayoutGroup>();
+                h.spacing = stackIconOverValue ? 6f : 8f;
+                h.padding = new RectOffset(0, 0, 0, 0);
+                h.childAlignment = rowAlignment;
+                h.childControlHeight = true;
+                h.childControlWidth = true;
+                h.childForceExpandHeight = false;
+                h.childForceExpandWidth = true;
+                var rowLe = rowGo.AddComponent<LayoutElement>();
+                rowLe.preferredHeight = rowPreferredHeight;
+                rowLe.flexibleWidth = 1f;
 
-                for (var row = 0; row < maxRowsPerColumn && index < total; row++, index++)
+                for (var c = 0; c < columns && i + c < entries.Count; c++)
                 {
-                    var e = entries[index];
-                    CreateIconValueRow(colRt, e.icon, e.text, e.color);
+                    var e = entries[i + c];
+                    if (stackIconOverValue)
+                        CreateRewardStackCell(rowRt, e.icon, e.text, e.color);
+                    else
+                        CreateIconValueRow(rowRt, e.icon, e.text, e.color);
                 }
             }
         }
 
-        private static void ClearRows(RectTransform root)
+        /// <summary>Иконка фиксированного размера сверху, значение снизу — для строки наград.</summary>
+        private void CreateRewardStackCell(RectTransform parent, Sprite icon, string value, Color textColor)
+        {
+            if (parent == null)
+                return;
+
+            const float iconSize = 36f;
+
+            var cell = new GameObject("RewardCell", typeof(RectTransform), typeof(LayoutElement));
+            var cellRt = cell.GetComponent<RectTransform>();
+            cellRt.SetParent(parent, false);
+            var cellLe = cell.GetComponent<LayoutElement>();
+            cellLe.flexibleWidth = 1f;
+            cellLe.minWidth = 40f;
+
+            var v = cell.AddComponent<VerticalLayoutGroup>();
+            v.spacing = 4f;
+            v.padding = new RectOffset(2, 2, 0, 0);
+            v.childAlignment = TextAnchor.UpperCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = true;
+
+            if (icon != null)
+            {
+                var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+                var iconRt = iconGo.GetComponent<RectTransform>();
+                iconRt.SetParent(cellRt, false);
+                var iconImage = iconGo.GetComponent<Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+                iconImage.color = Color.white;
+                var iconLe = iconGo.GetComponent<LayoutElement>();
+                iconLe.preferredWidth = iconSize;
+                iconLe.preferredHeight = iconSize;
+                iconLe.minWidth = iconSize;
+                iconLe.minHeight = iconSize;
+                iconLe.flexibleWidth = 0f;
+                iconLe.flexibleHeight = 0f;
+            }
+
+            var labelGo = new GameObject("Value", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            var labelRt = labelGo.GetComponent<RectTransform>();
+            labelRt.SetParent(cellRt, false);
+            var label = labelGo.GetComponent<Text>();
+            label.font = GetBuiltinFont();
+            label.fontSize = 15;
+            label.color = textColor;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            label.text = value;
+            var labelLe = labelGo.GetComponent<LayoutElement>();
+            labelLe.preferredHeight = 22f;
+            labelLe.flexibleWidth = 1f;
+        }
+
+        private static void ClearDynamicRows(RectTransform root)
         {
             if (root == null)
                 return;
             for (var i = root.childCount - 1; i >= 0; i--)
             {
                 var child = root.GetChild(i);
-                if (child == null || child.name == "Title")
+                if (child == null)
                     continue;
                 Destroy(child.gameObject);
             }
@@ -1405,9 +1440,11 @@ namespace Project.UI
             rowLayout.spacing = 8f;
             rowLayout.childAlignment = TextAnchor.MiddleLeft;
             rowLayout.childControlHeight = true;
-            rowLayout.childControlWidth = false;
-            rowLayout.childForceExpandWidth = false;
-            row.GetComponent<LayoutElement>().preferredHeight = 28f;
+            rowLayout.childControlWidth = true;
+            rowLayout.childForceExpandWidth = true;
+            var rowLe = row.GetComponent<LayoutElement>();
+            rowLe.preferredHeight = 28f;
+            rowLe.flexibleWidth = 1f;
 
             if (icon != null)
             {
@@ -1424,6 +1461,8 @@ namespace Project.UI
                 iconLe.preferredHeight = 24f;
                 iconLe.minWidth = 24f;
                 iconLe.minHeight = 24f;
+                iconLe.flexibleWidth = 0f;
+                iconLe.flexibleHeight = 0f;
             }
 
             var labelGo = new GameObject("Value", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
@@ -1482,8 +1521,10 @@ namespace Project.UI
         {
             var normalized = AffixCatalog.Normalize(affix);
             var hasData = TryGetAffixData(normalized, out var title, out var description, out var iconSprite);
-            if (_modalAffixText != null)
-                _modalAffixText.text = hasData && !string.IsNullOrWhiteSpace(title) ? $"Аффикс: {title}\n{description}" : "Аффикс: —";
+            if (_modalAffixTitleText != null)
+                _modalAffixTitleText.text = hasData && !string.IsNullOrWhiteSpace(title) ? $"Аффикс: {title}" : "Аффикс: —";
+            if (_modalAffixDescriptionText != null)
+                _modalAffixDescriptionText.text = hasData ? description : string.Empty;
 
             if (_modalAffixIcon != null)
             {
@@ -1607,20 +1648,6 @@ namespace Project.UI
             t.alignment = anchor;
             t.text = value;
             return t;
-        }
-
-        private static Button CreateButton(Transform parent, string name, string label, Vector2 aMin, Vector2 aMax)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = aMin;
-            rt.anchorMax = aMax;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            go.GetComponent<Image>().color = new Color(0.24f, 0.18f, 0.18f, 0.95f);
-            CreateText(go.transform, "Label", label, 22, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
-            return go.GetComponent<Button>();
         }
 
         private static Font GetBuiltinFont()

@@ -52,6 +52,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.Match3GameHUD
   turnText: {fileID: 0}
   timerText: {fileID: 0}
+  timerPhaseText: {fileID: 0}
   extraTurnText: {fileID: 0}
   affixButton: {fileID: 0}
   affixButtonIconImage: {fileID: 0}
@@ -263,7 +264,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 30
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: c34364bd766fa28498ab817f24929186, type: 2}
   m_sharedMaterial: {fileID: -8146066175550552701, guid: c34364bd766fa28498ab817f24929186, type: 2}

@@ -11,6 +11,8 @@ namespace Project.Match3
     {
         [SerializeField] public TMP_Text turnText;
         [SerializeField] public TMP_Text timerText;
+        [Tooltip("Подпись под таймером: «Время на решение» / «Анимация хода»")]
+        [SerializeField] public TMP_Text timerPhaseText;
         [SerializeField] public TMP_Text extraTurnText;
 
         [SerializeField] public Button affixButton;
@@ -30,6 +32,7 @@ namespace Project.Match3
         {
             ResolveReferences();
             EnsureExtraTurnText();
+            EnsureTimerPhaseText();
             EnsureAffixUi();
             CenterTimerText();
         }
@@ -38,6 +41,7 @@ namespace Project.Match3
         {
             turnText ??= transform.Find("TurnText")?.GetComponent<TMP_Text>();
             timerText ??= transform.Find("TimerText")?.GetComponent<TMP_Text>();
+            timerPhaseText ??= transform.Find("TimerPhaseText")?.GetComponent<TMP_Text>();
             extraTurnText ??= transform.Find("ExtraTurnText")?.GetComponent<TMP_Text>();
 
             affixButton ??= transform.Find("AffixButton")?.GetComponent<Button>();
@@ -49,6 +53,27 @@ namespace Project.Match3
 
             affixIconText ??= transform.Find("AffixIconText")?.GetComponent<TMP_Text>();
             affixEffectText ??= transform.Find("AffixEffectText")?.GetComponent<TMP_Text>();
+        }
+
+        private void EnsureTimerPhaseText()
+        {
+            if (timerPhaseText != null) return;
+            if (timerText == null) return;
+
+            var go = new GameObject("TimerPhaseText");
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(timerText.transform.parent, false);
+            rt.anchorMin = new Vector2(0.56f, 0f);
+            rt.anchorMax = new Vector2(0.70f, 0.42f);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            timerPhaseText = go.AddComponent<TextMeshProUGUI>();
+            timerPhaseText.font = TMP_Settings.defaultFontAsset;
+            timerPhaseText.fontSize = 14;
+            timerPhaseText.alignment = TextAlignmentOptions.Right;
+            timerPhaseText.color = new Color(0.75f, 0.78f, 0.9f, 0.92f);
+            timerPhaseText.text = string.Empty;
+            timerPhaseText.raycastTarget = false;
         }
 
         private void EnsureExtraTurnText()
@@ -351,6 +376,13 @@ namespace Project.Match3
         public void SetTimer(string text)
         {
             if (timerText != null) timerText.text = text;
+        }
+
+        /// <param name="isMoveResolving">true — идёт откат чужого/своего хода (каскады); false — идёт отсчёт времени на решение.</param>
+        public void SetTimerPhase(bool isMoveResolving)
+        {
+            if (timerPhaseText == null) return;
+            timerPhaseText.text = isMoveResolving ? "Анимация хода" : "Время на решение";
         }
 
         public void ShowExtraTurnMessage(string message, Color color, float duration)

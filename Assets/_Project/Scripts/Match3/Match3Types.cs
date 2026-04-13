@@ -77,6 +77,9 @@ namespace Project.Match3
         public bool extraTurn;      // active player gets another turn
         public string activeUserId; // who just acted
 
+        /// <summary>Unix time in milliseconds when the current turn must end (server clock + remaining tick budget).</summary>
+        public long turnEndsAtUnixMs;
+
         // Animation metadata for remote client replay.
         // actionType: 0 = none, 1 = swap, 2 = cross, 3 = square, 4 = petard, 5 = shield, 6 = fury
         public int actionType;
