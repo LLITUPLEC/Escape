@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a53ecef683545c94783f3ad10fc40f12, type: 3}
   m_Name: MainMonsterFrameCatalog
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterFrameCatalog
-  frameEasy: {fileID: 0}
+  frameEasy: {fileID: 21300000, guid: 9289273e2782ea94e8b7b9ebd8d641b6, type: 3}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}
-  frameBoss: {fileID: 21300000, guid: 085185b08a40a924985bc0e4176edea6, type: 3}
+  frameBoss: {fileID: 21300000, guid: e6d45874f055f9f4689f12b3f56c7dc9, type: 3}

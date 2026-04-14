@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0439 \u043C\u043E\u043D\u0441\u0442\u0440
     6"
   floor: 6
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: e387d9e74521d2e41a0572bff50c9b1c, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

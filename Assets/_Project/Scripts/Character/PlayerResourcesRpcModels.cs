@@ -15,6 +15,9 @@ namespace Project.Character
         public long ingots;
         public long matter;
         public long keys;
+        /// <summary>См. duel_match3 build_resource_payload: отдельные ключи (агрегат keys может совпадать с их суммой).</summary>
+        public long miner_key;
+        public long dark_key;
 
         public string resource;
         public string reason;

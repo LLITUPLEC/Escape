@@ -1030,6 +1030,11 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
       game_over_payload.rewardOre = state.last_reward.reward_ore or 0
       game_over_payload.rewardMatter = state.last_reward.reward_matter or 0
+      game_over_payload.rewardIngots = state.last_reward.reward_ingots or 0
+      game_over_payload.rewardKeyId = state.last_reward.reward_key_id or ""
+      game_over_payload.rewardKeyAmount = state.last_reward.reward_key_amount or 0
+      game_over_payload.rewardBlueprint = state.last_reward.reward_blueprint or ""
+      game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode == "pve" and winner == state.bot_user_id then
       state.last_reward = award_pve_defeat(state.owner_user_id, state.owner_session_epoch)
@@ -1853,6 +1858,10 @@ end
 
 local function build_resource_payload(progress, user_id)
   local energy_max = pve_energy_max_for_user(user_id)
+  local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
+  local dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0)
+  -- Итог по ключам для HUD: раньше в progress.keys писалось отдельно и не синхронизировалось с key_items.
+  local keys_total = miner_key + dark_key
   return {
     energy = clamp_int(progress.energy, 0, energy_max),
     energy_max = energy_max,
@@ -1860,14 +1869,14 @@ local function build_resource_payload(progress, user_id)
     gold = math.max(0, tonumber(progress.gold) or 0),
     ingots = math.max(0, tonumber(progress.ingots) or 0),
     matter = math.max(0, tonumber(progress.matter) or 0),
-    keys = math.max(0, tonumber(progress.keys) or 0),
+    keys = keys_total,
     blueprint_green = math.max(0, tonumber(progress.blueprint_green) or 0),
     blueprint_blue = math.max(0, tonumber(progress.blueprint_blue) or 0),
     blueprint_purple = math.max(0, tonumber(progress.blueprint_purple) or 0),
     blueprint_gold = math.max(0, tonumber(progress.blueprint_gold) or 0),
     tesseracts = math.max(0, tonumber(progress.tesseracts) or 0),
-    miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0),
-    dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0),
+    miner_key = miner_key,
+    dark_key = dark_key,
   }
 end
 
@@ -1884,6 +1893,11 @@ local function build_progression_payload(progress, user_id)
     ingots = resources.ingots,
     matter = resources.matter,
     keys = resources.keys,
+    -- Клиент (Unity JsonUtility) ожидает key_items; без этого барьер показывает 0 ключей при наличии miner_key.
+    key_items = {
+      miner_key = resources.miner_key,
+      dark_key = resources.dark_key,
+    },
     mine = progress.mine,
   }
 end
@@ -2050,6 +2064,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         reward_tesseract = reward_tesseract,
         reward_key_id = reward_key_id,
         reward_key_amount = reward_key_amount,
+        reward_blueprint = tostring(bot.reward_blueprint or ""),
         difficulty = diff,
         floor = floor,
         stat_mul = stat_mul,
@@ -2073,6 +2088,11 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     reward_gold = reward_gold,
     reward_ore = reward_ore,
     reward_matter = reward_matter,
+    reward_ingots = reward_ingots,
+    reward_tesseract = reward_tesseract,
+    reward_key_id = reward_key_id,
+    reward_key_amount = reward_key_amount,
+    reward_blueprint = tostring(bot and bot.reward_blueprint or ""),
     level = 1,
     xp = 0,
     gold = 0,

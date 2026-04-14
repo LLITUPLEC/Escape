@@ -108,6 +108,11 @@ namespace Project.Match3
         public int rewardGold;
         public int rewardOre;
         public int rewardMatter;
+        public int rewardIngots;
+        public string rewardKeyId;
+        public int rewardKeyAmount;
+        public string rewardBlueprint;
+        public int rewardTesseract;
         public int newLevel;
     }
 

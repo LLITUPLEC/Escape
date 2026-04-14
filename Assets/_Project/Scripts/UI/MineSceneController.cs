@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -25,8 +26,14 @@ namespace Project.UI
         [SerializeField] private Sprite matterIconSprite;
         [SerializeField] private Sprite ingotsIconSprite;
         [SerializeField] private Sprite expIconSprite;
+        [Tooltip("Награды модалки: рецепт (blueprint). Если пусто — подставляется ingots или загрузка по пути blueprint.png.")]
+        [SerializeField] private Sprite blueprintIconSprite;
+        [Tooltip("Награды модалки: шанс тессеракта. Если пусто — matter или tesseract.png.")]
+        [SerializeField] private Sprite tesseractIconSprite;
         [Tooltip("Необязательно: если пусто, загружается Resources/UI/MonsterModal.")]
         [SerializeField] private GameObject monsterModalPrefab;
+        [Tooltip("Иконка свистка у таймера респауна на этаже. Если пусто — символ в тексте.")]
+        [SerializeField] private Sprite summonWhistleIconSprite;
         private const string RpcPveCatalogGet = "duel_match3_pve_catalog_get";
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
@@ -44,10 +51,16 @@ namespace Project.UI
         private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
         private const string HudIngotsIconAssetPath = "Assets/_Project/img/resources_hud/ingots.png";
         private const string HudExpIconAssetPath = "Assets/_Project/img/resources_hud/exp.png";
+        private const string HudBlueprintIconAssetPath = "Assets/_Project/img/resources_hud/blueprint.png";
+        private const string HudTesseractIconAssetPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        private const string HudWhistleIconAssetPath = "Assets/_Project/img/resources_hud/whistle.png";
         private const float BarrierDismissButtonMaxWidth = 450f;
         /// <summary>Пропорции кнопок футера модалки (как у спрайта 230×65).</summary>
         private const float ModalFooterButtonAspect = 230f / 65f;
+        private const float InsufficientResourcesToastSeconds = 1.6f;
         private static readonly Color BarrierDismissLabelColor = new Color(224f / 255f, 204f / 255f, 137f / 255f, 1f);
+        /// <summary>Цвет фона кнопки монстра (#29781B).</summary>
+        private static readonly Color MonsterButtonFrameColor = new Color(0x29 / 255f, 0x78 / 255f, 0x1B / 255f, 1f);
 
         private readonly Dictionary<int, FloorRowRefs> _rows = new();
         private readonly Dictionary<int, Button> _liftButtons = new();
@@ -87,6 +100,12 @@ namespace Project.UI
         private float _modalDismissDefaultFlexibleWidth;
         private float _modalDismissDefaultFlexibleHeight;
         private Color _modalDismissDefaultLabelColor;
+        private GameObject _summonConfirmRoot;
+        private Text _summonConfirmMessageText;
+        private int _summonConfirmFloor;
+        private GameObject _insufficientResourcesToastRoot;
+        private Text _insufficientResourcesToastText;
+        private Coroutine _insufficientResourcesToastRoutine;
         private int _selectedFloor;
         private bool _modalCanSummon;
         private bool _modalCanUnlock;
@@ -106,6 +125,8 @@ namespace Project.UI
         private Sprite _matterSprite;
         private Sprite _ingotsSprite;
         private Sprite _expSprite;
+        private Sprite _blueprintSprite;
+        private Sprite _tesseractSprite;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
         private readonly ResourceValueBinding _oreBinding = new("ore");
         private readonly ResourceValueBinding _goldBinding = new("Gold");
@@ -149,6 +170,7 @@ namespace Project.UI
             _cardsScroll = FindFirstObjectByType<ScrollRect>(FindObjectsInactive.Include);
             CacheRows();
             EnsureModal();
+            EnsureSummonConfirmDialog();
             EnsureHeaderResources();
         }
 
@@ -161,6 +183,11 @@ namespace Project.UI
 
         private void OnDisable()
         {
+            if (_insufficientResourcesToastRoutine != null)
+            {
+                StopCoroutine(_insufficientResourcesToastRoutine);
+                _insufficientResourcesToastRoutine = null;
+            }
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
@@ -295,7 +322,8 @@ namespace Project.UI
                 var rewardsPanel = refs.root.Find("RewardsPanel");
                 if (rewardsPanel != null)
                     Destroy(rewardsPanel.gameObject);
-                refs.monsterButton = EnsureMonsterButton(refs.root, floor);
+                refs.monsterButton = EnsureMonsterButton(refs.root);
+                ApplyMonsterButtonChrome(refs.monsterButton);
                 refs.monsterButton.onClick.RemoveAllListeners();
                 refs.lockButton = EnsureLockButton(refs.root, floor);
                 refs.lockButton.onClick.RemoveAllListeners();
@@ -305,6 +333,7 @@ namespace Project.UI
                 var f = floor;
                 refs.monsterButton.onClick.AddListener(() => OpenMonsterModal(f));
                 refs.lockButton.onClick.AddListener(() => OpenMonsterModal(f));
+                EnsureCooldownClusterForFloor(refs, f);
                 EnsureTorchViewportCulling(refs.root);
                 refs.root.SetSiblingIndex(floor - 1); // 1-й этаж вверху, глубже — ниже.
                 _rows[floor] = refs;
@@ -323,7 +352,7 @@ namespace Project.UI
             }
         }
 
-        private Button EnsureMonsterButton(Transform rowRoot, int floor)
+        private Button EnsureMonsterButton(Transform rowRoot)
         {
             var existing = rowRoot.Find("MonsterButton");
             if (existing != null)
@@ -334,9 +363,9 @@ namespace Project.UI
             rt.SetParent(rowRoot, false);
             rt.anchorMin = new Vector2(0.36f, 0.15f);
             rt.anchorMax = new Vector2(0.64f, 0.85f);
-            rt.offsetMin = Vector2.zero;
+            rt.offsetMin = new Vector2(0f, -20f);
             rt.offsetMax = Vector2.zero;
-            go.GetComponent<Image>().color = new Color(0.50f, 0.20f, 0.20f, 0.95f);
+            go.GetComponent<Image>().color = MonsterButtonFrameColor;
             var btn = go.GetComponent<Button>();
 
             var txtGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
@@ -351,10 +380,274 @@ namespace Project.UI
             txt.fontSize = 16;
             txt.alignment = TextAnchor.MiddleCenter;
             txt.color = Color.white;
-            txt.text = "БОТ";
+            txt.text = string.Empty;
             txt.raycastTarget = false;
 
             return btn;
+        }
+
+        private static void ApplyMonsterButtonChrome(Button btn)
+        {
+            if (btn == null)
+                return;
+            var rt = btn.GetComponent<RectTransform>();
+            if (rt != null)
+                rt.offsetMin = new Vector2(rt.offsetMin.x, -20f);
+            var img = btn.GetComponent<Image>();
+            if (img != null)
+                img.color = MonsterButtonFrameColor;
+            var label = FindTextByName(btn.transform, "Label");
+            if (label != null)
+                label.text = string.Empty;
+        }
+
+        private void EnsureCooldownClusterForFloor(FloorRowRefs refs, int floor)
+        {
+            if (refs?.root == null || refs.monsterButton == null || refs.cooldownClusterRt != null)
+                return;
+
+            var clusterGo = new GameObject("CooldownCluster", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            var clusterRt = clusterGo.GetComponent<RectTransform>();
+            clusterRt.SetParent(refs.root, false);
+            var h = clusterGo.GetComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(4, 4, 0, 0);
+            h.spacing = 10f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            h.childForceExpandHeight = true;
+            h.childForceExpandWidth = true;
+
+            var textHost = new GameObject("TimerTextHost", typeof(RectTransform), typeof(LayoutElement));
+            var textHostRt = textHost.GetComponent<RectTransform>();
+            textHostRt.SetParent(clusterRt, false);
+            var textHostLe = textHost.GetComponent<LayoutElement>();
+            textHostLe.flexibleWidth = 1f;
+            textHostLe.flexibleHeight = 1f;
+            textHostLe.minWidth = 40f;
+            textHostLe.minHeight = 44f;
+
+            var whistleGo = new GameObject("SummonWhistle", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            whistleGo.GetComponent<RectTransform>().SetParent(clusterRt, false);
+            var whistleImg = whistleGo.GetComponent<Image>();
+            whistleImg.sprite = summonWhistleIconSprite ?? LoadSpriteAsset(HudWhistleIconAssetPath);
+            whistleImg.preserveAspect = true;
+            whistleImg.color = Color.white;
+            if (whistleImg.sprite == null)
+            {
+                var glyph = CreateText(whistleGo.transform, "Glyph", "\u2606", 26, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+                glyph.color = new Color(1f, 0.92f, 0.35f, 1f);
+                glyph.raycastTarget = false;
+            }
+            var whistleLe = whistleGo.GetComponent<LayoutElement>();
+            whistleLe.preferredWidth = 44f;
+            whistleLe.preferredHeight = 44f;
+            whistleLe.minWidth = 44f;
+            whistleLe.minHeight = 44f;
+            var whistleBtn = whistleGo.GetComponent<Button>();
+            var f = floor;
+            whistleBtn.onClick.AddListener(() => OnSummonWhistleClicked(f));
+
+            clusterRt.SetSiblingIndex(refs.monsterButton.transform.GetSiblingIndex());
+
+            refs.cooldownClusterRt = clusterRt;
+            refs.cooldownTextHostRt = textHostRt;
+            refs.summonWhistleButton = whistleBtn;
+            clusterGo.SetActive(false);
+        }
+
+        private static void CopyRectTransform(RectTransform from, RectTransform to)
+        {
+            if (from == null || to == null)
+                return;
+            to.anchorMin = from.anchorMin;
+            to.anchorMax = from.anchorMax;
+            to.pivot = from.pivot;
+            to.offsetMin = from.offsetMin;
+            to.offsetMax = from.offsetMax;
+            to.localScale = from.localScale;
+        }
+
+        private void ApplyCooldownTimerLayout(FloorRowRefs refs, int floor)
+        {
+            if (refs.cooldownClusterRt == null || refs.monsterButton == null)
+                return;
+            var monsterRt = refs.monsterButton.GetComponent<RectTransform>();
+            CopyRectTransform(monsterRt, refs.cooldownClusterRt);
+            refs.cooldownClusterRt.gameObject.SetActive(true);
+
+            var clusterH = refs.cooldownClusterRt.GetComponent<HorizontalLayoutGroup>();
+            if (clusterH != null)
+            {
+                clusterH.childForceExpandWidth = true;
+                clusterH.childForceExpandHeight = true;
+            }
+
+            if (refs.cooldownTextHostRt != null)
+            {
+                var textHostLe = refs.cooldownTextHostRt.GetComponent<LayoutElement>();
+                if (textHostLe != null)
+                {
+                    textHostLe.flexibleHeight = 1f;
+                    textHostLe.minHeight = Mathf.Max(textHostLe.minHeight, 44f);
+                }
+            }
+
+            if (refs.stateText != null)
+            {
+                if (!refs.stateTextPlacementSaved)
+                {
+                    refs.stateTextOriginalParent = refs.stateText.transform.parent;
+                    refs.stateTextOriginalSiblingIndex = refs.stateText.transform.GetSiblingIndex();
+                    refs.stateTextPlacementSaved = true;
+                }
+                refs.stateText.transform.SetParent(refs.cooldownTextHostRt, false);
+                var strt = refs.stateText.GetComponent<RectTransform>();
+                strt.anchorMin = Vector2.zero;
+                strt.anchorMax = Vector2.one;
+                strt.offsetMin = Vector2.zero;
+                strt.offsetMax = Vector2.zero;
+                refs.stateText.gameObject.SetActive(true);
+            }
+
+            var canSummon = CanSummonOnFloor(floor);
+            if (refs.summonWhistleButton != null)
+            {
+                refs.summonWhistleButton.gameObject.SetActive(canSummon);
+                refs.summonWhistleButton.interactable = canSummon && !_summonInFlight;
+            }
+        }
+
+        private static void HideCooldownCluster(FloorRowRefs refs)
+        {
+            if (refs?.cooldownClusterRt == null)
+                return;
+            refs.cooldownClusterRt.gameObject.SetActive(false);
+        }
+
+        private static void RestoreStateTextToOriginalSlot(FloorRowRefs refs)
+        {
+            if (refs?.stateText == null || !refs.stateTextPlacementSaved || refs.stateTextOriginalParent == null)
+                return;
+            if (refs.stateText.transform.parent == refs.stateTextOriginalParent)
+                return;
+            refs.stateText.transform.SetParent(refs.stateTextOriginalParent, false);
+            refs.stateText.transform.SetSiblingIndex(refs.stateTextOriginalSiblingIndex);
+        }
+
+        private bool CanSummonOnFloor(int floor)
+        {
+            if (IsMineBossFloor(floor))
+                return false;
+            _botByFloor.TryGetValue(floor, out var bot);
+            return bot != null;
+        }
+
+        private void OnSummonWhistleClicked(int floor)
+        {
+            if (!CanSummonOnFloor(floor) || _summonInFlight)
+                return;
+            ShowSummonConfirmDialog(floor);
+        }
+
+        private void ShowSummonConfirmDialog(int floor)
+        {
+            EnsureSummonConfirmDialog();
+            if (_summonConfirmRoot == null || _summonConfirmMessageText == null)
+                return;
+            _summonConfirmFloor = floor;
+            _summonConfirmMessageText.text = $"Потратить {SummonEnergyCost} эн / {SummonGoldCost} зол?";
+            _summonConfirmRoot.transform.SetAsLastSibling();
+            _summonConfirmRoot.SetActive(true);
+        }
+
+        private void EnsureSummonConfirmDialog()
+        {
+            if (_summonConfirmRoot != null)
+                return;
+            var parent = FindMonsterModalParent();
+            if (parent == null)
+                return;
+
+            var root = new GameObject("SummonConfirmDialog", typeof(RectTransform), typeof(Image));
+            var rootRt = root.GetComponent<RectTransform>();
+            rootRt.SetParent(parent, false);
+            rootRt.anchorMin = Vector2.zero;
+            rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = Vector2.zero;
+            rootRt.offsetMax = Vector2.zero;
+            root.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            root.GetComponent<Image>().raycastTarget = true;
+
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            var panelRt = panel.GetComponent<RectTransform>();
+            panelRt.SetParent(rootRt, false);
+            panelRt.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRt.pivot = new Vector2(0.5f, 0.5f);
+            panelRt.sizeDelta = new Vector2(440f, 220f);
+            panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 1f);
+
+            var v = panel.GetComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(22, 22, 18, 18);
+            v.spacing = 18f;
+            v.childAlignment = TextAnchor.MiddleCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+
+            _summonConfirmMessageText = CreateText(panel.transform, "Message", string.Empty, 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            var msgLe = _summonConfirmMessageText.gameObject.AddComponent<LayoutElement>();
+            msgLe.minHeight = 56f;
+            msgLe.preferredHeight = 64f;
+            msgLe.flexibleWidth = 1f;
+
+            var row = new GameObject("ButtonsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            row.GetComponent<RectTransform>().SetParent(panel.transform, false);
+            var rowH = row.GetComponent<HorizontalLayoutGroup>();
+            rowH.spacing = 24f;
+            rowH.childAlignment = TextAnchor.MiddleCenter;
+            rowH.childControlHeight = true;
+            rowH.childControlWidth = true;
+            var rowLe = row.AddComponent<LayoutElement>();
+            rowLe.preferredHeight = 48f;
+
+            MakeSummonConfirmButton(row.transform, "Да", OnSummonConfirmYesClicked);
+            MakeSummonConfirmButton(row.transform, "Нет", OnSummonConfirmNoClicked);
+
+            root.SetActive(false);
+            _summonConfirmRoot = root;
+        }
+
+        private void MakeSummonConfirmButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.GetComponent<RectTransform>().SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.22f, 0.48f, 0.82f, 1f);
+            var btn = go.GetComponent<Button>();
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = 130f;
+            le.preferredHeight = 42f;
+            le.minHeight = 42f;
+            var txt = CreateText(go.transform, "Text", label, 18, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            txt.color = Color.white;
+            txt.raycastTarget = false;
+            btn.onClick.AddListener(onClick);
+        }
+
+        private async void OnSummonConfirmYesClicked()
+        {
+            if (_summonConfirmRoot != null)
+                _summonConfirmRoot.SetActive(false);
+            var floor = _summonConfirmFloor;
+            _selectedFloor = floor;
+            await SummonSelectedFloorAsync();
+        }
+
+        private void OnSummonConfirmNoClicked()
+        {
+            if (_summonConfirmRoot != null)
+                _summonConfirmRoot.SetActive(false);
         }
 
         private Button EnsureLockButton(Transform rowRoot, int floor)
@@ -429,31 +722,42 @@ namespace Project.UI
 
                 if (!unlocked)
                 {
-                    if (refs.stateText != null) refs.stateText.text = "Барьер";
+                    RestoreStateTextToOriginalSlot(refs);
+                    HideCooldownCluster(refs);
+                    if (refs.stateText != null)
+                    {
+                        refs.stateText.text = "Барьер";
+                        refs.stateText.gameObject.SetActive(true);
+                    }
                     SetButtonVisible(refs.monsterButton, false);
                     SetButtonVisible(refs.lockButton, true);
                     refs.lockButton.interactable = true;
                     continue;
                 }
 
-                SetButtonVisible(refs.monsterButton, true);
                 SetButtonVisible(refs.lockButton, false);
 
                 if (respawn > 0)
                 {
-                    if (refs.stateText != null) refs.stateText.text = "До появления: " + FormatSeconds(respawn);
-                    SetButtonLabel(refs.monsterButton, "КД");
-                    refs.monsterButton.interactable = true;
+                    if (refs.stateText != null)
+                        refs.stateText.text = "До появления: " + FormatSeconds(respawn);
+                    SetButtonLabel(refs.monsterButton, string.Empty);
+                    SetButtonVisible(refs.monsterButton, false);
+                    ApplyCooldownTimerLayout(refs, floor);
                 }
                 else
                 {
-                    if (refs.stateText != null) refs.stateText.text = "Монстр готов";
-                    SetButtonLabel(refs.monsterButton, "БОТ");
+                    RestoreStateTextToOriginalSlot(refs);
+                    HideCooldownCluster(refs);
+                    if (refs.stateText != null)
+                        refs.stateText.gameObject.SetActive(false);
+                    SetButtonLabel(refs.monsterButton, string.Empty);
+                    SetButtonVisible(refs.monsterButton, true);
                     refs.monsterButton.interactable = true;
                 }
 
                 _botByFloor.TryGetValue(floor, out var bot);
-                ApplyMonsterVisual(refs, bot, mf);
+                ApplyMonsterVisual(floor, refs, bot, mf);
             }
         }
 
@@ -484,13 +788,15 @@ namespace Project.UI
                 culler.SetViewport(_cardsScroll.viewport);
         }
 
-        private void ApplyMonsterVisual(FloorRowRefs refs, PveBotInfo bot, MineFloorInfo floorInfo)
+        private void ApplyMonsterVisual(int floor, FloorRowRefs refs, PveBotInfo bot, MineFloorInfo floorInfo)
         {
             if (refs == null || refs.monsterButton == null) return;
 
             var frame = refs.monsterButton.GetComponent<Image>();
             var icon = FindImageByName(refs.monsterButton.transform, "Icon");
-            if (icon == null) icon = EnsureIconImage(refs.monsterButton.transform);
+            if (icon == null) icon = EnsureIconImage(refs.monsterButton.transform, floor);
+            else
+                ApplyMonsterIconLayout(icon.GetComponent<RectTransform>(), floor);
 
             var def = ResolveMonsterDefinition(bot);
             if (icon != null)
@@ -774,7 +1080,9 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
-                    if (_modalSupplementalInfo != null)
+                    if (IsSummonInsufficientResourcesError(model.err))
+                        ShowInsufficientResourcesToast();
+                    else if (_modalSupplementalInfo != null)
                         _modalSupplementalInfo.text += "\n\n" + DescribeSummonError(model);
                     return;
                 }
@@ -785,7 +1093,16 @@ namespace Project.UI
                 }
 
                 ApplyRows();
-                OpenMonsterModal(_selectedFloor);
+                if (_modalRoot != null)
+                    _modalRoot.SetActive(false);
+                try
+                {
+                    await RefreshResourcesAsync(_cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
             }
             catch (OperationCanceledException)
             {
@@ -864,6 +1181,63 @@ namespace Project.UI
                 if (_modalDismissButton != null)
                     _modalDismissButton.interactable = true;
             }
+        }
+
+        private static bool IsSummonInsufficientResourcesError(string err)
+        {
+            if (string.IsNullOrEmpty(err))
+                return false;
+            return string.Equals(err, "not_enough_energy", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(err, "not_enough_gold", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void EnsureInsufficientResourcesToast()
+        {
+            if (_insufficientResourcesToastRoot != null)
+                return;
+            var parent = FindMonsterModalParent();
+            if (parent == null)
+                return;
+
+            var root = new GameObject("InsufficientResourcesToast", typeof(RectTransform), typeof(Image));
+            var rt = root.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(440f, 54f);
+            var img = root.GetComponent<Image>();
+            img.color = new Color(0.1f, 0.11f, 0.15f, 0.96f);
+            img.raycastTarget = false;
+
+            _insufficientResourcesToastText = CreateText(root.transform, "Msg", "Недостаточно ресурсов", 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            _insufficientResourcesToastText.color = new Color(1f, 0.82f, 0.82f, 1f);
+
+            root.SetActive(false);
+            _insufficientResourcesToastRoot = root;
+        }
+
+        private void ShowInsufficientResourcesToast()
+        {
+            EnsureInsufficientResourcesToast();
+            if (_insufficientResourcesToastRoot == null)
+                return;
+            if (_insufficientResourcesToastText != null)
+                _insufficientResourcesToastText.text = "Недостаточно ресурсов";
+            _insufficientResourcesToastRoot.transform.SetAsLastSibling();
+            _insufficientResourcesToastRoot.SetActive(true);
+            if (_insufficientResourcesToastRoutine != null)
+                StopCoroutine(_insufficientResourcesToastRoutine);
+            _insufficientResourcesToastRoutine = StartCoroutine(HideInsufficientResourcesToastAfterDelay());
+        }
+
+        private IEnumerator HideInsufficientResourcesToastAfterDelay()
+        {
+            yield return new WaitForSecondsRealtime(InsufficientResourcesToastSeconds);
+            if (_insufficientResourcesToastRoot != null)
+                _insufficientResourcesToastRoot.SetActive(false);
+            _insufficientResourcesToastRoutine = null;
         }
 
         private static string DescribeSummonError(SummonResponse response)
@@ -1002,6 +1376,8 @@ namespace Project.UI
             if (_lastResources != null || _progression == null)
                 return;
 
+            var mk = _progression.key_items != null ? Mathf.Max(0, _progression.key_items.miner_key) : 0;
+            var dk = _progression.key_items != null ? Mathf.Max(0, _progression.key_items.dark_key) : 0;
             _lastResources = new PlayerResourcesRpcResponse
             {
                 ok = true,
@@ -1011,8 +1387,9 @@ namespace Project.UI
                 gold = _progression.gold,
                 ingots = _progression.ingots,
                 matter = _progression.matter,
-                keys = (_progression.key_items != null ? _progression.key_items.miner_key : 0) +
-                       (_progression.key_items != null ? _progression.key_items.dark_key : 0),
+                miner_key = mk,
+                dark_key = dk,
+                keys = mk + dk,
             };
             ApplyHeaderResourceValues(_lastResources);
         }
@@ -1047,6 +1424,8 @@ namespace Project.UI
             _matterSprite = matterIconSprite;
             _ingotsSprite = ingotsIconSprite;
             _expSprite = expIconSprite;
+            _blueprintSprite = blueprintIconSprite;
+            _tesseractSprite = tesseractIconSprite;
 
             if (_lockSprite == null) _lockSprite = LoadSpriteAsset(HudKeyIconAssetPath);
             if (_oreSprite == null) _oreSprite = LoadSpriteAsset(HudOreIconAssetPath);
@@ -1054,6 +1433,10 @@ namespace Project.UI
             if (_matterSprite == null) _matterSprite = LoadSpriteAsset(HudMatterIconAssetPath);
             if (_ingotsSprite == null) _ingotsSprite = LoadSpriteAsset(HudIngotsIconAssetPath);
             if (_expSprite == null) _expSprite = LoadSpriteAsset(HudExpIconAssetPath);
+            if (_blueprintSprite == null) _blueprintSprite = LoadSpriteAsset(HudBlueprintIconAssetPath);
+            if (_blueprintSprite == null) _blueprintSprite = _ingotsSprite;
+            if (_tesseractSprite == null) _tesseractSprite = LoadSpriteAsset(HudTesseractIconAssetPath);
+            if (_tesseractSprite == null) _tesseractSprite = _matterSprite;
         }
 
 #if UNITY_EDITOR
@@ -1094,6 +1477,18 @@ namespace Project.UI
             {
                 expIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudExpIconAssetPath);
                 changed |= expIconSprite != null;
+            }
+
+            if (blueprintIconSprite == null)
+            {
+                blueprintIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudBlueprintIconAssetPath);
+                changed |= blueprintIconSprite != null;
+            }
+
+            if (tesseractIconSprite == null)
+            {
+                tesseractIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudTesseractIconAssetPath);
+                changed |= tesseractIconSprite != null;
             }
 
             if (changed)
@@ -1151,7 +1546,10 @@ namespace Project.UI
             SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
             SetHeaderResourceText(_ingotsBinding, FormatCompact(model.ingots));
             SetHeaderResourceText(_matterBinding, FormatCompact(model.matter));
-            SetHeaderResourceText(_keysBinding, FormatCompact(model.keys));
+            var keyTotal = model.miner_key + model.dark_key;
+            if (keyTotal <= 0 && model.keys > 0)
+                keyTotal = model.keys;
+            SetHeaderResourceText(_keysBinding, FormatCompact(keyTotal));
         }
 
         private static void BindHeaderResource(ResourceValueBinding binding, Transform headerRoot)
@@ -1302,6 +1700,10 @@ namespace Project.UI
             _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
 
             _expSprite ??= LoadSpriteAsset(HudExpIconAssetPath);
+            _blueprintSprite ??= LoadSpriteAsset(HudBlueprintIconAssetPath);
+            if (_blueprintSprite == null) _blueprintSprite = _ingotsSprite;
+            _tesseractSprite ??= LoadSpriteAsset(HudTesseractIconAssetPath);
+            if (_tesseractSprite == null) _tesseractSprite = _matterSprite;
             if (bot.reward_xp > 0)
                 entries.Add(new RewardEntry { icon = _expSprite, text = FormatCompact(bot.reward_xp), color = Color.white });
             if (bot.reward_gold > 0)
@@ -1324,12 +1726,12 @@ namespace Project.UI
             }
 
             if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
-                entries.Add(new RewardEntry { icon = null, text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
+                entries.Add(new RewardEntry { icon = _blueprintSprite, text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
 
             if (bot.reward_tesseract_chance > 0f)
             {
                 var pct = Mathf.RoundToInt(bot.reward_tesseract_chance * 100f);
-                entries.Add(new RewardEntry { icon = null, text = $"Тессеракт: {pct}%", color = Color.white });
+                entries.Add(new RewardEntry { icon = _tesseractSprite, text = $"Тессеракт: {pct}%", color = Color.white });
             }
 
             if (entries.Count == 0)
@@ -1516,17 +1918,25 @@ namespace Project.UI
 
         private int GetOwnedKeyAmount(string keyId)
         {
+            var fromProg = 0;
             if (_progression != null && _progression.key_items != null)
             {
                 if (string.Equals(keyId, "miner_key", StringComparison.OrdinalIgnoreCase))
-                    return Mathf.Max(0, _progression.key_items.miner_key);
-                if (string.Equals(keyId, "dark_key", StringComparison.OrdinalIgnoreCase))
-                    return Mathf.Max(0, _progression.key_items.dark_key);
+                    fromProg = Mathf.Max(0, _progression.key_items.miner_key);
+                else if (string.Equals(keyId, "dark_key", StringComparison.OrdinalIgnoreCase))
+                    fromProg = Mathf.Max(0, _progression.key_items.dark_key);
             }
 
+            var fromRes = 0;
             if (_lastResources != null)
-                return (int)Math.Max(0L, _lastResources.keys);
-            return 0;
+            {
+                if (string.Equals(keyId, "miner_key", StringComparison.OrdinalIgnoreCase))
+                    fromRes = (int)Math.Max(0L, _lastResources.miner_key);
+                else if (string.Equals(keyId, "dark_key", StringComparison.OrdinalIgnoreCase))
+                    fromRes = (int)Math.Max(0L, _lastResources.dark_key);
+            }
+
+            return Mathf.Max(fromProg, fromRes);
         }
 
         private static Sprite LoadSpriteAsset(string assetPath)
@@ -1619,20 +2029,39 @@ namespace Project.UI
             return null;
         }
 
-        private static Image EnsureIconImage(Transform buttonRoot)
+        private static Image EnsureIconImage(Transform buttonRoot, int floor)
         {
             var go = new GameObject("Icon", typeof(RectTransform), typeof(Image));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(buttonRoot, false);
             rt.anchorMin = new Vector2(0.14f, 0.14f);
             rt.anchorMax = new Vector2(0.86f, 0.86f);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
+            ApplyMonsterIconLayout(rt, floor);
             var img = go.GetComponent<Image>();
             img.preserveAspect = true;
             img.raycastTarget = false;
             img.color = new Color(1f, 1f, 1f, 0f);
             return img;
+        }
+
+        /// <summary>
+        /// Смещения иконки: обычные этажи — Bottom -30; этажи 4, 8, 12 — Bottom -50 и Top -100 (Inspector Top = -offsetMax.y).
+        /// </summary>
+        private static void ApplyMonsterIconLayout(RectTransform rt, int floor)
+        {
+            if (rt == null)
+                return;
+            var bossFloor = floor == 4 || floor == 8 || floor == 12;
+            if (bossFloor)
+            {
+                rt.offsetMin = new Vector2(0f, -50f);
+                rt.offsetMax = new Vector2(0f, 100f);
+            }
+            else
+            {
+                rt.offsetMin = new Vector2(0f, -30f);
+                rt.offsetMax = Vector2.zero;
+            }
         }
 
         private void CacheModalFooterDefaultsIfNeeded()
@@ -1917,6 +2346,12 @@ namespace Project.UI
             public Text stateText;
             public Button monsterButton;
             public Button lockButton;
+            public RectTransform cooldownClusterRt;
+            public RectTransform cooldownTextHostRt;
+            public Button summonWhistleButton;
+            public Transform stateTextOriginalParent;
+            public int stateTextOriginalSiblingIndex;
+            public bool stateTextPlacementSaved;
         }
 
         [Serializable]

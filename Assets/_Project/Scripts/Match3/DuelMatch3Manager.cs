@@ -82,6 +82,10 @@ namespace Project.Match3
         [SerializeField] private Sprite rewardOreSprite;
         [SerializeField] private Sprite rewardGoldSprite;
         [SerializeField] private Sprite rewardMatterSprite;
+        [SerializeField] private Sprite rewardIngotsSprite;
+        [SerializeField] private Sprite rewardKeySprite;
+        [SerializeField] private Sprite rewardBlueprintSprite;
+        [SerializeField] private Sprite rewardTesseractSprite;
 
         [Header("UI Prefabs")]
         [SerializeField] private DamagePopupView damagePopupPrefab;
@@ -112,6 +116,11 @@ namespace Project.Match3
         private const string RewardOreIconPath = "Assets/_Project/img/resources_hud/ore.png";
         private const string RewardGoldIconPath = "Assets/_Project/img/resources_hud/gold.png";
         private const string RewardMatterIconPath = "Assets/_Project/img/resources_hud/matter.png";
+        private const string RewardIngotsIconPath = "Assets/_Project/img/resources_hud/ingots.png";
+        private const string RewardKeyIconPath = "Assets/_Project/img/resources_hud/key.png";
+        private const string RewardBlueprintIconPath = "Assets/_Project/img/resources_hud/blueprint.png";
+        private const string RewardTesseractIconPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        private const int MaxRewardCellsPerLine = 4;
         private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
         private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
         private const int FrozenAffixAbilityPenalty = 10;
@@ -176,6 +185,11 @@ namespace Project.Match3
         private int _lastRewardGold;
         private int _lastRewardOre;
         private int _lastRewardMatter;
+        private int _lastRewardIngots;
+        private string _lastRewardKeyId = string.Empty;
+        private int _lastRewardKeyAmount;
+        private string _lastRewardBlueprint = string.Empty;
+        private int _lastRewardTesseract;
         private bool _pendingGameOver;
         private bool _pendingGameOverWon;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
@@ -207,6 +221,8 @@ namespace Project.Match3
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
         private RectTransform _gameOverRewardRowsRoot;
+        private RectTransform _gameOverRewardLineRoot;
+        private int _gameOverRewardSlotsInLine;
         private GameObject _pveSelectorRoot;
         private TMP_Text _pveBotTitleText;
         private TMP_Text _pveBotStatsText;
@@ -421,7 +437,7 @@ namespace Project.Match3
             _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
             _resultRecorded = false;
             _lastRewardText = null;
-            _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
+            ClearLastPveRewards();
             StartGameWaitingServer();
         }
 
@@ -517,7 +533,7 @@ namespace Project.Match3
             _opPanel?.SetPlayerName(botName);
             _resultRecorded = false;
             _lastRewardText = null;
-            _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
+            ClearLastPveRewards();
             StartGameWaitingServer();
         }
 
@@ -785,8 +801,13 @@ namespace Project.Match3
         // ─── Game Over ────────────────────────────────────────────────────────────
 
         private static string BuildRewardLinesText(int xp, int gold, int ore, int matter)
+            => BuildRewardLinesTextFull(xp, gold, ore, matter, 0, string.Empty, 0, string.Empty, 0);
+
+        private static string BuildRewardLinesTextFull(
+            int xp, int gold, int ore, int matter,
+            int ingots, string keyId, int keyAmount, string blueprint, int tesseract)
         {
-            var sb = new StringBuilder(64);
+            var sb = new StringBuilder(128);
             if (xp > 0) sb.Append("+").Append(xp).Append(" опыта");
             if (gold > 0)
             {
@@ -803,7 +824,35 @@ namespace Project.Match3
                 if (sb.Length > 0) sb.Append('\n');
                 sb.Append("+").Append(matter).Append(" материи");
             }
+            if (ingots > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(ingots).Append(" слитков");
+            }
+            if (!string.IsNullOrWhiteSpace(keyId) && keyAmount > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(keyAmount).Append(" ").Append(keyId.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(blueprint))
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("Рецепт: ").Append(blueprint.Trim());
+            }
+            if (tesseract > 0)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+").Append(tesseract).Append(" тессеракт");
+            }
             return sb.ToString();
+        }
+
+        private void ClearLastPveRewards()
+        {
+            _lastRewardXp = _lastRewardGold = _lastRewardOre = _lastRewardMatter = 0;
+            _lastRewardIngots = _lastRewardKeyAmount = _lastRewardTesseract = 0;
+            _lastRewardKeyId = string.Empty;
+            _lastRewardBlueprint = string.Empty;
         }
 
         private string ResolveMyDisplayName()
@@ -842,8 +891,6 @@ namespace Project.Match3
 
         private void EnsureGameOverRewardRowsUI()
         {
-            if (_gameOverRewardRowsRoot != null)
-                return;
             if (_gameOverPanel == null || _gameOverPanel.rewardText == null)
                 return;
 
@@ -852,7 +899,22 @@ namespace Project.Match3
             if (parent == null)
                 return;
 
-            var go = new GameObject("RewardRows", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            var existing = parent.Find("RewardRows") as RectTransform;
+            if (existing != null && existing.GetComponent<VerticalLayoutGroup>() == null)
+            {
+                Destroy(existing.gameObject);
+                _gameOverRewardRowsRoot = null;
+            }
+            else if (existing != null && existing.GetComponent<VerticalLayoutGroup>() != null)
+            {
+                _gameOverRewardRowsRoot = existing;
+                return;
+            }
+
+            if (_gameOverRewardRowsRoot != null)
+                return;
+
+            var go = new GameObject("RewardRows", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
             rt.anchorMin = rewardRt.anchorMin;
@@ -862,14 +924,18 @@ namespace Project.Match3
             rt.offsetMax = rewardRt.offsetMax;
             rt.localScale = Vector3.one;
 
-            var layout = go.GetComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(0, 0, 0, 0);
-            layout.spacing = 18f;
-            layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlHeight = true;
-            layout.childControlWidth = true;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = false;
+            var v = go.GetComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(0, 0, 0, 0);
+            v.spacing = 10f;
+            v.childAlignment = TextAnchor.MiddleCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = true;
+
+            var rootFitter = go.GetComponent<ContentSizeFitter>();
+            rootFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            rootFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             _gameOverRewardRowsRoot = rt;
             _gameOverRewardRowsRoot.gameObject.SetActive(false);
@@ -877,6 +943,7 @@ namespace Project.Match3
 
         private void RefreshGameOverRewardRows(bool won)
         {
+            EnsureRewardSpritesAssigned();
             EnsureGameOverRewardRowsUI();
             if (_gameOverPanel == null || _gameOverPanel.rewardText == null)
                 return;
@@ -895,7 +962,12 @@ namespace Project.Match3
             var rewardGold = _lastRewardGold;
             var rewardOre = _lastRewardOre;
             var rewardMatter = _lastRewardMatter;
-            if (!won && rewardXp <= 0 && rewardGold <= 0 && rewardOre <= 0 && rewardMatter <= 0 && string.IsNullOrWhiteSpace(_lastRewardText))
+            var noNumericRewards = rewardXp <= 0 && rewardGold <= 0 && rewardOre <= 0 && rewardMatter <= 0 &&
+                                   _lastRewardIngots <= 0 &&
+                                   (string.IsNullOrWhiteSpace(_lastRewardKeyId) || _lastRewardKeyAmount <= 0) &&
+                                   string.IsNullOrWhiteSpace(_lastRewardBlueprint) &&
+                                   _lastRewardTesseract <= 0;
+            if (!won && noNumericRewards && string.IsNullOrWhiteSpace(_lastRewardText))
                 rewardXp = DefaultLossXpReward;
 
             var count = 0;
@@ -903,6 +975,13 @@ namespace Project.Match3
             count += AddRewardRow(rewardGoldSprite, rewardGold);
             count += AddRewardRow(rewardOreSprite, rewardOre);
             count += AddRewardRow(rewardMatterSprite, rewardMatter);
+            count += AddRewardRow(rewardIngotsSprite, _lastRewardIngots);
+            if (!string.IsNullOrWhiteSpace(_lastRewardKeyId) && _lastRewardKeyAmount > 0)
+                count += AddRewardRowDisplay(rewardKeySprite, "+" + _lastRewardKeyAmount);
+            if (!string.IsNullOrWhiteSpace(_lastRewardBlueprint))
+                count += AddRewardRowDisplay(rewardBlueprintSprite, _lastRewardBlueprint.Trim());
+            if (_lastRewardTesseract > 0)
+                count += AddRewardRow(rewardTesseractSprite, _lastRewardTesseract);
 
             if (count == 0 && !string.IsNullOrEmpty(_lastRewardText))
             {
@@ -917,20 +996,59 @@ namespace Project.Match3
 
         private void ClearRewardRows()
         {
+            _gameOverRewardLineRoot = null;
+            _gameOverRewardSlotsInLine = 0;
             if (_gameOverRewardRowsRoot == null)
                 return;
             for (var i = _gameOverRewardRowsRoot.childCount - 1; i >= 0; i--)
                 Destroy(_gameOverRewardRowsRoot.GetChild(i).gameObject);
         }
 
+        private void EnsureCurrentRewardLine()
+        {
+            if (_gameOverRewardRowsRoot == null)
+                return;
+            if (_gameOverRewardLineRoot != null && _gameOverRewardSlotsInLine < MaxRewardCellsPerLine)
+                return;
+
+            var line = new GameObject("RewardLine", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            var rowRt = line.GetComponent<RectTransform>();
+            rowRt.SetParent(_gameOverRewardRowsRoot, false);
+            var lineFitter = line.GetComponent<ContentSizeFitter>();
+            lineFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            lineFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var h = line.GetComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(0, 0, 0, 0);
+            h.spacing = 18f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            h.childForceExpandHeight = false;
+            h.childForceExpandWidth = false;
+
+            _gameOverRewardLineRoot = rowRt;
+            _gameOverRewardSlotsInLine = 0;
+        }
+
         private int AddRewardRow(Sprite icon, int value)
         {
-            if (_gameOverRewardRowsRoot == null || value <= 0)
+            if (value <= 0)
+                return 0;
+            return AddRewardRowDisplay(icon, "+" + value);
+        }
+
+        private int AddRewardRowDisplay(Sprite icon, string valueText)
+        {
+            if (_gameOverRewardRowsRoot == null || string.IsNullOrEmpty(valueText))
+                return 0;
+
+            EnsureCurrentRewardLine();
+            if (_gameOverRewardLineRoot == null)
                 return 0;
 
             var row = new GameObject("RewardRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
             var rowRt = row.GetComponent<RectTransform>();
-            rowRt.SetParent(_gameOverRewardRowsRoot, false);
+            rowRt.SetParent(_gameOverRewardLineRoot, false);
             var fitter = row.GetComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -969,13 +1087,14 @@ namespace Project.Match3
             text.fontSize = 30f;
             text.color = new Color(1f, 0.90f, 0.30f);
             text.alignment = TextAlignmentOptions.Center;
-            text.text = "+" + value;
+            text.text = valueText;
             text.textWrappingMode = TextWrappingModes.NoWrap;
             var textLe = textGo.GetComponent<LayoutElement>();
             textLe.preferredWidth = -1f;
             textLe.minWidth = 0f;
             textLe.flexibleWidth = 0f;
 
+            _gameOverRewardSlotsInLine++;
             return 1;
         }
 
@@ -1126,14 +1245,24 @@ namespace Project.Match3
                         var rgold = Mathf.Max(0, msg.rewardGold);
                         var rore = Mathf.Max(0, msg.rewardOre);
                         var rmatter = Mathf.Max(0, msg.rewardMatter);
+                        var ringots = Mathf.Max(0, msg.rewardIngots);
+                        var rkeyAmt = Mathf.Max(0, msg.rewardKeyAmount);
+                        var rkeyId = msg.rewardKeyId ?? string.Empty;
+                        var rblueprint = msg.rewardBlueprint ?? string.Empty;
+                        var rtess = Mathf.Max(0, msg.rewardTesseract);
                         _lastRewardXp = rxp;
                         _lastRewardGold = rgold;
                         _lastRewardOre = rore;
                         _lastRewardMatter = rmatter;
+                        _lastRewardIngots = ringots;
+                        _lastRewardKeyAmount = rkeyAmt;
+                        _lastRewardKeyId = rkeyId;
+                        _lastRewardBlueprint = rblueprint;
+                        _lastRewardTesseract = rtess;
                         _pveProgress.xp += rxp;
                         _pveProgress.gold += rgold;
                         if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
-                        _lastRewardText = BuildRewardLinesText(rxp, rgold, rore, rmatter);
+                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rtess);
                     }
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
@@ -2252,6 +2381,10 @@ namespace Project.Match3
             if (rewardOreSprite == null) rewardOreSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardOreIconPath);
             if (rewardGoldSprite == null) rewardGoldSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardGoldIconPath);
             if (rewardMatterSprite == null) rewardMatterSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardMatterIconPath);
+            if (rewardIngotsSprite == null) rewardIngotsSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardIngotsIconPath);
+            if (rewardKeySprite == null) rewardKeySprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardKeyIconPath);
+            if (rewardBlueprintSprite == null) rewardBlueprintSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardBlueprintIconPath);
+            if (rewardTesseractSprite == null) rewardTesseractSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardTesseractIconPath);
 #endif
         }
 
@@ -2261,6 +2394,12 @@ namespace Project.Match3
             if (rewardOreSprite == null) rewardOreSprite = LoadRewardSprite(RewardOreIconPath);
             if (rewardGoldSprite == null) rewardGoldSprite = LoadRewardSprite(RewardGoldIconPath);
             if (rewardMatterSprite == null) rewardMatterSprite = LoadRewardSprite(RewardMatterIconPath);
+            if (rewardIngotsSprite == null) rewardIngotsSprite = LoadRewardSprite(RewardIngotsIconPath);
+            if (rewardKeySprite == null) rewardKeySprite = LoadRewardSprite(RewardKeyIconPath);
+            if (rewardBlueprintSprite == null) rewardBlueprintSprite = LoadRewardSprite(RewardBlueprintIconPath);
+            if (rewardTesseractSprite == null) rewardTesseractSprite = LoadRewardSprite(RewardTesseractIconPath);
+            if (rewardBlueprintSprite == null) rewardBlueprintSprite = rewardIngotsSprite;
+            if (rewardTesseractSprite == null) rewardTesseractSprite = rewardMatterSprite;
         }
 
         private static Sprite LoadRewardSprite(string assetPath)
