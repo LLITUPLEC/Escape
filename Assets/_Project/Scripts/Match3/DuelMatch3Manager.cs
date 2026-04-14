@@ -3030,6 +3030,18 @@ namespace Project.Match3
                 case "not_enough_gold":
                     ShowPveErrorToast($"Не хватает золота: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Gold)}.");
                     break;
+                case "not_enough_ore":
+                    ShowPveErrorToast($"Не хватает руды: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Ore)}.");
+                    break;
+                case "not_enough_matter":
+                    ShowPveErrorToast($"Не хватает материи: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Matter)}.");
+                    break;
+                case "not_enough_ingots":
+                    ShowPveErrorToast($"Не хватает слитков: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Ingots)}.");
+                    break;
+                case "not_enough_key_item":
+                    ShowPveErrorToast($"Не хватает ключа {e.KeyId}: нужно {Mathf.Max(0, e.Required)}, есть {Mathf.Max(0, e.KeyHave)}.");
+                    break;
                 case "barrier_locked":
                     ShowPveErrorToast("Этаж закрыт барьером. Вернитесь в шахту и разбейте барьер.");
                     break;
@@ -3387,6 +3399,11 @@ namespace Project.Match3
             public int energy;
             public int energy_max;
             public int gold;
+            public long ore;
+            public long matter;
+            public long ingots;
+            public string key_id;
+            public long have;
         }
 
         private sealed class PveCreateFailedException : Exception
@@ -3395,6 +3412,11 @@ namespace Project.Match3
             public int Required { get; }
             public int Energy { get; }
             public int Gold { get; }
+            public long Ore { get; }
+            public long Matter { get; }
+            public long Ingots { get; }
+            public string KeyId { get; }
+            public long KeyHave { get; }
 
             public PveCreateFailedException(string errorCode, PveCreateRpcResponse response)
                 : base("pve_create_failed (" + (string.IsNullOrWhiteSpace(errorCode) ? "unknown" : errorCode) + ")")
@@ -3403,6 +3425,11 @@ namespace Project.Match3
                 Required = response != null ? response.required : 0;
                 Energy = response != null ? response.energy : 0;
                 Gold = response != null ? response.gold : 0;
+                Ore = response != null ? response.ore : 0;
+                Matter = response != null ? response.matter : 0;
+                Ingots = response != null ? response.ingots : 0;
+                KeyId = response != null ? response.key_id : null;
+                KeyHave = response != null ? response.have : 0;
             }
         }
 

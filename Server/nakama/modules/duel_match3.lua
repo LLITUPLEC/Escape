@@ -1,109 +1,20 @@
 local nk = require("nakama")
+-- Nakama кладёт модули в package.preload по имени: относительный путь от runtime.path, «/» → «.».
+-- Файл modules/duel_match3_config.lua → require("modules.duel_match3_config").
+-- Если runtime.path указывает уже на внутреннюю папку modules/, подойдёт короткое имя — см. runtime_lua_require.
+local function runtime_lua_require(name_nested, name_root)
+  local ok, mod = pcall(require, name_nested)
+  if ok and mod ~= nil then return mod end
+  return require(name_root)
+end
+
+local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
 -- Active area (seen/played by everyone) is bottom 6 rows (client y=0..5).
 -- Preview area (seen only by whitelisted users) is top 2 rows (server y=0..1),
 -- and is NOT interactable and NOT affected by abilities/match scoring until pieces fall into active area.
-local SIZE = 6            -- columns
-local HEIGHT = 8          -- total rows on server
-local ACTIVE_Y_MIN = 2    -- server y where active area starts
-local ACTIVE_ROWS = 6     -- rows in active area (=HEIGHT-ACTIVE_Y_MIN)
-local MAX_HP = 150
-local MAX_MANA = 100
-local TURN_SECONDS = 30
-local TICK_RATE = 6
-local BOT_THINK_SECONDS = 5.0
-local BOT_THINK_TICKS = math.max(1, math.floor(BOT_THINK_SECONDS * TICK_RATE + 0.5))
-local CROSS_ABILITY_COST = 20
-local SQUARE_ABILITY_COST = 20
-local PETARD_ABILITY_COST = 30
-local SHIELD_ABILITY_COST = 40
-local FURY_ABILITY_COST = 30
-local CROSS_ABILITY_COOLDOWN = 2
-local SQUARE_ABILITY_COOLDOWN = 2
-local PETARD_ABILITY_COOLDOWN = 1
-local SHIELD_ABILITY_COOLDOWN = 1
-local FURY_ABILITY_COOLDOWN = 2
-local ABILITY_BASE_DAMAGE = 3
-local PETARD_DAMAGE = 15
-local SKULL_DAMAGE = 5
-local ANKH_HEAL = 1
--- Balance tweak (adjust before server start): 1.0 = 100%
-local FURY_CRIT_CHANCE = 0.18
-local SHIELD_DURATION_TURNS = 3
-local SHIELD_MAX_STACKS = 3
-local SHIELD_ARMOR_PER_STACK = 4
-local SHIELD_HEAL_PER_STACK = 3
-local GEM_MANA = { [1] = 5, [2] = 3, [3] = 1 }
-local SPAWN_POOL = { 1, 2, 3, 4, 5 }
-local FROZEN_ABILITY_COST_BONUS = 10
-local ACID_HP_LOSS_PCT = 0.03
-local REGEN_HP_PCT = 0.03
-
--- Visual-only cheat rows (above the 6x6 board).
--- They are sent only to whitelisted players and are never modified by abilities/cascades.
-local CHEAT_ROWS_COUNT = 2
-local CHEAT_ROWS_TOTAL = SIZE * CHEAT_ROWS_COUNT
-local CHEAT_WHITELIST_COLLECTION = "duel_match3_cheat_whitelist"
-local CHEAT_WHITELIST_KEY = "emails"
--- Console usually writes storage objects under a real user_id context.
--- We try "global" first, but also fall back to reading the object under any present player ids.
-local CHEAT_WHITELIST_USER_ID = "global"
-local DEFAULT_CHEAT_EMAILS = { "tminn91@mail.ru" }
-
-local OP_BOARD_SYNC = 10
-local OP_GAME_OVER = 11
-local OP_PLAYER_LEFT = 12
-local OP_ACTION_REQUEST = 13
-local OP_ACTION_REJECT = 14
-local OP_SELECTION_SYNC = 15
-local OP_SNAPSHOT_REQUEST = 16
-local STATS_COLLECTION = "duel_match3_stats"
-local STATS_KEY = "summary"
-local PVE_PROGRESS_COLLECTION = "duel_match3_progress"
-local PVE_PROGRESS_KEY = "profile"
-local CHARACTER_SHEET_COLLECTION = "duel_match3_character"
-local CHARACTER_SHEET_KEY = "sheet"
--- Глобальный каталог предметов (лежит в Nakama Storage → PostgreSQL). См. ITEM_DEFS_FALLBACK и duel_match3_item_catalog.example.json.
-local ITEM_DEFS_COLLECTION = "duel_match3_item_defs"
-local ITEM_DEFS_KEY = "catalog"
--- Пустая строка: каталог только из ITEM_DEFS_FALLBACK в этом файле. Иначе укажите UUID пользователя, под которым в Console создан storage-объект каталога.
-local ITEM_DEFS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c"
--- Каталог PVE-ботов (Storage). См. BOTS_FALLBACK и data/duel_match3_bots_catalog.example.json.
-local BOTS_COLLECTION = "duel_match3_bot_defs"
-local BOTS_KEY = "catalog"
-local BOTS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c"
-local BOT_USER_ID_PREFIX = "zz-bot-"
-
-local LEVEL_XP = { 0, 100, 320, 804, 1869, 4212, 9367, 20708, 45658, 100548, 221306, 486974 }
-local PVE_MAX_LEVEL = 12
-local PVE_ENERGY_MAX_BASE = 100
-local PVE_ENERGY_REGEN_SECONDS = 60
-local PVE_ENTRY_ENERGY_COST = 15
-local MINE_SUMMON_ENERGY_COST = 5
-local MINE_SUMMON_GOLD_COST = 50
-local MINE_DIFFICULTY_DEFAULT = "easy"
-local MINE_RESPAWN_NORMAL_SECONDS = 10 * 60
-local MINE_RESPAWN_BOSS_SECONDS = 4 * 60 * 60
-local MINE_MATTER_DROP_CHANCE = 0.10
-local MINE_AFFIX_POOL = {
-  "acid",
-  "energy_block",
-  "regeneration",
-  "fragility",
-  "stone_skin",
-  "mana_vampire",
-  "frozen",
-  "monster_rage",
-  "instability",
-  "overload",
-  "bare_current",
-  "scree",
-}
-
--- session_epoch в метаданных аккаунта (см. duel_session.lua). Без отдельного require: Nakama не грузит произвольные модули по имени.
-local SESSION_EPOCH_ACCOUNT_META = "session_epoch"
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Character progression (server-authoritative).
@@ -120,12 +31,12 @@ local function clamp_int(v, lo, hi)
 end
 
 local function character_stats_base_for_level(level)
-  local lvl = clamp_int(level, 1, PVE_MAX_LEVEL)
+  local lvl = clamp_int(level, 1, CFG.PVE_MAX_LEVEL)
   local bonus_levels = math.max(0, lvl - 1)
 
   -- Базовые параметры на 1-м уровне, рост — согласно solo.md.
   local hp = 150 + bonus_levels * 30
-  -- В бою есть базовый SKULL_DAMAGE=5, поэтому level-бонус идёт отдельной прибавкой.
+  -- В бою есть базовый урон черепа (SKULL_DAMAGE), поэтому level-бонус идёт отдельной прибавкой.
   local damage = bonus_levels
   local armor = bonus_levels
   local crit = bonus_levels * 0.005
@@ -150,7 +61,7 @@ local function guard_read_metadata_epoch(user_id)
   if not ok or account == nil or account.user == nil or account.user.metadata == nil then
     return 0
   end
-  local v = account.user.metadata[SESSION_EPOCH_ACCOUNT_META]
+  local v = account.user.metadata[CFG.SESSION_EPOCH_ACCOUNT_META]
   if v == nil then
     return 0
   end
@@ -196,7 +107,7 @@ function is_boss_floor(floor)
 end
 
 function mine_bot_id_for_floor(floor)
-  return "mine_" .. tostring(clamp_int(floor, 1, PVE_MAX_LEVEL))
+  return "mine_" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
 
 local MINE_BARRIER_REQUIREMENTS = {
@@ -213,8 +124,24 @@ local MINE_BARRIER_REQUIREMENTS = {
   [12] = { ore = 17000, matter = 500, gold = 25000 },
 }
 
+-- Стоимость боя / «Прогнать» (duel_match3_pve_mine_cost.lua).
+local function pve_energy_max_for_user(user_id)
+  return CFG.PVE_ENERGY_MAX_BASE
+end
+
+function empty_key_items()
+  return { miner_key = 0, dark_key = 0 }
+end
+
+local build_pve_mine_cost = runtime_lua_require("modules.duel_match3_pve_mine_cost", "duel_match3_pve_mine_cost")
+local PveMineCost = build_pve_mine_cost({
+  clamp_int = clamp_int,
+  pve_energy_max_for_user = pve_energy_max_for_user,
+  empty_key_items = empty_key_items,
+})
+
 function build_floor_bot_entry(floor)
-  local f = clamp_int(floor, 1, PVE_MAX_LEVEL)
+  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
   local boss = is_boss_floor(f)
   local hp = 80 + f * 20
   local damage = 3 + f
@@ -269,7 +196,7 @@ function build_floor_bot_entry(floor)
     reward_matter_max = 3
   end
 
-  local hp_bonus = math.max(0, hp - MAX_HP)
+  local hp_bonus = math.max(0, hp - CFG.MAX_HP)
   return {
     id = mine_bot_id_for_floor(f),
     name = boss and ("Страж шахты " .. tostring(f)) or ("Шахтный монстр " .. tostring(f)),
@@ -296,11 +223,13 @@ function build_floor_bot_entry(floor)
     base_armor = armor,
     base_crit = crit,
     base_heal = 0,
+    cost_attack = PveMineCost.clone_list(PveMineCost.DEFAULT_ATTACK),
+    cost_banish = PveMineCost.clone_list(PveMineCost.DEFAULT_BANISH),
   }
 end
 
 local BOTS_FALLBACK = {}
-for floor = 1, PVE_MAX_LEVEL do
+for floor = 1, CFG.PVE_MAX_LEVEL do
   local bot = build_floor_bot_entry(floor)
   BOTS_FALLBACK[bot.id] = bot
 end
@@ -322,23 +251,23 @@ local function pick_first_actor(id_a, id_b)
 end
 
 local function idx(x, y)
-  return y * SIZE + x + 1
+  return y * CFG.SIZE + x + 1
 end
 
 local function in_bounds(x, y)
-  return x >= 0 and x < SIZE and y >= 0 and y < HEIGHT
+  return x >= 0 and x < CFG.SIZE and y >= 0 and y < CFG.HEIGHT
 end
 
 local function in_active_client(x, y)
-  return x >= 0 and x < SIZE and y >= 0 and y < ACTIVE_ROWS
+  return x >= 0 and x < CFG.SIZE and y >= 0 and y < CFG.ACTIVE_ROWS
 end
 
 local function client_to_server_y(y)
-  return (tonumber(y) or -999) + ACTIVE_Y_MIN
+  return (tonumber(y) or -999) + CFG.ACTIVE_Y_MIN
 end
 
 local function in_active_server(x, y)
-  return x >= 0 and x < SIZE and y >= ACTIVE_Y_MIN and y < HEIGHT
+  return x >= 0 and x < CFG.SIZE and y >= CFG.ACTIVE_Y_MIN and y < CFG.HEIGHT
 end
 
 local function bget(board, x, y)
@@ -368,29 +297,29 @@ local function sorted_two_players(presences_map)
 end
 
 local function make_bot_user_id(bot_id)
-  return BOT_USER_ID_PREFIX .. tostring(bot_id or mine_bot_id_for_floor(1))
+  return CFG.BOT_USER_ID_PREFIX .. tostring(bot_id or mine_bot_id_for_floor(1))
 end
 
 local function current_level_from_xp(xp)
   local level = 1
   local safe_xp = math.max(0, tonumber(xp) or 0)
-  for i = 2, #LEVEL_XP do
-    if safe_xp >= LEVEL_XP[i] then
+  for i = 2, #CFG.LEVEL_XP do
+    if safe_xp >= CFG.LEVEL_XP[i] then
       level = i
     else
       break
     end
   end
-  if level > PVE_MAX_LEVEL then level = PVE_MAX_LEVEL end
+  if level > CFG.PVE_MAX_LEVEL then level = CFG.PVE_MAX_LEVEL end
   return level
 end
 
 function normalize_mine_difficulty(v)
-  local s = tostring(v or MINE_DIFFICULTY_DEFAULT)
+  local s = tostring(v or CFG.MINE_DIFFICULTY_DEFAULT)
   if s == "medium" or s == "hard" or s == "easy" then
     return s
   end
-  return MINE_DIFFICULTY_DEFAULT
+  return CFG.MINE_DIFFICULTY_DEFAULT
 end
 
 function mine_stat_multiplier(diff)
@@ -408,12 +337,12 @@ function mine_reward_multiplier(diff)
 end
 
 function make_floor_state_key(diff, floor)
-  return normalize_mine_difficulty(diff) .. ":" .. tostring(clamp_int(floor, 1, PVE_MAX_LEVEL))
+  return normalize_mine_difficulty(diff) .. ":" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
 
 local function new_stats()
   return {
-    hp = MAX_HP,
+    hp = CFG.MAX_HP,
     mana = 0,
     cross_cd = 0,
     square_cd = 0,
@@ -424,7 +353,7 @@ local function new_stats()
     shield_t2 = 0,
     shield_t3 = 0,
     fury_active = false,
-    max_hp = MAX_HP
+    max_hp = CFG.MAX_HP
   }
 end
 
@@ -446,18 +375,18 @@ end
 
 local function get_armor(st)
   local base = tonumber(st and st.base_armor) or 0
-  return math.max(0, base) + get_shield_stacks(st) * SHIELD_ARMOR_PER_STACK
+  return math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_ARMOR_PER_STACK
 end
 
 local function get_heal_bonus(st)
   local base = tonumber(st and st.base_heal) or 0
-  return math.max(0, base) + get_shield_stacks(st) * SHIELD_HEAL_PER_STACK
+  return math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_HEAL_PER_STACK
 end
 
 local function count_skulls(board)
   local n = 0
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       if bget(board, x, y) == 4 then n = n + 1 end
     end
   end
@@ -480,7 +409,7 @@ local function roll_outgoing_damage(state, board, attacker, base_damage)
   -- Crit chance: base crit (PVE) + fury crit (existing mechanic).
   local crit = false
   local baseCrit = attacker ~= nil and (tonumber(attacker.base_crit) or 0) or 0
-  local furyCrit = attacker ~= nil and attacker.fury_active == true and FURY_CRIT_CHANCE or 0
+  local furyCrit = attacker ~= nil and attacker.fury_active == true and CFG.FURY_CRIT_CHANCE or 0
   local critChance = math.max(0, baseCrit + furyCrit)
   if critChance > 0 and math.random() < critChance then
     dmg = dmg * 2
@@ -498,7 +427,7 @@ end
 local function deal_damage(state, board, attacker, target, base_damage)
   local raw, crit = roll_outgoing_damage(state, board, attacker, base_damage)
   local reduced = math.max(0, raw - get_armor(target))
-  target.hp = math.max(0, (target.hp or MAX_HP) - reduced)
+  target.hp = math.max(0, (target.hp or CFG.MAX_HP) - reduced)
   return crit
 end
 
@@ -508,15 +437,15 @@ local function apply_shield_stack(st)
   st.shield_t3 = tonumber(st.shield_t3) or 0
 
   -- Add a stack up to 3.
-  if st.shield_t1 <= 0 then st.shield_t1 = SHIELD_DURATION_TURNS
-  elseif st.shield_t2 <= 0 then st.shield_t2 = SHIELD_DURATION_TURNS
-  elseif st.shield_t3 <= 0 then st.shield_t3 = SHIELD_DURATION_TURNS
+  if st.shield_t1 <= 0 then st.shield_t1 = CFG.SHIELD_DURATION_TURNS
+  elseif st.shield_t2 <= 0 then st.shield_t2 = CFG.SHIELD_DURATION_TURNS
+  elseif st.shield_t3 <= 0 then st.shield_t3 = CFG.SHIELD_DURATION_TURNS
   end
 
   -- Refresh duration for ALL existing stacks on every cast.
-  if st.shield_t1 > 0 then st.shield_t1 = SHIELD_DURATION_TURNS end
-  if st.shield_t2 > 0 then st.shield_t2 = SHIELD_DURATION_TURNS end
-  if st.shield_t3 > 0 then st.shield_t3 = SHIELD_DURATION_TURNS end
+  if st.shield_t1 > 0 then st.shield_t1 = CFG.SHIELD_DURATION_TURNS end
+  if st.shield_t2 > 0 then st.shield_t2 = CFG.SHIELD_DURATION_TURNS end
+  if st.shield_t3 > 0 then st.shield_t3 = CFG.SHIELD_DURATION_TURNS end
 end
 
 local function tick_buffs_end_turn(st)
@@ -536,11 +465,11 @@ local function has_affix(state, affix_id)
 end
 
 local function base_action_mana_cost(action_type)
-  if action_type == 2 then return CROSS_ABILITY_COST end
-  if action_type == 3 then return SQUARE_ABILITY_COST end
-  if action_type == 4 then return PETARD_ABILITY_COST end
-  if action_type == 5 then return SHIELD_ABILITY_COST end
-  if action_type == 6 then return FURY_ABILITY_COST end
+  if action_type == 2 then return CFG.CROSS_ABILITY_COST end
+  if action_type == 3 then return CFG.SQUARE_ABILITY_COST end
+  if action_type == 4 then return CFG.PETARD_ABILITY_COST end
+  if action_type == 5 then return CFG.SHIELD_ABILITY_COST end
+  if action_type == 6 then return CFG.FURY_ABILITY_COST end
   return 0
 end
 
@@ -548,7 +477,7 @@ local function action_mana_cost(state, action_type)
   local base = base_action_mana_cost(action_type)
   if base <= 0 then return 0 end
   if has_affix(state, "frozen") then
-    return base + FROZEN_ABILITY_COST_BONUS
+    return base + CFG.FROZEN_ABILITY_COST_BONUS
   end
   return base
 end
@@ -563,9 +492,9 @@ end
 
 function turn_seconds_for_state(state)
   if has_affix(state, "scree") then
-    return math.max(1, math.floor(TURN_SECONDS / 3))
+    return math.max(1, math.floor(CFG.TURN_SECONDS / 3))
   end
-  return TURN_SECONDS
+  return CFG.TURN_SECONDS
 end
 
 local function apply_turn_end_affix_effects(state, actor_id, opponent_id)
@@ -578,14 +507,14 @@ local function apply_turn_end_affix_effects(state, actor_id, opponent_id)
   local affix = current_affix_id(state)
 
   if affix == "acid" then
-    local init_hp = math.max(1, tonumber(actor.initial_hp) or tonumber(actor.max_hp) or MAX_HP)
-    local loss = math.max(1, math.floor(init_hp * ACID_HP_LOSS_PCT + 0.5))
-    actor.hp = math.max(0, (actor.hp or MAX_HP) - loss)
+    local init_hp = math.max(1, tonumber(actor.initial_hp) or tonumber(actor.max_hp) or CFG.MAX_HP)
+    local loss = math.max(1, math.floor(init_hp * CFG.ACID_HP_LOSS_PCT + 0.5))
+    actor.hp = math.max(0, (actor.hp or CFG.MAX_HP) - loss)
   end
 
   if affix == "regeneration" and actor_id == state.bot_user_id then
-    local max_hp = math.max(1, tonumber(actor.max_hp) or MAX_HP)
-    local gain = math.max(1, math.floor(max_hp * REGEN_HP_PCT + 0.5))
+    local max_hp = math.max(1, tonumber(actor.max_hp) or CFG.MAX_HP)
+    local gain = math.max(1, math.floor(max_hp * CFG.REGEN_HP_PCT + 0.5))
     actor.hp = math.min(max_hp, (actor.hp or max_hp) + gain)
   end
 
@@ -602,18 +531,18 @@ local function would_create_match(board, x, y, t)
   -- Only enforce "no initial matches" inside active area.
   if not in_active_server(x, y) then return false end
   if x >= 2 and bget(board, x - 1, y) == t and bget(board, x - 2, y) == t then return true end
-  if y >= (ACTIVE_Y_MIN + 2) and bget(board, x, y - 1) == t and bget(board, x, y - 2) == t then return true end
+  if y >= (CFG.ACTIVE_Y_MIN + 2) and bget(board, x, y - 1) == t and bget(board, x, y - 2) == t then return true end
   return false
 end
 
 local function init_board()
   local board = {}
-  for y = 0, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = 0, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       local t = 1
       local tries = 0
       repeat
-        t = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+        t = CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
         tries = tries + 1
       until tries >= 20 or not would_create_match(board, x, y, t)
       bset(board, x, y, t)
@@ -625,9 +554,9 @@ end
 local function init_cheat_rows()
   local out = {}
   -- Order for clients: yGhost=0 (top) => logical y=-2, then yGhost=1 => logical y=-1.
-  for yGhost = 0, CHEAT_ROWS_COUNT - 1 do
-    for x = 0, SIZE - 1 do
-      out[#out + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+  for yGhost = 0, CFG.CHEAT_ROWS_COUNT - 1 do
+    for x = 0, CFG.SIZE - 1 do
+      out[#out + 1] = CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
     end
   end
   return out
@@ -637,8 +566,8 @@ end
 -- We maintain a per-column queue of upcoming pieces. Refill consumes from this queue,
 -- and cheat_rows always mirrors the next 2 pieces for each column.
 local function spawn_queue_min_len()
-  -- A single refill can spawn up to SIZE new pieces in a column, so keep some buffer.
-  return SIZE + CHEAT_ROWS_COUNT + 2
+  -- A single refill can spawn up to CFG.SIZE new pieces in a column, so keep some buffer.
+  return CFG.SIZE + CFG.CHEAT_ROWS_COUNT + 2
 end
 
 local function ensure_spawn_queue(state, x)
@@ -647,7 +576,7 @@ local function ensure_spawn_queue(state, x)
   local q = state.spawn_queues[x]
   local need = spawn_queue_min_len()
   while #q < need do
-    q[#q + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+    q[#q + 1] = CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
   end
   return q
 end
@@ -656,7 +585,7 @@ local function spawn_next_from_queue(state, x)
   local q = ensure_spawn_queue(state, x)
   local v = q[1]
   table.remove(q, 1)
-  q[#q + 1] = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+  q[#q + 1] = CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
   return v
 end
 
@@ -665,11 +594,11 @@ local function update_cheat_rows_from_queues(state)
   if state.cheat_rows == nil then state.cheat_rows = {} end
   local out = {}
   -- yGhost=0 => logical y=-2 (farthest), yGhost=1 => logical y=-1 (nearest to board)
-  for yGhost = 0, CHEAT_ROWS_COUNT - 1 do
-    for x = 0, SIZE - 1 do
+  for yGhost = 0, CFG.CHEAT_ROWS_COUNT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       local q = ensure_spawn_queue(state, x)
       local idx1 = yGhost + 1
-      out[#out + 1] = q[idx1] or SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+      out[#out + 1] = q[idx1] or CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
     end
   end
   state.cheat_rows = out
@@ -680,8 +609,8 @@ local function update_cheat_rows_from_board(state)
   local out = {}
   -- Server top rows are y=0..1 (2 rows). We expose them as cheatRows in the same order:
   -- yGhost=0 corresponds to server y=0, yGhost=1 corresponds to server y=1.
-  for y = 0, CHEAT_ROWS_COUNT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = 0, CFG.CHEAT_ROWS_COUNT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       out[#out + 1] = bget(state.board, x, y)
     end
   end
@@ -690,12 +619,12 @@ end
 
 local function regenerate_active_board_without_matches(state)
   if state == nil or state.board == nil then return end
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       local t = 1
       local tries = 0
       repeat
-        t = SPAWN_POOL[math.random(1, #SPAWN_POOL)]
+        t = CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)]
         tries = tries + 1
       until tries >= 20 or not would_create_match(state.board, x, y, t)
       bset(state.board, x, y, t)
@@ -713,15 +642,15 @@ end
 local function find_matches(board)
   local results = {}
 
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
+  for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
     local x = 0
-    while x < SIZE do
+    while x < CFG.SIZE do
       local t = bget(board, x, y)
       if t == 0 then
         x = x + 1
       else
         local len = 1
-        while x + len < SIZE and bget(board, x + len, y) == t do
+        while x + len < CFG.SIZE and bget(board, x + len, y) == t do
           len = len + 1
         end
         if len >= 3 then
@@ -734,15 +663,15 @@ local function find_matches(board)
     end
   end
 
-  for x = 0, SIZE - 1 do
-    local y = ACTIVE_Y_MIN
-    while y < HEIGHT do
+  for x = 0, CFG.SIZE - 1 do
+    local y = CFG.ACTIVE_Y_MIN
+    while y < CFG.HEIGHT do
       local t = bget(board, x, y)
       if t == 0 then
         y = y + 1
       else
         local len = 1
-        while y + len < HEIGHT and bget(board, x, y + len) == t do
+        while y + len < CFG.HEIGHT and bget(board, x, y + len) == t do
           len = len + 1
         end
         if len >= 3 then
@@ -770,9 +699,9 @@ end
 
 local function apply_gravity_and_refill(state)
   local board = state.board
-  for x = 0, SIZE - 1 do
-    local write_y = HEIGHT - 1
-    for y = HEIGHT - 1, 0, -1 do
+  for x = 0, CFG.SIZE - 1 do
+    local write_y = CFG.HEIGHT - 1
+    for y = CFG.HEIGHT - 1, 0, -1 do
       local t = bget(board, x, y)
       if t ~= 0 then
         bset(board, x, write_y, t)
@@ -785,8 +714,8 @@ local function apply_gravity_and_refill(state)
     end
   end
 
-  for y = 0, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = 0, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       if bget(board, x, y) == 0 then
         bset(board, x, y, spawn_next_from_queue(state, x))
       end
@@ -849,8 +778,8 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     if m.count >= 5 then extra_turn = true end
     if sim ~= nil and m.count >= 5 then sim.extra_turn = true end
     if m.type == 1 or m.type == 2 or m.type == 3 then
-      local gain = mana_gain_per_object(state, GEM_MANA[m.type] or 0) * m.count
-      actor.mana = math.min(MAX_MANA, actor.mana + gain)
+      local gain = mana_gain_per_object(state, CFG.GEM_MANA[m.type] or 0) * m.count
+      actor.mana = math.min(CFG.MAX_MANA, actor.mana + gain)
       if sim ~= nil then
         if m.type == 1 then sim.red = sim.red + m.count
         elseif m.type == 2 then sim.yellow = sim.yellow + m.count
@@ -860,24 +789,24 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
       if affix == "energy_block" then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * m.count
       else
-        if deal_damage(state, state.board, actor, opp, SKULL_DAMAGE * m.count) then crit_triggered = true end
+        if deal_damage(state, state.board, actor, opp, CFG.SKULL_DAMAGE * m.count) then crit_triggered = true end
       end
       if affix == "monster_rage" and actor_id == state.bot_user_id then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * m.count
       end
     elseif m.type == 5 then
       healed = true
-      pending_heal = pending_heal + ANKH_HEAL * m.count
+      pending_heal = pending_heal + CFG.ANKH_HEAL * m.count
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2) * m.count
-        opp.mana = math.min(MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
+        opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
       end
     end
   end
 
   if healed then
     pending_heal = pending_heal + get_heal_bonus(actor)
-    actor.hp = math.min(actor.max_hp or MAX_HP, (actor.hp or MAX_HP) + pending_heal)
+    actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
   end
 
   return extra_turn, crit_triggered
@@ -897,8 +826,8 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
 
   local function export_active_board()
     local out = {}
-    for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-      for x = 0, SIZE - 1 do
+    for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+      for x = 0, CFG.SIZE - 1 do
         out[#out + 1] = bget(state.board, x, y)
       end
     end
@@ -910,7 +839,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     turn_ends_at_unix_ms = 0
   elseif state.started and not state.ended and tick ~= nil and state.turn_deadline_tick ~= nil then
     local rem_ticks = math.max(0, (state.turn_deadline_tick or 0) - tick)
-    local rem_ms = math.floor((rem_ticks * 1000) / TICK_RATE)
+    local rem_ms = math.floor((rem_ticks * 1000) / CFG.TICK_RATE)
     turn_ends_at_unix_ms = math.floor(os.time() * 1000) + rem_ms
   end
 
@@ -924,7 +853,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     aPetardCd = a.petard_cd,
     aShieldCd = a.shield_cd or 0,
     aFuryCd = a.fury_cd or 0,
-    aMaxHp = a.max_hp or MAX_HP,
+    aMaxHp = a.max_hp or CFG.MAX_HP,
     aBaseDamage = tonumber(a.base_damage) or 0,
     aBaseArmor = tonumber(a.base_armor) or 0,
     aBaseCrit = tonumber(a.base_crit) or 0,
@@ -941,7 +870,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bPetardCd = b.petard_cd,
     bShieldCd = b.shield_cd or 0,
     bFuryCd = b.fury_cd or 0,
-    bMaxHp = b.max_hp or MAX_HP,
+    bMaxHp = b.max_hp or CFG.MAX_HP,
     bBaseDamage = tonumber(b.base_damage) or 0,
     bBaseArmor = tonumber(b.base_armor) or 0,
     bBaseCrit = tonumber(b.base_crit) or 0,
@@ -988,7 +917,7 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
   -- If we don't have any permission map (edge cases), fallback to "send to all".
   if state.cheat_rows_allowed == nil then
     local msg = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
-    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
+    dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
     return
   end
 
@@ -996,16 +925,16 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
   local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
 
   if #allowed_presences > 0 then
-    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg_allowed), allowed_presences, nil)
+    dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg_allowed), allowed_presences, nil)
   end
   if #other_presences > 0 then
-    dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg_other), other_presences, nil)
+    dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg_other), other_presences, nil)
   end
 end
 
 local function send_reject(dispatcher, presence, reason)
   local payload = nk.json_encode({ reason = reason or "invalid_action" })
-  dispatcher.broadcast_message(OP_ACTION_REJECT, payload, { presence }, nil)
+  dispatcher.broadcast_message(CFG.OP_ACTION_REJECT, payload, { presence }, nil)
 end
 
 local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, tick_rate, anim_steps)
@@ -1044,7 +973,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardMatter = 0
       game_over_payload.newLevel = state.last_reward.level or 1
     end
-    dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+    dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
   end
 
@@ -1085,7 +1014,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       if state.turn_deadline_paused then
         state.bot_turn_ready_tick = 0
       else
-        state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+        state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
       end
     else
       state.bot_turn_pending = false
@@ -1105,8 +1034,8 @@ end
 local function clone_step(board, phase)
   -- Anim steps are sent in client 6x6 coordinates (active area only).
   local out = {}
-  for y = ACTIVE_Y_MIN, HEIGHT - 1 do
-    for x = 0, SIZE - 1 do
+  for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
       out[#out + 1] = bget(board, x, y)
     end
   end
@@ -1143,7 +1072,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local sim = state._sim_metrics
   local affix = current_affix_id(state)
   if action_type == 4 then
-    local crit = deal_damage(state, state.board, actor, opp, PETARD_DAMAGE)
+    local crit = deal_damage(state, state.board, actor, opp, CFG.PETARD_DAMAGE)
     return crit
   end
 
@@ -1156,7 +1085,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
     if t == 1 or t == 2 or t == 3 then
-      actor.mana = math.min(MAX_MANA, actor.mana + mana_gain_per_object(state, GEM_MANA[t] or 0))
+      actor.mana = math.min(CFG.MAX_MANA, actor.mana + mana_gain_per_object(state, CFG.GEM_MANA[t] or 0))
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + 1
         elseif t == 2 then sim.yellow = sim.yellow + 1
@@ -1164,10 +1093,10 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
       end
     elseif t == 5 then
       healed = true
-      pending_heal = pending_heal + ANKH_HEAL
+      pending_heal = pending_heal + CFG.ANKH_HEAL
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2)
-        opp.mana = math.min(MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
+        opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
       end
     elseif t == 4 then
       if affix == "energy_block" then
@@ -1183,10 +1112,10 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
 
   if healed then
     pending_heal = pending_heal + get_heal_bonus(actor)
-    actor.hp = math.min(actor.max_hp or MAX_HP, (actor.hp or MAX_HP) + pending_heal)
+    actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
   end
 
-  local crit = deal_damage(state, state.board, actor, opp, ABILITY_BASE_DAMAGE + SKULL_DAMAGE * skulls)
+  local crit = deal_damage(state, state.board, actor, opp, CFG.ABILITY_BASE_DAMAGE + CFG.SKULL_DAMAGE * skulls)
   -- monster_rage: apply +3 damage per bomb *after* this ability's damage (matches swap/cascade order in apply_match_effects).
   if affix == "monster_rage" and actor_id == state.bot_user_id and monster_rage_bombs > 0 then
     actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * monster_rage_bombs
@@ -1300,7 +1229,7 @@ local EQUIP_ORDER = {
   "Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight",
 }
 
--- Fallback, если в Storage нет записи или ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
+-- Fallback, если в Storage нет записи или CFG.ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
 local ITEM_DEFS_FALLBACK = {
   helm_rusty = { slot = "Helmet", hp = 10 },
   sword_basic = { slot = "WeaponRight", damage = 5 },
@@ -1327,13 +1256,13 @@ local function normalize_stored_item_def(def)
 end
 
 local function read_item_defs_from_storage()
-  local uid = ITEM_DEFS_STORAGE_USER_ID
+  local uid = CFG.ITEM_DEFS_STORAGE_USER_ID
   if uid == nil or uid == "" then return nil end
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
-        collection = ITEM_DEFS_COLLECTION,
-        key = ITEM_DEFS_KEY,
+        collection = CFG.ITEM_DEFS_COLLECTION,
+        key = CFG.ITEM_DEFS_KEY,
         user_id = uid,
       },
     })
@@ -1380,7 +1309,7 @@ local _bots_merged_cache_at = 0
 
 local function normalize_stored_bot(id_key, def)
   if type(def) ~= "table" then return nil end
-  local floor = clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, PVE_MAX_LEVEL)
+  local floor = clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, CFG.PVE_MAX_LEVEL)
   local fallback = build_floor_bot_entry(floor)
   local bid = mine_bot_id_for_floor(floor)
   local name = tostring(def.name or fallback.name or "")
@@ -1426,17 +1355,19 @@ local function normalize_stored_bot(id_key, def)
     base_armor = tonumber(def.base_armor) or tonumber(def.armor) or tonumber(fallback.base_armor) or 0,
     base_crit = tonumber(def.base_crit) or tonumber(def.crit_chance) or tonumber(fallback.base_crit) or 0,
     base_heal = tonumber(def.base_heal) or tonumber(def.healing) or tonumber(fallback.base_heal) or 0,
+    cost_attack = PveMineCost.normalize(def.cost_attack, fallback.cost_attack or PveMineCost.DEFAULT_ATTACK),
+    cost_banish = PveMineCost.normalize(def.cost_banish, fallback.cost_banish or PveMineCost.DEFAULT_BANISH),
   }
 end
 
 local function read_bots_from_storage()
-  local uid = BOTS_STORAGE_USER_ID
+  local uid = CFG.BOTS_STORAGE_USER_ID
   if uid == nil or uid == "" then return nil end
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
-        collection = BOTS_COLLECTION,
-        key = BOTS_KEY,
+        collection = CFG.BOTS_COLLECTION,
+        key = CFG.BOTS_KEY,
         user_id = uid,
       },
     })
@@ -1507,8 +1438,8 @@ local function read_character_sheet(user_id)
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
-        collection = CHARACTER_SHEET_COLLECTION,
-        key = CHARACTER_SHEET_KEY,
+        collection = CFG.CHARACTER_SHEET_COLLECTION,
+        key = CFG.CHARACTER_SHEET_KEY,
         user_id = user_id,
       },
     })
@@ -1523,8 +1454,8 @@ end
 local function write_character_sheet(user_id, sheet)
   nk.storage_write({
     {
-      collection = CHARACTER_SHEET_COLLECTION,
-      key = CHARACTER_SHEET_KEY,
+      collection = CFG.CHARACTER_SHEET_COLLECTION,
+      key = CFG.CHARACTER_SHEET_KEY,
       user_id = user_id,
       value = {
         equipment = sheet.equipment,
@@ -1545,8 +1476,8 @@ local function ensure_character_sheet_initialized(user_id)
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
-        collection = CHARACTER_SHEET_COLLECTION,
-        key = CHARACTER_SHEET_KEY,
+        collection = CFG.CHARACTER_SHEET_COLLECTION,
+        key = CFG.CHARACTER_SHEET_KEY,
         user_id = user_id,
       },
     })
@@ -1607,8 +1538,8 @@ end
 local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
   -- Fallback for local dev / empty storage.
   local emails = {}
-  for i = 1, #DEFAULT_CHEAT_EMAILS do
-    emails[#emails + 1] = DEFAULT_CHEAT_EMAILS[i]
+  for i = 1, #CFG.DEFAULT_CHEAT_EMAILS do
+    emails[#emails + 1] = CFG.DEFAULT_CHEAT_EMAILS[i]
   end
 
   if storage_user_id == nil or storage_user_id == "" then
@@ -1618,8 +1549,8 @@ local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
-        collection = CHEAT_WHITELIST_COLLECTION,
-        key = CHEAT_WHITELIST_KEY,
+        collection = CFG.CHEAT_WHITELIST_COLLECTION,
+        key = CFG.CHEAT_WHITELIST_KEY,
         user_id = storage_user_id,
       },
     })
@@ -1671,7 +1602,7 @@ local function build_cheat_whitelist_set(candidate_user_ids)
   end
 
   -- 1) Try global bucket first (if it exists).
-  local global_list = read_cheat_whitelist_emails_for_user_id(CHEAT_WHITELIST_USER_ID)
+  local global_list = read_cheat_whitelist_emails_for_user_id(CFG.CHEAT_WHITELIST_USER_ID)
   absorb(global_list)
 
   -- 2) Also try under any real player user_id (Console commonly writes under user context).
@@ -1683,14 +1614,14 @@ local function build_cheat_whitelist_set(candidate_user_ids)
   end
 
   -- 3) Always include defaults so the feature still works without storage.
-  absorb(DEFAULT_CHEAT_EMAILS)
+  absorb(CFG.DEFAULT_CHEAT_EMAILS)
 
   return set
 end
 
 local function user_email_lower(user_id)
   if user_id == nil or user_id == "" then return nil end
-  if string.sub(user_id, 1, #BOT_USER_ID_PREFIX) == BOT_USER_ID_PREFIX then
+  if string.sub(user_id, 1, #CFG.BOT_USER_ID_PREFIX) == CFG.BOT_USER_ID_PREFIX then
     return nil
   end
 
@@ -1725,32 +1656,20 @@ local function is_user_allowed_for_cheat_rows(user_id, whitelist_set)
   return set[email] == true
 end
 
-local function pve_energy_max_for_user(user_id)
-  -- Future hook: include equipment bonuses here when energy capacity becomes gear-dependent.
-  return PVE_ENERGY_MAX_BASE
-end
-
 function normalize_mine_unlocked(raw, default_floor)
   local out = {
-    easy = clamp_int(raw and raw.easy or default_floor, 1, PVE_MAX_LEVEL),
-    medium = clamp_int(raw and raw.medium or 0, 0, PVE_MAX_LEVEL),
-    hard = clamp_int(raw and raw.hard or 0, 0, PVE_MAX_LEVEL),
+    easy = clamp_int(raw and raw.easy or default_floor, 1, CFG.PVE_MAX_LEVEL),
+    medium = clamp_int(raw and raw.medium or 0, 0, CFG.PVE_MAX_LEVEL),
+    hard = clamp_int(raw and raw.hard or 0, 0, CFG.PVE_MAX_LEVEL),
   }
   return out
-end
-
-function empty_key_items()
-  return {
-    miner_key = 0,
-    dark_key = 0,
-  }
 end
 
 local function read_pve_progress(user_id)
   local rows = nk.storage_read({
     {
-      collection = PVE_PROGRESS_COLLECTION,
-      key = PVE_PROGRESS_KEY,
+      collection = CFG.PVE_PROGRESS_COLLECTION,
+      key = CFG.PVE_PROGRESS_KEY,
       user_id = user_id,
     },
   })
@@ -1774,7 +1693,7 @@ local function read_pve_progress(user_id)
       return
     end
 
-    local gained = math.floor(math.max(0, now - updated_at) / PVE_ENERGY_REGEN_SECONDS)
+    local gained = math.floor(math.max(0, now - updated_at) / CFG.PVE_ENERGY_REGEN_SECONDS)
     if gained <= 0 then
       progress.energy = energy
       progress.energy_updated_at = updated_at
@@ -1786,7 +1705,7 @@ local function read_pve_progress(user_id)
     if energy >= max_energy then
       progress.energy_updated_at = now
     else
-      progress.energy_updated_at = updated_at + gained * PVE_ENERGY_REGEN_SECONDS
+      progress.energy_updated_at = updated_at + gained * CFG.PVE_ENERGY_REGEN_SECONDS
     end
   end
 
@@ -1811,7 +1730,7 @@ local function read_pve_progress(user_id)
       energy = energy_max,
       energy_updated_at = now,
       mine = {
-        current_difficulty = MINE_DIFFICULTY_DEFAULT,
+        current_difficulty = CFG.MINE_DIFFICULTY_DEFAULT,
         selected_floor = 1,
         unlocked = normalize_mine_unlocked(nil, 1),
         floor_states = {},
@@ -1846,7 +1765,7 @@ local function read_pve_progress(user_id)
     mine = type(val.mine) == "table" and val.mine or {},
   }
   progress.mine.current_difficulty = normalize_mine_difficulty(progress.mine.current_difficulty)
-  progress.mine.selected_floor = clamp_int(progress.mine.selected_floor or 1, 1, PVE_MAX_LEVEL)
+  progress.mine.selected_floor = clamp_int(progress.mine.selected_floor or 1, 1, CFG.PVE_MAX_LEVEL)
   progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
   if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
   progress.key_items.miner_key = math.max(0, tonumber(progress.key_items.miner_key) or 0)
@@ -1886,7 +1805,7 @@ local function build_progression_payload(progress, user_id)
     level = progress.level or 1,
     xp = progress.xp or 0,
     gold = resources.gold,
-    max_level = PVE_MAX_LEVEL,
+    max_level = CFG.PVE_MAX_LEVEL,
     energy = resources.energy,
     energy_max = resources.energy_max,
     ore = resources.ore,
@@ -1904,8 +1823,8 @@ end
 
 local function write_pve_progress(user_id, progress, version)
   local write_obj = {
-    collection = PVE_PROGRESS_COLLECTION,
-    key = PVE_PROGRESS_KEY,
+    collection = CFG.PVE_PROGRESS_COLLECTION,
+    key = CFG.PVE_PROGRESS_KEY,
     user_id = user_id,
     value = {
       xp = progress.xp,
@@ -1937,9 +1856,9 @@ local function write_pve_progress(user_id, progress, version)
 end
 
 function random_affix_for_floor(floor)
-  local f = clamp_int(floor, 1, PVE_MAX_LEVEL)
-  local i = math.random(1, #MINE_AFFIX_POOL)
-  return MINE_AFFIX_POOL[i] or ""
+  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local i = math.random(1, #CFG.MINE_AFFIX_POOL)
+  return CFG.MINE_AFFIX_POOL[i] or ""
 end
 
 function add_blueprint(progress, rarity)
@@ -1978,7 +1897,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
 
   local bot = get_bot_profile(bot_id)
   local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
-  local floor = clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, PVE_MAX_LEVEL)
+  local floor = clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
   local stat_mul = mine_stat_multiplier(diff)
   local reward_mul = mine_reward_multiplier(diff)
   local is_boss = bot.is_boss == true or is_boss_floor(floor)
@@ -1991,7 +1910,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     local mmx = math.max(mmn, tonumber(bot.reward_matter_max) or mmn)
     reward_matter = math.max(0, math.ceil(math.random(mmn, mmx) * reward_mul))
   else
-    if math.random() < MINE_MATTER_DROP_CHANCE then
+    if math.random() < CFG.MINE_MATTER_DROP_CHANCE then
       reward_matter = math.max(1, math.ceil(math.random(1, 3) * reward_mul))
     end
   end
@@ -2030,10 +1949,10 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     progress.mine.floor_states = type(progress.mine.floor_states) == "table" and progress.mine.floor_states or {}
     local state_key = make_floor_state_key(diff, floor)
     local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
-    cur_state.next_spawn_at = os.time() + (is_boss and MINE_RESPAWN_BOSS_SECONDS or MINE_RESPAWN_NORMAL_SECONDS)
+    cur_state.next_spawn_at = os.time() + (is_boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS)
     local fought_affix = tostring((run_meta and run_meta.affix) or "")
     local next_affix = random_affix_for_floor(floor)
-    if #MINE_AFFIX_POOL > 1 then
+    if #CFG.MINE_AFFIX_POOL > 1 then
       local guard = 0
       while next_affix == fought_affix and guard < 12 do
         next_affix = random_affix_for_floor(floor)
@@ -2043,7 +1962,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     cur_state.last_affix = next_affix
     cur_state.wins = (tonumber(cur_state.wins) or 0) + 1
     progress.mine.floor_states[state_key] = cur_state
-    if floor >= PVE_MAX_LEVEL and is_boss then
+    if floor >= CFG.PVE_MAX_LEVEL and is_boss then
       if diff == "easy" and (progress.mine.unlocked.medium or 0) <= 0 then
         progress.mine.unlocked.medium = 1
       elseif diff == "medium" and (progress.mine.unlocked.hard or 0) <= 0 then
@@ -2164,8 +2083,8 @@ end
 local function read_match3_stats(user_id)
   local rows = nk.storage_read({
     {
-      collection = STATS_COLLECTION,
-      key = STATS_KEY,
+      collection = CFG.STATS_COLLECTION,
+      key = CFG.STATS_KEY,
       user_id = user_id,
     },
   })
@@ -2238,8 +2157,8 @@ local function duel_match3_stats_record(ctx, payload)
       end
 
       local write_obj = {
-        collection = STATS_COLLECTION,
-        key = STATS_KEY,
+        collection = CFG.STATS_COLLECTION,
+        key = CFG.STATS_KEY,
         user_id = user_id,
         value = {
           played = stats.played,
@@ -2315,6 +2234,8 @@ local function duel_match3_pve_catalog_get(ctx, payload)
         base_armor = tonumber(bot.base_armor) or tonumber(bot.armor) or 0,
         base_crit = tonumber(bot.base_crit) or tonumber(bot.crit_chance) or 0,
         base_heal = tonumber(bot.base_heal) or tonumber(bot.healing) or 0,
+        cost_attack = bot.cost_attack or PveMineCost.DEFAULT_ATTACK,
+        cost_banish = bot.cost_banish or PveMineCost.DEFAULT_BANISH,
       }
     end
     table.sort(bots, function(a, b)
@@ -2324,11 +2245,11 @@ local function duel_match3_pve_catalog_get(ctx, payload)
       return tostring(a.id) < tostring(b.id)
     end)
 
-    local current_diff = normalize_mine_difficulty(progress.mine and progress.mine.current_difficulty or MINE_DIFFICULTY_DEFAULT)
+    local current_diff = normalize_mine_difficulty(progress.mine and progress.mine.current_difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
     local unlocked_floor = get_unlocked_floor(progress, current_diff)
     local mine_floors = {}
     for _, b in ipairs(bots) do
-      local floor = clamp_int(b.floor or 1, 1, PVE_MAX_LEVEL)
+      local floor = clamp_int(b.floor or 1, 1, CFG.PVE_MAX_LEVEL)
       local state_key = make_floor_state_key(current_diff, floor)
       local fs = progress.mine and progress.mine.floor_states and progress.mine.floor_states[state_key] or nil
       local left = floor_respawn_left_seconds(progress, current_diff, floor)
@@ -2345,8 +2266,8 @@ local function duel_match3_pve_catalog_get(ctx, payload)
     return nk.json_encode({
       ok = true,
       progression = build_progression_payload(progress, user_id),
-      level_xp = LEVEL_XP,
-      max_level = PVE_MAX_LEVEL,
+      level_xp = CFG.LEVEL_XP,
+      max_level = CFG.PVE_MAX_LEVEL,
       mine_difficulty = current_diff,
       barrier_requirements = MINE_BARRIER_REQUIREMENTS,
       mine_floors = mine_floors,
@@ -2455,7 +2376,7 @@ local function duel_character_item_move(ctx, payload)
     write_character_sheet(user_id, sheet)
 
     local progress = read_pve_progress(user_id)
-    local level = clamp_int(progress.level or 1, 1, PVE_MAX_LEVEL)
+    local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
     local base_stats = character_stats_base_for_level(level)
     local bonus = sum_equipment_bonuses(sheet)
     local stats = merge_stats_with_equipment(base_stats, bonus)
@@ -2484,7 +2405,7 @@ local function duel_character_get(ctx, payload)
     end
 
     local progress = read_pve_progress(user_id)
-    local level = clamp_int(progress.level or 1, 1, PVE_MAX_LEVEL)
+    local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
     local sheet = read_character_sheet(user_id)
     local base_stats = character_stats_base_for_level(level)
     local bonus = sum_equipment_bonuses(sheet)
@@ -2616,14 +2537,14 @@ end
 function parse_floor_from_bot_id(bot_id)
   local sid = tostring(bot_id or "")
   local n = string.match(sid, "mine_(%d+)")
-  return clamp_int(n, 1, PVE_MAX_LEVEL)
+  return clamp_int(n, 1, CFG.PVE_MAX_LEVEL)
 end
 
 function get_unlocked_floor(progress, diff)
   local d = normalize_mine_difficulty(diff)
   local mine = progress.mine or {}
   local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
-  return clamp_int(unlocked[d] or 1, 0, PVE_MAX_LEVEL)
+  return clamp_int(unlocked[d] or 1, 0, CFG.PVE_MAX_LEVEL)
 end
 
 function floor_respawn_left_seconds(progress, diff, floor)
@@ -2657,13 +2578,13 @@ local function duel_match3_pve_create(ctx, payload)
 
     local requested_bot_id = tostring(p.bot_id or mine_bot_id_for_floor(1))
     local requested_diff = normalize_mine_difficulty(p.difficulty)
-    local requested_floor = clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, PVE_MAX_LEVEL)
+    local requested_floor = clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
     local fallback_bot = get_bot_profile(mine_bot_id_for_floor(requested_floor))
     local bot = get_bot_profile(requested_bot_id)
     if bot == nil or bot.id == nil or bot.id == "" then
       bot = fallback_bot
     end
-    local floor = clamp_int(bot.floor or requested_floor, 1, PVE_MAX_LEVEL)
+    local floor = clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
     local diff = requested_diff
     local bot_user_id = make_bot_user_id(bot.id)
     local max_retries = 5
@@ -2700,19 +2621,15 @@ local function duel_match3_pve_create(ctx, payload)
       end
 
       local energy_max = pve_energy_max_for_user(user_id)
-      local available = clamp_int(progress.energy, 0, energy_max)
-      if available < PVE_ENTRY_ENERGY_COST then
-        return nk.json_encode({
-          ok = false,
-          err = "not_enough_energy",
-          required = PVE_ENTRY_ENERGY_COST,
-          energy = available,
-          energy_max = energy_max,
-        })
+      local cost_list = PveMineCost.normalize(bot.cost_attack, PveMineCost.DEFAULT_ATTACK)
+      local ok_cost, miss_res, need_amt, have_amt = PveMineCost.can_afford(progress, user_id, cost_list)
+      if not ok_cost then
+        local payload = PveMineCost.json_not_enough(progress, user_id, miss_res, need_amt, have_amt)
+        payload.ok = false
+        return nk.json_encode(payload)
       end
 
-      progress.energy = available - PVE_ENTRY_ENERGY_COST
-      progress.energy_updated_at = now
+      PveMineCost.apply_list(progress, cost_list)
       local state_key = make_floor_state_key(diff, floor)
       local fstate = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
       local affix = tostring(fstate.last_affix or "")
@@ -2794,7 +2711,7 @@ local function duel_mine_summon(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
 
-    local requested_floor = clamp_int(p.floor, 1, PVE_MAX_LEVEL)
+    local requested_floor = clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local max_retries = 5
 
@@ -2841,29 +2758,29 @@ local function duel_mine_summon(ctx, payload)
 
       local energy_max = pve_energy_max_for_user(user_id)
       local available_energy = clamp_int(progress.energy, 0, energy_max)
-      if available_energy < MINE_SUMMON_ENERGY_COST then
+      if available_energy < CFG.MINE_SUMMON_ENERGY_COST then
         return nk.json_encode({
           ok = false,
           err = "not_enough_energy",
-          required = MINE_SUMMON_ENERGY_COST,
+          required = CFG.MINE_SUMMON_ENERGY_COST,
           energy = available_energy,
           energy_max = energy_max,
         })
       end
 
       local available_gold = math.max(0, tonumber(progress.gold) or 0)
-      if available_gold < MINE_SUMMON_GOLD_COST then
+      if available_gold < CFG.MINE_SUMMON_GOLD_COST then
         return nk.json_encode({
           ok = false,
           err = "not_enough_gold",
-          required = MINE_SUMMON_GOLD_COST,
+          required = CFG.MINE_SUMMON_GOLD_COST,
           gold = available_gold,
         })
       end
 
-      progress.energy = available_energy - MINE_SUMMON_ENERGY_COST
+      progress.energy = available_energy - CFG.MINE_SUMMON_ENERGY_COST
       progress.energy_updated_at = now
-      progress.gold = available_gold - MINE_SUMMON_GOLD_COST
+      progress.gold = available_gold - CFG.MINE_SUMMON_GOLD_COST
 
       local state_key = make_floor_state_key(requested_diff, requested_floor)
       local floor_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
@@ -2882,7 +2799,7 @@ local function duel_mine_summon(ctx, payload)
           floor = requested_floor,
           difficulty = requested_diff,
           respawn_left_seconds = 0,
-          summon_cost = { energy = MINE_SUMMON_ENERGY_COST, gold = MINE_SUMMON_GOLD_COST },
+          summon_cost = { energy = CFG.MINE_SUMMON_ENERGY_COST, gold = CFG.MINE_SUMMON_GOLD_COST },
           resources = build_resource_payload(progress, user_id),
           progression = build_progression_payload(progress, user_id),
         })
@@ -2921,10 +2838,12 @@ function duel_mine_affix_reroll(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
 
-    local requested_floor = clamp_int(p.floor, 1, PVE_MAX_LEVEL)
+    local requested_floor = clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local max_retries = 5
-    local reroll_gold = 100
+    local bid = mine_bot_id_for_floor(requested_floor)
+    local bot_for_cost = get_bot_profile(bid)
+    local banish_cost = PveMineCost.normalize(bot_for_cost.cost_banish, PveMineCost.DEFAULT_BANISH)
 
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)
@@ -2945,31 +2864,28 @@ function duel_mine_affix_reroll(ctx, payload)
         })
       end
 
-      local available_gold = math.max(0, tonumber(progress.gold) or 0)
-      if available_gold < reroll_gold then
-        return nk.json_encode({
-          ok = false,
-          err = "not_enough_gold",
-          required = reroll_gold,
-          gold = available_gold,
-        })
+      local ok_cost, miss_res, need_amt, have_amt = PveMineCost.can_afford(progress, user_id, banish_cost)
+      if not ok_cost then
+        local payload = PveMineCost.json_not_enough(progress, user_id, miss_res, need_amt, have_amt)
+        payload.ok = false
+        return nk.json_encode(payload)
       end
 
-      progress.gold = available_gold - reroll_gold
+      PveMineCost.apply_list(progress, banish_cost)
 
       local state_key = make_floor_state_key(requested_diff, requested_floor)
       local floor_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
       local cur = tostring(floor_state.last_affix or "")
       local next_affix = cur
-      if #MINE_AFFIX_POOL == 0 then
+      if #CFG.MINE_AFFIX_POOL == 0 then
         next_affix = ""
-      elseif #MINE_AFFIX_POOL == 1 then
-        next_affix = tostring(MINE_AFFIX_POOL[1] or "")
+      elseif #CFG.MINE_AFFIX_POOL == 1 then
+        next_affix = tostring(CFG.MINE_AFFIX_POOL[1] or "")
       else
         local g = 0
         while next_affix == cur and g < 32 do
-          local ri = math.random(1, #MINE_AFFIX_POOL)
-          next_affix = tostring(MINE_AFFIX_POOL[ri] or "")
+          local ri = math.random(1, #CFG.MINE_AFFIX_POOL)
+          next_affix = tostring(CFG.MINE_AFFIX_POOL[ri] or "")
           g = g + 1
         end
       end
@@ -2985,7 +2901,7 @@ function duel_mine_affix_reroll(ctx, payload)
           floor = requested_floor,
           difficulty = requested_diff,
           affix = floor_state.last_affix,
-          reroll_cost = { gold = reroll_gold },
+          reroll_cost = banish_cost,
           resources = build_resource_payload(progress, user_id),
           progression = build_progression_payload(progress, user_id),
         })
@@ -3023,7 +2939,7 @@ function duel_mine_barrier_unlock(ctx, payload)
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
     end
-    local target_floor = clamp_int(p.floor, 2, PVE_MAX_LEVEL)
+    local target_floor = clamp_int(p.floor, 2, CFG.PVE_MAX_LEVEL)
     local diff = normalize_mine_difficulty(p.difficulty)
     local req = MINE_BARRIER_REQUIREMENTS[target_floor]
     if req == nil then
@@ -3174,14 +3090,14 @@ end
 
 local function enumerate_valid_swaps(board)
   local swaps = {}
-  for y = 0, ACTIVE_ROWS - 1 do
-    for x = 0, SIZE - 1 do
-      if x + 1 < SIZE then
+  for y = 0, CFG.ACTIVE_ROWS - 1 do
+    for x = 0, CFG.SIZE - 1 do
+      if x + 1 < CFG.SIZE then
         local sim = clone_board(board)
         local ok, _ = try_swap(sim, x, client_to_server_y(y), x + 1, client_to_server_y(y))
         if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x + 1, toY = y, cx = -1, cy = -1 } end
       end
-      if y + 1 < ACTIVE_ROWS then
+      if y + 1 < CFG.ACTIVE_ROWS then
         local sim = clone_board(board)
         local ok, _ = try_swap(sim, x, client_to_server_y(y), x, client_to_server_y(y + 1))
         if ok then swaps[#swaps + 1] = { actionType = 1, fromX = x, fromY = y, toX = x, toY = y + 1, cx = -1, cy = -1 } end
@@ -3193,7 +3109,7 @@ end
 
 local function copy_stats(src)
   return {
-    hp = src.hp or MAX_HP,
+    hp = src.hp or CFG.MAX_HP,
     mana = src.mana or 0,
     cross_cd = src.cross_cd or 0,
     square_cd = src.square_cd or 0,
@@ -3204,8 +3120,8 @@ local function copy_stats(src)
     shield_t2 = src.shield_t2 or 0,
     shield_t3 = src.shield_t3 or 0,
     fury_active = src.fury_active == true,
-    max_hp = src.max_hp or MAX_HP,
-    initial_hp = src.initial_hp or src.max_hp or MAX_HP,
+    max_hp = src.max_hp or CFG.MAX_HP,
+    initial_hp = src.initial_hp or src.max_hp or CFG.MAX_HP,
     base_damage = src.base_damage or 0,
     base_armor = src.base_armor or 0,
     base_crit = src.base_crit or 0,
@@ -3216,20 +3132,20 @@ end
 local function spend_ability_for_sim(state, stats, action_type)
   if action_type == 2 then
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.cross_cd = CROSS_ABILITY_COOLDOWN
+    stats.cross_cd = CFG.CROSS_ABILITY_COOLDOWN
   elseif action_type == 3 then
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.square_cd = SQUARE_ABILITY_COOLDOWN
+    stats.square_cd = CFG.SQUARE_ABILITY_COOLDOWN
   elseif action_type == 4 then
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.petard_cd = PETARD_ABILITY_COOLDOWN
+    stats.petard_cd = CFG.PETARD_ABILITY_COOLDOWN
   elseif action_type == 5 then
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.shield_cd = SHIELD_ABILITY_COOLDOWN
+    stats.shield_cd = CFG.SHIELD_ABILITY_COOLDOWN
     apply_shield_stack(stats)
   elseif action_type == 6 then
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.fury_cd = FURY_ABILITY_COOLDOWN
+    stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN
     stats.fury_active = true
   end
 end
@@ -3287,7 +3203,7 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local can_petard = stats.mana >= petard_cost and stats.petard_cd <= 0
 
   local player_stats = state.stats[player_user_id] or {}
-  local player_hp = tonumber(player_stats.hp) or MAX_HP
+  local player_hp = tonumber(player_stats.hp) or CFG.MAX_HP
 
   local swaps = enumerate_valid_swaps(state.board)
   local best_extra_swap = nil
@@ -3311,8 +3227,8 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   if can_petard then
     local mana = tonumber(stats.mana) or 0
     if mana > 50
-      or (mana >= petard_cost and PETARD_DAMAGE >= player_hp)
-      or (mana >= petard_cost and (PETARD_DAMAGE + max_swap_damage) >= player_hp) then
+      or (mana >= petard_cost and CFG.PETARD_DAMAGE >= player_hp)
+      or (mana >= petard_cost and (CFG.PETARD_DAMAGE + max_swap_damage) >= player_hp) then
       return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
     end
   end
@@ -3324,8 +3240,8 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
 
   local candidates = swaps
   if can_cross then
-    for y = 0, SIZE - 1 do
-      for x = 0, SIZE - 1 do
+    for y = 0, CFG.SIZE - 1 do
+      for x = 0, CFG.SIZE - 1 do
         candidates[#candidates + 1] = {
           actionType = 2,
           fromX = -1, fromY = -1, toX = -1, toY = -1,
@@ -3335,8 +3251,8 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
     end
   end
   if can_square then
-    for y = 0, SIZE - 1 do
-      for x = 0, SIZE - 1 do
+    for y = 0, CFG.SIZE - 1 do
+      for x = 0, CFG.SIZE - 1 do
         candidates[#candidates + 1] = {
           actionType = 3,
           fromX = -1, fromY = -1, toX = -1, toY = -1,
@@ -3396,7 +3312,7 @@ local function match_init(context, params)
     pve_run = params and params.pve_run or nil,
   }
 
-  return state, TICK_RATE, "mode=duel_match3"
+  return state, CFG.TICK_RATE, "mode=duel_match3"
 end
 
 local function match_join_attempt(context, dispatcher, tick, state, presence, metadata)
@@ -3445,11 +3361,11 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.players_sorted = { player_id, state.bot_user_id }
       state.stats[player_id] = new_stats()
       state.stats[state.bot_user_id] = new_stats()
-      local player_level = math.max(1, math.min(PVE_MAX_LEVEL, tonumber(state.owner_level) or 1))
+      local player_level = math.max(1, math.min(CFG.PVE_MAX_LEVEL, tonumber(state.owner_level) or 1))
       local base = character_stats_base_for_level(player_level)
       local sheet = read_character_sheet(player_id)
       local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
-      state.stats[player_id].max_hp = tonumber(merged.hp) or MAX_HP
+      state.stats[player_id].max_hp = tonumber(merged.hp) or CFG.MAX_HP
       state.stats[player_id].hp = state.stats[player_id].max_hp
       state.stats[player_id].initial_hp = state.stats[player_id].max_hp
       state.stats[player_id].base_damage = tonumber(merged.damage) or 0
@@ -3462,9 +3378,9 @@ local function match_join(context, dispatcher, tick, state, presences)
       if stat_mul < 1 then stat_mul = 1.0 end
       local bot_hp_bonus = math.max(0, math.ceil((tonumber(bot_profile.hp_bonus) or 0) * stat_mul))
       local bot_start_mana = math.max(0, math.ceil((tonumber(bot_profile.start_mana) or 0) * stat_mul))
-      state.stats[state.bot_user_id].max_hp = MAX_HP + bot_hp_bonus
+      state.stats[state.bot_user_id].max_hp = CFG.MAX_HP + bot_hp_bonus
       state.stats[state.bot_user_id].hp = state.stats[state.bot_user_id].max_hp
-      state.stats[state.bot_user_id].mana = math.min(MAX_MANA, bot_start_mana)
+      state.stats[state.bot_user_id].mana = math.min(CFG.MAX_MANA, bot_start_mana)
       state.stats[state.bot_user_id].base_damage = math.max(0, math.ceil((tonumber(bot_profile.base_damage) or tonumber(bot_profile.damage) or 0) * stat_mul))
       state.stats[state.bot_user_id].base_armor = math.max(0, math.ceil((tonumber(bot_profile.base_armor) or tonumber(bot_profile.armor) or 0) * stat_mul))
       state.stats[state.bot_user_id].base_crit = math.max(0, (tonumber(bot_profile.base_crit) or tonumber(bot_profile.crit_chance) or 0) * stat_mul)
@@ -3473,7 +3389,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         local bot = state.stats[state.bot_user_id]
         bot.max_hp = math.max(1, math.floor(bot.max_hp * 0.5 + 0.5))
         bot.hp = math.min(bot.hp or bot.max_hp, bot.max_hp)
-        bot.mana = math.min(MAX_MANA, (tonumber(bot.mana) or 0) + 50)
+        bot.mana = math.min(CFG.MAX_MANA, (tonumber(bot.mana) or 0) + 50)
         bot.base_crit = math.max(0, tonumber(bot.base_crit) or 0) + 0.35
       end
       if has_affix(state, "bare_current") then
@@ -3485,7 +3401,7 @@ local function match_join(context, dispatcher, tick, state, presences)
 
       state.cheat_rows = init_cheat_rows()
       state.spawn_queues = {}
-      for x = 0, SIZE - 1 do ensure_spawn_queue(state, x) end
+      for x = 0, CFG.SIZE - 1 do ensure_spawn_queue(state, x) end
       update_cheat_rows_from_board(state)
       state.cheat_rows_allowed = {}
       local wl = build_cheat_whitelist_set({ player_id })
@@ -3523,7 +3439,7 @@ local function match_join(context, dispatcher, tick, state, presences)
 
     state.cheat_rows = init_cheat_rows()
     state.spawn_queues = {}
-    for x = 0, SIZE - 1 do ensure_spawn_queue(state, x) end
+    for x = 0, CFG.SIZE - 1 do ensure_spawn_queue(state, x) end
     update_cheat_rows_from_board(state)
     state.cheat_rows_allowed = {}
     local wl = build_cheat_whitelist_set(state.players_sorted)
@@ -3559,7 +3475,7 @@ local function match_leave(context, dispatcher, tick, state, presences)
       local winner = nil
       for uid, _ in pairs(state.presences) do winner = uid end
       if winner ~= nil then
-        dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
     end
@@ -3590,45 +3506,45 @@ local function match_loop(context, dispatcher, tick, state, messages)
         end
         if sender_ok then
           state.turn_deadline_paused = false
-          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
           if state.mode == "pve" and state.active_user_id == state.bot_user_id then
             state.bot_turn_pending = true
-            state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+            state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
           end
           broadcast_sync(dispatcher, state, nil, false, nil, tick)
         end
       end
     end
-    if m.op_code == OP_PLAYER_LEFT then
+    if m.op_code == CFG.OP_PLAYER_LEFT then
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
       if winner then
-        dispatcher.broadcast_message(OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
     end
 
-    if m.op_code == OP_SNAPSHOT_REQUEST then
+    if m.op_code == CFG.OP_SNAPSHOT_REQUEST then
       if state.started and not state.ended and state.board ~= nil then
         local cheat = {}
         if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[m.sender.user_id] == true then
           cheat = state.cheat_rows or {}
         end
         local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
-        dispatcher.broadcast_message(OP_BOARD_SYNC, nk.json_encode(msg), { m.sender }, nil)
+        dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { m.sender }, nil)
       end
     end
 
-    if m.op_code == OP_SELECTION_SYNC then
+    if m.op_code == CFG.OP_SELECTION_SYNC then
       if state.started and not state.ended and m.sender.user_id == state.active_user_id then
         local sel = parse_selection(m.data)
         if sel and in_active_client(sel.x, sel.y) then
-          dispatcher.broadcast_message(OP_SELECTION_SYNC, nk.json_encode(sel), nil, m.sender)
+          dispatcher.broadcast_message(CFG.OP_SELECTION_SYNC, nk.json_encode(sel), nil, m.sender)
         end
       end
     end
 
-    if m.op_code == OP_ACTION_REQUEST then
+    if m.op_code == CFG.OP_ACTION_REQUEST then
       local stale_pve = state.mode == "pve"
         and state.owner_user_id ~= nil
         and state.owner_user_id ~= ""
@@ -3649,18 +3565,18 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
           local spend = action_mana_cost(state, action.actionType)
           actor_stats.mana = math.max(0, actor_stats.mana - spend)
-          if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
-          if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
-          if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
-          if action.actionType == 5 then actor_stats.shield_cd = SHIELD_ABILITY_COOLDOWN end
-          if action.actionType == 6 then actor_stats.fury_cd = FURY_ABILITY_COOLDOWN end
+          if action.actionType == 2 then actor_stats.cross_cd = CFG.CROSS_ABILITY_COOLDOWN end
+          if action.actionType == 3 then actor_stats.square_cd = CFG.SQUARE_ABILITY_COOLDOWN end
+          if action.actionType == 4 then actor_stats.petard_cd = CFG.PETARD_ABILITY_COOLDOWN end
+          if action.actionType == 5 then actor_stats.shield_cd = CFG.SHIELD_ABILITY_COOLDOWN end
+          if action.actionType == 6 then actor_stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN end
         end
 
         local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
         if not ok then
           send_reject(dispatcher, m.sender, err)
         else
-          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
+          finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, CFG.TICK_RATE, anim_steps)
         end
       end
       end
@@ -3668,12 +3584,12 @@ local function match_loop(context, dispatcher, tick, state, messages)
   end
 
   if state.started and not state.ended and state.turn_deadline_paused and state.turn_pause_started_tick
-      and tick >= state.turn_pause_started_tick + 45 * TICK_RATE then
+      and tick >= state.turn_pause_started_tick + 45 * CFG.TICK_RATE then
     state.turn_deadline_paused = false
-    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
     if state.mode == "pve" and state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
-      state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+      state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
     end
     broadcast_sync(dispatcher, state, nil, false, nil, tick)
   end
@@ -3693,7 +3609,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         state.turn_deadline_tick = tick
       else
         state.turn_deadline_paused = false
-        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
       end
       if state.mode == "pve" then
         if state.active_user_id == state.bot_user_id then
@@ -3701,7 +3617,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           if state.turn_deadline_paused then
             state.bot_turn_ready_tick = 0
           else
-            state.bot_turn_ready_tick = tick + BOT_THINK_TICKS
+            state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
           end
         else
           state.bot_turn_pending = false
@@ -3729,7 +3645,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         state.turn_deadline_tick = tick
       else
         state.turn_deadline_paused = false
-        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
       end
       state.bot_turn_pending = false
       state.bot_turn_ready_tick = 0
@@ -3739,16 +3655,16 @@ local function match_loop(context, dispatcher, tick, state, messages)
       if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
         local spend = action_mana_cost(state, action.actionType)
         actor_stats.mana = math.max(0, actor_stats.mana - spend)
-        if action.actionType == 2 then actor_stats.cross_cd = CROSS_ABILITY_COOLDOWN end
-        if action.actionType == 3 then actor_stats.square_cd = SQUARE_ABILITY_COOLDOWN end
-        if action.actionType == 4 then actor_stats.petard_cd = PETARD_ABILITY_COOLDOWN end
-        if action.actionType == 5 then actor_stats.shield_cd = SHIELD_ABILITY_COOLDOWN end
-        if action.actionType == 6 then actor_stats.fury_cd = FURY_ABILITY_COOLDOWN end
+        if action.actionType == 2 then actor_stats.cross_cd = CFG.CROSS_ABILITY_COOLDOWN end
+        if action.actionType == 3 then actor_stats.square_cd = CFG.SQUARE_ABILITY_COOLDOWN end
+        if action.actionType == 4 then actor_stats.petard_cd = CFG.PETARD_ABILITY_COOLDOWN end
+        if action.actionType == 5 then actor_stats.shield_cd = CFG.SHIELD_ABILITY_COOLDOWN end
+        if action.actionType == 6 then actor_stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN end
       end
 
       local ok, err, extra_turn, keep_turn, anim_steps = resolve_action(state, action, actor_id, opp_id)
       if ok then
-        finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, TICK_RATE, anim_steps)
+        finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, CFG.TICK_RATE, anim_steps)
       else
         nk.logger_warn("bot action rejected: " .. tostring(err))
         tick_buffs_end_turn(state.stats[actor_id])
@@ -3761,7 +3677,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           state.turn_deadline_tick = tick
         else
           state.turn_deadline_paused = false
-          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * TICK_RATE
+          state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
         end
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0

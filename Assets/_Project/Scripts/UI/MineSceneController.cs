@@ -26,6 +26,8 @@ namespace Project.UI
         [SerializeField] private Sprite matterIconSprite;
         [SerializeField] private Sprite ingotsIconSprite;
         [SerializeField] private Sprite expIconSprite;
+        [Tooltip("Иконка энергии (стоимость боя/прогона). Если пусто — energy.png из resources_hud.")]
+        [SerializeField] private Sprite energyIconSprite;
         [Tooltip("Награды модалки: рецепт (blueprint). Если пусто — подставляется ingots или загрузка по пути blueprint.png.")]
         [SerializeField] private Sprite blueprintIconSprite;
         [Tooltip("Награды модалки: шанс тессеракта. Если пусто — matter или tesseract.png.")]
@@ -38,7 +40,6 @@ namespace Project.UI
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
         private const string RpcMineBarrierUnlock = "duel_mine_barrier_unlock";
-        private const int AffixRerollGoldCost = 100;
         private const int SummonEnergyCost = 5;
         private const int SummonGoldCost = 50;
         private const float CountdownTickSeconds = 1f;
@@ -51,6 +52,7 @@ namespace Project.UI
         private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
         private const string HudIngotsIconAssetPath = "Assets/_Project/img/resources_hud/ingots.png";
         private const string HudExpIconAssetPath = "Assets/_Project/img/resources_hud/exp.png";
+        private const string HudEnergyIconAssetPath = "Assets/_Project/img/resources_hud/energy.png";
         private const string HudBlueprintIconAssetPath = "Assets/_Project/img/resources_hud/blueprint.png";
         private const string HudTesseractIconAssetPath = "Assets/_Project/img/resources_hud/tesseract.png";
         private const string HudWhistleIconAssetPath = "Assets/_Project/img/resources_hud/whistle.png";
@@ -58,6 +60,7 @@ namespace Project.UI
         /// <summary>Пропорции кнопок футера модалки (как у спрайта 230×65).</summary>
         private const float ModalFooterButtonAspect = 230f / 65f;
         private const float InsufficientResourcesToastSeconds = 1.6f;
+        private const string MineFooterRowName = "MineFooterRow";
         private static readonly Color BarrierDismissLabelColor = new Color(224f / 255f, 204f / 255f, 137f / 255f, 1f);
         /// <summary>Цвет фона кнопки монстра (#29781B).</summary>
         private static readonly Color MonsterButtonFrameColor = new Color(0x29 / 255f, 0x78 / 255f, 0x1B / 255f, 1f);
@@ -127,6 +130,7 @@ namespace Project.UI
         private Sprite _expSprite;
         private Sprite _blueprintSprite;
         private Sprite _tesseractSprite;
+        private Sprite _energySprite;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
         private readonly ResourceValueBinding _oreBinding = new("ore");
         private readonly ResourceValueBinding _goldBinding = new("Gold");
@@ -888,6 +892,8 @@ namespace Project.UI
             _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
             _modalFightButton.onClick.AddListener(OnFightClicked);
             _modalDismissButton.onClick.AddListener(HandleSecondaryButtonClicked);
+            EnsureFooterRowWithCostStrip(_modalFightButton, "В бой");
+            EnsureFooterRowWithCostStrip(_modalDismissButton, "Прогнать");
             CacheModalFooterDefaultsIfNeeded();
             _modalRoot.SetActive(false);
         }
@@ -933,6 +939,8 @@ namespace Project.UI
                 _modalCanSummon = false;
                 ApplyModalFooterBarrierLayout(barrierMode: true);
                 SetButtonLabel(_modalDismissButton, req != null ? "Разбить" : "Закрыть");
+                PopulateCostStrip(_modalDismissButton, null);
+                PopulateCostStrip(_modalFightButton, null);
                 _modalDismissButton.interactable = true;
                 _modalRoot.SetActive(true);
                 return;
@@ -960,9 +968,8 @@ namespace Project.UI
             _modalCanUnlock = false;
             _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(floor);
             _modalFightButton.interactable = respawn <= 0 && bot != null;
-            SetButtonLabel(_modalDismissButton, _modalCanSummon
-                ? $"Призвать ({SummonEnergyCost} эн / {SummonGoldCost} зол)"
-                : $"Прогнать ({AffixRerollGoldCost} зол)");
+            ApplyFightButtonCosts(bot);
+            ApplyDismissButtonCosts(_modalCanSummon, bot);
             _modalDismissButton.interactable = true;
             _modalRoot.SetActive(true);
         }
@@ -993,10 +1000,11 @@ namespace Project.UI
                     {
                         _lastResources = resources;
                         ApplyHeaderResourceValues(resources);
-                        if (resources.energy < 15)
+                        var need = DescribeFirstMissingCost(CoalesceCost(bot.cost_attack, DefaultCostAttack()), resources);
+                        if (need != null)
                         {
                             if (_modalSupplementalInfo != null)
-                                _modalSupplementalInfo.text += $"\n\nНе хватает энергии: нужно 15, доступно {resources.energy}.";
+                                _modalSupplementalInfo.text += "\n\n" + need;
                             return;
                         }
                     }
@@ -1155,7 +1163,9 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
-                    if (_modalSupplementalInfo != null)
+                    if (IsSummonInsufficientResourcesError(model.err))
+                        ShowInsufficientResourcesToast();
+                    else if (_modalSupplementalInfo != null)
                         _modalSupplementalInfo.text += "\n\n" + DescribeAffixRerollError(model);
                     return;
                 }
@@ -1188,7 +1198,11 @@ namespace Project.UI
             if (string.IsNullOrEmpty(err))
                 return false;
             return string.Equals(err, "not_enough_energy", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(err, "not_enough_gold", StringComparison.OrdinalIgnoreCase);
+                   || string.Equals(err, "not_enough_gold", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(err, "not_enough_ore", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(err, "not_enough_matter", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(err, "not_enough_ingots", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(err, "not_enough_key_item", StringComparison.OrdinalIgnoreCase);
         }
 
         private void EnsureInsufficientResourcesToast()
@@ -1265,6 +1279,16 @@ namespace Project.UI
             {
                 case "not_enough_gold":
                     return $"Не хватает золота: нужно {response.required}, доступно {response.gold}.";
+                case "not_enough_energy":
+                    return $"Не хватает энергии: нужно {response.required}, доступно {response.energy}.";
+                case "not_enough_ore":
+                    return $"Не хватает руды: нужно {response.required}, доступно {response.ore}.";
+                case "not_enough_matter":
+                    return $"Не хватает материи: нужно {response.required}, доступно {response.matter}.";
+                case "not_enough_ingots":
+                    return $"Не хватает слитков: нужно {response.required}, доступно {response.ingots}.";
+                case "not_enough_key_item":
+                    return $"Не хватает ключа {response.key_id}: нужно {response.required}, есть {response.have}.";
                 case "barrier_locked":
                     return "Этаж пока закрыт барьером.";
                 default:
@@ -1437,6 +1461,8 @@ namespace Project.UI
             if (_blueprintSprite == null) _blueprintSprite = _ingotsSprite;
             if (_tesseractSprite == null) _tesseractSprite = LoadSpriteAsset(HudTesseractIconAssetPath);
             if (_tesseractSprite == null) _tesseractSprite = _matterSprite;
+            _energySprite = energyIconSprite;
+            if (_energySprite == null) _energySprite = LoadSpriteAsset(HudEnergyIconAssetPath);
         }
 
 #if UNITY_EDITOR
@@ -1489,6 +1515,12 @@ namespace Project.UI
             {
                 tesseractIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudTesseractIconAssetPath);
                 changed |= tesseractIconSprite != null;
+            }
+
+            if (energyIconSprite == null)
+            {
+                energyIconSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(HudEnergyIconAssetPath);
+                changed |= energyIconSprite != null;
             }
 
             if (changed)
@@ -2073,7 +2105,10 @@ namespace Project.UI
                 ? _modalDismissButton.transform.parent.GetComponent<HorizontalLayoutGroup>()
                 : null;
             _modalDismissLayoutElement = _modalDismissButton.GetComponent<LayoutElement>();
-            _modalDismissLabel = _modalDismissButton.GetComponentInChildren<Text>(true);
+            var prefixFromRow = _modalDismissButton.transform.Find(MineFooterRowName + "/Prefix");
+            _modalDismissLabel = prefixFromRow != null
+                ? prefixFromRow.GetComponent<Text>()
+                : _modalDismissButton.GetComponentInChildren<Text>(true);
 
             if (_modalFooterHorizontalLayout != null)
             {
@@ -2148,9 +2183,303 @@ namespace Project.UI
             }
         }
 
+        private static ResourceCostEntry[] DefaultCostAttack()
+        {
+            return new[]
+            {
+                new ResourceCostEntry { resource = "energy", amount = 15 }
+            };
+        }
+
+        private static ResourceCostEntry[] DefaultCostBanish()
+        {
+            return new[]
+            {
+                new ResourceCostEntry { resource = "energy", amount = 5 }
+            };
+        }
+
+        private static ResourceCostEntry[] CoalesceCost(ResourceCostEntry[] c, ResourceCostEntry[] fallback)
+        {
+            return c != null && c.Length > 0 ? c : fallback;
+        }
+
+        private void ApplyFightButtonCosts(PveBotInfo bot)
+        {
+            EnsureFooterRowWithCostStrip(_modalFightButton, "В бой");
+            SetFooterPrefix(_modalFightButton, "В бой");
+            PopulateCostStrip(_modalFightButton, CoalesceCost(bot != null ? bot.cost_attack : null, DefaultCostAttack()));
+        }
+
+        private void ApplyDismissButtonCosts(bool canSummon, PveBotInfo bot)
+        {
+            EnsureFooterRowWithCostStrip(_modalDismissButton, "Прогнать");
+            if (canSummon)
+            {
+                SetFooterPrefix(_modalDismissButton, "Призвать");
+                PopulateCostStrip(_modalDismissButton, new[]
+                {
+                    new ResourceCostEntry { resource = "energy", amount = SummonEnergyCost },
+                    new ResourceCostEntry { resource = "gold", amount = SummonGoldCost }
+                });
+            }
+            else
+            {
+                SetFooterPrefix(_modalDismissButton, "Прогнать");
+                PopulateCostStrip(_modalDismissButton, CoalesceCost(bot != null ? bot.cost_banish : null, DefaultCostBanish()));
+            }
+        }
+
+        private void EnsureFooterRowWithCostStrip(Button btn, string defaultPrefix)
+        {
+            if (btn == null) return;
+            if (btn.transform.Find(MineFooterRowName) != null)
+                return;
+
+            Text oldLabel = null;
+            for (var i = 0; i < btn.transform.childCount; i++)
+            {
+                var ch = btn.transform.GetChild(i);
+                if (ch.name == "Label")
+                {
+                    oldLabel = ch.GetComponent<Text>();
+                    break;
+                }
+            }
+
+            var prefixText = defaultPrefix;
+            if (oldLabel != null)
+            {
+                if (!string.IsNullOrEmpty(oldLabel.text))
+                    prefixText = oldLabel.text;
+                Destroy(oldLabel.gameObject);
+            }
+
+            var row = new GameObject(MineFooterRowName, typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            row.transform.SetParent(btn.transform, false);
+            var rowRt = row.GetComponent<RectTransform>();
+            rowRt.anchorMin = Vector2.zero;
+            rowRt.anchorMax = Vector2.one;
+            rowRt.offsetMin = Vector2.zero;
+            rowRt.offsetMax = Vector2.zero;
+            row.transform.SetAsFirstSibling();
+            var hl = row.GetComponent<HorizontalLayoutGroup>();
+            hl.spacing = 8f;
+            hl.padding = new RectOffset(6, 6, 4, 4);
+            hl.childAlignment = TextAnchor.MiddleCenter;
+            hl.childControlHeight = true;
+            hl.childControlWidth = false;
+            hl.childForceExpandHeight = true;
+            hl.childForceExpandWidth = false;
+
+            var prefixGo = new GameObject("Prefix", typeof(RectTransform), typeof(Text));
+            prefixGo.transform.SetParent(row.transform, false);
+            var prefix = prefixGo.GetComponent<Text>();
+            prefix.font = GetBuiltinFont();
+            prefix.fontSize = 20;
+            prefix.color = Color.white;
+            prefix.alignment = TextAnchor.MiddleCenter;
+            prefix.raycastTarget = false;
+            prefix.text = prefixText;
+            var prefixLe = prefixGo.AddComponent<LayoutElement>();
+            prefixLe.preferredWidth = -1f;
+            prefixLe.flexibleWidth = 0f;
+
+            var strip = new GameObject("CostStrip", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            strip.transform.SetParent(row.transform, false);
+            var stripHl = strip.GetComponent<HorizontalLayoutGroup>();
+            stripHl.spacing = 6f;
+            stripHl.padding = new RectOffset(0, 0, 0, 0);
+            stripHl.childAlignment = TextAnchor.MiddleCenter;
+            stripHl.childControlHeight = true;
+            stripHl.childControlWidth = true;
+            stripHl.childForceExpandHeight = false;
+            stripHl.childForceExpandWidth = false;
+            var stripLe = strip.AddComponent<LayoutElement>();
+            stripLe.flexibleWidth = 0f;
+            stripLe.minWidth = 0f;
+            var stripFitter = strip.AddComponent<ContentSizeFitter>();
+            stripFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            stripFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        private static void SetFooterPrefix(Button btn, string prefix)
+        {
+            if (btn == null || string.IsNullOrEmpty(prefix)) return;
+            var t = btn.transform.Find(MineFooterRowName + "/Prefix")?.GetComponent<Text>();
+            if (t != null) t.text = prefix;
+        }
+
+        private void PopulateCostStrip(Button btn, ResourceCostEntry[] costs)
+        {
+            if (btn == null) return;
+            var strip = btn.transform.Find(MineFooterRowName + "/CostStrip");
+            if (strip == null) return;
+            EnsureCostStripHugsContent(strip);
+
+            for (var i = strip.childCount - 1; i >= 0; i--)
+                Destroy(strip.GetChild(i).gameObject);
+
+            if (costs == null || costs.Length == 0)
+                return;
+
+            foreach (var e in costs)
+            {
+                if (e == null || e.amount <= 0) continue;
+
+                var cell = new GameObject("CostCell", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+                cell.transform.SetParent(strip, false);
+                var cellHl = cell.GetComponent<HorizontalLayoutGroup>();
+                cellHl.spacing = 3f;
+                cellHl.padding = new RectOffset(0, 0, 0, 0);
+                cellHl.childAlignment = TextAnchor.MiddleCenter;
+                cellHl.childControlHeight = true;
+                cellHl.childControlWidth = true;
+                cellHl.childForceExpandHeight = false;
+                cellHl.childForceExpandWidth = false;
+                var cellFitter = cell.GetComponent<ContentSizeFitter>();
+                cellFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+                cellFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                var cellLe = cell.AddComponent<LayoutElement>();
+                cellLe.flexibleWidth = 0f;
+                cellLe.flexibleHeight = 0f;
+
+                var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                iconGo.transform.SetParent(cell.transform, false);
+                var img = iconGo.GetComponent<Image>();
+                img.sprite = ResolveResourceIcon(e.resource);
+                img.preserveAspect = true;
+                img.color = img.sprite != null ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+                var iconLe = iconGo.AddComponent<LayoutElement>();
+                iconLe.preferredWidth = 26f;
+                iconLe.preferredHeight = 26f;
+                iconLe.minWidth = 26f;
+                iconLe.minHeight = 26f;
+                iconLe.flexibleWidth = 0f;
+                iconLe.flexibleHeight = 0f;
+
+                var amtGo = new GameObject("Amt", typeof(RectTransform), typeof(Text));
+                amtGo.transform.SetParent(cell.transform, false);
+                var amt = amtGo.GetComponent<Text>();
+                amt.font = GetBuiltinFont();
+                amt.fontSize = 19;
+                amt.color = Color.white;
+                amt.alignment = TextAnchor.MiddleLeft;
+                amt.horizontalOverflow = HorizontalWrapMode.Overflow;
+                amt.verticalOverflow = VerticalWrapMode.Truncate;
+                amt.text = FormatCompact(e.amount);
+                amt.raycastTarget = false;
+                var amtFitter = amtGo.AddComponent<ContentSizeFitter>();
+                amtFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+                amtFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                var amtLe = amtGo.AddComponent<LayoutElement>();
+                amtLe.flexibleWidth = 0f;
+                amtLe.flexibleHeight = 0f;
+                amtLe.minWidth = 0f;
+            }
+        }
+
+        /// <summary>
+        /// Старые модалки создавали CostStrip с flexibleWidth=1 — полоса растягивалась и разносила иконку и число.
+        /// Как в Match3GameOverPanel RewardRow: контент по ширине, без растягивания дочерних ячеек.
+        /// </summary>
+        private static void EnsureCostStripHugsContent(Transform strip)
+        {
+            if (strip == null) return;
+            var hl = strip.GetComponent<HorizontalLayoutGroup>();
+            if (hl != null)
+            {
+                hl.childControlWidth = true;
+                hl.childControlHeight = true;
+                hl.childForceExpandWidth = false;
+                hl.childForceExpandHeight = false;
+            }
+            var le = strip.GetComponent<LayoutElement>();
+            if (le != null)
+                le.flexibleWidth = 0f;
+            var fit = strip.GetComponent<ContentSizeFitter>();
+            if (fit == null)
+                fit = strip.gameObject.AddComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        private Sprite ResolveResourceIcon(string resourceId)
+        {
+            var r = (resourceId ?? "").Trim().ToLowerInvariant();
+            switch (r)
+            {
+                case "energy":
+                    return _energySprite;
+                case "gold":
+                    return _goldSprite;
+                case "ore":
+                    return _oreSprite;
+                case "matter":
+                    return _matterSprite;
+                case "ingots":
+                    return _ingotsSprite;
+                case "miner_key":
+                case "dark_key":
+                    return _lockSprite;
+                default:
+                    return null;
+            }
+        }
+
+        private static string DescribeFirstMissingCost(ResourceCostEntry[] cost, PlayerResourcesRpcResponse r)
+        {
+            if (r == null || cost == null) return null;
+            foreach (var e in cost)
+            {
+                if (e == null || e.amount <= 0) continue;
+                var id = (e.resource ?? "").Trim().ToLowerInvariant();
+                switch (id)
+                {
+                    case "energy":
+                        if (r.energy < e.amount)
+                            return $"Не хватает энергии: нужно {e.amount}, доступно {r.energy}.";
+                        break;
+                    case "gold":
+                        if (r.gold < e.amount)
+                            return $"Не хватает золота: нужно {e.amount}, доступно {r.gold}.";
+                        break;
+                    case "ore":
+                        if (r.ore < e.amount)
+                            return $"Не хватает руды: нужно {e.amount}, доступно {r.ore}.";
+                        break;
+                    case "matter":
+                        if (r.matter < e.amount)
+                            return $"Не хватает материи: нужно {e.amount}, доступно {r.matter}.";
+                        break;
+                    case "ingots":
+                        if (r.ingots < e.amount)
+                            return $"Не хватает слитков: нужно {e.amount}, доступно {r.ingots}.";
+                        break;
+                    case "miner_key":
+                        if (r.miner_key < e.amount)
+                            return $"Не хватает ключа miner_key: нужно {e.amount}, доступно {r.miner_key}.";
+                        break;
+                    case "dark_key":
+                        if (r.dark_key < e.amount)
+                            return $"Не хватает ключа dark_key: нужно {e.amount}, доступно {r.dark_key}.";
+                        break;
+                }
+            }
+
+            return null;
+        }
+
         private static void SetButtonLabel(Button btn, string value)
         {
             if (btn == null) return;
+            var rowPrefix = btn.transform.Find(MineFooterRowName + "/Prefix")?.GetComponent<Text>();
+            if (rowPrefix != null)
+            {
+                rowPrefix.text = value;
+                return;
+            }
+
             var t = btn.GetComponentInChildren<Text>(true);
             if (t != null) t.text = value;
         }
@@ -2266,6 +2595,13 @@ namespace Project.UI
             public string affix;
             public int required;
             public int gold;
+            public int energy;
+            public int energy_max;
+            public long ore;
+            public long matter;
+            public long ingots;
+            public string key_id;
+            public long have;
         }
 
         [Serializable]
@@ -2318,6 +2654,13 @@ namespace Project.UI
         }
 
         [Serializable]
+        private sealed class ResourceCostEntry
+        {
+            public string resource;
+            public int amount;
+        }
+
+        [Serializable]
         private sealed class PveBotInfo
         {
             public string id;
@@ -2338,6 +2681,8 @@ namespace Project.UI
             public int base_damage;
             public int base_armor;
             public float base_crit;
+            public ResourceCostEntry[] cost_attack;
+            public ResourceCostEntry[] cost_banish;
         }
 
         private sealed class FloorRowRefs

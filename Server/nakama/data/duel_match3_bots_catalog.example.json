@@ -25,7 +25,25 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        },
+        {
+          "resource": "ore",
+          "amount": 15
+        }
+
+        
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_2": {
       "id": "mine_2",
@@ -52,7 +70,23 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        },
+        {
+          "resource": "gold",
+          "amount": 1
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_3": {
       "id": "mine_3",
@@ -79,7 +113,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_4": {
       "id": "mine_4",
@@ -106,7 +152,23 @@
       "reward_key_amount": 1,
       "reward_matter_max": 10,
       "reward_matter_min": 5,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        },
+        { "resource": "gold", 
+        "amount": 50 
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 25
+        },
+        { "resource": "gold", "amount": 100 }
+      ]
     },
     "mine_5": {
       "id": "mine_5",
@@ -133,7 +195,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_6": {
       "id": "mine_6",
@@ -160,7 +234,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_7": {
       "id": "mine_7",
@@ -187,7 +273,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_8": {
       "id": "mine_8",
@@ -214,7 +312,19 @@
       "reward_key_amount": 1,
       "reward_matter_max": 10,
       "reward_matter_min": 5,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_9": {
       "id": "mine_9",
@@ -241,7 +351,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 3,
       "reward_matter_min": 1,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_10": {
       "id": "mine_10",
@@ -268,7 +390,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 3,
       "reward_matter_min": 1,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_11": {
       "id": "mine_11",
@@ -295,7 +429,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 3,
       "reward_matter_min": 1,
-      "reward_tesseract_chance": 0
+      "reward_tesseract_chance": 0,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     },
     "mine_12": {
       "id": "mine_12",
@@ -322,7 +468,19 @@
       "reward_key_amount": 0,
       "reward_matter_max": 10,
       "reward_matter_min": 5,
-      "reward_tesseract_chance": 0.05
+      "reward_tesseract_chance": 0.05,
+      "cost_attack": [
+        {
+          "resource": "energy",
+          "amount": 15
+        }
+      ],
+      "cost_banish": [
+        {
+          "resource": "energy",
+          "amount": 5
+        }
+      ]
     }
   },
   "version": 1
