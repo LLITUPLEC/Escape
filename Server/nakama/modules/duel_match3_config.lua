@@ -11,6 +11,9 @@ return {
   TICK_RATE = 6,
   BOT_THINK_SECONDS = 5.0,
   BOT_THINK_TICKS = math.max(1, math.floor(5.0 * 6 + 0.5)),
+  -- Задержка между ходами бота в одном «сегменте» (доп. ход, петарда и т.д.), после анимаций (OP 17).
+  BOT_THINK_SECONDS_FAST = 2.5,
+  BOT_THINK_TICKS_FAST = math.max(1, math.floor(2.5 * 6 + 0.5)),
   CROSS_ABILITY_COST = 20,
   SQUARE_ABILITY_COST = 20,
   PETARD_ABILITY_COST = 30,

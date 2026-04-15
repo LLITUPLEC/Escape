@@ -75,7 +75,8 @@ namespace Project.Match3
         [SerializeField] private Sprite squareAbilitySprite;
         [SerializeField] private Sprite shieldAbilitySprite;
         [SerializeField] private Sprite furyAbilitySprite;
-        [SerializeField] private Sprite spellBorderSprite;
+        [Tooltip("Полноразмерная подложка поверх иконки при КД (крест, квадрат, ярость).")]
+        [SerializeField] private Sprite cdBlockSprite;
 
         [Header("Reward Icon Sprites")]
         [SerializeField] private Sprite rewardExpSprite;
@@ -2365,7 +2366,6 @@ namespace Project.Match3
         private void TryAutoAssignAbilitySpritesInEditor()
         {
 #if UNITY_EDITOR
-            if (spellBorderSprite == null) spellBorderSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/border_spell.png");
             if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/petarda.png");
             if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/cross.png");
             if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/square.png");
@@ -2426,11 +2426,11 @@ namespace Project.Match3
         {
             if (_abilityPanel == null) return;
             EnsureAllAbilityButtonsExist();
-            ConfigureAbilityButtonVisual(_abilityPanel.petardButton, spellBorderSprite, petardAbilitySprite);
-            ConfigureAbilityButtonVisual(_abilityPanel.crossButton,  spellBorderSprite, crossAbilitySprite);
-            ConfigureAbilityButtonVisual(_abilityPanel.squareButton, spellBorderSprite, squareAbilitySprite);
-            ConfigureAbilityButtonVisual(_abilityPanel.shieldButton, spellBorderSprite, shieldAbilitySprite);
-            ConfigureAbilityButtonVisual(_abilityPanel.furyButton,   spellBorderSprite, furyAbilitySprite);
+            ConfigureAbilityButtonVisual(_abilityPanel.petardButton, petardAbilitySprite, cooldownOverlay: false);
+            ConfigureAbilityButtonVisual(_abilityPanel.crossButton, crossAbilitySprite, cooldownOverlay: true);
+            ConfigureAbilityButtonVisual(_abilityPanel.squareButton, squareAbilitySprite, cooldownOverlay: true);
+            ConfigureAbilityButtonVisual(_abilityPanel.shieldButton, shieldAbilitySprite, cooldownOverlay: false);
+            ConfigureAbilityButtonVisual(_abilityPanel.furyButton, furyAbilitySprite, cooldownOverlay: true);
         }
 
         private void EnsureAllAbilityButtonsExist()
@@ -2494,22 +2494,52 @@ namespace Project.Match3
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
-        private static void ConfigureAbilityButtonVisual(Button button, Sprite borderSprite, Sprite iconSprite)
+        private static Material _liberationSansDropShadowMaterial;
+
+        private static Material LiberationSansDropShadowMaterial
+        {
+            get
+            {
+                if (_liberationSansDropShadowMaterial == null)
+                {
+                    _liberationSansDropShadowMaterial =
+                        Resources.Load<Material>("Fonts & Materials/LiberationSans SDF - Drop Shadow");
+                }
+
+                return _liberationSansDropShadowMaterial;
+            }
+        }
+
+        private static void ApplyTmpDropShadowMaterial(TextMeshProUGUI tmp)
+        {
+            if (tmp == null) return;
+            var m = LiberationSansDropShadowMaterial;
+            if (m != null)
+                tmp.fontSharedMaterial = m;
+        }
+
+        private void ConfigureAbilityButtonVisual(Button button, Sprite iconSprite, bool cooldownOverlay)
         {
             if (button == null) return;
 
             foreach (var text in button.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (text.gameObject.name == "AbilityCost" || text.gameObject.name == "CooldownCenterText")
+                    continue;
                 text.gameObject.SetActive(false);
+            }
 
             var root = button.transform as RectTransform;
             if (root == null) return;
 
-            var bgImg = button.targetGraphic as Image;
+            // Корневой Image только держит RectTransform кнопки; клики и подсветка — на иконке.
+            var bgImg = button.GetComponent<Image>();
             if (bgImg != null)
             {
-                bgImg.sprite = borderSprite;
-                bgImg.type = Image.Type.Sliced;
-                bgImg.color = Color.white;
+                bgImg.sprite = null;
+                bgImg.type = Image.Type.Simple;
+                bgImg.color = Color.clear;
+                bgImg.raycastTarget = false;
             }
 
             var iconTf = root.Find("AbilityIcon");
@@ -2519,11 +2549,11 @@ namespace Project.Match3
                 var go = new GameObject("AbilityIcon");
                 var rt = go.AddComponent<RectTransform>();
                 rt.SetParent(root, false);
-                rt.anchorMin = new Vector2(0.16f, 0.16f);
-                rt.anchorMax = new Vector2(0.84f, 0.84f);
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
                 rt.offsetMin = rt.offsetMax = Vector2.zero;
                 iconImg = go.AddComponent<Image>();
-                iconImg.raycastTarget = false;
+                iconImg.raycastTarget = true;
             }
             else
             {
@@ -2532,17 +2562,159 @@ namespace Project.Match3
                 var rt = iconTf as RectTransform;
                 if (rt != null)
                 {
-                    rt.anchorMin = new Vector2(0.16f, 0.16f);
-                    rt.anchorMax = new Vector2(0.84f, 0.84f);
+                    rt.anchorMin = Vector2.zero;
+                    rt.anchorMax = Vector2.one;
                     rt.offsetMin = rt.offsetMax = Vector2.zero;
                 }
+
+                iconImg.raycastTarget = true;
             }
 
             iconImg.sprite = iconSprite;
             iconImg.preserveAspect = true;
             iconImg.color = Color.white;
-            iconImg.type = Image.Type.Sliced;
-            iconImg.transform.localScale = Vector3.one * 0.7f;
+            iconImg.type = Image.Type.Simple;
+            iconImg.transform.localScale = Vector3.one;
+
+            button.targetGraphic = iconImg;
+
+            var cb = button.colors;
+            var neutral = Color.white;
+            cb.normalColor = neutral;
+            cb.highlightedColor = Color.Lerp(neutral, Color.white, 0.12f);
+            cb.pressedColor = Color.Lerp(neutral, new Color(0.75f, 0.75f, 0.75f), 0.35f);
+            cb.selectedColor = neutral;
+            cb.disabledColor = new Color(0.45f, 0.45f, 0.45f, 1f);
+            cb.colorMultiplier = 1f;
+            button.colors = cb;
+
+            if (cooldownOverlay)
+                EnsureCooldownOverlayWidgets(button);
+
+            EnsureAbilityCostLabel(button);
+        }
+
+        private void EnsureCooldownOverlayWidgets(Button button)
+        {
+            if (button == null) return;
+            var root = button.transform as RectTransform;
+            if (root == null) return;
+
+            var iconIdx = 0;
+            var iconTf = root.Find("AbilityIcon");
+            if (iconTf != null)
+                iconIdx = iconTf.GetSiblingIndex();
+
+            if (cdBlockSprite != null)
+            {
+                var blockTf = root.Find("CooldownBlock");
+                if (blockTf == null)
+                {
+                    var go = new GameObject("CooldownBlock");
+                    var rt = go.AddComponent<RectTransform>();
+                    rt.SetParent(root, false);
+                    rt.anchorMin = Vector2.zero;
+                    rt.anchorMax = Vector2.one;
+                    rt.offsetMin = rt.offsetMax = Vector2.zero;
+                    var img = go.AddComponent<Image>();
+                    img.sprite = cdBlockSprite;
+                    img.type = Image.Type.Simple;
+                    img.preserveAspect = false;
+                    img.color = Color.white;
+                    img.raycastTarget = false;
+                    img.enabled = true;
+                    go.SetActive(false);
+                    go.transform.SetSiblingIndex(iconIdx + 1);
+                }
+                else
+                {
+                    var img = blockTf.GetComponent<Image>();
+                    if (img != null)
+                    {
+                        img.sprite = cdBlockSprite;
+                        img.type = Image.Type.Simple;
+                        img.preserveAspect = false;
+                    }
+                }
+            }
+
+            var centerTf = root.Find("CooldownCenterText");
+            if (centerTf == null)
+            {
+                var go = new GameObject("CooldownCenterText");
+                var rt = go.AddComponent<RectTransform>();
+                rt.SetParent(root, false);
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                var tmp = go.AddComponent<TextMeshProUGUI>();
+                tmp.font = DefaultFont;
+                tmp.fontSize = 22;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.verticalAlignment = VerticalAlignmentOptions.Middle;
+                tmp.color = new Color(1f, 86f / 255f, 0f, 1f);
+                tmp.raycastTarget = false;
+                tmp.enableAutoSizing = true;
+                tmp.fontSizeMin = 14;
+                tmp.fontSizeMax = 22;
+                ApplyTmpDropShadowMaterial(tmp);
+                go.SetActive(false);
+                var blockNow = root.Find("CooldownBlock");
+                var ins = blockNow != null ? blockNow.GetSiblingIndex() + 1 : iconIdx + 1;
+                go.transform.SetSiblingIndex(ins);
+            }
+            else
+            {
+                var tmp = centerTf.GetComponent<TextMeshProUGUI>();
+                if (tmp != null)
+                {
+                    tmp.color = new Color(1f, 86f / 255f, 0f, 1f);
+                    ApplyTmpDropShadowMaterial(tmp);
+                }
+            }
+        }
+
+        private static void EnsureAbilityCostLabel(Button button)
+        {
+            if (button == null) return;
+            var root = button.transform as RectTransform;
+            if (root == null) return;
+            var tr = root.Find("AbilityCost");
+            TextMeshProUGUI tmp;
+            if (tr == null)
+            {
+                var go = new GameObject("AbilityCost");
+                var rt = go.AddComponent<RectTransform>();
+                rt.SetParent(root, false);
+                rt.anchorMin = new Vector2(1f, 0f);
+                rt.anchorMax = new Vector2(1f, 0f);
+                rt.pivot = new Vector2(1f, 0f);
+                rt.anchoredPosition = new Vector2(-3f, 0f);
+                rt.sizeDelta = new Vector2(48f, 24f);
+                tmp = go.AddComponent<TextMeshProUGUI>();
+                tmp.font = DefaultFont;
+                tmp.fontSize = 15;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.alignment = TextAlignmentOptions.BottomRight;
+                tmp.color = new Color(0f, 0f, 0f, 0.98f);
+                //tmp.color = new Color(34f / 255f, 88f / 255f, 207f / 255f, 1f);
+                tmp.raycastTarget = false;
+                ApplyTmpDropShadowMaterial(tmp);
+                go.transform.SetAsLastSibling();
+            }
+            else
+            {
+                tmp = tr.GetComponent<TextMeshProUGUI>();
+                if (tmp == null) tmp = tr.gameObject.AddComponent<TextMeshProUGUI>();
+                tr.gameObject.SetActive(true);
+                var rt = tr as RectTransform;
+                if (rt != null)
+                    rt.anchoredPosition = new Vector2(-3f, 0f);
+                tmp.color = new Color(34f / 255f, 88f / 255f, 207f / 255f, 1f);
+                ApplyTmpDropShadowMaterial(tmp);
+                tr.SetAsLastSibling();
+            }
         }
 
         private async void QuitToMenu()
@@ -3227,6 +3399,7 @@ namespace Project.Match3
                 _pendingAbility = null;
                 _abilityPanel?.SetSelectedAbility(null);
                 _abilityPanel?.ShowHint(false);
+                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
                 return;
             }
 
@@ -3237,6 +3410,7 @@ namespace Project.Match3
             _selX = _selY = -1;
             _boardView?.ClearSelections();
             _abilityPanel?.ShowHint(true);
+            _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
         }
 
         private void OnPetardClicked()

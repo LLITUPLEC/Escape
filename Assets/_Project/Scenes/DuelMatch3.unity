@@ -319,16 +319,20 @@ MonoBehaviour:
   sfxDamageCrit: {fileID: 8300000, guid: c6ae68cae7f0cd44ca8ef01102849f54, type: 3}
   sfxVictory: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
   sfxDefeat: {fileID: 8300000, guid: a0ca8964c08d54c5dbebf245bdc474ca, type: 3}
-  petardAbilitySprite: {fileID: 21300000, guid: 7f2503b37e1aade498550d6ff7f5c1be, type: 3}
-  crossAbilitySprite: {fileID: 21300000, guid: 00da63fe380b4044fa9969b002eb14b8, type: 3}
-  squareAbilitySprite: {fileID: 21300000, guid: 39e1f88077d5d1f4ab096029e090829b, type: 3}
-  shieldAbilitySprite: {fileID: 21300000, guid: 54c5f9a2070a28e47838576b029a84f9, type: 3}
-  furyAbilitySprite: {fileID: 21300000, guid: df9dbddaf3e01ad4aafec78602fd3ae5, type: 3}
-  spellBorderSprite: {fileID: 21300000, guid: 12a9630a27055ac4fab7951b3737c9ea, type: 3}
+  petardAbilitySprite: {fileID: 21300000, guid: 865b473a303443e41b470b92c3c85ed2, type: 3}
+  crossAbilitySprite: {fileID: 21300000, guid: 9b1cb0a88490a1e45a118d06bbd4cb48, type: 3}
+  squareAbilitySprite: {fileID: 21300000, guid: 8feda5bd91b2aa840a3851d5f5060829, type: 3}
+  shieldAbilitySprite: {fileID: 21300000, guid: 866eca4889697d141b50478c72405510, type: 3}
+  furyAbilitySprite: {fileID: 21300000, guid: cda7da1bc56f05b49974503eca8fb815, type: 3}
+  cdBlockSprite: {fileID: 21300000, guid: 89546b6a8670dda4dacc5b4b89c1c2c4, type: 3}
   rewardExpSprite: {fileID: 21300000, guid: 41b56324a2f799142893c434059c35f7, type: 3}
   rewardOreSprite: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
   rewardGoldSprite: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
   rewardMatterSprite: {fileID: 21300000, guid: 98adc8eac42d30d4894322f3a75eae8e, type: 3}
+  rewardIngotsSprite: {fileID: 0}
+  rewardKeySprite: {fileID: 0}
+  rewardBlueprintSprite: {fileID: 0}
+  rewardTesseractSprite: {fileID: 0}
   damagePopupPrefab: {fileID: 1563794341977534896, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
   affixCatalog: {fileID: 0}
   cheatRowsOverlayCellsPrefab: {fileID: 8564567523557899235, guid: 2c5f112379cf13343935c7cab488f4b8, type: 3}

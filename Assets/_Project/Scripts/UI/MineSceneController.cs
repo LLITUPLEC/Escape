@@ -40,6 +40,7 @@ namespace Project.UI
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
         private const string RpcMineBarrierUnlock = "duel_mine_barrier_unlock";
+        private const string MineCatalogCacheKey = "nakama.cache.mine_catalog_pve_v1";
         private const int SummonEnergyCost = 5;
         private const int SummonGoldCost = 50;
         private const float CountdownTickSeconds = 1f;
@@ -176,6 +177,7 @@ namespace Project.UI
             EnsureModal();
             EnsureSummonConfirmDialog();
             EnsureHeaderResources();
+            TryApplyCachedMineCatalogSnapshot();
         }
 
         private void OnEnable()
@@ -263,36 +265,9 @@ namespace Project.UI
                 var payload = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(payload)) return;
 
-                var model = JsonUtility.FromJson<MineCatalogResponse>(payload);
-                if (model == null || !model.ok) return;
-                _progression = model.progression;
-
-                _botByFloor.Clear();
-                _mineByFloor.Clear();
-                if (model.bots != null)
-                {
-                    foreach (var b in model.bots)
-                    {
-                        if (b == null) continue;
-                        _botByFloor[Mathf.Max(1, b.floor)] = b;
-                    }
-                }
-                if (model.mine_floors != null)
-                {
-                    foreach (var m in model.mine_floors)
-                    {
-                        if (m == null) continue;
-                        _mineByFloor[Mathf.Max(1, m.floor)] = m;
-                    }
-                }
-                _difficulty = model.mine_difficulty;
-                if (string.IsNullOrWhiteSpace(_difficulty))
-                    _difficulty = model.progression != null && model.progression.mine != null ? model.progression.mine.current_difficulty : "easy";
-                if (string.IsNullOrWhiteSpace(_difficulty))
-                    _difficulty = "easy";
-
-                ApplyRows();
-                ApplyResourcesFallbackFromProgression();
+                ApplyMineCatalogPayload(payload);
+                PlayerPrefs.SetString(MineCatalogCacheKey, payload);
+                PlayerPrefs.Save();
             }
             catch (OperationCanceledException)
             {
@@ -306,6 +281,58 @@ namespace Project.UI
             {
                 _refreshInFlight = false;
             }
+        }
+
+        private void TryApplyCachedMineCatalogSnapshot()
+        {
+            try
+            {
+                var json = PlayerPrefs.GetString(MineCatalogCacheKey, "");
+                if (string.IsNullOrWhiteSpace(json))
+                    return;
+                ApplyMineCatalogPayload(json);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        private void ApplyMineCatalogPayload(string payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+                return;
+            var model = JsonUtility.FromJson<MineCatalogResponse>(payload);
+            if (model == null || !model.ok)
+                return;
+            _progression = model.progression;
+
+            _botByFloor.Clear();
+            _mineByFloor.Clear();
+            if (model.bots != null)
+            {
+                foreach (var b in model.bots)
+                {
+                    if (b == null) continue;
+                    _botByFloor[Mathf.Max(1, b.floor)] = b;
+                }
+            }
+            if (model.mine_floors != null)
+            {
+                foreach (var m in model.mine_floors)
+                {
+                    if (m == null) continue;
+                    _mineByFloor[Mathf.Max(1, m.floor)] = m;
+                }
+            }
+            _difficulty = model.mine_difficulty;
+            if (string.IsNullOrWhiteSpace(_difficulty))
+                _difficulty = model.progression != null && model.progression.mine != null ? model.progression.mine.current_difficulty : "easy";
+            if (string.IsNullOrWhiteSpace(_difficulty))
+                _difficulty = "easy";
+
+            ApplyRows();
+            ApplyResourcesFallbackFromProgression();
         }
 
         private void CacheRows()
@@ -1379,6 +1406,12 @@ namespace Project.UI
         {
             try
             {
+                if (_lastResources == null && PlayerResourcesService.TryReadCached(out var cachedHdr))
+                {
+                    _lastResources = cachedHdr;
+                    ApplyHeaderResourceValues(cachedHdr);
+                }
+
                 var model = await PlayerResourcesService.GetAsync(ct);
                 if (model == null || !model.ok)
                     return;

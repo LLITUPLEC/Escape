@@ -543,6 +543,16 @@ namespace Project.UI
             EnsureHeaderResources();
             if (!HasAnyHeaderResourceBindings()) return;
 
+            if (PlayerResourcesService.TryReadCached(out var cached))
+            {
+                SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy, cached.energy_max));
+                SetHeaderResourceText(_oreBinding, FormatCompact(cached.ore));
+                SetHeaderResourceText(_goldBinding, FormatCompact(cached.gold));
+                SetHeaderResourceText(_ingotsBinding, FormatCompact(cached.ingots));
+                SetHeaderResourceText(_matterBinding, FormatCompact(cached.matter));
+                SetHeaderResourceText(_keysBinding, FormatCompact(cached.keys));
+            }
+
             try
             {
                 var model = await PlayerResourcesService.GetAsync(ct);

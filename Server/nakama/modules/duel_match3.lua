@@ -989,12 +989,23 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     tick_buffs_end_turn(state.stats[actor])
     state.active_user_id = opponent
     tick_cooldowns(state.stats[opponent])
+    if state.mode == "pve" and opponent == state.owner_user_id then
+      state.bot_fury_open_mana = nil
+    end
   end
 
   if not keep_turn then
     if extra_turn then
-      state.turn_deadline_paused = false
-      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+      -- Доп. ход (5+ в линии): полный таймер после анимаций, как при смене хода — не «съедаем» время каскадом.
+      local need_ack = state.active_user_id ~= nil
+      if need_ack then
+        state.turn_deadline_paused = true
+        state.turn_pause_started_tick = tick
+        state.turn_deadline_tick = tick
+      else
+        state.turn_deadline_paused = false
+        state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+      end
     else
       -- PVP и PVE: дедлайн стартует после OP 17 от клиента, отыгравшего анимации (активный игрок; в PVE при ходе бота — owner).
       local need_ack = state.active_user_id ~= nil
@@ -1008,13 +1019,30 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       end
     end
   end
+
+  if state.mode == "pve" and state.active_user_id == state.bot_user_id and prev_active_user_id ~= nil then
+    state.bot_long_think_next = (prev_active_user_id == state.owner_user_id)
+  elseif state.mode == "pve" and state.active_user_id == state.owner_user_id then
+    state.bot_long_think_next = false
+  end
+
+  if state.mode == "pve" and actor == state.bot_user_id and action ~= nil then
+    if action.actionType == 6 and state._bot_pre_mana ~= nil and state._bot_pre_mana >= 80 then
+      state.bot_fury_open_mana = state._bot_pre_mana
+    elseif action.actionType == 4 and state.bot_fury_open_mana ~= nil and has_affix(state, "frozen") then
+      state.bot_fury_open_mana = nil
+    elseif (action.actionType == 2 or action.actionType == 3) and state.bot_fury_open_mana ~= nil then
+      state.bot_fury_open_mana = nil
+    end
+  end
+
   if state.mode == "pve" then
     if state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
       if state.turn_deadline_paused then
         state.bot_turn_ready_tick = 0
       else
-        state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
+        state.bot_turn_ready_tick = tick + (state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST)
       end
     else
       state.bot_turn_pending = false
@@ -3018,6 +3046,12 @@ function duel_mine_barrier_unlock(ctx, payload)
       progress.mine.selected_floor = target_floor
       progress.mine.current_difficulty = diff
 
+      if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
+      local sk = make_floor_state_key(diff, target_floor)
+      local fs = type(progress.mine.floor_states[sk]) == "table" and progress.mine.floor_states[sk] or {}
+      fs.last_affix = random_affix_for_floor(target_floor)
+      progress.mine.floor_states[sk] = fs
+
       local write_ok, write_err = pcall(function()
         write_pve_progress(user_id, progress, version)
       end)
@@ -3191,6 +3225,32 @@ local function is_better_score(a, b)
   return false
 end
 
+local function swap_initial_matches_for_action(state, action)
+  if action == nil or action.actionType ~= 1 then return nil end
+  local board = clone_board(state.board)
+  local fy = client_to_server_y(action.fromY)
+  local ty = client_to_server_y(action.toY)
+  local ok, matches = try_swap(board, action.fromX, fy, action.toX, ty)
+  if not ok then return nil end
+  return matches
+end
+
+local function match_has_five_plus_line(matches)
+  if not matches then return false end
+  for _, m in ipairs(matches) do
+    if m.count >= 5 then return true end
+  end
+  return false
+end
+
+local function match_has_five_plus_skull(matches)
+  if not matches then return false end
+  for _, m in ipairs(matches) do
+    if m.count >= 5 and m.type == 4 then return true end
+  end
+  return false
+end
+
 local function choose_bot_action(state, bot_user_id, player_user_id)
   local stats = state.stats[bot_user_id]
   if stats == nil then return nil end
@@ -3198,12 +3258,16 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local cross_cost = action_mana_cost(state, 2)
   local square_cost = action_mana_cost(state, 3)
   local petard_cost = action_mana_cost(state, 4)
+  local fury_cost = action_mana_cost(state, 6)
   local can_cross = stats.mana >= cross_cost and stats.cross_cd <= 0
   local can_square = stats.mana >= square_cost and stats.square_cd <= 0
   local can_petard = stats.mana >= petard_cost and stats.petard_cd <= 0
+  local can_fury = stats.mana >= fury_cost and stats.fury_cd <= 0
 
   local player_stats = state.stats[player_user_id] or {}
   local player_hp = tonumber(player_stats.hp) or CFG.MAX_HP
+  local mana = tonumber(stats.mana) or 0
+  local frozen = has_affix(state, "frozen")
 
   local swaps = enumerate_valid_swaps(state.board)
   local best_extra_swap = nil
@@ -3220,12 +3284,100 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
     end
   end
 
+  -- в) Цепочка после ярости при старте с маны >= 80 (петарда + способность; при frozen — только петарда).
+  local open_m = state.bot_fury_open_mana
+  if stats.fury_active and open_m ~= nil and open_m >= 80 then
+    if can_petard then
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+    if not frozen then
+      local best_ab = nil
+      local best_sc = nil
+      if can_cross then
+        for y = 0, CFG.SIZE - 1 do
+          for x = 0, CFG.SIZE - 1 do
+            local ac = {
+              actionType = 2,
+              fromX = -1, fromY = -1, toX = -1, toY = -1,
+              cx = x, cy = y,
+            }
+            local sc = simulate_and_score_action(state, bot_user_id, player_user_id, ac)
+            if sc ~= nil and is_better_score(sc, best_sc) then
+              best_sc = sc
+              best_ab = ac
+            end
+          end
+        end
+      end
+      if can_square then
+        for y = 0, CFG.SIZE - 1 do
+          for x = 0, CFG.SIZE - 1 do
+            local ac = {
+              actionType = 3,
+              fromX = -1, fromY = -1, toX = -1, toY = -1,
+              cx = x, cy = y,
+            }
+            local sc = simulate_and_score_action(state, bot_user_id, player_user_id, ac)
+            if sc ~= nil and is_better_score(sc, best_sc) then
+              best_sc = sc
+              best_ab = ac
+            end
+          end
+        end
+      end
+      if best_ab ~= nil then return best_ab end
+    end
+  end
+
+  -- После ярости по п. а) — добить свапом 5+.
+  if stats.fury_active and best_extra_swap ~= nil then
+    return best_extra_swap
+  end
+
+  -- а) 5+ в линии + ярость (frozen: мана >= 70).
+  if not stats.fury_active and can_fury and best_extra_swap ~= nil then
+    local init_m = swap_initial_matches_for_action(state, best_extra_swap)
+    local need_mana_a = frozen and 70 or 50
+    if match_has_five_plus_line(init_m) and mana >= need_mana_a then
+      return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+  end
+
+  -- б) 5+ черепов в линии + ярость, только свап (frozen: мана 40–49).
+  if not stats.fury_active and can_fury then
+    local lo = frozen and 40 or 31
+    local hi = 49
+    if mana >= lo and mana <= hi then
+      for _, ac in ipairs(swaps) do
+        local im = swap_initial_matches_for_action(state, ac)
+        if match_has_five_plus_skull(im) then
+          return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+        end
+      end
+    end
+  end
+
+  -- в) Открытие цепочки: мана >= 80 и хватает на ярость + петарду (+ способность без frozen).
+  if not stats.fury_active and can_fury and can_petard then
+    if frozen then
+      if mana >= 80 and mana >= fury_cost + petard_cost then
+        return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+      end
+    else
+      local min_ab = nil
+      if can_cross then min_ab = cross_cost end
+      if can_square and (min_ab == nil or square_cost < min_ab) then min_ab = square_cost end
+      if min_ab ~= nil and mana >= 80 and mana >= fury_cost + petard_cost + min_ab then
+        return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+      end
+    end
+  end
+
   -- “Молния/петарда” приоритетна, если:
   --  • маны > 50 (как и раньше),
   --  • либо маны >= 30 и петарда добивает прямо сейчас,
   --  • либо петарда + лучший свап по урону добивают (петарда сохраняет ход).
   if can_petard then
-    local mana = tonumber(stats.mana) or 0
     if mana > 50
       or (mana >= petard_cost and CFG.PETARD_DAMAGE >= player_hp)
       or (mana >= petard_cost and (CFG.PETARD_DAMAGE + max_swap_damage) >= player_hp) then
@@ -3309,6 +3461,9 @@ local function match_init(context, params)
     last_reward = nil,
     bot_turn_pending = false,
     bot_turn_ready_tick = 0,
+    bot_long_think_next = true,
+    bot_fury_open_mana = nil,
+    _bot_pre_mana = nil,
     pve_run = params and params.pve_run or nil,
   }
 
@@ -3509,7 +3664,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
           state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
           if state.mode == "pve" and state.active_user_id == state.bot_user_id then
             state.bot_turn_pending = true
-            state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
+            local think = state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST
+            state.bot_turn_ready_tick = tick + think
+            state.bot_long_think_next = false
           end
           broadcast_sync(dispatcher, state, nil, false, nil, tick)
         end
@@ -3589,6 +3746,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
     if state.mode == "pve" and state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
+      state.bot_long_think_next = true
       state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
     end
     broadcast_sync(dispatcher, state, nil, false, nil, tick)
@@ -3614,10 +3772,11 @@ local function match_loop(context, dispatcher, tick, state, messages)
       if state.mode == "pve" then
         if state.active_user_id == state.bot_user_id then
           state.bot_turn_pending = true
+          state.bot_long_think_next = (current == state.owner_user_id)
           if state.turn_deadline_paused then
             state.bot_turn_ready_tick = 0
           else
-            state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
+            state.bot_turn_ready_tick = tick + (state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST)
           end
         else
           state.bot_turn_pending = false
@@ -3633,6 +3792,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     state.bot_turn_ready_tick = 0
     local actor_id = state.bot_user_id
     local opp_id = state.owner_user_id
+    state._bot_pre_mana = state.stats[actor_id] ~= nil and tonumber(state.stats[actor_id].mana) or nil
     local action = choose_bot_action(state, actor_id, opp_id)
     if action == nil then
       tick_buffs_end_turn(state.stats[actor_id])

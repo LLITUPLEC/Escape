@@ -10,6 +10,40 @@ namespace Project.Character
     {
         private const string RpcPlayerResourcesGet = "duel_player_resources_get";
         private const string RpcPlayerResourcesSpend = "duel_player_resources_spend";
+        private const string PlayerResourcesCacheKey = "nakama.cache.player_resources_v1";
+
+        /// <summary>Последний успешный снимок ресурсов (устраняет краткий «—» на медленном старте / APK).</summary>
+        public static bool TryReadCached(out PlayerResourcesRpcResponse model)
+        {
+            model = null;
+            var json = PlayerPrefs.GetString(PlayerResourcesCacheKey, "");
+            if (string.IsNullOrWhiteSpace(json))
+                return false;
+            try
+            {
+                model = JsonUtility.FromJson<PlayerResourcesRpcResponse>(json);
+                return model != null && model.ok;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void WriteCache(PlayerResourcesRpcResponse model)
+        {
+            if (model == null || !model.ok)
+                return;
+            try
+            {
+                PlayerPrefs.SetString(PlayerResourcesCacheKey, JsonUtility.ToJson(model));
+                PlayerPrefs.Save();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
 
         public static async Task<PlayerResourcesRpcResponse> GetAsync(CancellationToken ct)
         {
@@ -30,6 +64,8 @@ namespace Project.Character
                     return new PlayerResourcesRpcResponse { ok = false, err = "empty_payload" };
 
                 var model = JsonUtility.FromJson<PlayerResourcesRpcResponse>(payload);
+                if (model != null && model.ok)
+                    WriteCache(model);
                 return model ?? new PlayerResourcesRpcResponse { ok = false, err = "parse_failed" };
             }
             catch (Exception e)

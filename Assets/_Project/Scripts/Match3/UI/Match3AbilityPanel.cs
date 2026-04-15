@@ -15,25 +15,30 @@ namespace Project.Match3
         private const float AbilityPaddingPx = 6f;
         private const float AbilityVerticalRatio = 0.72f;
 
+        private static readonly Color AbilityDimmedIcon = new Color(0.42f, 0.42f, 0.42f, 1f);
+        //private static readonly Color AbilityCostTextColor = new Color(34f / 255f, 88f / 255f, 207f / 255f, 1f);
+        private static readonly Color AbilityCostTextColor = new Color(0f, 0f, 0f, 0.98f);
+        private static readonly Color CooldownCenterTextColor = new Color(1f, 86f / 255f, 0f, 1f);
+
         [Header("Petard ability")]
         [SerializeField] public Button petardButton;
-        [SerializeField] public TMP_Text   petardCooldownText;
+        [SerializeField] public TMP_Text petardCooldownText;
 
         [Header("Cross ability")]
         [SerializeField] public Button crossButton;
-        [SerializeField] public TMP_Text   crossCooldownText;
+        [SerializeField] public TMP_Text crossCooldownText;
 
         [Header("Square ability")]
         [SerializeField] public Button squareButton;
-        [SerializeField] public TMP_Text   squareCooldownText;
+        [SerializeField] public TMP_Text squareCooldownText;
 
         [Header("Shield ability")]
         [SerializeField] public Button shieldButton;
-        [SerializeField] public TMP_Text   shieldCooldownText;
+        [SerializeField] public TMP_Text shieldCooldownText;
 
         [Header("Fury ability")]
         [SerializeField] public Button furyButton;
-        [SerializeField] public TMP_Text   furyCooldownText;
+        [SerializeField] public TMP_Text furyCooldownText;
 
         [Header("Hint bar (shown while waiting for cell click)")]
         [SerializeField] public GameObject abilityHint;
@@ -49,7 +54,6 @@ namespace Project.Match3
         /// <summary>Fired when Fury button is clicked.</summary>
         public event Action OnFuryClicked;
 
-        private readonly Dictionary<Button, Color> _baseButtonColors = new Dictionary<Button, Color>();
         private AbilityType? _selectedAbility;
         private bool _petardBound;
         private bool _crossBound;
@@ -60,19 +64,13 @@ namespace Project.Match3
         private void Awake()
         {
             BindButtonListeners();
-            CacheButtonColor(petardButton);
-            CacheButtonColor(crossButton);
-            CacheButtonColor(squareButton);
-            CacheButtonColor(shieldButton);
-            CacheButtonColor(furyButton);
 
-            // UI requirement: abilities should use only icon sprites, no text.
-            if (petardCooldownText != null) petardCooldownText.text = string.Empty;
-            if (crossCooldownText != null) crossCooldownText.text = string.Empty;
-            if (squareCooldownText != null) squareCooldownText.text = string.Empty;
-            if (shieldCooldownText != null) shieldCooldownText.text = string.Empty;
-            if (furyCooldownText != null) furyCooldownText.text = string.Empty;
-            ApplySelectedVisuals();
+            // UI requirement: abilities use icons; old CD labels stay hidden.
+            if (petardCooldownText != null) petardCooldownText.gameObject.SetActive(false);
+            if (crossCooldownText != null) crossCooldownText.gameObject.SetActive(false);
+            if (squareCooldownText != null) squareCooldownText.gameObject.SetActive(false);
+            if (shieldCooldownText != null) shieldCooldownText.gameObject.SetActive(false);
+            if (furyCooldownText != null) furyCooldownText.gameObject.SetActive(false);
             ApplyAdaptiveButtonLayout();
         }
 
@@ -94,11 +92,7 @@ namespace Project.Match3
             int furyCost)
         {
             BindButtonListeners();
-            CacheButtonColor(petardButton);
-            CacheButtonColor(crossButton);
-            CacheButtonColor(squareButton);
-            CacheButtonColor(shieldButton);
-            CacheButtonColor(furyButton);
+
             bool active = isMyTurn && !gameEnded;
             bool petardHasMana = stats.mana >= petardCost;
             bool crossHasMana = stats.mana >= crossCost;
@@ -123,18 +117,34 @@ namespace Project.Match3
             if (shieldButton != null) shieldButton.interactable = shieldSelectable;
             if (furyButton != null) furyButton.interactable = furySelectable;
 
-            if (petardCooldownText != null) petardCooldownText.text = string.Empty;
-            if (crossCooldownText != null) crossCooldownText.text = string.Empty;
-            if (squareCooldownText != null) squareCooldownText.text = string.Empty;
-            if (shieldCooldownText != null) shieldCooldownText.text = string.Empty;
-            if (furyCooldownText != null) furyCooldownText.text = string.Empty;
+            SetCostLabel(petardButton, petardCost);
+            SetCostLabel(crossButton, crossCost);
+            SetCostLabel(squareButton, squareCost);
+            SetCostLabel(shieldButton, shieldCost);
+            SetCostLabel(furyButton, furyCost);
 
-            ApplyCooldownVisuals(petardButton, petardCooldown);
-            ApplyCooldownVisuals(crossButton, crossCooldown);
-            ApplyCooldownVisuals(squareButton, squareCooldown);
-            ApplyCooldownVisuals(shieldButton, shieldCooldown);
-            ApplyCooldownVisuals(furyButton, furyCooldown);
-            ApplySelectedVisuals();
+            bool petardDimmed = !active || petardCooldown || !petardHasMana;
+            bool crossDimmed = !active || crossCooldown || !crossHasMana;
+            bool squareDimmed = !active || squareCooldown || !squareHasMana;
+            bool shieldDimmed = !active || shieldCooldown || !shieldHasMana;
+            bool furyDimmed = !active || furyCooldown || !furyHasMana;
+
+            StripLegacyOutline(petardButton);
+            StripLegacyOutline(crossButton);
+            StripLegacyOutline(squareButton);
+            StripLegacyOutline(shieldButton);
+            StripLegacyOutline(furyButton);
+
+            ApplyAbilityIconVisual(petardButton, _selectedAbility == AbilityType.Petard, petardDimmed);
+            ApplyAbilityIconVisual(crossButton, _selectedAbility == AbilityType.Cross, crossDimmed);
+            ApplyAbilityIconVisual(squareButton, _selectedAbility == AbilityType.Square, squareDimmed);
+            ApplyAbilityIconVisual(shieldButton, _selectedAbility == AbilityType.Shield, shieldDimmed);
+            ApplyAbilityIconVisual(furyButton, _selectedAbility == AbilityType.Fury, furyDimmed);
+
+            ApplyCooldownOverlayRow(crossButton, crossCooldown, stats.crossCooldown);
+            ApplyCooldownOverlayRow(squareButton, squareCooldown, stats.squareCooldown);
+            ApplyCooldownOverlayRow(furyButton, furyCooldown, stats.furyCooldown);
+
             ApplyAdaptiveButtonLayout();
         }
 
@@ -146,15 +156,69 @@ namespace Project.Match3
         public void SetSelectedAbility(AbilityType? ability)
         {
             _selectedAbility = ability;
-            ApplySelectedVisuals();
         }
 
-        private void CacheButtonColor(Button button)
+        private static void StripLegacyOutline(Button button)
         {
-            if (button == null || button.targetGraphic == null) return;
-            var img = button.targetGraphic as Image;
+            if (button == null) return;
+            var outline = button.GetComponent<Outline>();
+            if (outline != null)
+                Destroy(outline);
+        }
+
+        private static Image GetAbilityIconImage(Button button)
+        {
+            if (button == null) return null;
+            var t = button.transform.Find("AbilityIcon");
+            return t != null ? t.GetComponent<Image>() : null;
+        }
+
+        private static void ApplyAbilityIconVisual(Button button, bool selected, bool dimmed)
+        {
+            var img = GetAbilityIconImage(button);
             if (img == null) return;
-            _baseButtonColors[button] = img.color;
+
+            var baseCol = dimmed ? AbilityDimmedIcon : Color.white;
+            img.color = selected ? Color.Lerp(baseCol, Color.white, 0.38f) : baseCol;
+        }
+
+        private static void SetCostLabel(Button button, int cost)
+        {
+            if (button == null) return;
+            var tr = button.transform.Find("AbilityCost");
+            if (tr == null) return;
+            var tmp = tr.GetComponent<TMP_Text>();
+            if (tmp != null)
+            {
+                tmp.text = cost > 0 ? cost.ToString() : string.Empty;
+                tmp.color = AbilityCostTextColor;
+            }
+        }
+
+        /// <summary>Крест / квадрат / ярость: слой блокировки и число КД (см. DuelMatch3Manager.cdBlockSprite).</summary>
+        private static void ApplyCooldownOverlayRow(Button button, bool onCooldown, int cooldownTurns)
+        {
+            if (button == null) return;
+            var blockTf = button.transform.Find("CooldownBlock");
+            var txtTf = button.transform.Find("CooldownCenterText");
+            var txt = txtTf != null ? txtTf.GetComponent<TMP_Text>() : null;
+
+            if (blockTf != null)
+            {
+                var img = blockTf.GetComponent<Image>();
+                var hasBlock = img != null && img.sprite != null;
+                var show = onCooldown && hasBlock;
+                if (img != null)
+                    img.enabled = show;
+                blockTf.gameObject.SetActive(show);
+            }
+
+            if (txt != null)
+            {
+                txt.color = CooldownCenterTextColor;
+                txt.gameObject.SetActive(onCooldown);
+                txt.text = onCooldown ? Mathf.Max(0, cooldownTurns).ToString() : string.Empty;
+            }
         }
 
         private void BindButtonListeners()
@@ -184,45 +248,6 @@ namespace Project.Match3
                 furyButton.onClick.AddListener(() => OnFuryClicked?.Invoke());
                 _furyBound = true;
             }
-        }
-
-        private void ApplySelectedVisuals()
-        {
-            ApplySelectedVisualForButton(petardButton, _selectedAbility == AbilityType.Petard);
-            ApplySelectedVisualForButton(crossButton,  _selectedAbility == AbilityType.Cross);
-            ApplySelectedVisualForButton(squareButton, _selectedAbility == AbilityType.Square);
-            ApplySelectedVisualForButton(shieldButton, _selectedAbility == AbilityType.Shield);
-            ApplySelectedVisualForButton(furyButton, _selectedAbility == AbilityType.Fury);
-        }
-
-        private void ApplySelectedVisualForButton(Button button, bool selected)
-        {
-            if (button == null || button.targetGraphic == null) return;
-            var img = button.targetGraphic as Image;
-            if (img == null) return;
-
-            if (!_baseButtonColors.TryGetValue(button, out var baseColor))
-                baseColor = img.color;
-
-            img.color = selected
-                ? Color.Lerp(baseColor, Color.white, 0.35f)
-                : baseColor;
-        }
-
-        private static void ApplyCooldownVisuals(Button button, bool cooldownActive)
-        {
-            if (button == null) return;
-
-            var outline = button.GetComponent<Outline>();
-            if (outline == null) outline = button.gameObject.AddComponent<Outline>();
-            outline.effectColor = cooldownActive ? new Color(1f, 0.18f, 0.18f, 0.95f) : new Color(0f, 0f, 0f, 0f);
-            outline.effectDistance = new Vector2(2f, -2f);
-
-            var icon = button.transform.Find("AbilityIcon");
-            if (icon == null) return;
-            var iconImage = icon.GetComponent<Image>();
-            if (iconImage == null) return;
-            iconImage.color = cooldownActive ? new Color(0.45f, 0.45f, 0.45f, 1f) : Color.white;
         }
 
         private void ApplyAdaptiveButtonLayout()
