@@ -109,7 +109,7 @@ public static class Match3PrefabCreator
         var crossGo = MakeBtn(root.transform, "CrossBtn", "", new Color(0.28f, 0.14f, 0.48f));
         Anchor(crossGo.GetComponent<RectTransform>(), V2(0.05f, 0.40f), V2(0.50f, 0.80f));
         ap.crossButton = crossGo.GetComponent<Button>();
-        MakeTxt(crossGo.transform, "Icon", "✝ Крест\n5×5", 12, Color.white);
+        MakeTxt(crossGo.transform, "Icon", "Крест\n5×5", 12, Color.white);
         Anchor(crossGo.transform.Find("Icon").GetComponent<RectTransform>(), V2(0.05f, 0.5f), V2(0.95f, 1f));
         ap.crossCooldownText = MakeTxt(crossGo.transform, "Cd", "20 мп", 11, new Color(0.9f, 0.85f, 0.5f));
         Anchor(ap.crossCooldownText.GetComponent<RectTransform>(), V2(0.05f, 0f), V2(0.95f, 0.48f));
@@ -118,7 +118,7 @@ public static class Match3PrefabCreator
         var squareGo = MakeBtn(root.transform, "SquareBtn", "", new Color(0.14f, 0.25f, 0.48f));
         Anchor(squareGo.GetComponent<RectTransform>(), V2(0.52f, 0.40f), V2(0.97f, 0.80f));
         ap.squareButton = squareGo.GetComponent<Button>();
-        MakeTxt(squareGo.transform, "Icon", "□ Кв-т\n3×3", 12, Color.white);
+        MakeTxt(squareGo.transform, "Icon", "Кв-т\n3×3", 12, Color.white);
         Anchor(squareGo.transform.Find("Icon").GetComponent<RectTransform>(), V2(0.05f, 0.5f), V2(0.95f, 1f));
         ap.squareCooldownText = MakeTxt(squareGo.transform, "Cd", "20 мп", 11, new Color(0.9f, 0.85f, 0.5f));
         Anchor(ap.squareCooldownText.GetComponent<RectTransform>(), V2(0.05f, 0f), V2(0.95f, 0.48f));
@@ -156,23 +156,27 @@ public static class Match3PrefabCreator
         var frame = MakeImg(root.transform, "Frame", new Color(0.38f, 0.32f, 0.18f));
         Stretch(frame.GetComponent<RectTransform>());
 
-        // Inner background
+        // Inner background (inset from Frame — must match Match3BoardView.BgInsetFromFrame)
+        const float bgInset = 18f;
         var bg = MakeImg(frame.transform, "Bg", new Color(0.17f, 0.15f, 0.11f));
-        Anchor(bg.GetComponent<RectTransform>(), V2(0.025f, 0.015f), V2(0.975f, 0.985f));
+        var bgRt = bg.GetComponent<RectTransform>();
+        bgRt.anchorMin = Vector2.zero;
+        bgRt.anchorMax = Vector2.one;
+        bgRt.offsetMin = new Vector2(bgInset, bgInset);
+        bgRt.offsetMax = new Vector2(-bgInset, -bgInset);
 
-        // Grid container (cells will be created at runtime via Build())
+        // Grid container (cells will be created at runtime via Build()) — fills Bg
         const int cells  = Match3BoardLogic.Size;
         const int cellPx = 74;
         const int gapPx  = 4;
-        int total = cells * cellPx + (cells - 1) * gapPx; // 464
 
         var gridGo = new GameObject("CellContainer");
         var gridRt = gridGo.AddComponent<RectTransform>();
         gridRt.SetParent(bg.transform, false);
-        gridRt.anchorMin = new Vector2(0.5f, 0.5f);
-        gridRt.anchorMax = new Vector2(0.5f, 0.5f);
-        gridRt.pivot     = new Vector2(0.5f, 0.5f);
-        gridRt.sizeDelta = new Vector2(total, total);
+        gridRt.anchorMin = Vector2.zero;
+        gridRt.anchorMax = Vector2.one;
+        gridRt.offsetMin = Vector2.zero;
+        gridRt.offsetMax = Vector2.zero;
 
         var glg = gridGo.AddComponent<GridLayoutGroup>();
         glg.cellSize        = new Vector2(cellPx, cellPx);

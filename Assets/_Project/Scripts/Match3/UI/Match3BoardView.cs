@@ -55,6 +55,9 @@ namespace Project.Match3
         private RectTransform[,] _iconRt;
         private Text[,]  _lbl;  // piece symbol
         private Image _inactiveOverlay;
+        /// <summary>Insets <c>Bg</c> inside <c>Frame</c>. <see cref="cellContainer"/> fills <c>Bg</c> with no extra padding.</summary>
+        private const float BgInsetFromFrame = 18f;
+
         private GameObject _centerAnnouncementRoot;
         private Text _centerAnnouncementText;
         private Coroutine _centerAnnouncementRoutine;
@@ -79,6 +82,8 @@ namespace Project.Match3
                 Debug.LogError("[Match3BoardView] cellContainer is not assigned.");
                 return;
             }
+
+            ApplyFrameLayoutIfPresent();
 
             TryLoadBallsAtlas();
 
@@ -209,6 +214,46 @@ namespace Project.Match3
 
             EnsureInactiveOverlay();
             EnsureCenterAnnouncement();
+        }
+
+        /// <summary>
+        /// When the prefab has <c>Frame</c> → <c>Bg</c> → <c>CellContainer</c>: <c>Bg</c> is inset from <c>Frame</c> by
+        /// <see cref="BgInsetFromFrame"/>; <c>CellContainer</c> stretches to fill <c>Bg</c> with zero padding.
+        /// </summary>
+        private void ApplyFrameLayoutIfPresent()
+        {
+            var frame = transform.Find("Frame") as RectTransform;
+            if (frame == null) return;
+
+            var inset = new Vector2(BgInsetFromFrame, BgInsetFromFrame);
+            var nInset = new Vector2(-BgInsetFromFrame, -BgInsetFromFrame);
+
+            var bgTr = frame.Find("Bg") as RectTransform;
+            if (bgTr != null)
+            {
+                bgTr.anchorMin = Vector2.zero;
+                bgTr.anchorMax = Vector2.one;
+                bgTr.offsetMin = inset;
+                bgTr.offsetMax = nInset;
+            }
+
+            var cellRt = cellContainer as RectTransform;
+            if (cellRt == null) return;
+
+            if (bgTr != null && cellRt.IsChildOf(bgTr))
+            {
+                cellRt.anchorMin = Vector2.zero;
+                cellRt.anchorMax = Vector2.one;
+                cellRt.offsetMin = Vector2.zero;
+                cellRt.offsetMax = Vector2.zero;
+            }
+            else if (cellRt.parent == frame)
+            {
+                cellRt.anchorMin = Vector2.zero;
+                cellRt.anchorMax = Vector2.one;
+                cellRt.offsetMin = inset;
+                cellRt.offsetMax = nInset;
+            }
         }
 
         public Texture2D GetBallsAtlasTexture()
@@ -683,19 +728,73 @@ namespace Project.Match3
 
         private void EnsureInactiveOverlay()
         {
-            if (_inactiveOverlay != null) return;
+            if (_inactiveOverlay == null)
+            {
+                var existing = transform.Find("InactiveOverlay");
+                if (existing == null)
+                {
+                    var frameTr = transform.Find("Frame");
+                    if (frameTr != null)
+                    {
+                        var bgTr = frameTr.Find("Bg");
+                        if (bgTr != null) existing = bgTr.Find("InactiveOverlay");
+                        if (existing == null) existing = frameTr.Find("InactiveOverlay");
+                    }
+                }
 
-            var go = new GameObject("InactiveOverlay");
-            var rt = go.AddComponent<RectTransform>();
-            rt.SetParent(transform, false);
+                if (existing != null)
+                    _inactiveOverlay = existing.GetComponent<Image>();
+            }
+
+            if (_inactiveOverlay == null)
+            {
+                var go = new GameObject("InactiveOverlay");
+                var rt = go.AddComponent<RectTransform>();
+                _inactiveOverlay = go.AddComponent<Image>();
+                _inactiveOverlay.color = new Color(0f, 0f, 0f, 0.42f);
+                _inactiveOverlay.raycastTarget = false;
+                go.SetActive(false);
+            }
+
+            ApplyInactiveOverlayLayout();
+        }
+
+        private void ApplyInactiveOverlayLayout()
+        {
+            if (_inactiveOverlay == null) return;
+            var rt = _inactiveOverlay.rectTransform;
+            var frame = transform.Find("Frame") as RectTransform;
+            var bgTr = frame != null ? frame.Find("Bg") as RectTransform : null;
+
+            if (frame == null)
+            {
+                rt.SetParent(transform, false);
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                rt.SetAsLastSibling();
+                return;
+            }
+
+            if (bgTr != null)
+            {
+                rt.SetParent(bgTr, false);
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                rt.SetAsLastSibling();
+                return;
+            }
+
+            var inset = new Vector2(BgInsetFromFrame, BgInsetFromFrame);
+            var nInset = new Vector2(-BgInsetFromFrame, -BgInsetFromFrame);
+            rt.SetParent(frame, false);
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
-
-            _inactiveOverlay = go.AddComponent<Image>();
-            _inactiveOverlay.color = new Color(0f, 0f, 0f, 0.42f);
-            _inactiveOverlay.raycastTarget = false;
-            go.SetActive(false);
+            rt.offsetMin = inset;
+            rt.offsetMax = nInset;
+            rt.SetAsLastSibling();
         }
 
         private void EnsureCenterAnnouncement()

@@ -24,10 +24,11 @@ namespace Project.Match3
     /// SETUP (one-time):
     ///  1. Create scene "DuelMatch3" (empty).
     ///  2. Add empty GameObject → attach this component.
-    ///  3. Run Tools → Match3 → Создать префабы UI  (creates prefabs).
-    ///  4. Assign prefabs in the Inspector (all optional — falls back to
-    ///     procedural generation if any are left null).
-    ///  5. Add scene to Build Settings.
+    ///  3. Run Tools → Match3 → Создать префабы UI (creates prefabs in Assets/_Project/Prefabs/Match3).
+    ///  4. Assign prefabs on DuelMatch3Manager (optional — procedural fallback if null).
+    ///  5. Run Tools → Match3 → Собрать UI в сцене DuelMatch3 — builds the same hierarchy in the
+    ///     scene for edit-time layout; at play mode it is detected and wired (no duplicate Canvas).
+    ///  6. Add scene to Build Settings.
     ///
     /// NETWORK ARCHITECTURE (client-authoritative relay):
     ///  • Nakama acts as a relay only — no server-side game logic needed.
@@ -2780,59 +2781,198 @@ namespace Project.Match3
 
         private void BuildUI()
         {
-            // Canvas
-            var cvGo = new GameObject("Canvas");
-            cvGo.transform.SetParent(transform);
-            var canvas = cvGo.AddComponent<Canvas>();
-            // Needed for world-rendered VFX (ParticleSystem) to appear above UI.
-            // ScreenSpaceOverlay ignores camera rendering, so particles won't be visible.
             EnsureCamera();
+            if (TryBindPrebuiltSceneCanvas(out var root))
+            {
+                CompleteUiSetupAfterPanelsReady(root);
+                return;
+            }
+
+            var staleCanvas = transform.Find("Canvas");
+            if (staleCanvas != null)
+                Destroy(staleCanvas.gameObject);
+
+            BuildUiRuntimeProcedural();
+        }
+
+        /// <summary>
+        /// Binds references when the scene already contains Canvas with LeftCol / BoardCol / RightCol
+        /// (e.g. built via Tools → Match3 → Собрать UI в сцене DuelMatch3).
+        /// </summary>
+        private bool TryBindPrebuiltSceneCanvas(out Transform root)
+        {
+            root = null;
+            var canvasTr = transform.Find("Canvas");
+            if (canvasTr == null) return false;
+
+            var canvas = canvasTr.GetComponent<Canvas>();
+            if (canvas == null) return false;
+
+            var leftCol = canvasTr.Find("LeftCol");
+            var boardCol = canvasTr.Find("BoardCol");
+            var rightCol = canvasTr.Find("RightCol");
+            if (leftCol == null || boardCol == null || rightCol == null) return false;
+
+            _myPanel = leftCol.GetComponentInChildren<Match3PlayerPanel>(true);
+            _abilityPanel = leftCol.GetComponentInChildren<Match3AbilityPanel>(true);
+            _hud = boardCol.GetComponentInChildren<Match3GameHUD>(true);
+            _boardView = boardCol.GetComponentInChildren<Match3BoardView>(true);
+            _opPanel = rightCol.GetComponentInChildren<Match3PlayerPanel>(true);
+            _searchingPanel = canvasTr.GetComponentInChildren<Match3SearchingPanel>(true);
+            _gameOverPanel = canvasTr.GetComponentInChildren<Match3GameOverPanel>(true);
+
+            if (_myPanel == null || _abilityPanel == null || _hud == null || _boardView == null ||
+                _opPanel == null || _searchingPanel == null || _gameOverPanel == null)
+                return false;
+
+            root = canvasTr;
+            ApplyCanvasRuntimeSettings(canvasTr.gameObject);
+            EnsureEventSystemForUi();
+            return true;
+        }
+
+        private static void ApplyCanvasRuntimeSettings(GameObject canvasGo)
+        {
+            var canvas = canvasGo.GetComponent<Canvas>();
+            // ScreenSpaceCamera: world VFX (particles) stay visible above UI.
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = Camera.main;
             canvas.planeDistance = 10f;
-            var scaler = cvGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
-            scaler.matchWidthOrHeight  = 0.5f;
-            cvGo.AddComponent<GraphicRaycaster>();
 
-            if (FindFirstObjectByType<EventSystem>() == null)
-            {
-                var esGo = new GameObject("EventSystem");
-                esGo.AddComponent<EventSystem>();
+            var scaler = canvasGo.GetComponent<CanvasScaler>();
+            if (scaler == null) scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280, 720);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            if (canvasGo.GetComponent<GraphicRaycaster>() == null)
+                canvasGo.AddComponent<GraphicRaycaster>();
+        }
+
+        private void EnsureEventSystemForUi()
+        {
+            if (FindFirstObjectByType<EventSystem>() != null) return;
+            var esGo = new GameObject("EventSystem");
+            esGo.AddComponent<EventSystem>();
 #if ENABLE_INPUT_SYSTEM
-                esGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            esGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
 #else
-                esGo.AddComponent<StandaloneInputModule>();
+            esGo.AddComponent<StandaloneInputModule>();
 #endif
+        }
+
+        private bool TryBindPveSelectorFromHierarchy(Transform canvasRoot)
+        {
+            var pve = canvasRoot.Find("PveSelector");
+            if (pve == null) return false;
+            var card = pve.Find("Card");
+            if (card == null) return false;
+
+            _pveSelectorRoot = pve.gameObject;
+            _pveBotTitleText = card.Find("BossName")?.GetComponent<TMP_Text>();
+            _pveBotStatsText = card.Find("BossStats")?.GetComponent<TMP_Text>();
+            _pvePrevButton = card.Find("PrevBoss")?.GetComponent<Button>();
+            _pveNextButton = card.Find("NextBoss")?.GetComponent<Button>();
+            _pveStartButton = card.Find("StartBoss")?.GetComponent<Button>();
+
+            var toast = card.Find("ErrorToast");
+            if (toast != null)
+            {
+                _pveErrorToastCanvasGroup = toast.GetComponent<CanvasGroup>();
+                _pveErrorToastText = toast.Find("Text")?.GetComponent<TMP_Text>();
             }
 
-            var root = cvGo.transform;
+            if (_pveBotTitleText == null || _pveBotStatsText == null ||
+                _pvePrevButton == null || _pveNextButton == null || _pveStartButton == null)
+                return false;
 
-            MakeImg(root, "Bg", new Color(0.08f, 0.08f, 0.15f), V2(0, 0), V2(1, 1));
+            _pvePrevButton.onClick.RemoveAllListeners();
+            _pveNextButton.onClick.RemoveAllListeners();
+            _pveStartButton.onClick.RemoveAllListeners();
+            _pvePrevButton.onClick.AddListener(SelectPrevPveBot);
+            _pveNextButton.onClick.AddListener(SelectNextPveBot);
+            _pveStartButton.onClick.AddListener(StartSelectedPveBot);
+            return true;
+        }
 
-            // ── Left panel (my player + ability panel) ────────────────────────────
-            var leftTr = MakePanel(root, "LeftCol", Color.clear, V2(0f, 0f), V2(0.26f, 1f));
-            _myPanel = BuildOrInstantiate(myPanelPrefab, leftTr, V2(0f, 0.27f), V2(1f, 1f));
-            if (_myPanel == null) _myPanel = BuildPlayerPanelProcedural(leftTr, isLeft: true);
+        private void WireQuitButton(Transform canvasRoot)
+        {
+            var quitTr = canvasRoot.Find("QuitBtn");
+            if (quitTr == null) return;
+            var btn = quitTr.GetComponent<Button>();
+            if (btn == null) return;
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(QuitToMenu);
+        }
+
+        private void ReturnFromGameOver()
+        {
+            SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+        }
+
+        private void CompleteUiSetupAfterPanelsReady(Transform root)
+        {
             EnsureCombatWidgets(_myPanel);
-
-            _abilityPanel = BuildOrInstantiate(abilityPanelPrefab, leftTr, V2(0f, 0f), V2(1f, 0.26f));
-            if (_abilityPanel == null) _abilityPanel = BuildAbilityPanelProcedural(leftTr);
-
             TryAutoAssignAbilitySpritesInEditor();
             TryAutoAssignRewardSpritesInEditor();
             EnsureRewardSpritesAssigned();
             TryAutoAssignUiPrefabsInEditor();
             EnsureDamagePopupWidgets(_myPanel);
             ConfigureAbilityButtonsVisuals();
+
             _abilityPanel.OnPetardClicked += OnPetardClicked;
-            _abilityPanel.OnCrossClicked  += OnCrossClicked;
+            _abilityPanel.OnCrossClicked += OnCrossClicked;
             _abilityPanel.OnSquareClicked += OnSquareClicked;
             _abilityPanel.OnShieldClicked += OnShieldClicked;
-            _abilityPanel.OnFuryClicked   += OnFuryClicked;
+            _abilityPanel.OnFuryClicked += OnFuryClicked;
 
-            // ── Board area ────────────────────────────────────────────────────────
+            _boardView.CellClicked += OnCellClicked;
+            _boardView.CellSwiped += OnCellSwiped;
+            _boardView.Build();
+
+            EnsureCombatWidgets(_opPanel);
+            EnsureDamagePopupWidgets(_opPanel);
+
+            WireQuitButton(root);
+
+            _searchingPanel.OnCancelClicked -= QuitToMenu;
+            _searchingPanel.OnCancelClicked += QuitToMenu;
+
+            _gameOverPanel.OnBackClicked -= ReturnFromGameOver;
+            _gameOverPanel.OnBackClicked += ReturnFromGameOver;
+
+            EnsureGameOverRewardRowsUI();
+            _gameOverPanel.Hide();
+
+            if (_isSoloBotMode)
+            {
+                if (!TryBindPveSelectorFromHierarchy(root))
+                    BuildPveSelector(root);
+                ShowPveSelector(false);
+            }
+        }
+
+        private void BuildUiRuntimeProcedural()
+        {
+            var cvGo = new GameObject("Canvas");
+            cvGo.transform.SetParent(transform);
+            cvGo.AddComponent<Canvas>();
+            EnsureCamera();
+            ApplyCanvasRuntimeSettings(cvGo);
+
+            EnsureEventSystemForUi();
+
+            var root = cvGo.transform;
+
+            MakeImg(root, "Bg", new Color(0.08f, 0.08f, 0.15f), V2(0, 0), V2(1, 1));
+
+            var leftTr = MakePanel(root, "LeftCol", Color.clear, V2(0f, 0f), V2(0.26f, 1f));
+            _myPanel = BuildOrInstantiate(myPanelPrefab, leftTr, V2(0f, 0.27f), V2(1f, 1f));
+            if (_myPanel == null) _myPanel = BuildPlayerPanelProcedural(leftTr, isLeft: true);
+
+            _abilityPanel = BuildOrInstantiate(abilityPanelPrefab, leftTr, V2(0f, 0f), V2(1f, 0.26f));
+            if (_abilityPanel == null) _abilityPanel = BuildAbilityPanelProcedural(leftTr);
+
             var boardColTr = MakePanel(root, "BoardCol", Color.clear, V2(0.26f, 0f), V2(0.74f, 1f));
 
             _hud = BuildOrInstantiate(hudPrefab, boardColTr, V2(0.02f, 0.90f), V2(0.98f, 0.99f));
@@ -2841,39 +2981,21 @@ namespace Project.Match3
             _boardView = BuildOrInstantiate(boardViewPrefab, boardColTr, V2(0.04f, 0.04f), V2(0.96f, 0.89f));
             if (_boardView == null) _boardView = BuildBoardProcedural(boardColTr);
 
-            _boardView.CellClicked += OnCellClicked;
-            _boardView.CellSwiped += OnCellSwiped;
-            _boardView.Build();
-
-            // ── Right panel (opponent) ────────────────────────────────────────────
             var rightTr = MakePanel(root, "RightCol", Color.clear, V2(0.74f, 0f), V2(1f, 1f));
             _opPanel = BuildOrInstantiate(opPanelPrefab, rightTr, V2(0f, 0.27f), V2(1f, 1f));
             if (_opPanel == null) _opPanel = BuildPlayerPanelProcedural(rightTr, isLeft: false);
-            EnsureCombatWidgets(_opPanel);
-            EnsureDamagePopupWidgets(_opPanel);
 
-            // ── Quit button ───────────────────────────────────────────────────────
-            var quitBtn = MakeButton(root, "QuitBtn", "← Выйти",
+            MakeButton(root, "QuitBtn", "← Выйти",
                 new Color(0.42f, 0.12f, 0.12f), Color.white,
                 V2(0.75f, 0f), V2(1f, 0.07f));
-            quitBtn.onClick.AddListener(QuitToMenu);
 
-            // ── Overlays ──────────────────────────────────────────────────────────
             _searchingPanel = BuildOrInstantiate(searchingPanelPrefab, root, V2(0f, 0f), V2(1f, 1f));
             if (_searchingPanel == null) _searchingPanel = BuildSearchingPanelProcedural(root);
-            _searchingPanel.OnCancelClicked += QuitToMenu;
 
             _gameOverPanel = BuildOrInstantiate(gameOverPanelPrefab, root, V2(0.22f, 0.24f), V2(0.78f, 0.76f));
             if (_gameOverPanel == null) _gameOverPanel = BuildGameOverPanelProcedural(root);
-            _gameOverPanel.OnBackClicked += () => SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
-            EnsureGameOverRewardRowsUI();
-            _gameOverPanel.Hide();
 
-            if (_isSoloBotMode)
-            {
-                BuildPveSelector(root);
-                ShowPveSelector(false);
-            }
+            CompleteUiSetupAfterPanelsReady(root);
         }
 
         // ─── Generic helper: instantiate prefab or return null ────────────────────
