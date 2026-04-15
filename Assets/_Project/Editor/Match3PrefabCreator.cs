@@ -91,6 +91,23 @@ public static class Match3PrefabCreator
         panel.manaFill = MakeBar(root.transform, "MpBar",
             new Color(0.14f, 0.35f, 0.82f), V2(0.05f, 0.42f), V2(0.95f, 0.47f));
 
+        // Combat stats (same layout as DuelMatch3Manager.BuildCombatStatsFrame — editable in scene/prefab)
+        var combatFrame = MakePanel(root.transform, "CombatStatsFrame", new Color(0.07f, 0.08f, 0.15f, 0.72f),
+            V2(0.05f, 0.20f), V2(0.95f, 0.40f));
+        var csOutline = combatFrame.gameObject.GetComponent<Outline>();
+        if (csOutline == null) csOutline = combatFrame.gameObject.AddComponent<Outline>();
+        csOutline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
+        csOutline.effectDistance = new Vector2(1f, -1f);
+
+        panel.combatStatsText = MakeTxt(combatFrame, "CombatStatsText",
+            "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white);
+        Anchor(panel.combatStatsText.GetComponent<RectTransform>(), V2(0.06f, 0.10f), V2(0.94f, 0.92f));
+        panel.combatStatsText.alignment = TextAlignmentOptions.TopLeft;
+
+        panel.buffStateText = MakeTxt(combatFrame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f));
+        Anchor(panel.buffStateText.GetComponent<RectTransform>(), V2(0.45f, 0.76f), V2(0.95f, 0.98f));
+        panel.buffStateText.alignment = TextAlignmentOptions.Right;
+
         Save(root, "Match3PlayerPanel");
     }
 
@@ -152,11 +169,14 @@ public static class Match3PrefabCreator
             AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/img/border.png");
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        // Decorative frame
+        // Decorative frame (square: height drives width — same as Match3BoardView.ApplyFrameLayoutIfPresent)
         var frame = MakeImg(root.transform, "Frame", new Color(0.38f, 0.32f, 0.18f));
         Stretch(frame.GetComponent<RectTransform>());
+        var arf = frame.AddComponent<AspectRatioFitter>();
+        arf.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
+        arf.aspectRatio = 1f;
 
-        // Inner background (inset from Frame — must match Match3BoardView.BgInsetFromFrame)
+        // Inner background (inset from Frame — must match Match3BoardView.bgInsetFromFrame defaults)
         const float bgInset = 18f;
         var bg = MakeImg(frame.transform, "Bg", new Color(0.17f, 0.15f, 0.11f));
         var bgRt = bg.GetComponent<RectTransform>();
@@ -340,6 +360,13 @@ public static class Match3PrefabCreator
         rt.SetParent(parent, false);
         go.AddComponent<Image>().color = color;
         return go;
+    }
+
+    private static RectTransform MakePanel(Transform parent, string name, Color color, Vector2 aMin, Vector2 aMax)
+    {
+        var go = MakeImg(parent, name, color);
+        Anchor(go.GetComponent<RectTransform>(), aMin, aMax);
+        return go.GetComponent<RectTransform>();
     }
 
     private static TMP_Text MakeTxt(Transform parent, string name, string text,

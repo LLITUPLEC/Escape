@@ -35,7 +35,7 @@ public static class Match3DuelSceneUiBuilder
 
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
-        var manager = Object.FindFirstObjectByType<DuelMatch3Manager>();
+        var manager = UnityEngine.Object.FindFirstObjectByType<DuelMatch3Manager>();
         if (manager == null)
         {
             Debug.LogError("[Match3] DuelMatch3Manager не найден в сцене DuelMatch3.");
@@ -47,7 +47,7 @@ public static class Match3DuelSceneUiBuilder
         var mgrTr = manager.transform;
         var oldCanvas = mgrTr.Find("Canvas");
         if (oldCanvas != null)
-            Object.DestroyImmediate(oldCanvas.gameObject);
+            UnityEngine.Object.DestroyImmediate(oldCanvas.gameObject);
 
         var so = new SerializedObject(manager);
         var myPf = so.FindProperty("myPanelPrefab").objectReferenceValue as Match3PlayerPanel;
@@ -70,7 +70,7 @@ public static class Match3DuelSceneUiBuilder
             if (tagged != null) mainCam = tagged.GetComponent<Camera>();
         }
         if (mainCam == null)
-            mainCam = Object.FindFirstObjectByType<Camera>();
+            mainCam = UnityEngine.Object.FindFirstObjectByType<Camera>();
         canvas.worldCamera = mainCam;
 
         var scaler = cvGo.AddComponent<CanvasScaler>();
@@ -93,6 +93,8 @@ public static class Match3DuelSceneUiBuilder
 
         var rightTr = MakePanel(root, "RightCol", Color.clear, V2(0.74f, 0f), V2(1f, 1f));
         InstantiateOrFail(opPf, rightTr, V2(0f, 0.27f), V2(1f, 1f), "Match3PlayerPanel (op)");
+
+        EnsureCombatStatsFramesOnPlayerPanels(root);
 
         MakeButton(root, "QuitBtn", "← Выйти",
             new Color(0.42f, 0.12f, 0.12f), Color.white,
@@ -117,7 +119,7 @@ public static class Match3DuelSceneUiBuilder
     private static void EnsureDefaultPrefabsOnManager(DuelMatch3Manager manager)
     {
         var so = new SerializedObject(manager);
-        void Set<T>(string propName, string path) where T : Object
+        void Set<T>(string propName, string path) where T : UnityEngine.Object
         {
             var p = so.FindProperty(propName);
             if (p == null) return;
@@ -134,6 +136,42 @@ public static class Match3DuelSceneUiBuilder
         Set<Match3SearchingPanel>("searchingPanelPrefab", $"{PrefabDir}/Match3SearchingPanel.prefab");
         Set<Match3GameOverPanel>("gameOverPanelPrefab", $"{PrefabDir}/Match3GameOverPanel.prefab");
         so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// «Собрать UI» подставляет префабы как есть — если в Match3PlayerPanel.prefab ещё нет блока боевой статистики,
+    /// добавляем тот же узел, что и <see cref="DuelMatch3Manager.BuildCombatStatsFrame"/>, и прописываем ссылки в инспекторе.
+    /// </summary>
+    private static void EnsureCombatStatsFramesOnPlayerPanels(Transform canvasRoot)
+    {
+        foreach (var panel in canvasRoot.GetComponentsInChildren<Match3PlayerPanel>(true))
+        {
+            if (panel.transform.Find("CombatStatsFrame") != null)
+                continue;
+
+            var frame = MakePanel(panel.transform, "CombatStatsFrame", new Color(0.07f, 0.08f, 0.15f, 0.72f),
+                V2(0.05f, 0.20f), V2(0.95f, 0.40f));
+            var outline = frame.gameObject.GetComponent<Outline>();
+            if (outline == null) outline = frame.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
+            outline.effectDistance = new Vector2(1f, -1f);
+
+            var csText = MakeTxt(frame, "CombatStatsText",
+                "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
+            csText.alignment = TextAlignmentOptions.TopLeft;
+
+            var buffText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f),
+                V2(0.45f, 0.76f), V2(0.95f, 0.98f));
+            buffText.alignment = TextAlignmentOptions.Right;
+
+            var so = new SerializedObject(panel);
+            var pCs = so.FindProperty("combatStatsText");
+            var pBf = so.FindProperty("buffStateText");
+            if (pCs != null) pCs.objectReferenceValue = csText;
+            if (pBf != null) pBf.objectReferenceValue = buffText;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(panel);
+        }
     }
 
     /// <summary>Handles <c>Name</c> and <c>Name (Clone)</c> after <see cref="PrefabUtility.InstantiatePrefab"/>.</summary>
@@ -178,7 +216,7 @@ public static class Match3DuelSceneUiBuilder
 
     private static void EnsureEventSystemInScene()
     {
-        if (Object.FindFirstObjectByType<EventSystem>() != null) return;
+        if (UnityEngine.Object.FindFirstObjectByType<EventSystem>() != null) return;
         var esGo = new GameObject("EventSystem");
         esGo.AddComponent<EventSystem>();
 #if ENABLE_INPUT_SYSTEM

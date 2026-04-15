@@ -13,8 +13,10 @@ namespace Project.Match3
     /// <see cref="cellContainer"/>. The 36 cell GameObjects are created at runtime
     /// by <see cref="Build"/>, so you can freely adjust GridLayoutGroup settings
     /// (cell size, spacing, colours) in the prefab without touching code.
+    /// At runtime, cell size is scaled so the 6×6 grid fills <see cref="cellContainer"/>; <see cref="ApplyFrameLayoutIfPresent"/>
+    /// also keeps <c>Frame</c> square (height drives width).
     /// </summary>
-    public sealed class Match3BoardView : MonoBehaviour
+    public sealed class Match3BoardView : UIBehaviour
     {
         [Header("Container with GridLayoutGroup")]
         [SerializeField] public Transform cellContainer;
@@ -27,6 +29,13 @@ namespace Project.Match3
 
         [Header("VFX (optional)")]
         [SerializeField] private Project.Match3.UI.Match3ClearBurstFx clearBurstFx;
+
+        [Header("Frame / Bg layout")]
+        [Tooltip("Отступы Bg внутри Frame: Left, Right, Top, Bottom (как в Rect Transform).")]
+        [SerializeField] private RectOffset bgInsetFromFrame;
+
+        [Header("Cell grid border (GridBorder RawImage)")]
+        [SerializeField] private Color gridBorderColor = new Color(1f, 1f, 1f, 0.20f);
 
         [Header("VFX Colors (optional overrides)")]
         [SerializeField] private Color vfxGemRedColor = new Color(0.90f, 0.18f, 0.18f);
@@ -55,9 +64,6 @@ namespace Project.Match3
         private RectTransform[,] _iconRt;
         private Text[,]  _lbl;  // piece symbol
         private Image _inactiveOverlay;
-        /// <summary>Insets <c>Bg</c> inside <c>Frame</c>. <see cref="cellContainer"/> fills <c>Bg</c> with no extra padding.</summary>
-        private const float BgInsetFromFrame = 18f;
-
         private GameObject _centerAnnouncementRoot;
         private Text _centerAnnouncementText;
         private Coroutine _centerAnnouncementRoutine;
@@ -68,6 +74,27 @@ namespace Project.Match3
         public event Action<int, int> CellClicked;
         /// <summary>Fired when the player swipes from one cell to adjacent cell.</summary>
         public event Action<int, int, int, int> CellSwiped;
+
+        private void Awake()
+        {
+            EnsureBgInsetFromFrameDefaults();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            EnsureBgInsetFromFrameDefaults();
+        }
+#endif
+
+        /// <summary>
+        /// <see cref="RectOffset"/> нельзя создавать в инициализаторе поля MonoBehaviour — см. Script Serialization.
+        /// </summary>
+        private void EnsureBgInsetFromFrameDefaults()
+        {
+            if (bgInsetFromFrame != null) return;
+            bgInsetFromFrame = new RectOffset(18, 18, 18, 18);
+        }
 
         // ─── Build ────────────────────────────────────────────────────────────────
 
@@ -106,6 +133,9 @@ namespace Project.Match3
                 glgExisting.constraintCount = Size;
                 glgExisting.spacing = new Vector2(-1, -1);
             }
+
+            Canvas.ForceUpdateCanvases();
+            RefreshGridCellSizeToFillContainer();
 
             _bg  = new Image[Size, Size];
             _sel = new Image[Size, Size];
@@ -154,7 +184,7 @@ namespace Project.Match3
                 gridRt.offsetMin = gridRt.offsetMax = Vector2.zero;
                 var gridImg = gridGo.AddComponent<RawImage>();
                 gridImg.texture = GetGridBorderTexture();
-                gridImg.color = new Color(1f, 1f, 1f, 0.20f);
+                gridImg.color = gridBorderColor;
                 gridImg.raycastTarget = false;
 
                 // ── Piece icon sprite ──────────────────────────────────────────────
@@ -218,15 +248,20 @@ namespace Project.Match3
 
         /// <summary>
         /// When the prefab has <c>Frame</c> → <c>Bg</c> → <c>CellContainer</c>: <c>Bg</c> is inset from <c>Frame</c> by
-        /// <see cref="BgInsetFromFrame"/>; <c>CellContainer</c> stretches to fill <c>Bg</c> with zero padding.
+        /// <see cref="bgInsetFromFrame"/>; <c>CellContainer</c> stretches to fill <c>Bg</c> with zero padding.
         /// </summary>
         private void ApplyFrameLayoutIfPresent()
         {
             var frame = transform.Find("Frame") as RectTransform;
             if (frame == null) return;
 
-            var inset = new Vector2(BgInsetFromFrame, BgInsetFromFrame);
-            var nInset = new Vector2(-BgInsetFromFrame, -BgInsetFromFrame);
+            var arf = frame.GetComponent<AspectRatioFitter>();
+            if (arf == null)
+                arf = frame.gameObject.AddComponent<AspectRatioFitter>();
+            arf.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
+            arf.aspectRatio = 1f;
+
+            GetBgInsetVectors(out var inset, out var nInset);
 
             var bgTr = frame.Find("Bg") as RectTransform;
             if (bgTr != null)
@@ -254,6 +289,50 @@ namespace Project.Match3
                 cellRt.offsetMin = inset;
                 cellRt.offsetMax = nInset;
             }
+        }
+
+        private void GetBgInsetVectors(out Vector2 offsetMin, out Vector2 offsetMax)
+        {
+            EnsureBgInsetFromFrameDefaults();
+            offsetMin = new Vector2(bgInsetFromFrame.left, bgInsetFromFrame.bottom);
+            offsetMax = new Vector2(-bgInsetFromFrame.right, -bgInsetFromFrame.top);
+        }
+
+        /// <summary>
+        /// Fits <see cref="GridLayoutGroup.cellSize"/> so 6×6 cells fill the container; otherwise fixed 74px cells leave empty space when the rect is wider/taller.
+        /// </summary>
+        private void RefreshGridCellSizeToFillContainer()
+        {
+            if (cellContainer == null) return;
+            var glg = cellContainer.GetComponent<GridLayoutGroup>();
+            var rt = cellContainer as RectTransform;
+            if (glg == null || rt == null) return;
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+
+            var rect = rt.rect;
+            if (rect.width < 2f || rect.height < 2f) return;
+
+            var pad = glg.padding;
+            float innerW = rect.width - pad.left - pad.right;
+            float innerH = rect.height - pad.top - pad.bottom;
+            float sx = glg.spacing.x;
+            float sy = glg.spacing.y;
+            float cellW = (innerW - sx * (Size - 1)) / Size;
+            float cellH = (innerH - sy * (Size - 1)) / Size;
+            float cell = Mathf.Floor(Mathf.Min(cellW, cellH));
+            if (cell < 1f) cell = 1f;
+            glg.cellSize = new Vector2(cell, cell);
+        }
+
+        protected override void OnRectTransformDimensionsChange()
+        {
+            base.OnRectTransformDimensionsChange();
+            if (_bg == null) return;
+            RefreshGridCellSizeToFillContainer();
+            var rt = cellContainer as RectTransform;
+            if (rt != null)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
         }
 
         public Texture2D GetBallsAtlasTexture()
@@ -787,8 +866,7 @@ namespace Project.Match3
                 return;
             }
 
-            var inset = new Vector2(BgInsetFromFrame, BgInsetFromFrame);
-            var nInset = new Vector2(-BgInsetFromFrame, -BgInsetFromFrame);
+            GetBgInsetVectors(out var inset, out var nInset);
             rt.SetParent(frame, false);
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
