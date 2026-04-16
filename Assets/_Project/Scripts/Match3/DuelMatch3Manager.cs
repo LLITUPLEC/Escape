@@ -176,6 +176,9 @@ namespace Project.Match3
         private float _turnTimer;
         /// <summary>Абсолютный дедлайн текущего хода (UTC ms). Приходит из BoardSync; иначе локальная оценка.</summary>
         private long _turnEndsAtUnixMs;
+        /// <summary>Смещение клиентских UTC ms относительно сервера (serverNow - clientNow), задаётся из BoardSync.</summary>
+        private long _serverClockOffsetMs;
+        private bool _hasServerClockSample;
         private bool _localTurnTimeoutDispatched;
         private bool  _gameEnded;
         private Coroutine _remoteSyncRoutine;
@@ -206,6 +209,8 @@ namespace Project.Match3
         private string _preferredSoloDifficulty;
         private bool _autoStartPreferredSolo;
         private string _activePveAffix = string.Empty;
+        /// <summary>Локальная симуляция: суммарный «плоский» урон за один resolve (бомбы + урон способности), один DealDamage в конце — как на сервере.</summary>
+        private int _localActionOutgoingFlat;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -320,12 +325,14 @@ namespace Project.Match3
 
         private static long UtcNowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+        private long AlignedUtcNowMsForHud() => _hasServerClockSample ? UtcNowMs() + _serverClockOffsetMs : UtcNowMs();
+
         private float GetTurnDurationSeconds() => HasAffix("scree") ? TurnDuration / 3f : TurnDuration;
 
         private float GetRemainingTurnSecondsForHud()
         {
             if (_turnEndsAtUnixMs > 0)
-                return Mathf.Max(0f, (_turnEndsAtUnixMs - UtcNowMs()) / 1000f);
+                return Mathf.Max(0f, (_turnEndsAtUnixMs - AlignedUtcNowMsForHud()) / 1000f);
             // turnEndsAtUnixMs == 0: сервер ждёт OP 17 или локальный бот — не считать как «время вышло».
             if (_hasInitialBoardSync)
                 return 999f;
@@ -369,6 +376,11 @@ namespace Project.Match3
         {
             if (msg == null) return;
             _localTurnTimeoutDispatched = false;
+            if (msg.serverNowUnixMs > 1_000_000_000_000L)
+            {
+                _serverClockOffsetMs = msg.serverNowUnixMs - UtcNowMs();
+                _hasServerClockSample = true;
+            }
             if (msg.turnEndsAtUnixMs > 0)
                 _turnEndsAtUnixMs = msg.turnEndsAtUnixMs;
             else
@@ -624,6 +636,8 @@ namespace Project.Match3
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—", -1f);
             _turnEndsAtUnixMs = 0;
+            _serverClockOffsetMs = 0;
+            _hasServerClockSample = false;
             _turnTimer = 0f;
             _localTurnTimeoutDispatched = false;
             _hud?.SetTimerPhase(false);
@@ -1807,6 +1821,7 @@ namespace Project.Match3
                 if (!board.TrySwap(req.fromX, req.fromY, req.toX, req.toY, out var initialMatches))
                     return false;
 
+                _localActionOutgoingFlat = 0;
                 if (initialMatches != null && initialMatches.Count > 0)
                 {
                     extraTurn = ApplyMatchEffects(board, actorStats, oppStats, initialMatches, extraTurn);
@@ -1815,6 +1830,7 @@ namespace Project.Match3
                 }
 
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
+                FlushLocalOutgoingDamage(board, actorStats, oppStats);
                 return true;
             }
 
@@ -1846,11 +1862,13 @@ namespace Project.Match3
                     return true;
                 }
 
+                _localActionOutgoingFlat = 0;
                 ApplyAbilityRewards(board, req.actionType, req.cx, req.cy, actorStats, oppStats);
                 var ability = req.actionType == 2 ? AbilityType.Cross : AbilityType.Square;
                 board.ApplyAbility(ability, req.cx, req.cy);
                 msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
+                FlushLocalOutgoingDamage(board, actorStats, oppStats);
                 return true;
             }
 
@@ -1884,8 +1902,7 @@ namespace Project.Match3
                 }
                 else if (match.type == PieceType.Skull)
                 {
-                    var crit = DealDamage(board, actorStats, oppStats, SkullDamage * match.count);
-                    if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
+                    _localActionOutgoingFlat += SkullDamage * match.count;
                 }
                 else if (match.type == PieceType.Ankh)
                 {
@@ -1928,10 +1945,16 @@ namespace Project.Match3
             if (pendingHeal > 0)
                 actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
 
-            {
-                var crit = DealDamage(board, actorStats, oppStats, AbilityBaseDamage + SkullDamage * skulls);
-                if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
-            }
+            _localActionOutgoingFlat += AbilityBaseDamage + SkullDamage * skulls;
+        }
+
+        private void FlushLocalOutgoingDamage(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats)
+        {
+            if (_localActionOutgoingFlat <= 0) return;
+            var flat = _localActionOutgoingFlat;
+            _localActionOutgoingFlat = 0;
+            var crit = DealDamage(board, actorStats, oppStats, flat);
+            if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
         }
 
         private List<(int x, int y)> CollectAbilityCells(int actionType, int cx, int cy)
@@ -2315,6 +2338,8 @@ namespace Project.Match3
                     dmg *= 2;
                     critTriggered = true;
                 }
+                if (HasAffix("bare_current"))
+                    dmg *= 2;
             }
             return dmg;
         }

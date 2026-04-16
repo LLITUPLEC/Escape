@@ -777,7 +777,6 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
 
   local healed = false
   local pending_heal = 0
-  local crit_triggered = false
 
   for _, m in ipairs(matches) do
     if m.count >= 5 then extra_turn = true end
@@ -794,10 +793,11 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
       if affix == "energy_block" then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * m.count
       else
-        if deal_damage(state, state.board, actor, opp, CFG.SKULL_DAMAGE * m.count) then crit_triggered = true end
+        -- Весь урон от черепов за ход (все каскады) + база персонажа — один бросок в конце resolve_action.
+        state._action_damage_flat = (state._action_damage_flat or 0) + CFG.SKULL_DAMAGE * m.count
       end
       if affix == "monster_rage" and actor_id == state.bot_user_id then
-        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * m.count
+        state._monster_rage_bombs_action = (state._monster_rage_bombs_action or 0) + m.count
       end
     elseif m.type == 5 then
       healed = true
@@ -814,7 +814,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
   end
 
-  return extra_turn, crit_triggered
+  return extra_turn
 end
 
 local function other_player_id(state, uid)
@@ -839,13 +839,14 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     return out
   end
 
+  local server_now_unix_ms = math.floor(os.time() * 1000)
   local turn_ends_at_unix_ms = 0
   if state.turn_deadline_paused then
     turn_ends_at_unix_ms = 0
   elseif state.started and not state.ended and tick ~= nil and state.turn_deadline_tick ~= nil then
     local rem_ticks = math.max(0, (state.turn_deadline_tick or 0) - tick)
     local rem_ms = math.floor((rem_ticks * 1000) / CFG.TICK_RATE)
-    turn_ends_at_unix_ms = math.floor(os.time() * 1000) + rem_ms
+    turn_ends_at_unix_ms = server_now_unix_ms + rem_ms
   end
 
   return {
@@ -887,6 +888,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bFuryBonus = 0,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
+    serverNowUnixMs = server_now_unix_ms,
     turnEndsAtUnixMs = turn_ends_at_unix_ms,
     actionType = action and action.actionType or 0,
     fromX = action and action.fromX or -1,
@@ -1148,16 +1150,18 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
   end
 
-  local crit = deal_damage(state, state.board, actor, opp, CFG.ABILITY_BASE_DAMAGE + CFG.SKULL_DAMAGE * skulls)
-  -- monster_rage: apply +3 damage per bomb *after* this ability's damage (matches swap/cascade order in apply_match_effects).
+  -- Урон от способности + бомбы в зоне — в общий пул на ход; один deal_damage в конце resolve_action.
+  state._action_damage_flat = (state._action_damage_flat or 0) + CFG.ABILITY_BASE_DAMAGE + CFG.SKULL_DAMAGE * skulls
   if affix == "monster_rage" and actor_id == state.bot_user_id and monster_rage_bombs > 0 then
-    actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * monster_rage_bombs
+    state._monster_rage_bombs_action = (state._monster_rage_bombs_action or 0) + monster_rage_bombs
   end
-  return crit
+  return false
 end
 
 local function resolve_action(state, action, actor_id, opponent_id)
   state.last_crit = false
+  state._action_damage_flat = 0
+  state._monster_rage_bombs_action = 0
   local initial_matches = {}
   local anim_steps = {}
   local keep_turn = false
@@ -1194,9 +1198,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local extra_turn = false
 
   if #initial_matches > 0 then
-    local et, crit = apply_match_effects(state, actor_id, opponent_id, initial_matches, extra_turn)
-    extra_turn = et
-    if crit then crit_triggered = true end
+    extra_turn = apply_match_effects(state, actor_id, opponent_id, initial_matches, extra_turn)
     clear_matches(state.board, initial_matches)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
   end
@@ -1205,11 +1207,23 @@ local function resolve_action(state, action, actor_id, opponent_id)
     local cascade = apply_gravity_and_refill(state)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 2)
     if #cascade == 0 then break end
-    local et, crit = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
-    extra_turn = et
-    if crit then crit_triggered = true end
+    extra_turn = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
     clear_matches(state.board, cascade)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
+  end
+
+  -- Один расчёт урона за ход: сумма бомб (все каскады) + урон способности (если был); base_damage персонажа и крит — в roll_outgoing_damage.
+  if (state._action_damage_flat or 0) > 0 then
+    if deal_damage(state, state.board, state.stats[actor_id], state.stats[opponent_id], state._action_damage_flat) then
+      crit_triggered = true
+    end
+  end
+  state._action_damage_flat = 0
+  local mrb = state._monster_rage_bombs_action or 0
+  state._monster_rage_bombs_action = 0
+  if has_affix(state, "monster_rage") and actor_id == state.bot_user_id and mrb > 0 then
+    local actor = state.stats[actor_id]
+    actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * mrb
   end
 
   state.last_crit = crit_triggered

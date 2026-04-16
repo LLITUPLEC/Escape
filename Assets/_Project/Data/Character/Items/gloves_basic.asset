@@ -22,4 +22,4 @@ MonoBehaviour:
   damage: 0
   armor: 0
   healing: 3
-  critChance: 0.4
+  critChance: 0.3

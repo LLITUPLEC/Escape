@@ -80,6 +80,9 @@ namespace Project.Match3
         /// <summary>Unix time in milliseconds when the current turn must end (server clock + remaining tick budget).</summary>
         public long turnEndsAtUnixMs;
 
+        /// <summary>Метка времени сервера (UTC ms) на момент формирования синка; для выравнивания клиентских часов с сервером при отображении таймера.</summary>
+        public long serverNowUnixMs;
+
         // Animation metadata for remote client replay.
         // actionType: 0 = none, 1 = swap, 2 = cross, 3 = square, 4 = petard, 5 = shield, 6 = fury
         public int actionType;
