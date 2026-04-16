@@ -28,6 +28,16 @@ namespace Project.Match3
         private Coroutine _extraTurnRoutine;
         private Canvas _affixTooltipCanvas;
 
+        private float _timerFontSizeBase = 26f;
+        private Color _timerNeutralColor = Color.white;
+
+        private static readonly Color TimerGreen = new Color(0.22f, 0.88f, 0.42f, 1f);
+        private static readonly Color TimerOrange = new Color(1f, 0.52f, 0.12f, 1f);
+        private static readonly Color TimerOrangeDeep = new Color(1f, 0.34f, 0.10f, 1f);
+        private static readonly Color TimerRed = new Color(0.93f, 0.16f, 0.14f, 1f);
+
+        private const float TimerStressScaleMax = 2.12f;
+
         private void Awake()
         {
             ResolveReferences();
@@ -51,6 +61,15 @@ namespace Project.Match3
 
             affixIconText ??= transform.Find("AffixIconText")?.GetComponent<TMP_Text>();
             affixEffectText ??= transform.Find("AffixEffectText")?.GetComponent<TMP_Text>();
+
+            CacheTimerStyleBaseline();
+        }
+
+        private void CacheTimerStyleBaseline()
+        {
+            if (timerText == null) return;
+            _timerFontSizeBase = timerText.fontSize;
+            _timerNeutralColor = timerText.color;
         }
 
         private void EnsureExtraTurnText()
@@ -342,9 +361,57 @@ namespace Project.Match3
             if (turnText != null) turnText.text = text;
         }
 
-        public void SetTimer(string text)
+        /// <param name="remainingSeconds">
+        /// Секунды до конца хода для градиента и лёгкого увеличения шрифта; &lt; 0 — нейтральный цвет/размер (пусто, «—», нет дедлайна).
+        /// </param>
+        public void SetTimer(string text, float remainingSeconds = -1f)
         {
-            if (timerText != null) timerText.text = text;
+            if (timerText == null) return;
+            timerText.text = text;
+            ApplyTimerCountdownStyle(text, remainingSeconds);
+        }
+
+        private void ApplyTimerCountdownStyle(string text, float remainingSeconds)
+        {
+            if (timerText == null) return;
+
+            var neutral = string.IsNullOrEmpty(text) || text == "—" || remainingSeconds < 0f;
+            if (neutral)
+            {
+                timerText.color = _timerNeutralColor;
+                timerText.fontSize = _timerFontSizeBase;
+                return;
+            }
+
+            var t = Mathf.Max(0f, remainingSeconds);
+            Color c;
+            if (t >= 30f)
+                c = TimerGreen;
+            else if (t >= 20f)
+            {
+                var k = (t - 20f) / 10f;
+                c = Color.Lerp(TimerOrange, TimerGreen, k);
+            }
+            else if (t >= 10f)
+            {
+                var k = (t - 10f) / 10f;
+                c = Color.Lerp(TimerOrangeDeep, TimerOrange, k);
+            }
+            else
+            {
+                var k = t / 10f;
+                c = Color.Lerp(TimerRed, TimerOrangeDeep, k);
+            }
+
+            timerText.color = c;
+
+            if (t < 10f)
+            {
+                var sizeMul = Mathf.Lerp(TimerStressScaleMax, 1f, t / 10f);
+                timerText.fontSize = _timerFontSizeBase * sizeMul;
+            }
+            else
+                timerText.fontSize = _timerFontSizeBase;
         }
 
         /// <param name="isMoveResolving">true — идёт откат чужого/своего хода (каскады); false — идёт отсчёт времени на решение.</param>

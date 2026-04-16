@@ -1858,6 +1858,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8726095122123289093, guid: 5da0d6ee65137e849893eaed3e8f19be, type: 3}
+      propertyPath: m_fontStyle
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8726095122123289093, guid: 5da0d6ee65137e849893eaed3e8f19be, type: 3}
       propertyPath: m_HorizontalAlignment
       value: 2
       objectReference: {fileID: 0}

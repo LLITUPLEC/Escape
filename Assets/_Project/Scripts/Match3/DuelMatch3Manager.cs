@@ -346,7 +346,7 @@ namespace Project.Match3
                 var resolvingPending = _remoteSyncRoutine != null || (_isMyTurn && _inputBlocked);
                 _hud?.SetTimerPhase(resolvingPending);
                 // Пусто вместо «—»: иначе при каждой смене хода на кадр мелькает чёрточка до прихода дедлайна.
-                _hud?.SetTimer(string.Empty);
+                _hud?.SetTimer(string.Empty, -1f);
                 return;
             }
 
@@ -354,7 +354,7 @@ namespace Project.Match3
             _hud?.SetTimerPhase(resolving);
 
             var rem = GetRemainingTurnSecondsForHud();
-            _hud?.SetTimer(Mathf.CeilToInt(rem).ToString());
+            _hud?.SetTimer(Mathf.CeilToInt(rem).ToString(), rem);
 
             if (!_isMyTurn || _inputBlocked || _remoteSyncRoutine != null) return;
             if (rem > 0.05f) _localTurnTimeoutDispatched = false;
@@ -622,7 +622,7 @@ namespace Project.Match3
             RefreshStatsUI();
             _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
             _hud?.SetTurn("Ожидание синхронизации…");
-            _hud?.SetTimer("—");
+            _hud?.SetTimer("—", -1f);
             _turnEndsAtUnixMs = 0;
             _turnTimer = 0f;
             _localTurnTimeoutDispatched = false;
