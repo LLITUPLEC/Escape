@@ -1161,12 +1161,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.Match3PlayerPanel
   avatarImage: {fileID: 4399422336022986943}
   avatarPlaceholderText: {fileID: 9063368039186436887}
+  avatarLevelText: {fileID: 0}
   nameText: {fileID: 4978373582855507758}
   hpFill: {fileID: 1786546526346399219}
   hpText: {fileID: 1756999007917363860}
   manaFill: {fileID: 984008196416118817}
   manaText: {fileID: 9130109650550645610}
-  combatStatsText: {fileID: 0}
+  combatStatsName: {fileID: 0}
+  combatStatsValue: {fileID: 0}
   buffStateText: {fileID: 0}
   damagePopupAnchor: {fileID: 0}
   damagePopup: {fileID: 0}

@@ -32,9 +32,7 @@ namespace Project.Match3
         {
             ResolveReferences();
             EnsureExtraTurnText();
-            EnsureTimerPhaseText();
             EnsureAffixUi();
-            CenterTimerText();
         }
 
         private void ResolveReferences()
@@ -53,27 +51,6 @@ namespace Project.Match3
 
             affixIconText ??= transform.Find("AffixIconText")?.GetComponent<TMP_Text>();
             affixEffectText ??= transform.Find("AffixEffectText")?.GetComponent<TMP_Text>();
-        }
-
-        private void EnsureTimerPhaseText()
-        {
-            if (timerPhaseText != null) return;
-            if (timerText == null) return;
-
-            var go = new GameObject("TimerPhaseText");
-            var rt = go.AddComponent<RectTransform>();
-            rt.SetParent(timerText.transform.parent, false);
-            rt.anchorMin = new Vector2(0.56f, 0f);
-            rt.anchorMax = new Vector2(0.70f, 0.42f);
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
-
-            timerPhaseText = go.AddComponent<TextMeshProUGUI>();
-            timerPhaseText.font = TMP_Settings.defaultFontAsset;
-            timerPhaseText.fontSize = 14;
-            timerPhaseText.alignment = TextAlignmentOptions.Right;
-            timerPhaseText.color = new Color(0.75f, 0.78f, 0.9f, 0.92f);
-            timerPhaseText.text = string.Empty;
-            timerPhaseText.raycastTarget = false;
         }
 
         private void EnsureExtraTurnText()
@@ -358,14 +335,6 @@ namespace Project.Match3
                 }
                 affixTooltipCloseButton.transform.SetAsLastSibling();
             }
-        }
-
-        private void CenterTimerText()
-        {
-            if (timerText == null) return;
-            var rt = timerText.rectTransform;
-            rt.offsetMin = new Vector2(-317f, rt.offsetMin.y);
-            rt.offsetMax = new Vector2(-317f, rt.offsetMax.y);
         }
 
         public void SetTurn(string text)

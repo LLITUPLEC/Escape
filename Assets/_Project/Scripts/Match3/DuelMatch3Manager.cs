@@ -122,6 +122,8 @@ namespace Project.Match3
         private const string RewardKeyIconPath = "Assets/_Project/img/resources_hud/key.png";
         private const string RewardBlueprintIconPath = "Assets/_Project/img/resources_hud/blueprint.png";
         private const string RewardTesseractIconPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        /// <summary>Resources.Load без расширения: Assets/_Project/Resources/UI/Match3GameHUD.prefab</summary>
+        private const string Match3HudResourcesPath = "UI/Match3GameHUD";
         private const int MaxRewardCellsPerLine = 4;
         private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
         private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
@@ -236,6 +238,7 @@ namespace Project.Match3
         private Coroutine _pveErrorToastRoutine;
         private List<PveBotInfo> _pveBots = new();
         private int _selectedPveBotIndex;
+        private int _activePveBotFloor = 1;
         private PveProgressInfo _pveProgress;
         private const float CheatRowsHoldSeconds = 3f;
 
@@ -484,6 +487,7 @@ namespace Project.Match3
         {
             var safeBotId = string.IsNullOrWhiteSpace(botId) ? DefaultPveBotId : botId;
             var bot = _pveBots != null ? _pveBots.Find(x => x != null && x.id == safeBotId) : null;
+            _activePveBotFloor = bot != null ? Mathf.Max(1, bot.floor) : 1;
             var payload = JsonUtility.ToJson(new PveCreateRpcRequest
             {
                 bot_id = safeBotId,
@@ -2174,7 +2178,22 @@ namespace Project.Match3
         {
             _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, MaxMana);
             _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, MaxMana);
+            RefreshAvatarLevelUI();
             RefreshCombatStatsUI();
+        }
+
+        private void RefreshAvatarLevelUI()
+        {
+            if (_myPanel != null)
+            {
+                var lv = _pveProgress != null ? Mathf.Max(1, _pveProgress.level) : -1;
+                _myPanel.UpdateAvatarLevel(lv);
+            }
+            if (_opPanel != null)
+            {
+                var lv = _isSoloBotMode ? _activePveBotFloor : -1;
+                _opPanel.UpdateAvatarLevel(lv);
+            }
         }
 
         private void RefreshCombatStatsUI()
@@ -2420,7 +2439,45 @@ namespace Project.Match3
 #if UNITY_EDITOR
             if (damagePopupPrefab == null)
                 damagePopupPrefab = AssetDatabase.LoadAssetAtPath<DamagePopupView>("Assets/_Project/Prefabs/UI/DamagePopup.prefab");
+            if (hudPrefab == null)
+                hudPrefab = AssetDatabase.LoadAssetAtPath<Match3GameHUD>("Assets/_Project/Resources/UI/Match3GameHUD.prefab");
 #endif
+        }
+
+        /// <summary>
+        /// Если в инспекторе не назначен префаб HUD — подставляем из Resources (сборки без ссылки на ассет).
+        /// </summary>
+        private void EnsureHudPrefabLoaded()
+        {
+            if (hudPrefab != null) return;
+            hudPrefab = Resources.Load<Match3GameHUD>(Match3HudResourcesPath);
+        }
+
+        /// <summary>
+        /// HUD из сцены под BoardCol: сначала прямой дочерний Match3GameHUD, иначе первый с именем Match3GameHUD.
+        /// </summary>
+        private static Match3GameHUD ResolveMatch3GameHudFromBoardCol(Transform boardCol)
+        {
+            if (boardCol == null) return null;
+
+            var direct = boardCol.Find("Match3GameHUD");
+            if (direct != null)
+            {
+                var h = direct.GetComponent<Match3GameHUD>();
+                if (h != null) return h;
+            }
+
+            var all = boardCol.GetComponentsInChildren<Match3GameHUD>(true);
+            if (all == null || all.Length == 0) return null;
+            if (all.Length == 1) return all[0];
+
+            foreach (var a in all)
+            {
+                if (a != null && string.Equals(a.gameObject.name, "Match3GameHUD", StringComparison.Ordinal))
+                    return a;
+            }
+
+            return all[0];
         }
 
         private void ConfigureAbilityButtonsVisuals()
@@ -2782,6 +2839,7 @@ namespace Project.Match3
         private void BuildUI()
         {
             EnsureCamera();
+            EnsureHudPrefabLoaded();
             if (TryBindPrebuiltSceneCanvas(out var root))
             {
                 CompleteUiSetupAfterPanelsReady(root);
@@ -2815,7 +2873,7 @@ namespace Project.Match3
 
             _myPanel = leftCol.GetComponentInChildren<Match3PlayerPanel>(true);
             _abilityPanel = leftCol.GetComponentInChildren<Match3AbilityPanel>(true);
-            _hud = boardCol.GetComponentInChildren<Match3GameHUD>(true);
+            _hud = ResolveMatch3GameHudFromBoardCol(boardCol);
             _boardView = boardCol.GetComponentInChildren<Match3BoardView>(true);
             _opPanel = rightCol.GetComponentInChildren<Match3PlayerPanel>(true);
             _searchingPanel = canvasTr.GetComponentInChildren<Match3SearchingPanel>(true);
@@ -2975,6 +3033,7 @@ namespace Project.Match3
 
             var boardColTr = MakePanel(root, "BoardCol", Color.clear, V2(0.26f, 0f), V2(0.74f, 1f));
 
+            EnsureHudPrefabLoaded();
             _hud = BuildOrInstantiate(hudPrefab, boardColTr, V2(0.02f, 0.90f), V2(0.98f, 0.99f));
             if (_hud == null) _hud = BuildHUDProcedural(boardColTr);
 
@@ -3026,11 +3085,14 @@ namespace Project.Match3
             var avatar = MakeImg(bg, "Avatar", new Color(0.22f, 0.22f, 0.33f), V2(0.1f, 0.67f), V2(0.9f, 0.96f));
             var txt = MakeTxt(avatar, "T", "?", 52, new Color(0.5f, 0.5f, 0.6f), V2(0, 0), V2(1, 1));
             txt.alignment = TextAlignmentOptions.Center;
+            var lvlTxt = MakeTxt(avatar, "lvl", "1", 16, Color.white, V2(0.72f, 0.04f), V2(0.98f, 0.28f));
+            lvlTxt.alignment = TextAlignmentOptions.Center;
 
             var go = bg.gameObject;
             var panel = go.AddComponent<Match3PlayerPanel>();
             panel.avatarImage = avatar.GetComponent<Image>();
             panel.avatarPlaceholderText = txt;
+            panel.avatarLevelText = lvlTxt;
 
             panel.nameText = MakeTxt(bg, "NameText", isLeft ? "Вы" : "Соперник", 17,
                 Color.white, V2(0.05f, 0.62f), V2(0.95f, 0.67f));
@@ -3059,9 +3121,12 @@ namespace Project.Match3
             outline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
             outline.effectDistance = new Vector2(1f, -1f);
 
-            panel.combatStatsText = MakeTxt(frame, "CombatStatsText",
-                "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
-            panel.combatStatsText.alignment = TextAlignmentOptions.TopLeft;
+            panel.combatStatsName = MakeTxt(frame, "CombatStatsName",
+                "Урон:\nБроня:\nЛечение:\nКрит:", 18, Color.white, V2(0.06f, 0.10f), V2(0.50f, 0.92f));
+            panel.combatStatsName.alignment = TextAlignmentOptions.TopLeft;
+            panel.combatStatsValue = MakeTxt(frame, "CombatStatsValue",
+                "0\n0\n0\n0%", 18, Color.white, V2(0.52f, 0.10f), V2(0.94f, 0.92f));
+            panel.combatStatsValue.alignment = TextAlignmentOptions.TopRight;
 
             panel.buffStateText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f), V2(0.45f, 0.76f), V2(0.95f, 0.98f));
             panel.buffStateText.alignment = TextAlignmentOptions.Right;
@@ -3070,20 +3135,23 @@ namespace Project.Match3
         private static void EnsureCombatWidgets(Match3PlayerPanel panel)
         {
             if (panel == null) return;
-            if (panel.combatStatsText != null && panel.buffStateText != null) return;
+            if (panel.combatStatsName != null && panel.buffStateText != null) return;
             var root = panel.transform as RectTransform;
             if (root == null) return;
 
             var existing = root.Find("CombatStatsFrame") as RectTransform;
             if (existing != null)
             {
-                if (panel.combatStatsText == null)
-                    panel.combatStatsText = existing.Find("CombatStatsText")?.GetComponent<TMP_Text>();
+                if (panel.combatStatsName == null)
+                    panel.combatStatsName = existing.Find("CombatStatsName")?.GetComponent<TMP_Text>()
+                        ?? existing.Find("CombatStatsText")?.GetComponent<TMP_Text>();
+                if (panel.combatStatsValue == null)
+                    panel.combatStatsValue = existing.Find("CombatStatsValue")?.GetComponent<TMP_Text>();
                 if (panel.buffStateText == null)
                     panel.buffStateText = existing.Find("BuffStateText")?.GetComponent<TMP_Text>();
             }
 
-            if (panel.combatStatsText == null || panel.buffStateText == null)
+            if (panel.combatStatsName == null || panel.buffStateText == null)
                 BuildCombatStatsFrame(panel, root, V2(0.05f, 0.20f), V2(0.95f, 0.40f));
         }
 
@@ -3127,13 +3195,16 @@ namespace Project.Match3
         private void EnsureDamagePopupWidgets(Match3PlayerPanel panel)
         {
             if (panel == null) return;
+
+            // Сначала сцена/префаб панели: DamagePopup уже лежит под Avatar — не дублировать.
+            panel.ResolveDamagePopupFromHierarchy();
             if (panel.damagePopupAnchor != null && panel.damagePopup != null) return;
             if (panel.avatarImage == null) return;
 
             var avatarRt = panel.avatarImage.rectTransform;
             if (avatarRt == null) return;
 
-            var anchor = avatarRt.Find("DamagePopupAnchor") as RectTransform;
+            var anchor = panel.damagePopupAnchor ?? avatarRt.Find("DamagePopupAnchor") as RectTransform;
             if (anchor == null)
             {
                 var go = new GameObject("DamagePopupAnchor");

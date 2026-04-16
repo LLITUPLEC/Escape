@@ -70,6 +70,11 @@ public static class Match3PrefabCreator
         Stretch(avatarTxt.GetComponent<RectTransform>());
         panel.avatarPlaceholderText = avatarTxt;
 
+        var lvlTxt = MakeTxt(avatarGo.transform, "lvl", "1", 16, Color.white);
+        Anchor(lvlTxt.GetComponent<RectTransform>(), V2(0.72f, 0.04f), V2(0.98f, 0.28f));
+        lvlTxt.alignment = TextAlignmentOptions.Center;
+        panel.avatarLevelText = lvlTxt;
+
         // Name
         panel.nameText = MakeTxt(root.transform, "NameText", "Игрок", 17, Color.white);
         Anchor(panel.nameText.GetComponent<RectTransform>(), V2(0.05f, 0.62f), V2(0.95f, 0.67f));
@@ -99,10 +104,14 @@ public static class Match3PrefabCreator
         csOutline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
         csOutline.effectDistance = new Vector2(1f, -1f);
 
-        panel.combatStatsText = MakeTxt(combatFrame, "CombatStatsText",
-            "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white);
-        Anchor(panel.combatStatsText.GetComponent<RectTransform>(), V2(0.06f, 0.10f), V2(0.94f, 0.92f));
-        panel.combatStatsText.alignment = TextAlignmentOptions.TopLeft;
+        panel.combatStatsName = MakeTxt(combatFrame, "CombatStatsName",
+            "Урон:\nБроня:\nЛечение:\nКрит:", 18, Color.white);
+        Anchor(panel.combatStatsName.GetComponent<RectTransform>(), V2(0.06f, 0.10f), V2(0.50f, 0.92f));
+        panel.combatStatsName.alignment = TextAlignmentOptions.TopLeft;
+
+        panel.combatStatsValue = MakeTxt(combatFrame, "CombatStatsValue", "0\n0\n0\n0%", 18, Color.white);
+        Anchor(panel.combatStatsValue.GetComponent<RectTransform>(), V2(0.52f, 0.10f), V2(0.94f, 0.92f));
+        panel.combatStatsValue.alignment = TextAlignmentOptions.TopRight;
 
         panel.buffStateText = MakeTxt(combatFrame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f));
         Anchor(panel.buffStateText.GetComponent<RectTransform>(), V2(0.45f, 0.76f), V2(0.95f, 0.98f));

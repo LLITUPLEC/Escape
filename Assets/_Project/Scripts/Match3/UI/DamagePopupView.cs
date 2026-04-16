@@ -41,12 +41,7 @@ namespace Project.Match3
                 valueText.overflowMode = TMPro.TextOverflowModes.Overflow;
                 valueText.textWrappingMode = TextWrappingModes.NoWrap;
             }
-            if (_rt != null)
-            {
-                var w = Mathf.Max(_rt.sizeDelta.x, 280f);
-                var h = Mathf.Max(_rt.sizeDelta.y, 120f);
-                _rt.sizeDelta = new Vector2(w, h);
-            }
+            // Размеры/якоря оставляем как в префабе/сцене (раньше min 280×120 ломал вёрстку).
             _baseScale = transform.localScale;
             if (_rt != null) _baseAnchoredPos = _rt.anchoredPosition;
             HideImmediate();

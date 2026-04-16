@@ -497,12 +497,14 @@ function turn_seconds_for_state(state)
   return CFG.TURN_SECONDS
 end
 
-local function apply_turn_end_affix_effects(state, actor_id, opponent_id)
+-- extra_turn: true — после хода игрок получил доп. ход за 5+ в ряд (не считается отдельным «ходом» для stone_skin).
+local function apply_turn_end_affix_effects(state, actor_id, opponent_id, extra_turn)
   if state == nil or state.mode ~= "pve" then return end
   if actor_id == nil or actor_id == "" then return end
   local actor = state.stats and state.stats[actor_id] or nil
   local opponent = state.stats and state.stats[opponent_id] or nil
   if actor == nil then return end
+  extra_turn = extra_turn == true
 
   local affix = current_affix_id(state)
 
@@ -518,10 +520,13 @@ local function apply_turn_end_affix_effects(state, actor_id, opponent_id)
     actor.hp = math.min(max_hp, (actor.hp or max_hp) + gain)
   end
 
+  -- Каменная кожа: +15 брони каждый 3-й полноценный ход бота (без учёта доп. хода за 5+ камней).
   if affix == "stone_skin" and actor_id == state.bot_user_id then
-    state.affix_bot_turns = (tonumber(state.affix_bot_turns) or 0) + 1
-    if (state.affix_bot_turns % 3) == 0 then
-      actor.base_armor = math.max(0, tonumber(actor.base_armor) or 0) + 15
+    if not extra_turn then
+      state.affix_bot_turns = (tonumber(state.affix_bot_turns) or 0) + 1
+      if (state.affix_bot_turns % 3) == 0 then
+        actor.base_armor = math.max(0, tonumber(actor.base_armor) or 0) + 15
+      end
     end
   end
 
@@ -944,7 +949,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   local action_type = action and tonumber(action.actionType) or 0
 
   if not keep_turn and actor ~= nil and opponent ~= nil then
-    apply_turn_end_affix_effects(state, actor, opponent)
+    apply_turn_end_affix_effects(state, actor, opponent, extra_turn == true)
   end
 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then

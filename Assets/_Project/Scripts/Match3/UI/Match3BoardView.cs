@@ -75,14 +75,16 @@ namespace Project.Match3
         /// <summary>Fired when the player swipes from one cell to adjacent cell.</summary>
         public event Action<int, int, int, int> CellSwiped;
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             EnsureBgInsetFromFrameDefaults();
         }
 
 #if UNITY_EDITOR
-        private void OnValidate()
+        protected override void OnValidate()
         {
+            base.OnValidate();
             EnsureBgInsetFromFrameDefaults();
         }
 #endif

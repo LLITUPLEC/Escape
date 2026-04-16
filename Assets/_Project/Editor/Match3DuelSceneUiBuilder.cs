@@ -132,7 +132,7 @@ public static class Match3DuelSceneUiBuilder
         Set<Match3PlayerPanel>("opPanelPrefab", $"{PrefabDir}/Match3PlayerPanel.prefab");
         Set<Match3AbilityPanel>("abilityPanelPrefab", $"{PrefabDir}/Match3AbilityPanel.prefab");
         Set<Match3BoardView>("boardViewPrefab", $"{PrefabDir}/Match3BoardView.prefab");
-        Set<Match3GameHUD>("hudPrefab", $"{PrefabDir}/Match3GameHUD.prefab");
+        Set<Match3GameHUD>("hudPrefab", "Assets/_Project/Resources/UI/Match3GameHUD.prefab");
         Set<Match3SearchingPanel>("searchingPanelPrefab", $"{PrefabDir}/Match3SearchingPanel.prefab");
         Set<Match3GameOverPanel>("gameOverPanelPrefab", $"{PrefabDir}/Match3GameOverPanel.prefab");
         so.ApplyModifiedPropertiesWithoutUndo();
@@ -156,18 +156,23 @@ public static class Match3DuelSceneUiBuilder
             outline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.35f);
             outline.effectDistance = new Vector2(1f, -1f);
 
-            var csText = MakeTxt(frame, "CombatStatsText",
-                "Урон:   0\nБроня:  0\nЛечение: 0\nКрит:   0%", 18, Color.white, V2(0.06f, 0.10f), V2(0.94f, 0.92f));
-            csText.alignment = TextAlignmentOptions.TopLeft;
+            var csName = MakeTxt(frame, "CombatStatsName",
+                "Урон:\nБроня:\nЛечение:\nКрит:", 18, Color.white, V2(0.06f, 0.10f), V2(0.50f, 0.92f));
+            csName.alignment = TextAlignmentOptions.TopLeft;
+
+            var csVal = MakeTxt(frame, "CombatStatsValue", "0\n0\n0\n0%", 18, Color.white, V2(0.52f, 0.10f), V2(0.94f, 0.92f));
+            csVal.alignment = TextAlignmentOptions.TopRight;
 
             var buffText = MakeTxt(frame, "BuffStateText", string.Empty, 11, new Color(0.62f, 0.86f, 1f),
                 V2(0.45f, 0.76f), V2(0.95f, 0.98f));
             buffText.alignment = TextAlignmentOptions.Right;
 
             var so = new SerializedObject(panel);
-            var pCs = so.FindProperty("combatStatsText");
+            var pCsN = so.FindProperty("combatStatsName");
+            var pCsV = so.FindProperty("combatStatsValue");
             var pBf = so.FindProperty("buffStateText");
-            if (pCs != null) pCs.objectReferenceValue = csText;
+            if (pCsN != null) pCsN.objectReferenceValue = csName;
+            if (pCsV != null) pCsV.objectReferenceValue = csVal;
             if (pBf != null) pBf.objectReferenceValue = buffText;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(panel);
