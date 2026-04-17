@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
@@ -314,8 +315,8 @@ namespace Project.Character.UI
                 if (hintText != null && p != null)
                 {
                     hintText.text =
-                        $"Руда: {p.ore}   Золото: {p.gold}   Слитки: {CountDef(resp, WorkshopCraftRules.T1NormalIngotDefId)} (нужно {WorkshopCraftRules.T1NormalIngotCount})\n" +
-                        "Крафт по таймеру; готовое — «Забрать в сундук». Золотые рецепты / IAP — позже.";
+                        $"Руда: {p.ore}   Золото: {p.gold}   Слитки: зел. {CountDef(resp, "ingot_green")}, син. {CountDef(resp, "ingot_blue")}, фиол. {CountDef(resp, "ingot_purple")}, тесс. {CountDef(resp, "tesseract")}\n" +
+                        "Крафт по таймеру; готовое — «Забрать в сундук».";
                 }
             }
 
@@ -399,8 +400,8 @@ namespace Project.Character.UI
                 if (def == null || def.Kind != ItemKind.Equipment) continue;
                 if ((int)def.Slot != _selectedSlot) continue;
                 if (string.IsNullOrEmpty(def.CraftRecipeId)) continue;
-                if (!IsLearned(def.CraftRecipeId)) continue;
-                if (def.Tier < 1 || def.Tier > 3 || def.Quality != ItemQualityTier.Normal) continue;
+                if (!IsRecipeLearnedForCraft(def.CraftRecipeId)) continue;
+                if (def.Tier < 1 || def.Tier > 3) continue;
 
                 var line = new GameObject("Recipe_" + def.ItemId, typeof(RectTransform), typeof(Image), typeof(Button));
                 var rt = line.GetComponent<RectTransform>();
@@ -410,7 +411,7 @@ namespace Project.Character.UI
                 le.minHeight = 36f;
                 var bt = line.GetComponent<Button>();
                 var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
-                var lineTitle = title + " (T" + def.Tier + " «зелёный»)";
+                var lineTitle = title + " (T" + def.Tier + ", " + WorkshopCraftRules.QualityRu(def.Quality) + ")";
                 CreateUiText("Txt", line.transform, lineTitle, 17, TextAnchor.MiddleLeft,
                     new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(8f, 2f), new Vector2(-8f, -2f));
                 var idCopy = def.ItemId;
@@ -423,7 +424,7 @@ namespace Project.Character.UI
             }
 
             if (_recipeRows.Count == 0 && _recipeHeader != null)
-                _recipeHeader.text = SlotRu[_selectedSlot] + ": нет доступных рецептов для этого слота (изучите recipe_green и импорт каталога).";
+                _recipeHeader.text = SlotRu[_selectedSlot] + ": нет изученных рецептов для этого слота (изучите рецепт в сундуке — id должен совпадать с craft_recipe_id в каталоге).";
         }
 
         private void UpdateDetailPanel()
@@ -473,29 +474,107 @@ namespace Project.Character.UI
 
             var od = itemCatalog.Get(_selectedOutputDefId);
             var tier = od != null ? od.Tier : 1;
-            WorkshopCraftRules.GetGreenNormalCost(tier, out var needOre, out var needGold, out var needIngotN, out var ingotId);
+            if (tier < 1) tier = 1;
+            if (tier > 3) tier = 3;
+            var quality = od != null ? od.Quality : ItemQualityTier.Normal;
+
+            WorkshopCraftRules.GetCraftCost(od, out var needOre, out var needGold, out var needIngotN, out var ingotId, out var needTess);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Требования (зелёный T{tier}):");
-            sb.AppendLine($"Руда ≥ {needOre}, золото ≥ {needGold}, {ingotId} × {needIngotN}");
-            if (tier == 2)
-                sb.AppendLine("Поглощение: легендарный предмет T1 в этом слоте (экип или сундук).");
-            else if (tier == 3)
-                sb.AppendLine("Поглощение: легендарный предмет T2 в этом слоте (экип или сундук).");
+            sb.AppendLine($"Требования ({WorkshopCraftRules.QualityRu(quality)}, T{tier}):");
+            sb.AppendLine($"Руда ≥ {needOre}, золото ≥ {needGold}");
+            if (needIngotN > 0 && !string.IsNullOrEmpty(ingotId))
+                sb.AppendLine($"{ingotId} × {needIngotN}");
+            if (needTess > 0)
+                sb.AppendLine($"tesseract × {needTess}");
+
+            AppendFodderLines(sb, od, _selectedSlot);
 
             sb.AppendLine($"Время: {FormatDuration(WorkshopCraftRules.CraftDurationSecondsForTier(tier))}");
 
             var ore = _profile.progression?.ore ?? 0;
             var gold = _profile.progression?.gold ?? 0;
-            var ing = CountDef(_profile, ingotId);
-            var fodderOk = tier == 1 ||
-                           (tier == 2 && HasLegendFodder(_selectedSlot, 1)) ||
-                           (tier == 3 && HasLegendFodder(_selectedSlot, 2));
-            var okRes = fodderOk && ore >= needOre && gold >= needGold && ing >= needIngotN;
-            sb.Append(okRes ? "\nУсловий достаточно." : "\nНе хватает ресурсов или поглощаемой легенды.");
+            var ing = string.IsNullOrEmpty(ingotId) ? 0 : CountDef(_profile, ingotId);
+            var tess = CountDef(_profile, "tesseract");
+            var fodderOk = CraftFodderOk(od, _selectedSlot);
+            var resOk = ore >= needOre && gold >= needGold && ing >= needIngotN && tess >= needTess;
+            var okRes = fodderOk && resOk;
+            sb.Append(okRes ? "\nУсловий достаточно." : "\nНе хватает ресурсов или поглощаемого предмета.");
             _detailText.text = sb.ToString();
             if (_createButton != null)
-                _createButton.interactable = okRes && IsLearned(od != null ? od.CraftRecipeId : "");
+                _createButton.interactable = okRes && IsRecipeLearnedForCraft(od != null ? od.CraftRecipeId : "");
+        }
+
+        private static void AppendFodderLines(StringBuilder sb, ItemDefinition od, int slotIndex)
+        {
+            if (od == null || od.Kind != ItemKind.Equipment) return;
+            var q = od.Quality;
+            var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
+            if (q == ItemQualityTier.Normal)
+            {
+                if (t == 2)
+                    sb.AppendLine("Поглощение: легендарный предмет T1 в этом слоте (экип или сундук).");
+                else if (t == 3)
+                    sb.AppendLine("Поглощение: легендарный предмет T2 в этом слоте (экип или сундук).");
+                return;
+            }
+
+            if (q == ItemQualityTier.Rare)
+                sb.AppendLine($"Поглощение: обычный (normal) предмет T{t} в этом слоте.");
+            else if (q == ItemQualityTier.Epic)
+                sb.AppendLine($"Поглощение: редкий (rare) предмет T{t} в этом слоте.");
+            else if (q == ItemQualityTier.Legendary)
+                sb.AppendLine($"Поглощение: эпический (epic) предмет T{t} в этом слоте.");
+        }
+
+        private bool CraftFodderOk(ItemDefinition od, int slotIndex)
+        {
+            if (od == null || od.Kind != ItemKind.Equipment) return false;
+            var q = od.Quality;
+            var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
+            if (q == ItemQualityTier.Normal)
+            {
+                if (t == 1) return true;
+                if (t == 2) return HasLegendFodder(slotIndex, 1);
+                if (t == 3) return HasLegendFodder(slotIndex, 2);
+                return false;
+            }
+
+            if (q == ItemQualityTier.Rare) return HasQualityFodder(slotIndex, t, ItemQualityTier.Normal);
+            if (q == ItemQualityTier.Epic) return HasQualityFodder(slotIndex, t, ItemQualityTier.Rare);
+            if (q == ItemQualityTier.Legendary) return HasQualityFodder(slotIndex, t, ItemQualityTier.Epic);
+            return false;
+        }
+
+        private bool HasQualityFodder(int slotIndex, int tier, ItemQualityTier needQuality)
+        {
+            if (_profile == null || itemCatalog == null) return false;
+            if (_profile.equipment_def_ids != null && slotIndex >= 0 && slotIndex < _profile.equipment_def_ids.Length)
+            {
+                var id = _profile.equipment_def_ids[slotIndex];
+                if (QualityFodderMatches(id, slotIndex, tier, needQuality)) return true;
+            }
+
+            if (_profile.inventory_def_ids == null || _profile.inventory_counts == null) return false;
+            var len = Math.Min(_profile.inventory_def_ids.Length, _profile.inventory_counts.Length);
+            for (var i = 0; i < len; i++)
+            {
+                if (_profile.inventory_counts[i] < 1) continue;
+                var id = _profile.inventory_def_ids[i];
+                if (QualityFodderMatches(id, slotIndex, tier, needQuality)) return true;
+            }
+
+            return false;
+        }
+
+        private bool QualityFodderMatches(string defId, int slotIndex, int tier, ItemQualityTier needQuality)
+        {
+            if (string.IsNullOrEmpty(defId)) return false;
+            var def = itemCatalog.Get(defId);
+            if (def == null || def.Kind != ItemKind.Equipment) return false;
+            if (def.Quality != needQuality) return false;
+            if (def.Tier != tier) return false;
+            return (int)def.Slot == slotIndex;
         }
 
         private bool HasLegendFodder(int slotIndex, int legendTier)
@@ -585,6 +664,32 @@ namespace Project.Character.UI
             return false;
         }
 
+        /// <summary>
+        /// В каталоге craft_recipe_id = recipe_drop_t1_*; в learned_recipes со старых сессий — recipe_drop_green_* без тира.
+        /// </summary>
+        private bool IsRecipeLearnedForCraft(string craftRecipeId)
+        {
+            if (string.IsNullOrEmpty(craftRecipeId)) return false;
+            if (IsLearned(craftRecipeId)) return true;
+            foreach (var alt in AlternateLearnedIdsForCraftRecipeId(craftRecipeId))
+            {
+                if (IsLearned(alt)) return true;
+            }
+
+            return false;
+        }
+
+        private static IEnumerable<string> AlternateLearnedIdsForCraftRecipeId(string craftRecipeId)
+        {
+            var m = Regex.Match(craftRecipeId, @"^recipe_drop_t1_(green|blue|purple)_(.+)$", RegexOptions.IgnoreCase);
+            if (m.Success)
+                yield return $"recipe_drop_{m.Groups[1].Value}_{m.Groups[2].Value}";
+            if (string.Equals(craftRecipeId, "recipe_drop_t2_green_Helmet", StringComparison.Ordinal))
+                yield return "recipe_t2_green_Helmet";
+            if (string.Equals(craftRecipeId, "recipe_drop_t3_green_Helmet", StringComparison.Ordinal))
+                yield return "recipe_t3_green_Helmet";
+        }
+
         private static int CountDef(CharacterGetRpcResponse resp, string defId)
         {
             if (resp.inventory_def_ids == null || resp.inventory_counts == null) return 0;
@@ -638,6 +743,11 @@ namespace Project.Character.UI
                 case "missing_legend_fodder_t1": return "нужна легенда T1 в этом слоте";
                 case "missing_legend_fodder_t2": return "нужна легенда T2 в этом слоте";
                 case "unsupported_craft_quality": return "этот тип качества пока не крафтится в мастерской";
+                case "missing_normal_fodder": return "нужен обычный предмет этого тира в слоте";
+                case "missing_rare_fodder": return "нужен редкий предмет этого тира в слоте";
+                case "missing_epic_fodder": return "нужен эпический предмет этого тира в слоте";
+                case "not_enough_tesseract": return "мало тессерактов";
+                case "bad_craft_cost": return "некорректная стоимость крафта в каталоге";
                 case "session_stale": return "сессия устарела";
                 case "session_epoch_required": return "нужен session_epoch";
                 default: return err;
@@ -690,6 +800,74 @@ namespace Project.Character.UI
                 case 2: return 120 * 60;
                 case 3: return 240 * 60;
                 default: return 60 * 60;
+            }
+        }
+
+        public static string QualityRu(ItemQualityTier q)
+        {
+            return q switch
+            {
+                ItemQualityTier.Normal => "обычный",
+                ItemQualityTier.Rare => "редкий",
+                ItemQualityTier.Epic => "эпический",
+                ItemQualityTier.Legendary => "легендарный",
+                _ => "обычный"
+            };
+        }
+
+        /// <summary>Синхронно с duel_match3.lua workshop_craft_cost_from_def (каталог craft_* или масштаб от зелёного normal).</summary>
+        public static void GetCraftCost(ItemDefinition od, out int ore, out int gold, out int ingotN, out string ingotId, out int tessN)
+        {
+            tessN = 0;
+            ingotId = T1NormalIngotDefId;
+            ore = gold = ingotN = 0;
+            if (od == null || od.Kind != ItemKind.Equipment)
+            {
+                GetGreenNormalCost(1, out ore, out gold, out ingotN, out ingotId);
+                return;
+            }
+
+            var tier = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
+            var hasCatalog =
+                od.CraftOre > 0 ||
+                od.CraftGold > 0 ||
+                od.CraftIngotN > 0 ||
+                od.CraftTesseractN > 0 ||
+                !string.IsNullOrEmpty(od.CraftIngotDef);
+
+            if (hasCatalog)
+            {
+                ore = od.CraftOre;
+                gold = od.CraftGold;
+                ingotN = od.CraftIngotN;
+                ingotId = od.CraftIngotDef ?? "";
+                tessN = od.CraftTesseractN;
+                return;
+            }
+
+            GetGreenNormalCost(tier, out ore, out gold, out ingotN, out ingotId);
+            var qm = od.Quality switch
+            {
+                ItemQualityTier.Normal => 1.0,
+                ItemQualityTier.Rare => 1.45,
+                ItemQualityTier.Epic => 1.95,
+                ItemQualityTier.Legendary => 2.6,
+                _ => 1.0
+            };
+            ore = Mathf.RoundToInt(ore * (float)qm);
+            gold = Mathf.RoundToInt(gold * (float)qm);
+            if (od.Quality == ItemQualityTier.Legendary)
+            {
+                ingotN = 0;
+                ingotId = "";
+                tessN = 1;
+            }
+            else
+            {
+                ingotN = Mathf.Max(1, Mathf.RoundToInt(ingotN * (float)qm));
+                if (od.Quality == ItemQualityTier.Rare) ingotId = "ingot_blue";
+                else if (od.Quality == ItemQualityTier.Epic) ingotId = "ingot_purple";
+                else ingotId = "ingot_green";
             }
         }
     }

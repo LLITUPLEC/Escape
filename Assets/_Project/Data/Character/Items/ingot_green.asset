@@ -19,7 +19,8 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  icon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  craftRecipeId: 
+  icon: {fileID: 21300000, guid: 3f9110e28a7a4c44d80ba02c2b0f0960, type: 3}
   equippable: 0
   slot: 0
   modifiers: []

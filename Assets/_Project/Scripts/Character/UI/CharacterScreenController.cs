@@ -340,8 +340,8 @@ namespace Project.Character.UI
 
             if (isRecipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {
-                _infoModal.SetEquipButton(true, !learned, learned ? "Уже изучено" : "Изучить");
-                _infoModal.SetLearnRecipeButton(false, false, string.Empty);
+                _infoModal.SetEquipButton(false, false, string.Empty);
+                _infoModal.SetLearnRecipeButton(true, !learned, learned ? "Уже изучено" : "Изучить");
             }
             else
             {

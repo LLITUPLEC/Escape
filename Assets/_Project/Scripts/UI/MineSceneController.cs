@@ -28,8 +28,25 @@ namespace Project.UI
         [SerializeField] private Sprite expIconSprite;
         [Tooltip("Иконка энергии (стоимость боя/прогона). Если пусто — energy.png из resources_hud.")]
         [SerializeField] private Sprite energyIconSprite;
-        [Tooltip("Награды модалки: рецепт (blueprint). Если пусто — подставляется ingots или загрузка по пути blueprint.png.")]
+        [Tooltip("Награды модалки: рецепт (blueprint), общий fallback.")]
         [SerializeField] private Sprite blueprintIconSprite;
+        [Tooltip("Иконка рецепта зелёного качества (награда reward_blueprint = green).")]
+        [SerializeField] private Sprite recipeGreenSprite;
+        [Tooltip("Иконка рецепта синего качества (reward_blueprint = blue).")]
+        [SerializeField] private Sprite recipeBlueSprite;
+        [Tooltip("Иконка рецепта фиолетового качества (reward_blueprint = purple).")]
+        [SerializeField] private Sprite recipePurpleSprite;
+        [Tooltip("Иконка золотого рецепта (reward_blueprint = gold).")]
+        [SerializeField] private Sprite recipeGoldSprite;
+        [Header("Иконки слотов экипировки (8 слотов, порядок как EquipmentSlotId)")]
+        [SerializeField] private Sprite slotHelmetSprite;
+        [SerializeField] private Sprite slotShouldersSprite;
+        [SerializeField] private Sprite slotChestSprite;
+        [SerializeField] private Sprite slotGlovesSprite;
+        [SerializeField] private Sprite slotLegsSprite;
+        [SerializeField] private Sprite slotFeetSprite;
+        [SerializeField] private Sprite slotWeaponLeftSprite;
+        [SerializeField] private Sprite slotWeaponRightSprite;
         [Tooltip("Награды модалки: шанс тессеракта. Если пусто — matter или tesseract.png.")]
         [SerializeField] private Sprite tesseractIconSprite;
         [Tooltip("Необязательно: если пусто, загружается Resources/UI/MonsterModal.")]
@@ -1498,6 +1515,38 @@ namespace Project.UI
             if (_energySprite == null) _energySprite = LoadSpriteAsset(HudEnergyIconAssetPath);
         }
 
+        /// <summary>Иконка рецепта по полю reward_blueprint бота (green / blue / purple / gold).</summary>
+        private Sprite ResolveBlueprintRewardSprite(string rewardBlueprint)
+        {
+            if (string.IsNullOrWhiteSpace(rewardBlueprint))
+                return _blueprintSprite;
+            switch (rewardBlueprint.Trim().ToLowerInvariant())
+            {
+                case "green": return recipeGreenSprite != null ? recipeGreenSprite : _blueprintSprite;
+                case "blue": return recipeBlueSprite != null ? recipeBlueSprite : _blueprintSprite;
+                case "purple": return recipePurpleSprite != null ? recipePurpleSprite : _blueprintSprite;
+                case "gold": return recipeGoldSprite != null ? recipeGoldSprite : _blueprintSprite;
+                default: return _blueprintSprite;
+            }
+        }
+
+        /// <summary>Спрайт слота экипировки по индексу 0..7 (как EquipmentSlotId).</summary>
+        public Sprite GetEquipmentSlotSprite(int slotIndex)
+        {
+            switch (slotIndex)
+            {
+                case 0: return slotHelmetSprite;
+                case 1: return slotShouldersSprite;
+                case 2: return slotChestSprite;
+                case 3: return slotGlovesSprite;
+                case 4: return slotLegsSprite;
+                case 5: return slotFeetSprite;
+                case 6: return slotWeaponLeftSprite;
+                case 7: return slotWeaponRightSprite;
+                default: return null;
+            }
+        }
+
 #if UNITY_EDITOR
         private void TryAutoAssignHudIconReferencesInEditor()
         {
@@ -1791,7 +1840,7 @@ namespace Project.UI
             }
 
             if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
-                entries.Add(new RewardEntry { icon = _blueprintSprite, text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
+                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bot.reward_blueprint), text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
 
             if (bot.reward_tesseract_chance > 0f)
             {

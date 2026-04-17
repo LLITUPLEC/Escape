@@ -8,14 +8,14 @@
       "is_boss": false,
       "hp_bonus": 0,
       "base_crit": 0,
-      "base_heal": 0.0,
+      "base_heal": 0,
       "reward_xp": 110,
       "base_armor": 0,
       "cross_bias": 0.33,
       "difficulty": 1,
       "reward_ore": 51,
-      "start_mana": 0,
-      "base_damage": 45,
+      "start_mana": 18,
+      "base_damage": 0,
       "cost_attack": [
         {
           "amount": 15,
@@ -34,7 +34,7 @@
       "reward_ingots": 0,
       "reward_key_id": "",
       "reward_blueprint": "",
-      "ai_ability_chance": 0.12,
+      "ai_ability_chance": 0.15,
       "reward_key_amount": 0,
       "reward_matter_max": 0,
       "reward_matter_min": 0,
@@ -45,16 +45,16 @@
       "name": "Ржавый гвоздь",
       "floor": 2,
       "is_boss": false,
-      "hp_bonus": 225,
+      "hp_bonus": 500,
       "base_crit": 0.01,
-      "base_heal": 0.0,
+      "base_heal": 0,
       "reward_xp": 132,
-      "base_armor": 11,
+      "base_armor": 6,
       "cross_bias": 0.33,
       "difficulty": 2,
       "reward_ore": 68,
-      "start_mana": 34,
-      "base_damage": 56,
+      "start_mana": 91,
+      "base_damage": 18,
       "cost_attack": [
         {
           "amount": 15,
@@ -81,19 +81,19 @@
     },
     "mine_3": {
       "id": "mine_3",
-      "name": "Гнилой свищ",
+      "name": "Соляной клещ",
       "floor": 3,
       "is_boss": false,
-      "hp_bonus": 450,
-      "base_crit": 0.01,
-      "base_heal": 0.0,
+      "hp_bonus": 950,
+      "base_crit": 0.0135,
+      "base_heal": 4,
       "reward_xp": 154,
-      "base_armor": 11,
+      "base_armor": 14,
       "cross_bias": 0.33,
       "difficulty": 3,
-      "reward_ore": 86,
-      "start_mana": 68,
-      "base_damage": 68,
+      "reward_ore": 85,
+      "start_mana": 158,
+      "base_damage": 38,
       "cost_attack": [
         {
           "amount": 15,
@@ -102,7 +102,7 @@
       ],
       "cost_banish": [
         {
-          "amount": 8,
+          "amount": 5,
           "resource": "energy"
         }
       ],
@@ -120,66 +120,58 @@
     },
     "mine_4": {
       "id": "mine_4",
-      "name": "Крушило",
+      "name": "Корунд",
       "floor": 4,
       "is_boss": true,
-      "hp_bonus": 1914,
-      "base_crit": 0.04,
-      "base_heal": 45.03,
-      "reward_xp": 440,
-      "base_armor": 45,
+      "hp_bonus": 1500,
+      "base_crit": 0.06,
+      "base_heal": 9,
+      "reward_xp": 176,
+      "base_armor": 24,
       "cross_bias": 0.33,
       "difficulty": 4,
-      "reward_ore": 440,
-      "start_mana": 203,
-      "base_damage": 158,
+      "reward_ore": 102,
+      "start_mana": 237,
+      "base_damage": 58,
       "cost_attack": [
         {
-          "amount": 50,
+          "amount": 15,
           "resource": "energy"
-        },
-        {
-          "amount": 50,
-          "resource": "gold"
         }
       ],
       "cost_banish": [
         {
-          "amount": 25,
+          "amount": 5,
           "resource": "energy"
-        },
-        {
-          "amount": 25,
-          "resource": "gold"
         }
       ],
       "petard_bias": 0.34,
-      "reward_gold": 330,
+      "reward_gold": 88,
       "square_bias": 0.33,
       "reward_ingots": 2,
-      "reward_key_id": "miner_key",
+      "reward_key_id": "",
       "reward_blueprint": "green",
       "ai_ability_chance": 0.24,
-      "reward_key_amount": 2,
-      "reward_matter_max": 18,
-      "reward_matter_min": 9,
+      "reward_key_amount": 0,
+      "reward_matter_max": 0,
+      "reward_matter_min": 0,
       "reward_tesseract_chance": 0
     },
     "mine_5": {
       "id": "mine_5",
-      "name": "Сухой грохот",
+      "name": "Шлаковый червь",
       "floor": 5,
       "is_boss": false,
-      "hp_bonus": 901,
-      "base_crit": 0.02,
-      "base_heal": 0.0,
+      "hp_bonus": 1950,
+      "base_crit": 0.0205,
+      "base_heal": 14,
       "reward_xp": 198,
-      "base_armor": 23,
+      "base_armor": 34,
       "cross_bias": 0.33,
       "difficulty": 5,
-      "reward_ore": 121,
-      "start_mana": 135,
-      "base_damage": 90,
+      "reward_ore": 119,
+      "start_mana": 304,
+      "base_damage": 72,
       "cost_attack": [
         {
           "amount": 15,
@@ -188,7 +180,7 @@
       ],
       "cost_banish": [
         {
-          "amount": 15,
+          "amount": 5,
           "resource": "energy"
         }
       ],
@@ -206,19 +198,19 @@
     },
     "mine_6": {
       "id": "mine_6",
-      "name": "Мёртвый плывун",
+      "name": "Кремень",
       "floor": 6,
       "is_boss": false,
-      "hp_bonus": 1126,
-      "base_crit": 0.03,
-      "base_heal": 112.58,
+      "hp_bonus": 2450,
+      "base_crit": 0.024,
+      "base_heal": 22,
       "reward_xp": 220,
-      "base_armor": 34,
+      "base_armor": 46,
       "cross_bias": 0.33,
       "difficulty": 6,
-      "reward_ore": 139,
-      "start_mana": 169,
-      "base_damage": 101,
+      "reward_ore": 136,
+      "start_mana": 377,
+      "base_damage": 92,
       "cost_attack": [
         {
           "amount": 15,
@@ -227,7 +219,7 @@
       ],
       "cost_banish": [
         {
-          "amount": 11,
+          "amount": 5,
           "resource": "energy"
         }
       ],
@@ -245,28 +237,28 @@
     },
     "mine_7": {
       "id": "mine_7",
-      "name": "Чёрная копоть",
+      "name": "Пыльный коготь",
       "floor": 7,
       "is_boss": false,
-      "hp_bonus": 1351,
-      "base_crit": 0.13,
-      "base_heal": 0.0,
+      "hp_bonus": 2950,
+      "base_crit": 0.0275,
+      "base_heal": 32,
       "reward_xp": 242,
-      "base_armor": 34,
+      "base_armor": 58,
       "cross_bias": 0.33,
       "difficulty": 7,
-      "reward_ore": 156,
-      "start_mana": 203,
-      "base_damage": 113,
+      "reward_ore": 153,
+      "start_mana": 450,
+      "base_damage": 112,
       "cost_attack": [
         {
-          "amount": 20,
+          "amount": 15,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 10,
+          "amount": 5,
           "resource": "energy"
         }
       ],
@@ -284,69 +276,61 @@
     },
     "mine_8": {
       "id": "mine_8",
-      "name": "Забой",
+      "name": "Сталеплав",
       "floor": 8,
       "is_boss": true,
-      "hp_bonus": 3715,
-      "base_crit": 0.08,
-      "base_heal": 90.07,
-      "reward_xp": 770,
-      "base_armor": 90,
-      "cross_bias": 0.45,
+      "hp_bonus": 3650,
+      "base_crit": 0.1,
+      "base_heal": 44,
+      "reward_xp": 264,
+      "base_armor": 74,
+      "cross_bias": 0.33,
       "difficulty": 8,
-      "reward_ore": 770,
-      "start_mana": 473,
-      "base_damage": 248,
+      "reward_ore": 170,
+      "start_mana": 545,
+      "base_damage": 138,
       "cost_attack": [
         {
-          "amount": 60,
+          "amount": 25,
           "resource": "energy"
-        },
-        {
-          "amount": 120,
-          "resource": "gold"
         }
       ],
       "cost_banish": [
         {
-          "amount": 30,
+          "amount": 15,
           "resource": "energy"
-        },
-        {
-          "amount": 150,
-          "resource": "gold"
         }
       ],
-      "petard_bias": 0.3,
-      "reward_gold": 550,
-      "square_bias": 0.25,
+      "petard_bias": 0.34,
+      "reward_gold": 132,
+      "square_bias": 0.33,
       "reward_ingots": 4,
-      "reward_key_id": "dark_key",
+      "reward_key_id": "",
       "reward_blueprint": "blue",
       "ai_ability_chance": 0.36,
-      "reward_key_amount": 2,
-      "reward_matter_max": 22,
-      "reward_matter_min": 11,
+      "reward_key_amount": 0,
+      "reward_matter_max": 0,
+      "reward_matter_min": 0,
       "reward_tesseract_chance": 0
     },
     "mine_9": {
       "id": "mine_9",
-      "name": "Слепой бурав",
+      "name": "Липкий ломун",
       "floor": 9,
       "is_boss": false,
-      "hp_bonus": 1801,
-      "base_crit": 0.14,
-      "base_heal": 0.0,
+      "hp_bonus": 4150,
+      "base_crit": 0.0345,
+      "base_heal": 56,
       "reward_xp": 286,
-      "base_armor": 0,
+      "base_armor": 88,
       "cross_bias": 0.33,
       "difficulty": 9,
-      "reward_ore": 191,
-      "start_mana": 270,
-      "base_damage": 135,
+      "reward_ore": 187,
+      "start_mana": 618,
+      "base_damage": 158,
       "cost_attack": [
         {
-          "amount": 20,
+          "amount": 25,
           "resource": "energy"
         }
       ],
@@ -364,28 +348,28 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.39,
       "reward_key_amount": 0,
-      "reward_matter_max": 7,
-      "reward_matter_min": 2,
+      "reward_matter_max": 0,
+      "reward_matter_min": 0,
       "reward_tesseract_chance": 0
     },
     "mine_10": {
       "id": "mine_10",
-      "name": "Липкий ломун",
+      "name": "Тихий шорох",
       "floor": 10,
       "is_boss": false,
-      "hp_bonus": 2027,
-      "base_crit": 0.05,
-      "base_heal": 0.0,
+      "hp_bonus": 4650,
+      "base_crit": 0.038,
+      "base_heal": 68,
       "reward_xp": 308,
-      "base_armor": 169,
+      "base_armor": 102,
       "cross_bias": 0.33,
       "difficulty": 10,
-      "reward_ore": 209,
-      "start_mana": 304,
-      "base_damage": 146,
+      "reward_ore": 204,
+      "start_mana": 691,
+      "base_damage": 182,
       "cost_attack": [
         {
-          "amount": 20,
+          "amount": 25,
           "resource": "energy"
         }
       ],
@@ -403,8 +387,8 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.42,
       "reward_key_amount": 0,
-      "reward_matter_max": 7,
-      "reward_matter_min": 2,
+      "reward_matter_max": 0,
+      "reward_matter_min": 0,
       "reward_tesseract_chance": 0
     },
     "mine_11": {
@@ -412,16 +396,16 @@
       "name": "Тихий шорох",
       "floor": 11,
       "is_boss": false,
-      "hp_bonus": 2252,
-      "base_crit": 0.05,
-      "base_heal": 112.58,
+      "hp_bonus": 5250,
+      "base_crit": 0.0415,
+      "base_heal": 82,
       "reward_xp": 330,
-      "base_armor": 113,
+      "base_armor": 118,
       "cross_bias": 0.33,
       "difficulty": 11,
-      "reward_ore": 227,
-      "start_mana": 338,
-      "base_damage": 158,
+      "reward_ore": 221,
+      "start_mana": 775,
+      "base_damage": 210,
       "cost_attack": [
         {
           "amount": 25,
@@ -442,8 +426,8 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.45,
       "reward_key_amount": 0,
-      "reward_matter_max": 7,
-      "reward_matter_min": 2,
+      "reward_matter_max": 0,
+      "reward_matter_min": 0,
       "reward_tesseract_chance": 0
     },
     "mine_12": {
@@ -451,16 +435,16 @@
       "name": "Жила",
       "floor": 12,
       "is_boss": true,
-      "hp_bonus": 5517,
-      "base_crit": 0.22,
-      "base_heal": 225.17,
-      "reward_xp": 1100,
-      "base_armor": 158,
-      "cross_bias": 0.32,
+      "hp_bonus": 8183,
+      "base_crit": 0.15,
+      "base_heal": 389,
+      "reward_xp": 352,
+      "base_armor": 556,
+      "cross_bias": 0.33,
       "difficulty": 12,
-      "reward_ore": 1100,
-      "start_mana": 743,
-      "base_damage": 338,
+      "reward_ore": 238,
+      "start_mana": 950,
+      "base_damage": 792,
       "cost_attack": [
         {
           "amount": 80,
@@ -481,9 +465,9 @@
           "resource": "matter"
         }
       ],
-      "petard_bias": 0.36,
-      "reward_gold": 770,
-      "square_bias": 0.32,
+      "petard_bias": 0.34,
+      "reward_gold": 176,
+      "square_bias": 0.33,
       "reward_ingots": 7,
       "reward_key_id": "",
       "reward_blueprint": "purple",

@@ -104,8 +104,11 @@ namespace Project.Character.Editor
             if (createMissing && unmatched.Count > 0)
             {
                 EnsureFolder(ItemDefsRoot);
-                foreach (var id in unmatched)
+                // HashSet нельзя менять во время foreach — копируем список id.
+                var toCreate = new List<string>(unmatched);
+                foreach (var id in toCreate)
                 {
+                    if (!unmatched.Contains(id)) continue;
                     if (!serverItems.TryGetValue(id, out var rec)) continue;
                     if (existingDefsById.ContainsKey(id)) continue;
 
@@ -190,6 +193,14 @@ namespace Project.Character.Editor
             }
 
             localChanged |= SetString(so.FindProperty("craftRecipeId"), rec.craftRecipeId ?? "");
+            if (isEquipment)
+            {
+                localChanged |= SetInt(so.FindProperty("craftOre"), rec.craftOre);
+                localChanged |= SetInt(so.FindProperty("craftGold"), rec.craftGold);
+                localChanged |= SetString(so.FindProperty("craftIngotDef"), rec.craftIngotDef ?? "");
+                localChanged |= SetInt(so.FindProperty("craftIngotN"), rec.craftIngotN);
+                localChanged |= SetInt(so.FindProperty("craftTesseractN"), rec.craftTesseractN);
+            }
 
             var displayName = so.FindProperty("displayName");
             if (displayName != null && string.IsNullOrWhiteSpace(displayName.stringValue))
@@ -408,6 +419,11 @@ namespace Project.Character.Editor
                     armor = GetNumberField(itemObj, "armor"),
                     healing = GetNumberField(itemObj, "healing"),
                     critChance = GetNumberField(itemObj, "crit_chance"),
+                    craftOre = Mathf.RoundToInt(GetNumberField(itemObj, "craft_ore")),
+                    craftGold = Mathf.RoundToInt(GetNumberField(itemObj, "craft_gold")),
+                    craftIngotDef = GetStringField(itemObj, "craft_ingot_def"),
+                    craftIngotN = Mathf.RoundToInt(GetNumberField(itemObj, "craft_ingot_n")),
+                    craftTesseractN = Mathf.RoundToInt(GetNumberField(itemObj, "craft_tesseract_n")),
                 };
 
                 items[id] = rec;
@@ -532,6 +548,11 @@ namespace Project.Character.Editor
             public float armor;
             public float healing;
             public float critChance;
+            public int craftOre;
+            public int craftGold;
+            public string craftIngotDef;
+            public int craftIngotN;
+            public int craftTesseractN;
         }
     }
 }

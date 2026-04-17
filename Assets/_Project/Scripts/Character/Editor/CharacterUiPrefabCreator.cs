@@ -162,8 +162,9 @@ namespace Project.Character.Editor
                 new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
 
             MakeRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f), 24);
-            MakeRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.48f, 0.16f), 24);
-            MakeRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.52f, 0.05f), new Vector2(0.94f, 0.16f), 24);
+            MakeRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.34f, 0.16f), 24);
+            MakeRectButton(rt, "LearnRecipeButton", "Изучить", new Vector2(0.36f, 0.05f), new Vector2(0.64f, 0.16f), 24);
+            MakeRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.66f, 0.05f), new Vector2(0.94f, 0.16f), 24);
 
             ReplacePrefab(root, ItemInfoModalPrefabPath);
             Object.DestroyImmediate(root);

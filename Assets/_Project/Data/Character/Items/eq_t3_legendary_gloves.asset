@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1fddd765c599ff49b3b5ac00ac799ab, type: 3}
+  m_Name: eq_t3_legendary_gloves
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
+  itemId: eq_t3_legendary_gloves
+  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  kind: 0
+  maxStack: 1
+  tier: 3
+  quality: 3
+  recipeTargetSlot: 0
+  craftRecipeId: recipe_gold_t3_Gloves
+  craftOre: 527
+  craftGold: 263
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 1
+  icon: {fileID: 0}
+  equippable: 1
+  slot: 3
+  modifiers: []
+  hp: 819
+  damage: 182
+  armor: 0
+  healing: 159
+  critChance: 0.091

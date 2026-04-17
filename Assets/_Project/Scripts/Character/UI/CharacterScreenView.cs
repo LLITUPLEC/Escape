@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Project.Character;
 using TMPro;
 using UnityEngine;
@@ -114,27 +115,41 @@ namespace Project.Character.UI
                 _equipmentDefIds[i] = id;
             }
 
-            if (_inventoryDefIds.Length != _inventorySlots.Count)
-                _inventoryDefIds = new string[_inventorySlots.Count];
-            if (_inventoryCounts.Length != _inventorySlots.Count)
-                _inventoryCounts = new int[_inventorySlots.Count];
+            if (_inventoryDefIds.Length != inventorySize)
+                _inventoryDefIds = new string[inventorySize];
+            if (_inventoryCounts.Length != inventorySize)
+                _inventoryCounts = new int[inventorySize];
+
+            for (var s = 0; s < inventorySize; s++)
+            {
+                _inventoryDefIds[s] = "";
+                _inventoryCounts[s] = 0;
+            }
 
             for (var i = 0; i < _inventorySlots.Count; i++)
             {
-                var id = inventoryDefIds != null && i < inventoryDefIds.Length ? inventoryDefIds[i] : null;
+                var slotView = _inventorySlots[i];
+                var dataIdx = slotView.InventorySlotIndex >= 0 ? slotView.InventorySlotIndex : i;
+                if (dataIdx < 0 || dataIdx >= inventorySize) continue;
+
+                var id = inventoryDefIds != null && dataIdx < inventoryDefIds.Length
+                    ? inventoryDefIds[dataIdx]
+                    : null;
                 var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
                 var icon = catalog != null ? catalog.GetDisplayIcon(def) : def?.Icon;
-                _inventorySlots[i].SetIcon(icon);
-                _inventoryDefIds[i] = id;
+                slotView.SetIcon(icon);
+                _inventoryDefIds[dataIdx] = id ?? "";
                 var cnt = 0;
                 if (!string.IsNullOrEmpty(id))
                 {
-                    cnt = inventoryCounts != null && i < inventoryCounts.Length ? inventoryCounts[i] : 1;
+                    cnt = inventoryCounts != null && dataIdx < inventoryCounts.Length
+                        ? inventoryCounts[dataIdx]
+                        : 1;
                     if (cnt < 1) cnt = 1;
                 }
 
-                _inventoryCounts[i] = cnt;
-                _inventorySlots[i].SetStackCount(cnt);
+                _inventoryCounts[dataIdx] = cnt;
+                slotView.SetStackCount(cnt);
             }
         }
 
@@ -216,7 +231,8 @@ namespace Project.Character.UI
                 var root = slot.gameObject;
                 EnsureRaycastTarget(root);
                 var h = root.GetComponent<CharacterDragSlotHandle>() ?? root.AddComponent<CharacterDragSlotHandle>();
-                h.Configure(drag, CharacterDragSlotKind.Inventory, i, default);
+                var serverIdx = slot.InventorySlotIndex >= 0 ? slot.InventorySlotIndex : i;
+                h.Configure(drag, CharacterDragSlotKind.Inventory, serverIdx, default);
             }
 
             foreach (var eq in _equipmentSlots)
@@ -270,13 +286,11 @@ namespace Project.Character.UI
         {
             if (inventoryRoot == null) return;
 
-            // Prefer cells already placed in the prefab (otherwise we duplicate 25+25).
-            // Only direct children: avoids nested ItemSlotView from other UI and keeps order stable.
-            for (var i = 0; i < inventoryRoot.childCount; i++)
-            {
-                var slot = inventoryRoot.GetChild(i).GetComponent<ItemSlotView>();
-                if (slot != null) _inventorySlots.Add(slot);
-            }
+            _inventorySlots.Clear();
+            _inventorySlots.AddRange(inventoryRoot.GetComponentsInChildren<ItemSlotView>(true));
+            SortInventorySlots(_inventorySlots);
+            if (_inventorySlots.Count > inventorySize)
+                _inventorySlots.RemoveRange(inventorySize, _inventorySlots.Count - inventorySize);
 
             if (_inventorySlots.Count > 0) return;
 
@@ -289,6 +303,32 @@ namespace Project.Character.UI
                 inst.SetIcon(null);
                 _inventorySlots.Add(inst);
             }
+        }
+
+        private static void SortInventorySlots(List<ItemSlotView> slots)
+        {
+            if (slots == null || slots.Count <= 1) return;
+            var allExplicit = true;
+            foreach (var s in slots)
+            {
+                if (s == null || s.InventorySlotIndex < 0)
+                {
+                    allExplicit = false;
+                    break;
+                }
+            }
+
+            if (allExplicit)
+                slots.Sort((a, b) => a.InventorySlotIndex.CompareTo(b.InventorySlotIndex));
+            else
+                slots.Sort((a, b) => ParseCellNameIndex(a != null ? a.name : "").CompareTo(ParseCellNameIndex(b != null ? b.name : "")));
+        }
+
+        private static int ParseCellNameIndex(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName)) return 999;
+            var m = Regex.Match(objectName, @"Cell_(\d+)", RegexOptions.IgnoreCase);
+            return m.Success && int.TryParse(m.Groups[1].Value, out var n) ? n : 999;
         }
     }
 }

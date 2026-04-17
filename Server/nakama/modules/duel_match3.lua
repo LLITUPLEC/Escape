@@ -324,9 +324,8 @@ function normalize_mine_difficulty(v)
 end
 
 function mine_stat_multiplier(diff)
-  local d = normalize_mine_difficulty(diff)
-  if d == "medium" then return 2.0 end
-  if d == "hard" then return 3.0 end
+  -- Каталоги ботов разделены по сложности (catalog_easy / medium / hard); статы в JSON уже «готовые».
+  -- Не умножаем повторно — иначе двойной скейл (см. eqip_stats.MD §3.6 вариант A).
   return 1.0
 end
 
@@ -1291,27 +1290,28 @@ local ITEM_DEFS_FALLBACK = {
   sword_basic = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", damage = 35 },
   boots_basic = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", armor = 2 },
   gloves_basic = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", healing = 3, crit_chance = 0.3 },
-  -- Зелёный T1 (normal): иконки в клиенте по §4.1
-  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 12, armor = 2 },
-  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 6, armor = 5 },
-  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 14, armor = 3 },
-  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 4, healing = 2, crit_chance = 0.02 },
-  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 10, armor = 3 },
-  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 5, armor = 6 },
-  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 8, armor = 1 },
-  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 12 },
-  -- Заглушки более высокого качества (иконки — placeholder на клиенте)
-  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", hp = 20, armor = 4 },
-  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", hp = 28, armor = 6 },
-  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", hp = 38, armor = 8 },
-  eq_t2_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "normal", craft_recipe_id = "recipe_green", hp = 20, armor = 4 },
-  eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_green", hp = 28, armor = 6 },
-  eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 52, armor = 11 },
+  -- Зелёный T1 (normal): craft_recipe_id = id предмета-рецепта в learned_recipes (§4.3: recipe_drop_t{mine_tier}_{color}_{Slot})
+  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Helmet", hp = 480, armor = 40 },
+  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Shoulders", hp = 200, armor = 85 },
+  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Chest", hp = 600, armor = 42 },
+  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Gloves", hp = 180, damage = 40, healing = 35, crit_chance = 0.02 },
+  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Legs", hp = 420, armor = 45 },
+  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_Feet", hp = 200, armor = 85 },
+  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_WeaponLeft", damage = 100, armor = 50, hp = 220 },
+  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_t1_green_WeaponRight", damage = 260, armor = 30, hp = 200 },
+  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", hp = 900, armor = 90 },
+  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", hp = 1300, armor = 140 },
+  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", hp = 1800, armor = 200 },
+  eq_t2_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "normal", craft_recipe_id = "recipe_drop_t2_green_Helmet", hp = 800, armor = 65 },
+  eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_drop_t3_green_Helmet", hp = 1120, armor = 92 },
+  eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 2600, armor = 280 },
   -- Ресурсы / рецепты (не экипируются)
   ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 100 },
   ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 100 },
   ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 100 },
   tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5 },
+  recipe_t2_green_Helmet = { kind = "recipe", tier = 2, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
+  recipe_t3_green_Helmet = { kind = "recipe", tier = 3, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
   recipe_green = { kind = "recipe", tier = 1, quality = "normal", max_stack = 1, recipe_slot = "Helmet" },
   recipe_blue = { kind = "recipe", tier = 1, quality = "rare", max_stack = 1, recipe_slot = "Helmet" },
   recipe_purple = { kind = "recipe", tier = 1, quality = "epic", max_stack = 1, recipe_slot = "Helmet" },
@@ -1331,6 +1331,26 @@ do
     for _, s in ipairs(slots_b) do
       local id = "recipe_drop_" .. cname .. "_" .. s
       ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = qual, max_stack = 1, recipe_slot = s }
+    end
+  end
+end
+
+-- §4.3: recipe_drop_t{тир_шахты}_{цвет}_{Slot} и золотые recipe_gold_t{тир}_{Slot} (совпадает с duel_match3_item_catalog.example.json).
+do
+  local slots_all = { "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet" }
+  local colq = { green = "normal", blue = "rare", purple = "epic" }
+  for t = 1, 3 do
+    for cname, qual in pairs(colq) do
+      for _, s in ipairs(slots_all) do
+        local id = "recipe_drop_t" .. t .. "_" .. cname .. "_" .. s
+        ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = t, quality = qual, max_stack = 1, recipe_slot = s }
+      end
+    end
+  end
+  for t = 1, 3 do
+    for _, s in ipairs(slots_all) do
+      local id = "recipe_gold_t" .. t .. "_" .. s
+      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = t, quality = "legendary", max_stack = 1, recipe_slot = s }
     end
   end
 end
@@ -1372,7 +1392,7 @@ local function normalize_stored_item_def(def)
 
   local slot = tostring(def.slot or "")
   if slot == "" then return nil end
-  return {
+  local out = {
     kind = "equipment",
     slot = slot,
     max_stack = 1,
@@ -1386,6 +1406,14 @@ local function normalize_stored_item_def(def)
     crit_chance = tonumber(def.crit_chance) or 0.0,
     healing = tonumber(def.healing) or 0,
   }
+  if def.craft_ore ~= nil then out.craft_ore = math.max(0, math.floor(tonumber(def.craft_ore) or 0)) end
+  if def.craft_gold ~= nil then out.craft_gold = math.max(0, math.floor(tonumber(def.craft_gold) or 0)) end
+  if def.craft_ingot_n ~= nil then out.craft_ingot_n = math.max(0, math.floor(tonumber(def.craft_ingot_n) or 0)) end
+  if def.craft_tesseract_n ~= nil then out.craft_tesseract_n = math.max(0, math.floor(tonumber(def.craft_tesseract_n) or 0)) end
+  if def.craft_ingot_def ~= nil and tostring(def.craft_ingot_def) ~= "" then
+    out.craft_ingot_def = tostring(def.craft_ingot_def)
+  end
+  return out
 end
 
 local function item_def_is_equipment(def)
@@ -1816,6 +1844,22 @@ local function workshop_payload_arrays(sheet)
   return o, e
 end
 
+--- Сумма трёх цветов слитков в сундуке (§4.4); для HUD вместо устаревшего progress.ingots.
+local function sum_ingots_in_inventory_sheet(sheet)
+  if sheet == nil then return 0 end
+  ensure_sheet_inventory_counts(sheet)
+  local inv = sheet.inventory
+  local ic = sheet.inventory_counts
+  local sum = 0
+  for i = 1, 25 do
+    local id = inv[i] or ""
+    if id == "ingot_green" or id == "ingot_blue" or id == "ingot_purple" then
+      sum = sum + math.max(0, math.floor(tonumber(ic[i]) or 0))
+    end
+  end
+  return sum
+end
+
 local function build_resource_payload(progress, user_id)
   local energy_max = pve_energy_max_for_user(user_id)
   local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
@@ -1840,8 +1884,15 @@ local function build_resource_payload(progress, user_id)
   }
 end
 
-local function build_progression_payload(progress, user_id)
+local function build_progression_payload(progress, user_id, sheet_opt)
   local resources = build_resource_payload(progress, user_id)
+  local ingots = resources.ingots
+  if sheet_opt ~= nil then
+    local invSum = sum_ingots_in_inventory_sheet(sheet_opt)
+    if invSum > 0 then
+      ingots = invSum
+    end
+  end
   return {
     level = progress.level or 1,
     xp = progress.xp or 0,
@@ -1850,7 +1901,7 @@ local function build_progression_payload(progress, user_id)
     energy = resources.energy,
     energy_max = resources.energy_max,
     ore = resources.ore,
-    ingots = resources.ingots,
+    ingots = ingots,
     matter = resources.matter,
     keys = resources.keys,
     -- Клиент (Unity JsonUtility) ожидает key_items; без этого барьер показывает 0 ключей при наличии miner_key.
@@ -1860,6 +1911,15 @@ local function build_progression_payload(progress, user_id)
     },
     mine = progress.mine,
   }
+end
+
+--- progression + слитки из сундука, если лист персонажа уже загружен.
+local function build_progression_payload_auto(progress, user_id)
+  if user_id == nil or user_id == "" then
+    return build_progression_payload(progress, user_id, nil)
+  end
+  local sheet = read_character_sheet(user_id)
+  return build_progression_payload(progress, user_id, sheet)
 end
 
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
@@ -1884,7 +1944,7 @@ local function encode_character_ok_response(sheet, progress, user_id)
       workshop_ends_at = we,
     }
   end
-  local full_prog = build_progression_payload(progress, user_id)
+  local full_prog = build_progression_payload(progress, user_id, sheet)
   local ok_enc, encoded = pcall(nk.json_encode, payload_with_progression(full_prog))
   if ok_enc then return encoded end
   nk.logger_error("encode_character_ok_response json_encode: " .. tostring(encoded))
@@ -1904,6 +1964,22 @@ local function sheet_has_learned(sheet, recipe_id)
   for i = 1, #lr do
     if lr[i] == recipe_id then return true end
   end
+  return false
+end
+
+--- craft_recipe_id в каталоге (recipe_drop_t1_*), learned на аккаунте — старый id без тира (recipe_drop_green_*).
+local function sheet_has_learned_for_craft(sheet, craft_recipe_id)
+  if sheet_has_learned(sheet, craft_recipe_id) then return true end
+  if craft_recipe_id == nil or craft_recipe_id == "" then return false end
+  local sid = tostring(craft_recipe_id)
+  local g = string.match(sid, "^recipe_drop_t1_green_(.+)$")
+  if g ~= nil and sheet_has_learned(sheet, "recipe_drop_green_" .. g) then return true end
+  local b = string.match(sid, "^recipe_drop_t1_blue_(.+)$")
+  if b ~= nil and sheet_has_learned(sheet, "recipe_drop_blue_" .. b) then return true end
+  local p = string.match(sid, "^recipe_drop_t1_purple_(.+)$")
+  if p ~= nil and sheet_has_learned(sheet, "recipe_drop_purple_" .. p) then return true end
+  if sid == "recipe_drop_t2_green_Helmet" and sheet_has_learned(sheet, "recipe_t2_green_Helmet") then return true end
+  if sid == "recipe_drop_t3_green_Helmet" and sheet_has_learned(sheet, "recipe_t3_green_Helmet") then return true end
   return false
 end
 
@@ -1968,6 +2044,101 @@ local function workshop_consume_legendary_fodder(sheet, defs, slot_index, legend
   return false
 end
 
+--- Поглощение при апгрейде качества внутри тира: rare ← normal, epic ← rare, legendary ← epic.
+local function workshop_fodder_matches_tier_slot_quality(def, slot_name, tier, quality_str)
+  if def == nil or not item_def_is_equipment(def) then return false end
+  if tostring(def.slot or "") ~= slot_name then return false end
+  if clamp_int(tonumber(def.tier) or 0, 1, 3) ~= tier then return false end
+  return tostring(def.quality or "") == quality_str
+end
+
+local function workshop_has_quality_fodder(sheet, defs, slot_index, tier, quality_str)
+  local slot_name = EQUIP_ORDER[slot_index + 1]
+  local eq_i = slot_index + 1
+  local eq_id = sheet.equipment[eq_i] or ""
+  if eq_id ~= "" and workshop_fodder_matches_tier_slot_quality(defs[eq_id], slot_name, tier, quality_str) then
+    return true
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id ~= "" then
+      local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
+      if cnt >= 1 and workshop_fodder_matches_tier_slot_quality(defs[id], slot_name, tier, quality_str) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+local function workshop_consume_quality_fodder(sheet, defs, slot_index, tier, quality_str)
+  local slot_name = EQUIP_ORDER[slot_index + 1]
+  local eq_i = slot_index + 1
+  local eq_id = sheet.equipment[eq_i] or ""
+  if eq_id ~= "" and workshop_fodder_matches_tier_slot_quality(defs[eq_id], slot_name, tier, quality_str) then
+    sheet.equipment[eq_i] = ""
+    return true
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id ~= "" then
+      local d = defs[id]
+      local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
+      if cnt >= 1 and workshop_fodder_matches_tier_slot_quality(d, slot_name, tier, quality_str) then
+        cnt = cnt - 1
+        if cnt <= 0 then
+          sheet.inventory[inv_i] = ""
+          sheet.inventory_counts[inv_i] = 0
+        else
+          sheet.inventory_counts[inv_i] = cnt
+        end
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--- Стоимость из каталога (craft_*) или масштаб от WORKSHOP_T*_NORMAL_COST.
+local function workshop_craft_cost_from_def(out_def, tier, quality)
+  local ore = tonumber(out_def.craft_ore)
+  local gold = tonumber(out_def.craft_gold)
+  local ingot_n = tonumber(out_def.craft_ingot_n)
+  local tess = tonumber(out_def.craft_tesseract_n)
+  local ingot_def = tostring(out_def.craft_ingot_def or "")
+  if ore ~= nil and gold ~= nil and ingot_n ~= nil then
+    return {
+      ore = math.max(0, math.floor(ore)),
+      gold = math.max(0, math.floor(gold)),
+      ingot_def = ingot_def,
+      ingot_n = math.max(0, math.floor(ingot_n)),
+      tesseract_n = math.max(0, math.floor(tonumber(tess) or 0)),
+    }
+  end
+  local base = CFG.WORKSHOP_T1_NORMAL_COST
+  if tier == 2 then base = CFG.WORKSHOP_T2_NORMAL_COST end
+  if tier == 3 then base = CFG.WORKSHOP_T3_NORMAL_COST end
+  local qm = 1.0
+  if quality == "rare" then qm = 1.45 end
+  if quality == "epic" then qm = 1.95 end
+  if quality == "legendary" then qm = 2.6 end
+  local idef = "ingot_green"
+  if quality == "rare" then idef = "ingot_blue" end
+  if quality == "epic" then idef = "ingot_purple" end
+  if quality == "legendary" then idef = "" end
+  local in_n = 0
+  if quality ~= "legendary" then
+    in_n = math.max(1, math.ceil((tonumber(base.ingot_n) or 0) * qm))
+  end
+  return {
+    ore = math.max(0, math.ceil((tonumber(base.ore) or 0) * qm)),
+    gold = math.max(0, math.ceil((tonumber(base.gold) or 0) * qm)),
+    ingot_def = idef,
+    ingot_n = in_n,
+    tesseract_n = quality == "legendary" and 1 or 0,
+  }
+end
+
 local function inventory_count_def(sheet, def_id)
   local n = 0
   for i = 1, 25 do
@@ -2018,10 +2189,37 @@ local function mine_recipe_color_for_floor(floor)
   return "purple"
 end
 
-local function mine_recipe_drop_pool_ids(color, pool)
+local function mine_tier_from_diff(diff)
+  local d = normalize_mine_difficulty(diff)
+  if d == "medium" then return 2 end
+  if d == "hard" then return 3 end
+  return 1
+end
+
+--- §4.4: цвет слитка по этажу внутри тира шахты.
+local function ingot_def_for_floor(floor)
+  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  if f <= 4 then return "ingot_green" end
+  if f <= 8 then return "ingot_blue" end
+  return "ingot_purple"
+end
+
+--- §4.4: шанс выпадения слитка с обычного монстра (босс 4/8/12 — 100%).
+local function ingot_drop_chance_non_boss(floor)
+  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local r = f % 4
+  if r == 1 then return 0.25 end
+  if r == 2 then return 0.5 end
+  if r == 3 then return 0.75 end
+  return 1.0
+end
+
+--- id предмета-рецепта: recipe_drop_t{тир_шахты}_{цвет}_{Slot} — совпадает с craft_recipe_id экипа в каталоге.
+local function mine_recipe_drop_pool_ids(color, pool, mine_tier)
   local c = color
   if c ~= "green" and c ~= "blue" and c ~= "purple" then c = "green" end
-  local pfx = "recipe_drop_" .. c .. "_"
+  local t = clamp_int(tonumber(mine_tier) or 1, 1, 3)
+  local pfx = "recipe_drop_t" .. tostring(t) .. "_" .. c .. "_"
   if pool == "B" then
     return {
       pfx .. "WeaponRight",
@@ -2045,15 +2243,16 @@ local function mine_floor_uses_recipe_drop_v43(floor, is_boss)
 end
 
 --- true если в сундук положен новый предмет-рецепт.
-local function grant_mine_recipe_drop_v43(sheet, floor, is_boss)
+local function grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
   if not mine_floor_uses_recipe_drop_v43(floor, is_boss) then return false end
   local color = mine_recipe_color_for_floor(floor)
   local pool = (floor == 4 or floor == 8 or floor == 12) and "B" or "A"
-  local ids = mine_recipe_drop_pool_ids(color, pool)
+  local mine_tier = mine_tier_from_diff(diff)
+  local ids = mine_recipe_drop_pool_ids(color, pool, mine_tier)
   local unlearned = {}
   for i = 1, #ids do
     local id = ids[i]
-    if not sheet_has_learned(sheet, id) then
+    if not sheet_has_learned_for_craft(sheet, id) then
       unlearned[#unlearned + 1] = id
     end
   end
@@ -2454,7 +2653,18 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   end
   local reward_key_id = tostring(bot.reward_key_id or "")
   local reward_key_amount = math.max(0, tonumber(bot.reward_key_amount) or 0)
-  local reward_ingots = math.max(0, math.ceil((tonumber(bot.reward_ingots) or 0) * reward_mul))
+  local base_reward_ingots = math.max(0, math.ceil((tonumber(bot.reward_ingots) or 0) * reward_mul))
+  local ingot_def_id = ingot_def_for_floor(floor)
+  local actual_ingots = 0
+  if base_reward_ingots > 0 then
+    if is_boss then
+      actual_ingots = base_reward_ingots * 2
+    else
+      if math.random() < ingot_drop_chance_non_boss(floor) then
+        actual_ingots = base_reward_ingots
+      end
+    end
+  end
   local reward_tesseract = 0
   local tesseract_chance = tonumber(bot.reward_tesseract_chance) or 0
   if tesseract_chance > 0 and math.random() < tesseract_chance then
@@ -2468,7 +2678,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     progress.gold = progress.gold + reward_gold
     progress.ore = progress.ore + reward_ore
     progress.matter = progress.matter + reward_matter
-    progress.ingots = progress.ingots + reward_ingots
+    progress.ingots = progress.ingots + actual_ingots
     progress.tesseracts = (tonumber(progress.tesseracts) or 0) + reward_tesseract
     if reward_key_id ~= "" and reward_key_amount > 0 then
       progress.key_items = progress.key_items or empty_key_items()
@@ -2517,8 +2727,8 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       local sheet = read_character_sheet(user_id)
       ensure_sheet_inventory_counts(sheet)
       local grant_ok = true
-      if reward_ingots > 0 then
-        local ok_add = inventory_try_add(sheet, "ingot_green", reward_ingots)
+      if actual_ingots > 0 then
+        local ok_add = inventory_try_add(sheet, ingot_def_id, actual_ingots)
         if ok_add ~= true then grant_ok = false end
       end
       if grant_ok and reward_tesseract > 0 then
@@ -2528,7 +2738,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       local bp_r = tostring(bot.reward_blueprint or "")
       local used_v43 = false
       if grant_ok and mine_floor_uses_recipe_drop_v43(floor, is_boss) then
-        used_v43 = grant_mine_recipe_drop_v43(sheet, floor, is_boss)
+        used_v43 = grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
       end
       if grant_ok and used_v43 then
         local col = mine_recipe_color_for_floor(floor)
@@ -2558,7 +2768,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         reward_gold = reward_gold,
         reward_ore = reward_ore,
         reward_matter = reward_matter,
-        reward_ingots = reward_ingots,
+        reward_ingots = actual_ingots,
         reward_tesseract = reward_tesseract,
         reward_key_id = reward_key_id,
         reward_key_amount = reward_key_amount,
@@ -2586,7 +2796,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     reward_gold = reward_gold,
     reward_ore = reward_ore,
     reward_matter = reward_matter,
-    reward_ingots = reward_ingots,
+    reward_ingots = actual_ingots,
     reward_tesseract = reward_tesseract,
     reward_key_id = reward_key_id,
     reward_key_amount = reward_key_amount,
@@ -2848,7 +3058,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
 
     return nk.json_encode({
       ok = true,
-      progression = build_progression_payload(progress, user_id),
+      progression = build_progression_payload_auto(progress, user_id),
       level_xp = CFG.LEVEL_XP,
       max_level = CFG.PVE_MAX_LEVEL,
       mine_difficulty = current_diff,
@@ -3134,41 +3344,52 @@ local function duel_workshop_craft_start(ctx, payload)
       return nk.json_encode({ ok = false, err = "claim_first" })
     end
 
-    if not sheet_has_learned(sheet, craft_recipe_id) then
+    if not sheet_has_learned_for_craft(sheet, craft_recipe_id) then
       return nk.json_encode({ ok = false, err = "recipe_not_learned" })
     end
 
     local tier = clamp_int(tonumber(out_def.tier) or 1, 1, 3)
     local quality = tostring(out_def.quality or "normal")
-    if quality ~= "normal" then
+    if quality ~= "normal" and quality ~= "rare" and quality ~= "epic" and quality ~= "legendary" then
       return nk.json_encode({ ok = false, err = "unsupported_craft_quality" })
     end
 
-    local cost
-    if tier == 1 then
-      cost = CFG.WORKSHOP_T1_NORMAL_COST
-    elseif tier == 2 then
-      cost = CFG.WORKSHOP_T2_NORMAL_COST
-    elseif tier == 3 then
-      cost = CFG.WORKSHOP_T3_NORMAL_COST
-    else
-      return nk.json_encode({ ok = false, err = "unsupported_craft_tier" })
-    end
-
+    local cost = workshop_craft_cost_from_def(out_def, tier, quality)
     local ore_c = cost.ore
     local gold_c = cost.gold
     local ingot_def = cost.ingot_def
     local ingot_n = cost.ingot_n
+    local tess_n = cost.tesseract_n
 
-    if tier == 2 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 1) then
-      return nk.json_encode({ ok = false, err = "missing_legend_fodder_t1" })
-    end
-    if tier == 3 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 2) then
-      return nk.json_encode({ ok = false, err = "missing_legend_fodder_t2" })
+    if quality == "normal" then
+      if tier == 2 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 1) then
+        return nk.json_encode({ ok = false, err = "missing_legend_fodder_t1" })
+      end
+      if tier == 3 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 2) then
+        return nk.json_encode({ ok = false, err = "missing_legend_fodder_t2" })
+      end
+    elseif quality == "rare" then
+      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "normal") then
+        return nk.json_encode({ ok = false, err = "missing_normal_fodder" })
+      end
+    elseif quality == "epic" then
+      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "rare") then
+        return nk.json_encode({ ok = false, err = "missing_rare_fodder" })
+      end
+    elseif quality == "legendary" then
+      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "epic") then
+        return nk.json_encode({ ok = false, err = "missing_epic_fodder" })
+      end
     end
 
-    if inventory_count_def(sheet, ingot_def) < ingot_n then
+    if ingot_n > 0 and ingot_def == "" then
+      return nk.json_encode({ ok = false, err = "bad_craft_cost" })
+    end
+    if ingot_n > 0 and inventory_count_def(sheet, ingot_def) < ingot_n then
       return nk.json_encode({ ok = false, err = "not_enough_ingots" })
+    end
+    if tess_n > 0 and inventory_count_def(sheet, "tesseract") < tess_n then
+      return nk.json_encode({ ok = false, err = "not_enough_tesseract" })
     end
 
     local dur_tbl = CFG.WORKSHOP_CRAFT_DURATION_SEC_BY_TIER
@@ -3191,18 +3412,43 @@ local function duel_workshop_craft_start(ctx, payload)
         write_pve_progress(user_id, progress, version)
       end)
       if w_ok then
-        if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
-          nk.logger_error("workshop_craft_start: не удалось списать слитки")
-          return nk.json_encode({ ok = false, err = "server_error" })
-        end
-        if tier == 2 then
-          if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 1) then
-            nk.logger_error("workshop_craft_start: не удалось поглотить легенду T1")
+        if ingot_n > 0 then
+          if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
+            nk.logger_error("workshop_craft_start: не удалось списать слитки")
             return nk.json_encode({ ok = false, err = "server_error" })
           end
-        elseif tier == 3 then
-          if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 2) then
-            nk.logger_error("workshop_craft_start: не удалось поглотить легенду T2")
+        end
+        if tess_n > 0 then
+          if not inventory_remove_def_total(sheet, "tesseract", tess_n) then
+            nk.logger_error("workshop_craft_start: не удалось списать тессеракты")
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        end
+        if quality == "normal" then
+          if tier == 2 then
+            if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 1) then
+              nk.logger_error("workshop_craft_start: не удалось поглотить легенду T1")
+              return nk.json_encode({ ok = false, err = "server_error" })
+            end
+          elseif tier == 3 then
+            if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 2) then
+              nk.logger_error("workshop_craft_start: не удалось поглотить легенду T2")
+              return nk.json_encode({ ok = false, err = "server_error" })
+            end
+          end
+        elseif quality == "rare" then
+          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "normal") then
+            nk.logger_error("workshop_craft_start: не удалось поглотить normal для rare")
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        elseif quality == "epic" then
+          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "rare") then
+            nk.logger_error("workshop_craft_start: не удалось поглотить rare для epic")
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        elseif quality == "legendary" then
+          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "epic") then
+            nk.logger_error("workshop_craft_start: не удалось поглотить epic для legendary")
             return nk.json_encode({ ok = false, err = "server_error" })
           end
         end
@@ -3610,7 +3856,7 @@ local function duel_mine_summon(ctx, payload)
           difficulty = requested_diff,
           respawn_left_seconds = 0,
           resources = build_resource_payload(progress, user_id),
-          progression = build_progression_payload(progress, user_id),
+          progression = build_progression_payload_auto(progress, user_id),
         })
       end
 
@@ -3659,7 +3905,7 @@ local function duel_mine_summon(ctx, payload)
           respawn_left_seconds = 0,
           summon_cost = { energy = CFG.MINE_SUMMON_ENERGY_COST, gold = CFG.MINE_SUMMON_GOLD_COST },
           resources = build_resource_payload(progress, user_id),
-          progression = build_progression_payload(progress, user_id),
+          progression = build_progression_payload_auto(progress, user_id),
         })
       end
 
@@ -3761,7 +4007,7 @@ function duel_mine_affix_reroll(ctx, payload)
           affix = floor_state.last_affix,
           reroll_cost = banish_cost,
           resources = build_resource_payload(progress, user_id),
-          progression = build_progression_payload(progress, user_id),
+          progression = build_progression_payload_auto(progress, user_id),
         })
       end
 
@@ -3816,7 +4062,7 @@ function duel_mine_barrier_unlock(ctx, payload)
           ok = true,
           floor = target_floor,
           difficulty = diff,
-          progression = build_progression_payload(progress, user_id),
+          progression = build_progression_payload_auto(progress, user_id),
         })
       end
       if unlocked < (target_floor - 1) then
@@ -3890,7 +4136,7 @@ function duel_mine_barrier_unlock(ctx, payload)
           ok = true,
           floor = target_floor,
           difficulty = diff,
-          progression = build_progression_payload(progress, user_id),
+          progression = build_progression_payload_auto(progress, user_id),
           resources = build_resource_payload(progress, user_id),
         })
       end

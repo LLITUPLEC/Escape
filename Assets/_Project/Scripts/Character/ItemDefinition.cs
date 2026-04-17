@@ -21,6 +21,13 @@ namespace Project.Character
         /// <summary>Id рецепта в learned_recipes для крафта экипа (сервер: craft_recipe_id).</summary>
         [SerializeField] private string craftRecipeId = "";
 
+        [Header("Craft (сервер: craft_* в каталоге, UI мастерской)")]
+        [SerializeField] private int craftOre;
+        [SerializeField] private int craftGold;
+        [SerializeField] private string craftIngotDef = "";
+        [SerializeField] private int craftIngotN;
+        [SerializeField] private int craftTesseractN;
+
         [Header("Visual")]
         [SerializeField] private Sprite icon;
 
@@ -47,6 +54,11 @@ namespace Project.Character
         public ItemQualityTier Quality => quality;
         public EquipmentSlotId RecipeTargetSlot => recipeTargetSlot;
         public string CraftRecipeId => craftRecipeId;
+        public int CraftOre => craftOre;
+        public int CraftGold => craftGold;
+        public string CraftIngotDef => craftIngotDef;
+        public int CraftIngotN => craftIngotN;
+        public int CraftTesseractN => craftTesseractN;
         public bool Equippable => equippable;
         public EquipmentSlotId Slot => slot;
         public IReadOnlyList<StatModifier> Modifiers => modifiers;

@@ -19,12 +19,18 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
+  craftRecipeId: recipe_drop_t1_green_WeaponRight
+  craftOre: 40
+  craftGold: 20
+  craftIngotDef: ingot_green
+  craftIngotN: 3
+  craftTesseractN: 0
   icon: {fileID: 21300000, guid: 589b3e6bcdacc20419542ac0033e63be, type: 3}
   equippable: 1
   slot: 7
   modifiers: []
-  hp: 0
-  damage: 12
-  armor: 0
+  hp: 200
+  damage: 260
+  armor: 30
   healing: 0
   critChance: 0

@@ -205,6 +205,8 @@ namespace Project.Character.UI
             if (learnRecipeLabel == null && learnRecipeButton != null) learnRecipeLabel = learnRecipeButton.GetComponentInChildren<TMP_Text>(true);
             if (salvageButton == null) salvageButton = transform.Find("SalvageButton")?.GetComponent<Button>();
 
+            EnsureLearnRecipeButtonFromPrefabIfMissing();
+
             EnsureButtonLabelRaycast(closeButton);
             EnsureButtonLabelRaycast(equipToggleButton);
             EnsureButtonLabelRaycast(learnRecipeButton);
@@ -214,6 +216,36 @@ namespace Project.Character.UI
             EnsureButtonFx(learnRecipeButton);
             EnsureButtonFx(salvageButton);
             if (statsText != null) statsText.richText = true;
+        }
+
+        /// <summary>
+        /// Старые префабы (CharacterUiPrefabCreator) имели только Equip + «Разобрать» без LearnRecipeButton —
+        /// кнопка «Изучить» не находилась и не показывалась.
+        /// </summary>
+        private void EnsureLearnRecipeButtonFromPrefabIfMissing()
+        {
+            if (learnRecipeButton != null) return;
+            var equip = transform.Find("EquipButton")?.GetComponent<Button>();
+            var salvage = transform.Find("SalvageButton")?.GetComponent<Button>();
+            if (equip == null || salvage == null) return;
+
+            var go = Instantiate(equip.gameObject, equip.transform.parent);
+            go.name = "LearnRecipeButton";
+            var eqRt = equip.GetComponent<RectTransform>();
+            var svRt = salvage.GetComponent<RectTransform>();
+            var lrt = go.GetComponent<RectTransform>();
+            lrt.anchorMin = new Vector2(0.36f, eqRt.anchorMin.y);
+            lrt.anchorMax = new Vector2(0.64f, eqRt.anchorMax.y);
+            eqRt.anchorMin = new Vector2(0.06f, eqRt.anchorMin.y);
+            eqRt.anchorMax = new Vector2(0.34f, eqRt.anchorMax.y);
+            svRt.anchorMin = new Vector2(0.66f, svRt.anchorMin.y);
+            svRt.anchorMax = new Vector2(0.94f, svRt.anchorMax.y);
+
+            var t = go.GetComponentInChildren<TMP_Text>(true);
+            if (t != null) t.text = "Изучить";
+
+            learnRecipeButton = go.GetComponent<Button>();
+            learnRecipeLabel = t;
         }
 
         private static void EnsureButtonLabelRaycast(Button button)
