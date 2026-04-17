@@ -39,7 +39,7 @@ local function character_stats_base_for_level(level)
   -- В бою есть базовый урон черепа (SKULL_DAMAGE), поэтому level-бонус идёт отдельной прибавкой.
   local damage = bonus_levels
   local armor = bonus_levels
-  local crit = bonus_levels * 0.005
+  local crit = 0.005 + bonus_levels * 0.005
   local healing = bonus_levels
 
   return {
@@ -1267,7 +1267,14 @@ local function decode_storage_value(obj)
   if v == nil then v = obj.Value end
   if v == nil then return nil end
   if type(v) == "table" then return v end
-  if type(v) == "string" then return nk.json_decode(v) end
+  if type(v) == "string" then
+    local ok, decoded = pcall(nk.json_decode, v)
+    if not ok or decoded == nil then
+      nk.logger_warn("decode_storage_value: invalid json in storage value")
+      return nil
+    end
+    return decoded
+  end
   return nil
 end
 
@@ -1277,11 +1284,37 @@ local EQUIP_ORDER = {
 }
 
 -- Fallback, если в Storage нет записи или CFG.ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
+-- Полный образец — Server/nakama/data/duel_match3_item_catalog.example.json (kind / max_stack / tier / quality).
 local ITEM_DEFS_FALLBACK = {
-  helm_rusty = { slot = "Helmet", hp = 10 },
-  sword_basic = { slot = "WeaponRight", damage = 5 },
-  boots_basic = { slot = "Feet", armor = 2 },
-  gloves_basic = { slot = "Gloves", healing = 3 },
+  helm_rusty = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", hp = 30, armor = 10, healing = 10, crit_chance = 0.2 },
+  sword_basic = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", damage = 35 },
+  boots_basic = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", armor = 2 },
+  gloves_basic = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", healing = 3, crit_chance = 0.3 },
+  -- Зелёный T1 (normal): иконки в клиенте по §4.1
+  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 12, armor = 2 },
+  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 6, armor = 5 },
+  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 14, armor = 3 },
+  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 4, healing = 2, crit_chance = 0.02 },
+  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 10, armor = 3 },
+  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", hp = 5, armor = 6 },
+  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 8, armor = 1 },
+  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_green", damage = 12 },
+  -- Заглушки более высокого качества (иконки — placeholder на клиенте)
+  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", hp = 20, armor = 4 },
+  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", hp = 28, armor = 6 },
+  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", hp = 38, armor = 8 },
+  eq_t2_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "normal", craft_recipe_id = "recipe_green", hp = 20, armor = 4 },
+  eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_green", hp = 28, armor = 6 },
+  eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 52, armor = 11 },
+  -- Ресурсы / рецепты (не экипируются)
+  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 100 },
+  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 100 },
+  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 100 },
+  tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5 },
+  recipe_green = { kind = "recipe", tier = 1, quality = "normal", max_stack = 1, recipe_slot = "Helmet" },
+  recipe_blue = { kind = "recipe", tier = 1, quality = "rare", max_stack = 1, recipe_slot = "Helmet" },
+  recipe_purple = { kind = "recipe", tier = 1, quality = "epic", max_stack = 1, recipe_slot = "Helmet" },
+  recipe_gold = { kind = "recipe", tier = 1, quality = "legendary", max_stack = 1, recipe_slot = "Helmet" },
 }
 
 local ITEM_DEFS_CACHE_TTL_SEC = 30
@@ -1290,16 +1323,94 @@ local _item_defs_merged_cache_at = 0
 
 local function normalize_stored_item_def(def)
   if type(def) ~= "table" then return nil end
+  local kind = tostring(def.kind or "")
+  if kind == "" then kind = "equipment" end
+  local tier = clamp_int(tonumber(def.tier) or 1, 1, 3)
+  local quality = tostring(def.quality or "normal")
+  if quality == "" then quality = "normal" end
+  local recipe_slot = tostring(def.recipe_slot or def.recipe_target_slot or "")
+
+  if kind == "recipe" or kind == "material" or kind == "tesseract" then
+    local max_stack = tonumber(def.max_stack)
+    if max_stack == nil then
+      if kind == "material" then max_stack = 100 else max_stack = 1 end
+    end
+    max_stack = math.max(1, math.floor(max_stack))
+    return {
+      kind = kind,
+      slot = "",
+      max_stack = max_stack,
+      tier = tier,
+      quality = quality,
+      recipe_slot = recipe_slot,
+      craft_recipe_id = "",
+      hp = 0,
+      damage = 0,
+      armor = 0,
+      crit_chance = 0.0,
+      healing = 0,
+    }
+  end
+
   local slot = tostring(def.slot or "")
   if slot == "" then return nil end
   return {
+    kind = "equipment",
     slot = slot,
+    max_stack = 1,
+    tier = tier,
+    quality = quality,
+    recipe_slot = "",
+    craft_recipe_id = tostring(def.craft_recipe_id or ""),
     hp = tonumber(def.hp) or 0,
     damage = tonumber(def.damage) or 0,
     armor = tonumber(def.armor) or 0,
     crit_chance = tonumber(def.crit_chance) or 0.0,
     healing = tonumber(def.healing) or 0,
   }
+end
+
+local function item_def_is_equipment(def)
+  if type(def) ~= "table" then return false end
+  if tostring(def.kind or "equipment") ~= "equipment" then return false end
+  return tostring(def.slot or "") ~= ""
+end
+
+local function item_def_is_recipe(def)
+  if type(def) ~= "table" then return false end
+  return tostring(def.kind or "") == "recipe"
+end
+
+local function item_max_stack(def)
+  if type(def) ~= "table" then return 1 end
+  local ms = tonumber(def.max_stack)
+  if ms == nil or ms < 1 then return 1 end
+  return math.floor(ms)
+end
+
+local function ensure_sheet_inventory_counts(sheet)
+  if type(sheet) ~= "table" then return end
+  local inv = sheet.inventory
+  if type(inv) ~= "table" then return end
+  local ic = sheet.inventory_counts
+  if type(ic) ~= "table" then ic = {} end
+  for i = 1, 25 do
+    local id = inv[i] or ""
+    if type(id) ~= "string" then id = tostring(id) end
+    local c = tonumber(ic[i])
+    if c == nil then
+      if id ~= "" then c = 1 else c = 0 end
+    else
+      c = math.floor(c)
+    end
+    if id == "" then
+      ic[i] = 0
+    else
+      if c < 1 then c = 1 end
+      ic[i] = c
+    end
+  end
+  sheet.inventory_counts = ic
 end
 
 local function read_item_defs_from_storage()
@@ -1351,8 +1462,8 @@ local function get_merged_item_defs()
 end
 
 local BOTS_CACHE_TTL_SEC = 30
-local _bots_merged_cache = nil
-local _bots_merged_cache_at = 0
+local _bots_merged_by_diff = {}
+local _bots_merged_at_by_diff = {}
 
 local function normalize_stored_bot(id_key, def)
   if type(def) ~= "table" then return nil end
@@ -1407,14 +1518,15 @@ local function normalize_stored_bot(id_key, def)
   }
 end
 
-local function read_bots_from_storage()
+local function read_bots_from_storage_key(storage_key)
   local uid = CFG.BOTS_STORAGE_USER_ID
   if uid == nil or uid == "" then return nil end
+  if storage_key == nil or storage_key == "" then return nil end
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
         collection = CFG.BOTS_COLLECTION,
-        key = CFG.BOTS_KEY,
+        key = storage_key,
         user_id = uid,
       },
     })
@@ -1434,29 +1546,42 @@ local function read_bots_from_storage()
   return out
 end
 
--- Fallback в файле + Storage (записи Storage перекрывают совпадающие id).
-local function get_merged_bots()
+-- Fallback + legacy catalog (BOTS_KEY) + каталог по сложности (BOTS_KEYS_BY_DIFFICULTY): поздние слои перекрывают id.
+local function get_merged_bots(difficulty)
+  local diff = normalize_mine_difficulty(difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
   local now = os.time()
-  if _bots_merged_cache ~= nil and (now - _bots_merged_cache_at) < BOTS_CACHE_TTL_SEC then
-    return _bots_merged_cache
+  local cached = _bots_merged_by_diff[diff]
+  local cached_at = _bots_merged_at_by_diff[diff]
+  if cached ~= nil and cached_at ~= nil and (now - cached_at) < BOTS_CACHE_TTL_SEC then
+    return cached
   end
   local merged = {}
   for k, v in pairs(BOTS_FALLBACK) do
     merged[k] = v
   end
-  local from_st = read_bots_from_storage()
-  if from_st ~= nil then
-    for kid, bot in pairs(from_st) do
+  local from_legacy = read_bots_from_storage_key(CFG.BOTS_KEY)
+  if from_legacy ~= nil then
+    for kid, bot in pairs(from_legacy) do
       merged[kid] = bot
     end
   end
-  _bots_merged_cache = merged
-  _bots_merged_cache_at = now
+  local diff_key = CFG.BOTS_KEYS_BY_DIFFICULTY and CFG.BOTS_KEYS_BY_DIFFICULTY[diff] or nil
+  if diff_key ~= nil and diff_key ~= "" then
+    local from_diff = read_bots_from_storage_key(diff_key)
+    if from_diff ~= nil then
+      for kid, bot in pairs(from_diff) do
+        merged[kid] = bot
+      end
+    end
+  end
+  _bots_merged_by_diff[diff] = merged
+  _bots_merged_at_by_diff[diff] = now
   return merged
 end
 
-local function get_bot_profile(bot_id)
-  local bots = get_merged_bots()
+local function get_bot_profile(bot_id, difficulty_opt)
+  local diff = normalize_mine_difficulty(difficulty_opt or CFG.MINE_DIFFICULTY_DEFAULT)
+  local bots = get_merged_bots(diff)
   local fallback_id = mine_bot_id_for_floor(1)
   return bots[bot_id] or bots[fallback_id]
 end
@@ -1475,7 +1600,54 @@ local function normalize_character_sheet(val)
     if inv[i] == nil or inv[i] == false then inv[i] = "" end
     if type(inv[i]) ~= "string" then inv[i] = tostring(inv[i]) end
   end
-  return { equipment = eq, inventory = inv }
+  local ic_in = val.inventory_counts
+  if type(ic_in) ~= "table" then ic_in = {} end
+  local inventory_counts = {}
+  for i = 1, 25 do
+    local id = inv[i] or ""
+    local c = tonumber(ic_in[i])
+    if c == nil then
+      if id ~= "" then c = 1 else c = 0 end
+    else
+      c = math.floor(c)
+    end
+    if id == "" then
+      inventory_counts[i] = 0
+    else
+      if c < 1 then c = 1 end
+      inventory_counts[i] = c
+    end
+  end
+  local lr_in = val.learned_recipes
+  if type(lr_in) ~= "table" then lr_in = {} end
+  local learned_recipes = {}
+  for i = 1, #lr_in do
+    local id = lr_in[i]
+    if type(id) == "string" and id ~= "" then
+      learned_recipes[#learned_recipes + 1] = id
+    end
+  end
+  local ws_in = val.workshop_slots
+  if type(ws_in) ~= "table" then ws_in = {} end
+  local workshop_slots = {}
+  for i = 1, 8 do
+    local wi = ws_in[i]
+    if type(wi) == "table" then
+      local oid = tostring(wi.output_def_id or "")
+      local ea = tonumber(wi.ends_at) or 0
+      if oid == "" then ea = 0 end
+      workshop_slots[i] = { output_def_id = oid, ends_at = ea }
+    else
+      workshop_slots[i] = { output_def_id = "", ends_at = 0 }
+    end
+  end
+  return {
+    equipment = eq,
+    inventory = inv,
+    inventory_counts = inventory_counts,
+    learned_recipes = learned_recipes,
+    workshop_slots = workshop_slots,
+  }
 end
 
 local function read_character_sheet(user_id)
@@ -1507,6 +1679,9 @@ local function write_character_sheet(user_id, sheet)
       value = {
         equipment = sheet.equipment,
         inventory = sheet.inventory,
+        inventory_counts = sheet.inventory_counts or {},
+        learned_recipes = sheet.learned_recipes or {},
+        workshop_slots = sheet.workshop_slots or {},
         updated_at = os.time(),
       },
       permission_read = 1,
@@ -1546,7 +1721,7 @@ local function sum_equipment_bonuses(sheet)
     local def_id = eq[i]
     if def_id ~= nil and def_id ~= "" then
       local d = defs[def_id]
-      if d ~= nil then
+      if d ~= nil and item_def_is_equipment(d) then
         hp = hp + (tonumber(d.hp) or 0)
         damage = damage + (tonumber(d.damage) or 0)
         armor = armor + (tonumber(d.armor) or 0)
@@ -1575,11 +1750,246 @@ local function merge_stats_with_equipment(base_stats, bonus)
 end
 
 local function character_sheet_payload_arrays(sheet)
+  ensure_sheet_inventory_counts(sheet)
   local eq = {}
   local inv = {}
+  local invc = {}
   for i = 1, 8 do eq[i] = sheet.equipment[i] or "" end
-  for i = 1, 25 do inv[i] = sheet.inventory[i] or "" end
-  return eq, inv
+  for i = 1, 25 do
+    inv[i] = sheet.inventory[i] or ""
+    local c = tonumber(sheet.inventory_counts[i]) or 0
+    if inv[i] == nil or inv[i] == "" then c = 0 end
+    invc[i] = c
+  end
+  return eq, inv, invc
+end
+
+local function learned_recipes_payload(sheet)
+  local lr = sheet.learned_recipes
+  if type(lr) ~= "table" then return {} end
+  local out = {}
+  for i = 1, #lr do out[i] = lr[i] end
+  return out
+end
+
+local function ensure_sheet_workshop(sheet)
+  if sheet == nil then return end
+  if type(sheet.workshop_slots) ~= "table" then sheet.workshop_slots = {} end
+  for i = 1, 8 do
+    if type(sheet.workshop_slots[i]) ~= "table" then
+      sheet.workshop_slots[i] = { output_def_id = "", ends_at = 0 }
+    else
+      local oid = tostring(sheet.workshop_slots[i].output_def_id or "")
+      local ea = tonumber(sheet.workshop_slots[i].ends_at) or 0
+      if oid == "" then ea = 0 end
+      sheet.workshop_slots[i].output_def_id = oid
+      sheet.workshop_slots[i].ends_at = ea
+    end
+  end
+end
+
+local function workshop_payload_arrays(sheet)
+  ensure_sheet_workshop(sheet)
+  local o, e = {}, {}
+  for i = 1, 8 do
+    o[i] = sheet.workshop_slots[i].output_def_id or ""
+    e[i] = tonumber(sheet.workshop_slots[i].ends_at) or 0
+  end
+  return o, e
+end
+
+--- Единый JSON ответ duel_character_* (инвентарь + мастерская).
+local function encode_character_ok_response(sheet, progress, user_id)
+  ensure_sheet_inventory_counts(sheet)
+  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
+  local base_stats = character_stats_base_for_level(level)
+  local bonus = sum_equipment_bonuses(sheet)
+  local stats = merge_stats_with_equipment(base_stats, bonus)
+  local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
+  local wo, we = workshop_payload_arrays(sheet)
+  local function payload_with_progression(prog_payload)
+    return {
+      ok = true,
+      progression = prog_payload,
+      stats = stats,
+      equipment_def_ids = eq_arr,
+      inventory_def_ids = inv_arr,
+      inventory_counts = inv_cnt_arr,
+      learned_recipe_ids = learned_recipes_payload(sheet),
+      workshop_output_def_ids = wo,
+      workshop_ends_at = we,
+    }
+  end
+  local full_prog = build_progression_payload(progress, user_id)
+  local ok_enc, encoded = pcall(nk.json_encode, payload_with_progression(full_prog))
+  if ok_enc then return encoded end
+  nk.logger_error("encode_character_ok_response json_encode: " .. tostring(encoded))
+  local slim_prog = {}
+  for k, v in pairs(full_prog) do
+    if k ~= "mine" then slim_prog[k] = v end
+  end
+  local ok2, enc2 = pcall(nk.json_encode, payload_with_progression(slim_prog))
+  if ok2 then return enc2 end
+  nk.logger_error("encode_character_ok_response slim json_encode: " .. tostring(enc2))
+  return nk.json_encode({ ok = false, err = "encode_failed" })
+end
+
+local function sheet_has_learned(sheet, recipe_id)
+  if recipe_id == nil or recipe_id == "" then return false end
+  local lr = sheet.learned_recipes or {}
+  for i = 1, #lr do
+    if lr[i] == recipe_id then return true end
+  end
+  return false
+end
+
+local function item_def_is_legendary_quality(def)
+  return def ~= nil and tostring(def.quality or "") == "legendary"
+end
+
+--- Легенда нужного тира и слота (§4.2: поглощение для зелёного T2/T3).
+local function workshop_legend_fodder_matches(def, slot_name, legend_tier)
+  if def == nil or not item_def_is_equipment(def) or not item_def_is_legendary_quality(def) then
+    return false
+  end
+  if clamp_int(tonumber(def.tier) or 0, 1, 3) ~= legend_tier then return false end
+  if tostring(def.slot or "") ~= slot_name then return false end
+  return true
+end
+
+local function workshop_has_legendary_fodder(sheet, defs, slot_index, legend_tier)
+  local slot_name = EQUIP_ORDER[slot_index + 1]
+  local eq_i = slot_index + 1
+  local eq_id = sheet.equipment[eq_i] or ""
+  if eq_id ~= "" and workshop_legend_fodder_matches(defs[eq_id], slot_name, legend_tier) then
+    return true
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id ~= "" then
+      local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
+      if cnt >= 1 and workshop_legend_fodder_matches(defs[id], slot_name, legend_tier) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+local function workshop_consume_legendary_fodder(sheet, defs, slot_index, legend_tier)
+  local slot_name = EQUIP_ORDER[slot_index + 1]
+  local eq_i = slot_index + 1
+  local eq_id = sheet.equipment[eq_i] or ""
+  if eq_id ~= "" and workshop_legend_fodder_matches(defs[eq_id], slot_name, legend_tier) then
+    sheet.equipment[eq_i] = ""
+    return true
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id ~= "" then
+      local d = defs[id]
+      local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
+      if cnt >= 1 and workshop_legend_fodder_matches(d, slot_name, legend_tier) then
+        cnt = cnt - 1
+        if cnt <= 0 then
+          sheet.inventory[inv_i] = ""
+          sheet.inventory_counts[inv_i] = 0
+        else
+          sheet.inventory_counts[inv_i] = cnt
+        end
+        return true
+      end
+    end
+  end
+  return false
+end
+
+local function inventory_count_def(sheet, def_id)
+  local n = 0
+  for i = 1, 25 do
+    if sheet.inventory[i] == def_id then
+      n = n + (tonumber(sheet.inventory_counts[i]) or 0)
+    end
+  end
+  return n
+end
+
+local function inventory_try_add(sheet, def_id, amount)
+  amount = math.floor(tonumber(amount) or 0)
+  if amount < 1 then return true end
+  local defs = get_merged_item_defs()
+  local def = defs[def_id]
+  if def == nil then return false, "unknown_item" end
+  local max_s = item_max_stack(def)
+  for i = 1, 25 do
+    if sheet.inventory[i] == def_id then
+      local c = tonumber(sheet.inventory_counts[i]) or 0
+      if c > 0 and c < max_s then
+        local space = max_s - c
+        local add = math.min(space, amount)
+        sheet.inventory_counts[i] = c + add
+        amount = amount - add
+        if amount <= 0 then return true end
+      end
+    end
+  end
+  for i = 1, 25 do
+    local id = sheet.inventory[i] or ""
+    if id == "" then
+      local add = math.min(max_s, amount)
+      sheet.inventory[i] = def_id
+      sheet.inventory_counts[i] = add
+      amount = amount - add
+      if amount <= 0 then return true end
+    end
+  end
+  return false, "inventory_full"
+end
+
+local function inventory_remove_def_total(sheet, def_id, amount)
+  amount = math.floor(tonumber(amount) or 0)
+  if amount < 1 then return true end
+  if inventory_count_def(sheet, def_id) < amount then
+    return false, "not_enough_items"
+  end
+  for i = 1, 25 do
+    if amount <= 0 then break end
+    if sheet.inventory[i] == def_id then
+      local c = tonumber(sheet.inventory_counts[i]) or 0
+      if c > 0 then
+        local take = math.min(c, amount)
+        c = c - take
+        amount = amount - take
+        if c <= 0 then
+          sheet.inventory[i] = ""
+          sheet.inventory_counts[i] = 0
+        else
+          sheet.inventory_counts[i] = c
+        end
+      end
+    end
+  end
+  return amount <= 0
+end
+
+local function inventory_can_fit(sheet, def_id, amount)
+  amount = math.floor(tonumber(amount) or 0)
+  if amount < 1 then return true end
+  local defs = get_merged_item_defs()
+  local def = defs[def_id]
+  if def == nil then return false end
+  local max_s = item_max_stack(def)
+  local space = 0
+  for i = 1, 25 do
+    local id = sheet.inventory[i] or ""
+    if id == "" then
+      space = space + max_s
+    elseif id == def_id then
+      local c = tonumber(sheet.inventory_counts[i]) or 0
+      if c < max_s then space = space + (max_s - c) end
+    end
+  end
+  return space >= amount
 end
 
 local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
@@ -1942,8 +2352,8 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
 
   ensure_character_sheet_initialized(user_id)
 
-  local bot = get_bot_profile(bot_id)
   local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
+  local bot = get_bot_profile(bot_id, diff)
   local floor = clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
   local stat_mul = mine_stat_multiplier(diff)
   local reward_mul = mine_reward_multiplier(diff)
@@ -2021,6 +2431,30 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       write_pve_progress(user_id, progress, version)
     end)
     if ok then
+      local sheet = read_character_sheet(user_id)
+      ensure_sheet_inventory_counts(sheet)
+      local grant_ok = true
+      if reward_ingots > 0 then
+        local ok_add = inventory_try_add(sheet, "ingot_green", reward_ingots)
+        if ok_add ~= true then grant_ok = false end
+      end
+      if grant_ok and reward_tesseract > 0 then
+        local ok_add = inventory_try_add(sheet, "tesseract", reward_tesseract)
+        if ok_add ~= true then grant_ok = false end
+      end
+      local bp_r = tostring(bot.reward_blueprint or "")
+      if grant_ok and bp_r ~= "" then
+        local rid = ({ green = "recipe_green", blue = "recipe_blue", purple = "recipe_purple", gold = "recipe_gold" })[bp_r]
+        if rid ~= nil then
+          local ok_add = inventory_try_add(sheet, rid, 1)
+          if ok_add ~= true then grant_ok = false end
+        end
+      end
+      if grant_ok then
+        write_character_sheet(user_id, sheet)
+      else
+        nk.logger_warn("award_pve_victory: не удалось положить лут в инвентарь (сундук полон?)")
+      end
       return {
         reward_xp = reward_xp,
         reward_gold = reward_gold,
@@ -2257,8 +2691,9 @@ local function duel_match3_pve_catalog_get(ctx, payload)
     end
 
     local progress = read_pve_progress(user_id)
+    local current_diff = normalize_mine_difficulty(progress.mine and progress.mine.current_difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
     local bots = {}
-    for _, bot in pairs(get_merged_bots()) do
+    for _, bot in pairs(get_merged_bots(current_diff)) do
       bots[#bots + 1] = {
         id = bot.id,
         name = bot.name,
@@ -2292,7 +2727,6 @@ local function duel_match3_pve_catalog_get(ctx, payload)
       return tostring(a.id) < tostring(b.id)
     end)
 
-    local current_diff = normalize_mine_difficulty(progress.mine and progress.mine.current_difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
     local unlocked_floor = get_unlocked_floor(progress, current_diff)
     local mine_floors = {}
     for _, b in ipairs(bots) do
@@ -2347,6 +2781,7 @@ local function duel_character_item_move(ctx, payload)
     end
     local op = tostring(p.op or "")
     local sheet = read_character_sheet(user_id)
+    ensure_sheet_inventory_counts(sheet)
     local defs = get_merged_item_defs()
 
     local function json_fail(err)
@@ -2364,12 +2799,19 @@ local function duel_character_item_move(ctx, payload)
       local i = inv_index + 1
       local s = slot_index + 1
       local item = sheet.inventory[i]
-      if item == nil or item == "" then return json_fail("empty_source") end
+      local cnt = tonumber(sheet.inventory_counts[i]) or 0
+      if item == nil or item == "" or cnt < 1 then return json_fail("empty_source") end
       local def = defs[item]
       if def == nil then return json_fail("unknown_item") end
+      if not item_def_is_equipment(def) then return json_fail("not_equipment") end
       if def.slot ~= EQUIP_ORDER[s] then return json_fail("wrong_slot") end
       local cur = sheet.equipment[s] or ""
       sheet.inventory[i] = cur
+      if cur ~= nil and cur ~= "" then
+        sheet.inventory_counts[i] = 1
+      else
+        sheet.inventory_counts[i] = 0
+      end
       sheet.equipment[s] = item
     elseif op == "equip_to_inv" then
       local slot_index = tonumber(p.slot_index)
@@ -2387,12 +2829,15 @@ local function duel_character_item_move(ctx, payload)
       if cur_inv == "" then
         sheet.equipment[s] = ""
         sheet.inventory[i] = item
+        sheet.inventory_counts[i] = 1
       else
         local def_inv = defs[cur_inv]
         if def_inv == nil then return json_fail("unknown_item") end
+        if not item_def_is_equipment(def_inv) then return json_fail("cannot_swap") end
         if def_inv.slot ~= EQUIP_ORDER[s] then return json_fail("cannot_swap") end
         sheet.equipment[s] = cur_inv
         sheet.inventory[i] = item
+        sheet.inventory_counts[i] = 1
       end
     elseif op == "inv_swap" then
       local a = tonumber(p.inv_a)
@@ -2404,6 +2849,9 @@ local function duel_character_item_move(ctx, payload)
       if a ~= b then
         local ia, ib = a + 1, b + 1
         sheet.inventory[ia], sheet.inventory[ib] = sheet.inventory[ib], sheet.inventory[ia]
+        local ca = tonumber(sheet.inventory_counts[ia]) or 0
+        local cb = tonumber(sheet.inventory_counts[ib]) or 0
+        sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
       end
     elseif op == "equip_swap" then
       local a = tonumber(p.slot_a)
@@ -2423,18 +2871,7 @@ local function duel_character_item_move(ctx, payload)
     write_character_sheet(user_id, sheet)
 
     local progress = read_pve_progress(user_id)
-    local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
-    local base_stats = character_stats_base_for_level(level)
-    local bonus = sum_equipment_bonuses(sheet)
-    local stats = merge_stats_with_equipment(base_stats, bonus)
-    local eq_arr, inv_arr = character_sheet_payload_arrays(sheet)
-    return nk.json_encode({
-      ok = true,
-      progression = build_progression_payload(progress, user_id),
-      stats = stats,
-      equipment_def_ids = eq_arr,
-      inventory_def_ids = inv_arr,
-    })
+    return encode_character_ok_response(sheet, progress, user_id)
   end)
 
   if not ok then
@@ -2452,24 +2889,296 @@ local function duel_character_get(ctx, payload)
     end
 
     local progress = read_pve_progress(user_id)
-    local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
     local sheet = read_character_sheet(user_id)
-    local base_stats = character_stats_base_for_level(level)
-    local bonus = sum_equipment_bonuses(sheet)
-    local stats = merge_stats_with_equipment(base_stats, bonus)
-    local eq_arr, inv_arr = character_sheet_payload_arrays(sheet)
-
-    return nk.json_encode({
-      ok = true,
-      progression = build_progression_payload(progress, user_id),
-      stats = stats,
-      equipment_def_ids = eq_arr,
-      inventory_def_ids = inv_arr,
-    })
+    return encode_character_ok_response(sheet, progress, user_id)
   end)
 
   if not ok then
     nk.logger_error("duel_character_get: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_character_recipe_learn(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local inv_index = tonumber(p.inv_index)
+    if inv_index == nil then
+      return nk.json_encode({ ok = false, err = "bad_indices" })
+    end
+    inv_index = math.floor(inv_index)
+    if inv_index < 0 or inv_index > 24 then
+      return nk.json_encode({ ok = false, err = "bad_inv_index" })
+    end
+
+    local sheet = read_character_sheet(user_id)
+    ensure_sheet_inventory_counts(sheet)
+    local defs = get_merged_item_defs()
+    local i = inv_index + 1
+    local item_id = sheet.inventory[i] or ""
+    local cnt = tonumber(sheet.inventory_counts[i]) or 0
+    if item_id == "" or cnt < 1 then
+      return nk.json_encode({ ok = false, err = "empty_source" })
+    end
+
+    local def = defs[item_id]
+    if def == nil then
+      return nk.json_encode({ ok = false, err = "unknown_item" })
+    end
+    if not item_def_is_recipe(def) then
+      return nk.json_encode({ ok = false, err = "not_recipe" })
+    end
+
+    local lr = sheet.learned_recipes or {}
+    for j = 1, #lr do
+      if lr[j] == item_id then
+        return nk.json_encode({ ok = false, err = "already_learned" })
+      end
+    end
+
+    cnt = cnt - 1
+    if cnt <= 0 then
+      sheet.inventory[i] = ""
+      sheet.inventory_counts[i] = 0
+    else
+      sheet.inventory_counts[i] = cnt
+    end
+
+    lr[#lr + 1] = item_id
+    sheet.learned_recipes = lr
+    write_character_sheet(user_id, sheet)
+
+    local progress = read_pve_progress(user_id)
+    return encode_character_ok_response(sheet, progress, user_id)
+  end)
+
+  if not ok then
+    nk.logger_error("duel_character_recipe_learn: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_workshop_craft_start(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local slot_index = tonumber(p.slot_index)
+    if slot_index == nil then
+      return nk.json_encode({ ok = false, err = "bad_slot_index" })
+    end
+    slot_index = math.floor(slot_index)
+    if slot_index < 0 or slot_index > 7 then
+      return nk.json_encode({ ok = false, err = "bad_slot_index" })
+    end
+
+    local output_def_id = tostring(p.output_def_id or "")
+    if output_def_id == "" then
+      return nk.json_encode({ ok = false, err = "bad_output" })
+    end
+
+    ensure_character_sheet_initialized(user_id)
+    local defs = get_merged_item_defs()
+    local out_def = defs[output_def_id]
+    if out_def == nil or not item_def_is_equipment(out_def) then
+      return nk.json_encode({ ok = false, err = "unknown_item" })
+    end
+
+    local expected_slot = EQUIP_ORDER[slot_index + 1]
+    if tostring(out_def.slot or "") ~= expected_slot then
+      return nk.json_encode({ ok = false, err = "wrong_workshop_slot" })
+    end
+
+    local craft_recipe_id = tostring(out_def.craft_recipe_id or "")
+    if craft_recipe_id == "" then
+      return nk.json_encode({ ok = false, err = "not_craftable" })
+    end
+
+    local sheet = read_character_sheet(user_id)
+    ensure_sheet_inventory_counts(sheet)
+    ensure_sheet_workshop(sheet)
+    local wslot = sheet.workshop_slots[slot_index + 1]
+    if wslot.output_def_id ~= nil and wslot.output_def_id ~= "" then
+      local wend = tonumber(wslot.ends_at) or 0
+      if wend > os.time() then
+        return nk.json_encode({ ok = false, err = "workshop_busy" })
+      end
+      return nk.json_encode({ ok = false, err = "claim_first" })
+    end
+
+    if not sheet_has_learned(sheet, craft_recipe_id) then
+      return nk.json_encode({ ok = false, err = "recipe_not_learned" })
+    end
+
+    local tier = clamp_int(tonumber(out_def.tier) or 1, 1, 3)
+    local quality = tostring(out_def.quality or "normal")
+    if quality ~= "normal" then
+      return nk.json_encode({ ok = false, err = "unsupported_craft_quality" })
+    end
+
+    local cost
+    if tier == 1 then
+      cost = CFG.WORKSHOP_T1_NORMAL_COST
+    elseif tier == 2 then
+      cost = CFG.WORKSHOP_T2_NORMAL_COST
+    elseif tier == 3 then
+      cost = CFG.WORKSHOP_T3_NORMAL_COST
+    else
+      return nk.json_encode({ ok = false, err = "unsupported_craft_tier" })
+    end
+
+    local ore_c = cost.ore
+    local gold_c = cost.gold
+    local ingot_def = cost.ingot_def
+    local ingot_n = cost.ingot_n
+
+    if tier == 2 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 1) then
+      return nk.json_encode({ ok = false, err = "missing_legend_fodder_t1" })
+    end
+    if tier == 3 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 2) then
+      return nk.json_encode({ ok = false, err = "missing_legend_fodder_t2" })
+    end
+
+    if inventory_count_def(sheet, ingot_def) < ingot_n then
+      return nk.json_encode({ ok = false, err = "not_enough_ingots" })
+    end
+
+    local dur_tbl = CFG.WORKSHOP_CRAFT_DURATION_SEC_BY_TIER
+    local dur = dur_tbl and dur_tbl[tier] or (60 * 60)
+
+    local max_retries = 5
+    for attempt = 1, max_retries do
+      local progress, version = read_pve_progress(user_id)
+      if (tonumber(progress.ore) or 0) < ore_c then
+        return nk.json_encode({ ok = false, err = "not_enough_ore" })
+      end
+      if (tonumber(progress.gold) or 0) < gold_c then
+        return nk.json_encode({ ok = false, err = "not_enough_gold" })
+      end
+
+      progress.ore = (tonumber(progress.ore) or 0) - ore_c
+      progress.gold = (tonumber(progress.gold) or 0) - gold_c
+
+      local w_ok, w_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if w_ok then
+        if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
+          nk.logger_error("workshop_craft_start: не удалось списать слитки")
+          return nk.json_encode({ ok = false, err = "server_error" })
+        end
+        if tier == 2 then
+          if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 1) then
+            nk.logger_error("workshop_craft_start: не удалось поглотить легенду T1")
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        elseif tier == 3 then
+          if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 2) then
+            nk.logger_error("workshop_craft_start: не удалось поглотить легенду T2")
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        end
+        wslot.output_def_id = output_def_id
+        wslot.ends_at = os.time() + dur
+        write_character_sheet(user_id, sheet)
+        return encode_character_ok_response(sheet, progress, user_id)
+      end
+
+      local err_text = tostring(w_err)
+      if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+        error(w_err)
+      end
+    end
+
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_workshop_craft_start: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_workshop_craft_claim(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local slot_index = tonumber(p.slot_index)
+    if slot_index == nil then
+      return nk.json_encode({ ok = false, err = "bad_slot_index" })
+    end
+    slot_index = math.floor(slot_index)
+    if slot_index < 0 or slot_index > 7 then
+      return nk.json_encode({ ok = false, err = "bad_slot_index" })
+    end
+
+    ensure_character_sheet_initialized(user_id)
+    local sheet = read_character_sheet(user_id)
+    ensure_sheet_inventory_counts(sheet)
+    ensure_sheet_workshop(sheet)
+    local wslot = sheet.workshop_slots[slot_index + 1]
+    local oid = tostring(wslot.output_def_id or "")
+    if oid == "" then
+      return nk.json_encode({ ok = false, err = "empty_workshop_slot" })
+    end
+    local wend = tonumber(wslot.ends_at) or 0
+    if wend > os.time() then
+      return nk.json_encode({ ok = false, err = "craft_not_ready" })
+    end
+
+    if inventory_try_add(sheet, oid, 1) ~= true then
+      return nk.json_encode({ ok = false, err = "inventory_full" })
+    end
+
+    wslot.output_def_id = ""
+    wslot.ends_at = 0
+    write_character_sheet(user_id, sheet)
+
+    local progress = read_pve_progress(user_id)
+    return encode_character_ok_response(sheet, progress, user_id)
+  end)
+
+  if not ok then
+    nk.logger_error("duel_workshop_craft_claim: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -2626,8 +3335,8 @@ local function duel_match3_pve_create(ctx, payload)
     local requested_bot_id = tostring(p.bot_id or mine_bot_id_for_floor(1))
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local requested_floor = clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
-    local fallback_bot = get_bot_profile(mine_bot_id_for_floor(requested_floor))
-    local bot = get_bot_profile(requested_bot_id)
+    local fallback_bot = get_bot_profile(mine_bot_id_for_floor(requested_floor), requested_diff)
+    local bot = get_bot_profile(requested_bot_id, requested_diff)
     if bot == nil or bot.id == nil or bot.id == "" then
       bot = fallback_bot
     end
@@ -2889,7 +3598,7 @@ function duel_mine_affix_reroll(ctx, payload)
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local max_retries = 5
     local bid = mine_bot_id_for_floor(requested_floor)
-    local bot_for_cost = get_bot_profile(bid)
+    local bot_for_cost = get_bot_profile(bid, requested_diff)
     local banish_cost = PveMineCost.normalize(bot_for_cost.cost_banish, PveMineCost.DEFAULT_BANISH)
 
     for i = 1, max_retries do
@@ -3525,7 +4234,8 @@ local function match_join(context, dispatcher, tick, state, presences)
       for uid, _ in pairs(state.presences) do player_id = uid end
       if player_id == nil then return state end
 
-      local bot_profile = get_bot_profile(state.bot_id)
+      local pve_diff = normalize_mine_difficulty((state.pve_run or {}).difficulty)
+      local bot_profile = get_bot_profile(state.bot_id, pve_diff)
       state.bot_id = bot_profile.id
       if state.bot_user_id == nil or state.bot_user_id == "" then
         state.bot_user_id = make_bot_user_id(state.bot_id)
@@ -3888,7 +4598,13 @@ local function duel_match3_item_catalog_get(ctx, payload)
     for id, d in pairs(defs) do
       list[#list + 1] = {
         id = id,
-        slot = d.slot,
+        kind = d.kind or "equipment",
+        slot = d.slot or "",
+        max_stack = d.max_stack or 1,
+        tier = d.tier or 1,
+        quality = d.quality or "normal",
+        recipe_slot = d.recipe_slot or "",
+        craft_recipe_id = d.craft_recipe_id or "",
         hp = d.hp or 0,
         damage = d.damage or 0,
         armor = d.armor or 0,
@@ -3915,6 +4631,9 @@ nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
 nk.register_rpc(duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
 nk.register_rpc(duel_character_get, "duel_character_get")
 nk.register_rpc(duel_character_item_move, "duel_character_item_move")
+nk.register_rpc(duel_character_recipe_learn, "duel_character_recipe_learn")
+nk.register_rpc(duel_workshop_craft_start, "duel_workshop_craft_start")
+nk.register_rpc(duel_workshop_craft_claim, "duel_workshop_craft_claim")
 nk.register_rpc(duel_player_resources_get, "duel_player_resources_get")
 nk.register_rpc(duel_player_resources_spend, "duel_player_resources_spend")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")

@@ -18,6 +18,8 @@ namespace Project.Character.UI
         [SerializeField] private TMP_Text armorText;
         [SerializeField] private TMP_Text healText;
         [SerializeField] private TMP_Text critText;
+        [Tooltip("Необязательно: сообщение при ошибке duel_character_get (иначе статы останутся нулями без пояснения).")]
+        [SerializeField] private TMP_Text profileLoadErrorText;
 
         [Header("Equipment")]
         [SerializeField] private Transform equipmentRoot;
@@ -32,6 +34,7 @@ namespace Project.Character.UI
         private readonly List<ItemSlotView> _inventorySlots = new();
         private string[] _equipmentDefIds = new string[8];
         private string[] _inventoryDefIds = new string[25];
+        private int[] _inventoryCounts = new int[25];
         private ItemCatalog _activeCatalog;
 
         private bool _dragConfigured;
@@ -56,6 +59,7 @@ namespace Project.Character.UI
 
         public void SetStats(int hp, int damage, int armor, int healing, float critChance01)
         {
+            ClearProfileLoadError();
             if (hpText != null) hpText.text = hp.ToString();
             if (damageText != null) damageText.text = damage.ToString();
             if (armorText != null) armorText.text = armor.ToString();
@@ -63,15 +67,34 @@ namespace Project.Character.UI
             if (critText != null) critText.text = Mathf.RoundToInt(Mathf.Clamp01(critChance01) * 100f) + "%";
         }
 
+        public void SetProfileLoadError(string err)
+        {
+            if (profileLoadErrorText == null) return;
+            var s = string.IsNullOrEmpty(err) ? "" : err;
+            profileLoadErrorText.text = string.IsNullOrEmpty(s) ? "" : "Ошибка профиля: " + s;
+            profileLoadErrorText.gameObject.SetActive(!string.IsNullOrEmpty(s));
+        }
+
+        public void ClearProfileLoadError()
+        {
+            if (profileLoadErrorText == null) return;
+            profileLoadErrorText.text = "";
+            profileLoadErrorText.gameObject.SetActive(false);
+        }
+
         public void ApplyCharacterResponse(CharacterGetRpcResponse profile, ItemCatalog catalog)
         {
             if (profile == null || !profile.ok) return;
+            ClearProfileLoadError();
             if (profile.stats != null)
                 SetStats(profile.stats.hp, profile.stats.damage, profile.stats.armor, profile.stats.healing, profile.stats.crit_chance);
-            BindEquipmentAndInventory(profile.equipment_def_ids, profile.inventory_def_ids, catalog);
+            BindEquipmentAndInventory(profile.equipment_def_ids, profile.inventory_def_ids, profile.inventory_counts, catalog);
         }
 
-        public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, ItemCatalog catalog)
+        public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, ItemCatalog catalog) =>
+            BindEquipmentAndInventory(equipmentDefIds, inventoryDefIds, null, catalog);
+
+        public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, int[] inventoryCounts, ItemCatalog catalog)
         {
             EnsureBuilt();
             _activeCatalog = catalog;
@@ -86,19 +109,32 @@ namespace Project.Character.UI
             {
                 var id = equipmentDefIds != null && i < equipmentDefIds.Length ? equipmentDefIds[i] : null;
                 var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
-                if (bySlot[i] != null) bySlot[i].Set(def);
+                var icon = catalog != null ? catalog.GetDisplayIcon(def) : def?.Icon;
+                if (bySlot[i] != null) bySlot[i].Set(def, icon);
                 _equipmentDefIds[i] = id;
             }
 
             if (_inventoryDefIds.Length != _inventorySlots.Count)
                 _inventoryDefIds = new string[_inventorySlots.Count];
+            if (_inventoryCounts.Length != _inventorySlots.Count)
+                _inventoryCounts = new int[_inventorySlots.Count];
 
             for (var i = 0; i < _inventorySlots.Count; i++)
             {
                 var id = inventoryDefIds != null && i < inventoryDefIds.Length ? inventoryDefIds[i] : null;
                 var def = catalog != null && !string.IsNullOrEmpty(id) ? catalog.Get(id) : null;
-                _inventorySlots[i].SetIcon(def != null ? def.Icon : null);
+                var icon = catalog != null ? catalog.GetDisplayIcon(def) : def?.Icon;
+                _inventorySlots[i].SetIcon(icon);
                 _inventoryDefIds[i] = id;
+                var cnt = 0;
+                if (!string.IsNullOrEmpty(id))
+                {
+                    cnt = inventoryCounts != null && i < inventoryCounts.Length ? inventoryCounts[i] : 1;
+                    if (cnt < 1) cnt = 1;
+                }
+
+                _inventoryCounts[i] = cnt;
+                _inventorySlots[i].SetStackCount(cnt);
             }
         }
 
@@ -109,6 +145,7 @@ namespace Project.Character.UI
             if (inventoryIndex < 0 || inventoryIndex >= _inventoryDefIds.Length) return false;
             itemId = _inventoryDefIds[inventoryIndex];
             if (string.IsNullOrEmpty(itemId)) return false;
+            if (inventoryIndex < _inventoryCounts.Length && _inventoryCounts[inventoryIndex] < 1) return false;
             itemDef = _activeCatalog != null ? _activeCatalog.Get(itemId) : null;
             return itemDef != null;
         }
@@ -127,7 +164,16 @@ namespace Project.Character.UI
 
         public bool HasInventoryItem(int inventoryIndex)
         {
-            return inventoryIndex >= 0 && inventoryIndex < _inventoryDefIds.Length && !string.IsNullOrEmpty(_inventoryDefIds[inventoryIndex]);
+            if (inventoryIndex < 0 || inventoryIndex >= _inventoryDefIds.Length) return false;
+            if (string.IsNullOrEmpty(_inventoryDefIds[inventoryIndex])) return false;
+            if (inventoryIndex < _inventoryCounts.Length && _inventoryCounts[inventoryIndex] < 1) return false;
+            return true;
+        }
+
+        public int GetInventoryStackCount(int inventoryIndex)
+        {
+            if (inventoryIndex < 0 || inventoryIndex >= _inventoryCounts.Length) return 0;
+            return _inventoryCounts[inventoryIndex];
         }
 
         public bool HasEquipmentItem(EquipmentSlotId slotId)

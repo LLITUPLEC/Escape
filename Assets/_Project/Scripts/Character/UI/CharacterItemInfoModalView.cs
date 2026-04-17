@@ -16,6 +16,8 @@ namespace Project.Character.UI
         [SerializeField] private Button closeButton;
         [SerializeField] private Button equipToggleButton;
         [SerializeField] private TMP_Text equipToggleLabel;
+        [SerializeField] private Button learnRecipeButton;
+        [SerializeField] private TMP_Text learnRecipeLabel;
         [SerializeField] private Button salvageButton;
 
         [Header("Animation")]
@@ -35,7 +37,7 @@ namespace Project.Character.UI
             HideImmediate();
         }
 
-        public void Bind(Action onClose, Action onEquipToggle, Action onSalvage)
+        public void Bind(Action onClose, Action onEquipToggle, Action onSalvage, Action onLearnRecipe = null)
         {
             if (closeButton != null)
             {
@@ -47,6 +49,12 @@ namespace Project.Character.UI
             {
                 equipToggleButton.onClick.RemoveAllListeners();
                 if (onEquipToggle != null) equipToggleButton.onClick.AddListener(() => onEquipToggle());
+            }
+
+            if (learnRecipeButton != null)
+            {
+                learnRecipeButton.onClick.RemoveAllListeners();
+                if (onLearnRecipe != null) learnRecipeButton.onClick.AddListener(() => onLearnRecipe());
             }
 
             if (salvageButton != null)
@@ -111,6 +119,18 @@ namespace Project.Character.UI
             if (equipToggleButton != null) equipToggleButton.gameObject.SetActive(visible);
             if (equipToggleButton != null) equipToggleButton.interactable = interactable;
             if (equipToggleLabel != null) equipToggleLabel.text = text ?? string.Empty;
+        }
+
+        public void SetLearnRecipeButton(bool visible, bool interactable, string text)
+        {
+            if (learnRecipeButton != null) learnRecipeButton.gameObject.SetActive(visible);
+            if (learnRecipeButton != null) learnRecipeButton.interactable = interactable;
+            if (learnRecipeLabel != null) learnRecipeLabel.text = text ?? string.Empty;
+            else if (learnRecipeButton != null)
+            {
+                var t = learnRecipeButton.GetComponentInChildren<TMP_Text>(true);
+                if (t != null) t.text = text ?? string.Empty;
+            }
         }
 
         public bool ContainsScreenPoint(Vector2 screenPoint, Camera eventCamera)
@@ -181,13 +201,17 @@ namespace Project.Character.UI
             if (closeButton == null) closeButton = transform.Find("CloseButton")?.GetComponent<Button>();
             if (equipToggleButton == null) equipToggleButton = transform.Find("EquipButton")?.GetComponent<Button>();
             if (equipToggleLabel == null && equipToggleButton != null) equipToggleLabel = equipToggleButton.GetComponentInChildren<TMP_Text>(true);
+            if (learnRecipeButton == null) learnRecipeButton = transform.Find("LearnRecipeButton")?.GetComponent<Button>();
+            if (learnRecipeLabel == null && learnRecipeButton != null) learnRecipeLabel = learnRecipeButton.GetComponentInChildren<TMP_Text>(true);
             if (salvageButton == null) salvageButton = transform.Find("SalvageButton")?.GetComponent<Button>();
 
             EnsureButtonLabelRaycast(closeButton);
             EnsureButtonLabelRaycast(equipToggleButton);
+            EnsureButtonLabelRaycast(learnRecipeButton);
             EnsureButtonLabelRaycast(salvageButton);
             EnsureButtonFx(closeButton);
             EnsureButtonFx(equipToggleButton);
+            EnsureButtonFx(learnRecipeButton);
             EnsureButtonFx(salvageButton);
             if (statsText != null) statsText.richText = true;
         }

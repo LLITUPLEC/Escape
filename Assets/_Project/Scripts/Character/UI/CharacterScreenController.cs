@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
@@ -42,6 +43,7 @@ namespace Project.Character.UI
         private int _prevSortingOrder;
         private const int CharacterScreenSortingOrder = 32760;
         private Coroutine _hideOverlayRoutine;
+        private CharacterGetRpcResponse _lastProfile;
 
         private void Awake()
         {
@@ -129,7 +131,14 @@ namespace Project.Character.UI
             await RunOnMainThreadAsync(() =>
             {
                 if (!_visible) return;
-                if (profile == null || !profile.ok) return;
+                if (profile == null || !profile.ok)
+                {
+                    var err = profile == null ? "null" : (string.IsNullOrEmpty(profile.err) ? "unknown" : profile.err);
+                    if (view != null) view.SetProfileLoadError(err);
+                    return;
+                }
+
+                _lastProfile = profile;
 
                 if (levelText != null && profile.progression != null)
                     levelText.text = profile.progression.level.ToString();
@@ -167,8 +176,9 @@ namespace Project.Character.UI
             ShowActionModalNear(handle.transform as RectTransform);
         }
 
-        private void HandleProfileUpdated(CharacterGetRpcResponse _)
+        private void HandleProfileUpdated(CharacterGetRpcResponse response)
         {
+            _lastProfile = response;
             if (_infoModal != null && _infoModal.gameObject.activeSelf) UpdateInfoModal();
         }
 
@@ -219,7 +229,8 @@ namespace Project.Character.UI
             _infoModal.Bind(
                 onClose: () => HideModals(),
                 onEquipToggle: OnEquipTogglePressed,
-                onSalvage: () => { Debug.Log("[CharacterScreen] Разбор предмета пока не реализован."); });
+                onSalvage: () => { Debug.Log("[CharacterScreen] Разбор предмета пока не реализован."); },
+                onLearnRecipe: OnLearnRecipePressed);
 
             _modalOverlay.SetActive(false);
         }
@@ -272,8 +283,9 @@ namespace Project.Character.UI
             var stats = CreateLabel(rt, "Stats", "-", 26, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
             stats.richText = true;
             CreateRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f));
-            CreateRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.48f, 0.16f));
-            CreateRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.52f, 0.05f), new Vector2(0.94f, 0.16f));
+            CreateRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.34f, 0.16f));
+            CreateRectButton(rt, "LearnRecipeButton", "Изучить рецепт", new Vector2(0.36f, 0.05f), new Vector2(0.64f, 0.16f));
+            CreateRectButton(rt, "SalvageButton", "Разобрать", new Vector2(0.66f, 0.05f), new Vector2(0.94f, 0.16f));
             return go.GetComponent<CharacterItemInfoModalView>();
         }
 
@@ -315,23 +327,59 @@ namespace Project.Character.UI
             }
 
             _infoModal.SetTitle(selectedItem.DisplayName);
-            _infoModal.SetSlot("Слот: " + (selectedItem.Equippable ? SlotName(selectedItem.Slot) : "Не экипируется"));
+            var isRecipe = selectedItem.Kind == ItemKind.Recipe;
+            if (isRecipe)
+                _infoModal.SetSlot("Рецепт → " + SlotName(selectedItem.RecipeTargetSlot));
+            else
+                _infoModal.SetSlot("Слот: " + (selectedItem.Equippable ? SlotName(selectedItem.Slot) : "Не экипируется"));
             _infoModal.SetStats(BuildStatsDescription(selectedItem));
+            var learned = _lastProfile?.learned_recipe_ids != null &&
+                          Array.Exists(_lastProfile.learned_recipe_ids, x => x == selectedItem.ItemId);
 
-            var canEquipAction = selectedItem.Equippable;
-            if (canEquipAction)
+            if (isRecipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {
-                if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
-                {
-                    _infoModal.SetEquipButton(true, true, "Надеть");
-                }
-                else
-                {
-                    var hasSpace = view.FindFirstEmptyInventoryIndex() >= 0;
-                    _infoModal.SetEquipButton(true, hasSpace, hasSpace ? "Снять" : "Снять (нет места)");
-                }
+                _infoModal.SetEquipButton(false, false, string.Empty);
+                _infoModal.SetLearnRecipeButton(true, !learned, learned ? "Уже изучено" : "Изучить рецепт");
             }
-            else _infoModal.SetEquipButton(false, false, string.Empty);
+            else
+            {
+                _infoModal.SetLearnRecipeButton(false, false, string.Empty);
+                var canEquipAction = selectedItem.Equippable;
+                if (canEquipAction)
+                {
+                    if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+                    {
+                        _infoModal.SetEquipButton(true, true, "Надеть");
+                    }
+                    else
+                    {
+                        var hasSpace = view.FindFirstEmptyInventoryIndex() >= 0;
+                        _infoModal.SetEquipButton(true, hasSpace, hasSpace ? "Снять" : "Снять (нет места)");
+                    }
+                }
+                else _infoModal.SetEquipButton(false, false, string.Empty);
+            }
+        }
+
+        private void OnLearnRecipePressed()
+        {
+            _ = LearnRecipeFromModalAsync();
+        }
+
+        private async Task LearnRecipeFromModalAsync()
+        {
+            if (_selectedHandle == null || _selectedHandle.Kind != CharacterDragSlotKind.Inventory || view == null) return;
+            var ct = _cts != null ? _cts.Token : CancellationToken.None;
+            var resp = await CharacterProfileService.LearnRecipeAsync(_selectedHandle.InventoryIndex, ct).ConfigureAwait(false);
+            if (ct.IsCancellationRequested) return;
+
+            await RunOnMainThreadAsync(() =>
+            {
+                if (resp == null || !resp.ok || view == null || itemCatalog == null) return;
+                _lastProfile = resp;
+                view.ApplyCharacterResponse(resp, itemCatalog);
+                HideModals(true);
+            });
         }
 
         private void OnEquipTogglePressed()

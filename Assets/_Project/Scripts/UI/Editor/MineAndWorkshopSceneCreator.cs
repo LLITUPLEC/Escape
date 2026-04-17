@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
+using Project.Character;
+using Project.Character.UI;
 using Project.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -19,6 +21,7 @@ namespace Project.UI.Editor
         private const string WorkshopScenePath = ScenesDir + "/WorkshopScene.unity";
         private const string MonsterCatalogPath = "Assets/_Project/Data/Match3/Monsters/MainMonsterCatalog.asset";
         private const string MonsterFrameCatalogPath = "Assets/_Project/Data/Match3/Monsters/MainMonsterFrameCatalog.asset";
+        private const string MainItemCatalogPath = "Assets/_Project/Data/Character/Items/MainItemCatalog.asset";
 
         [MenuItem("Tools/UI/Создать сцены Шахты и Мастерской")]
         public static void CreateMineAndWorkshopScenes()
@@ -192,6 +195,19 @@ namespace Project.UI.Editor
 
             CreateSceneLoadButton(bg, "BackButton", "Назад", "MainMenu",
                 new Color(0.22f, 0.18f, 0.18f, 0.95f), new Vector2(0.03f, 0.03f), new Vector2(0.18f, 0.10f));
+
+            var itemCatalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>(MainItemCatalogPath);
+            var ws = canvasGo.AddComponent<WorkshopSceneController>();
+            var wso = new SerializedObject(ws);
+            wso.FindProperty("itemCatalog").objectReferenceValue = itemCatalog;
+            var craftRoot = bg.transform.Find("CraftSlots");
+            if (craftRoot != null)
+                wso.FindProperty("craftSlotsRoot").objectReferenceValue = craftRoot;
+            var hint = bg.transform.Find("Hint");
+            if (hint != null)
+                wso.FindProperty("hintText").objectReferenceValue = hint.GetComponent<Text>();
+            wso.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(ws);
 
             EditorSceneManager.SaveScene(scene, WorkshopScenePath);
         }

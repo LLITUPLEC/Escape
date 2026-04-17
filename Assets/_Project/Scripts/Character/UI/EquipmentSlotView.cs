@@ -17,9 +17,16 @@ namespace Project.Character.UI
             slotId = id;
         }
 
-        public void Set(ItemDefinition item)
+        public void Set(ItemDefinition item, Sprite resolvedIcon = null)
         {
-            if (itemView != null) itemView.SetIcon(item != null ? item.Icon : null);
+            if (itemView == null) return;
+            if (resolvedIcon != null)
+            {
+                itemView.SetIcon(resolvedIcon);
+                return;
+            }
+
+            itemView.SetIcon(item != null ? item.Icon : null);
         }
 
         public void SetInteractable(bool interactable)

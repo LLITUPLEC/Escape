@@ -62,6 +62,12 @@ return {
   ITEM_DEFS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c",
   BOTS_COLLECTION = "duel_match3_bot_defs",
   BOTS_KEY = "catalog",
+  --- Дополнительные каталоги по сложности шахты (фаза 3): перекрывают id из BOTS_KEY и BOTS_FALLBACK.
+  BOTS_KEYS_BY_DIFFICULTY = {
+    easy = "catalog_easy",
+    medium = "catalog_medium",
+    hard = "catalog_hard",
+  },
   BOTS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c",
   BOT_USER_ID_PREFIX = "zz-bot-",
   LEVEL_XP = { 0, 100, 320, 804, 1869, 4212, 9367, 20708, 45658, 100548, 221306, 486974 },
@@ -90,4 +96,10 @@ return {
     "scree",
   },
   SESSION_EPOCH_ACCOUNT_META = "session_epoch",
+  --- Зелёный normal: стоимость по тиру предмета (§4.2 — подгонка баланса отдельно).
+  WORKSHOP_T1_NORMAL_COST = { ore = 40, gold = 20, ingot_def = "ingot_green", ingot_n = 3 },
+  WORKSHOP_T2_NORMAL_COST = { ore = 80, gold = 40, ingot_def = "ingot_green", ingot_n = 6 },
+  WORKSHOP_T3_NORMAL_COST = { ore = 160, gold = 80, ingot_def = "ingot_green", ingot_n = 9 },
+  --- Длительность крафта по тиру предмета (секунды): T1 60 мин, T2 120 мин, T3 240 мин.
+  WORKSHOP_CRAFT_DURATION_SEC_BY_TIER = { [1] = 60 * 60, [2] = 120 * 60, [3] = 240 * 60 },
 }

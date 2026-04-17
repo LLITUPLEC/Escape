@@ -10,6 +10,9 @@ namespace Project.Character
     {
         private const string RpcCharacterGet = "duel_character_get";
         private const string RpcCharacterItemMove = "duel_character_item_move";
+        private const string RpcCharacterRecipeLearn = "duel_character_recipe_learn";
+        private const string RpcWorkshopCraftStart = "duel_workshop_craft_start";
+        private const string RpcWorkshopCraftClaim = "duel_workshop_craft_claim";
 
         public static async Task<CharacterGetRpcResponse> GetAsync(CancellationToken ct)
         {
@@ -50,7 +53,30 @@ namespace Project.Character
         public static Task<CharacterGetRpcResponse> SwapEquipmentAsync(int slotA, int slotB, CancellationToken ct) =>
             RpcItemMoveAsync("{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"op\":\"equip_swap\",\"slot_a\":" + slotA + ",\"slot_b\":" + slotB + "}", ct);
 
-        private static async Task<CharacterGetRpcResponse> RpcItemMoveAsync(string payload, CancellationToken ct)
+        public static Task<CharacterGetRpcResponse> LearnRecipeAsync(int inventoryIndex, CancellationToken ct) =>
+            RpcCharacterPayloadAsync(RpcCharacterRecipeLearn,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"inv_index\":" + inventoryIndex + "}", ct);
+
+        public static Task<CharacterGetRpcResponse> WorkshopCraftStartAsync(int slotIndex, string outputDefId, CancellationToken ct)
+        {
+            if (string.IsNullOrEmpty(outputDefId))
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "empty_output_def_id" });
+            if (slotIndex < 0 || slotIndex > 7)
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            var escaped = outputDefId.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            return RpcCharacterPayloadAsync(RpcWorkshopCraftStart,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex + ",\"output_def_id\":\"" + escaped + "\"}", ct);
+        }
+
+        public static Task<CharacterGetRpcResponse> WorkshopCraftClaimAsync(int slotIndex, CancellationToken ct)
+        {
+            if (slotIndex < 0 || slotIndex > 7)
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            return RpcCharacterPayloadAsync(RpcWorkshopCraftClaim,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex + "}", ct);
+        }
+
+        private static async Task<CharacterGetRpcResponse> RpcCharacterPayloadAsync(string rpcId, string payload, CancellationToken ct)
         {
             if (NakamaBootstrap.Instance == null)
                 return new CharacterGetRpcResponse { ok = false, err = "nakama_not_initialized" };
@@ -62,7 +88,7 @@ namespace Project.Character
             try
             {
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcCharacterItemMove, payload, canceller: ct);
+                    NakamaBootstrap.Instance.Session, rpcId, payload, canceller: ct);
 
                 var body = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(body))
@@ -75,6 +101,18 @@ namespace Project.Character
             {
                 return new CharacterGetRpcResponse { ok = false, err = e.Message };
             }
+        }
+
+        private static async Task<CharacterGetRpcResponse> RpcItemMoveAsync(string payload, CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null)
+                return new CharacterGetRpcResponse { ok = false, err = "nakama_not_initialized" };
+
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                return new CharacterGetRpcResponse { ok = false, err = "nakama_not_ready" };
+
+            return await RpcCharacterPayloadAsync(RpcCharacterItemMove, payload, ct).ConfigureAwait(false);
         }
     }
 }

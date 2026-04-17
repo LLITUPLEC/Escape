@@ -140,11 +140,56 @@ namespace Project.Character.Editor
             localChanged |= SetNumber(so.FindProperty("healing"), rec.healing);
             localChanged |= SetNumber(so.FindProperty("critChance"), NormalizeCritChance(rec.critChance));
 
-            if (TryParseSlot(rec.slot, out var slot))
+            var kindStr = string.IsNullOrWhiteSpace(rec.kind) ? "equipment" : rec.kind.Trim();
+            var isEquipment = kindStr.Equals("equipment", StringComparison.OrdinalIgnoreCase);
+
+            var kindProp = so.FindProperty("kind");
+            if (kindProp != null && kindProp.propertyType == SerializedPropertyType.Enum)
+            {
+                var kIdx = KindStringToEnumIndex(kindStr);
+                if (kIdx >= 0 && kindProp.enumValueIndex != kIdx)
+                {
+                    kindProp.enumValueIndex = kIdx;
+                    localChanged = true;
+                }
+            }
+
+            var tier = rec.tier > 0 ? rec.tier : 1;
+            localChanged |= SetInt(so.FindProperty("tier"), tier);
+
+            var maxStack = rec.maxStack;
+            if (maxStack <= 0)
+            {
+                if (kindStr.Equals("material", StringComparison.OrdinalIgnoreCase)) maxStack = 100;
+                else maxStack = 1;
+            }
+
+            localChanged |= SetInt(so.FindProperty("maxStack"), maxStack);
+
+            var qProp = so.FindProperty("quality");
+            if (qProp != null && qProp.propertyType == SerializedPropertyType.Enum)
+            {
+                var qIdx = QualityStringToEnumIndex(string.IsNullOrWhiteSpace(rec.quality) ? "normal" : rec.quality);
+                if (qIdx >= 0 && qProp.enumValueIndex != qIdx)
+                {
+                    qProp.enumValueIndex = qIdx;
+                    localChanged = true;
+                }
+            }
+
+            if (isEquipment && TryParseSlot(rec.slot, out var slot))
             {
                 localChanged |= SetInt(so.FindProperty("slot"), (int)slot);
                 localChanged |= SetBool(so.FindProperty("equippable"), true);
             }
+            else
+            {
+                localChanged |= SetBool(so.FindProperty("equippable"), false);
+                if (TryParseSlot(rec.recipeSlot, out var rs))
+                    localChanged |= SetInt(so.FindProperty("recipeTargetSlot"), (int)rs);
+            }
+
+            localChanged |= SetString(so.FindProperty("craftRecipeId"), rec.craftRecipeId ?? "");
 
             var displayName = so.FindProperty("displayName");
             if (displayName != null && string.IsNullOrWhiteSpace(displayName.stringValue))
@@ -164,6 +209,30 @@ namespace Project.Character.Editor
             }
 
             return localChanged;
+        }
+
+        private static int KindStringToEnumIndex(string kind)
+        {
+            switch (kind.ToLowerInvariant())
+            {
+                case "equipment": return 0;
+                case "material": return 1;
+                case "recipe": return 2;
+                case "tesseract": return 3;
+                default: return 0;
+            }
+        }
+
+        private static int QualityStringToEnumIndex(string quality)
+        {
+            switch (quality.ToLowerInvariant())
+            {
+                case "normal": return 0;
+                case "rare": return 1;
+                case "epic": return 2;
+                case "legendary": return 3;
+                default: return 0;
+            }
         }
 
         private static float NormalizeCritChance(float rawCritChance)
@@ -327,7 +396,13 @@ namespace Project.Character.Editor
                 var rec = new ServerItemRecord
                 {
                     id = id,
+                    kind = GetStringField(itemObj, "kind"),
+                    quality = GetStringField(itemObj, "quality"),
+                    recipeSlot = GetStringField(itemObj, "recipe_slot"),
+                    craftRecipeId = GetStringField(itemObj, "craft_recipe_id"),
                     slot = GetStringField(itemObj, "slot"),
+                    maxStack = Mathf.RoundToInt(GetNumberField(itemObj, "max_stack")),
+                    tier = Mathf.RoundToInt(GetNumberField(itemObj, "tier")),
                     hp = GetNumberField(itemObj, "hp"),
                     damage = GetNumberField(itemObj, "damage"),
                     armor = GetNumberField(itemObj, "armor"),
@@ -445,7 +520,13 @@ namespace Project.Character.Editor
         private struct ServerItemRecord
         {
             public string id;
+            public string kind;
+            public string quality;
+            public string recipeSlot;
+            public string craftRecipeId;
             public string slot;
+            public int maxStack;
+            public int tier;
             public float hp;
             public float damage;
             public float armor;

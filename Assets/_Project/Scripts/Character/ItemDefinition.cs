@@ -11,6 +11,16 @@ namespace Project.Character
         [SerializeField] private string itemId = "item_001";
         [SerializeField] private string displayName = "Предмет";
 
+        [Header("Catalog (сервер: duel_match3_item_defs)")]
+        [SerializeField] private ItemKind kind = ItemKind.Equipment;
+        [SerializeField] private int maxStack = 1;
+        [SerializeField] private int tier = 1;
+        [SerializeField] private ItemQualityTier quality = ItemQualityTier.Normal;
+        /// <summary>Для рецепта: слот крафта (Helmet…WeaponRight).</summary>
+        [SerializeField] private EquipmentSlotId recipeTargetSlot = EquipmentSlotId.Helmet;
+        /// <summary>Id рецепта в learned_recipes для крафта экипа (сервер: craft_recipe_id).</summary>
+        [SerializeField] private string craftRecipeId = "";
+
         [Header("Visual")]
         [SerializeField] private Sprite icon;
 
@@ -31,6 +41,12 @@ namespace Project.Character
         public string ItemId => itemId;
         public string DisplayName => displayName;
         public Sprite Icon => icon;
+        public ItemKind Kind => kind;
+        public int MaxStack => maxStack;
+        public int Tier => tier;
+        public ItemQualityTier Quality => quality;
+        public EquipmentSlotId RecipeTargetSlot => recipeTargetSlot;
+        public string CraftRecipeId => craftRecipeId;
         public bool Equippable => equippable;
         public EquipmentSlotId Slot => slot;
         public IReadOnlyList<StatModifier> Modifiers => modifiers;
