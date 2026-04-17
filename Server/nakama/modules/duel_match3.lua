@@ -9,6 +9,7 @@ local function runtime_lua_require(name_nested, name_root)
 end
 
 local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
+local Metrics = runtime_lua_require("modules.duel_match3_metrics", "duel_match3_metrics")
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -1317,6 +1318,23 @@ local ITEM_DEFS_FALLBACK = {
   recipe_gold = { kind = "recipe", tier = 1, quality = "legendary", max_stack = 1, recipe_slot = "Helmet" },
 }
 
+-- §4.3: по одному def_id на (цвет × слот); пулы A/B различаются набором слотов (без пересечения id).
+do
+  local slots_a = { "Helmet", "Chest", "Gloves", "WeaponLeft" }
+  local slots_b = { "WeaponRight", "Legs", "Shoulders", "Feet" }
+  local colq = { green = "normal", blue = "rare", purple = "epic" }
+  for cname, qual in pairs(colq) do
+    for _, s in ipairs(slots_a) do
+      local id = "recipe_drop_" .. cname .. "_" .. s
+      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = qual, max_stack = 1, recipe_slot = s }
+    end
+    for _, s in ipairs(slots_b) do
+      local id = "recipe_drop_" .. cname .. "_" .. s
+      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = qual, max_stack = 1, recipe_slot = s }
+    end
+  end
+end
+
 local ITEM_DEFS_CACHE_TTL_SEC = 30
 local _item_defs_merged_cache = nil
 local _item_defs_merged_cache_at = 0
@@ -1798,6 +1816,52 @@ local function workshop_payload_arrays(sheet)
   return o, e
 end
 
+local function build_resource_payload(progress, user_id)
+  local energy_max = pve_energy_max_for_user(user_id)
+  local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
+  local dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0)
+  -- Итог по ключам для HUD: раньше в progress.keys писалось отдельно и не синхронизировалось с key_items.
+  local keys_total = miner_key + dark_key
+  return {
+    energy = clamp_int(progress.energy, 0, energy_max),
+    energy_max = energy_max,
+    ore = math.max(0, tonumber(progress.ore) or 0),
+    gold = math.max(0, tonumber(progress.gold) or 0),
+    ingots = math.max(0, tonumber(progress.ingots) or 0),
+    matter = math.max(0, tonumber(progress.matter) or 0),
+    keys = keys_total,
+    blueprint_green = math.max(0, tonumber(progress.blueprint_green) or 0),
+    blueprint_blue = math.max(0, tonumber(progress.blueprint_blue) or 0),
+    blueprint_purple = math.max(0, tonumber(progress.blueprint_purple) or 0),
+    blueprint_gold = math.max(0, tonumber(progress.blueprint_gold) or 0),
+    tesseracts = math.max(0, tonumber(progress.tesseracts) or 0),
+    miner_key = miner_key,
+    dark_key = dark_key,
+  }
+end
+
+local function build_progression_payload(progress, user_id)
+  local resources = build_resource_payload(progress, user_id)
+  return {
+    level = progress.level or 1,
+    xp = progress.xp or 0,
+    gold = resources.gold,
+    max_level = CFG.PVE_MAX_LEVEL,
+    energy = resources.energy,
+    energy_max = resources.energy_max,
+    ore = resources.ore,
+    ingots = resources.ingots,
+    matter = resources.matter,
+    keys = resources.keys,
+    -- Клиент (Unity JsonUtility) ожидает key_items; без этого барьер показывает 0 ключей при наличии miner_key.
+    key_items = {
+      miner_key = resources.miner_key,
+      dark_key = resources.dark_key,
+    },
+    mine = progress.mine,
+  }
+end
+
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
@@ -1944,6 +2008,63 @@ local function inventory_try_add(sheet, def_id, amount)
     end
   end
   return false, "inventory_full"
+end
+
+--- §4.3: цвет рецепта по этажу (§4.4 — диапазоны слитков).
+local function mine_recipe_color_for_floor(floor)
+  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  if f <= 4 then return "green" end
+  if f <= 8 then return "blue" end
+  return "purple"
+end
+
+local function mine_recipe_drop_pool_ids(color, pool)
+  local c = color
+  if c ~= "green" and c ~= "blue" and c ~= "purple" then c = "green" end
+  local pfx = "recipe_drop_" .. c .. "_"
+  if pool == "B" then
+    return {
+      pfx .. "WeaponRight",
+      pfx .. "Legs",
+      pfx .. "Shoulders",
+      pfx .. "Feet",
+    }
+  end
+  return {
+    pfx .. "Helmet",
+    pfx .. "Chest",
+    pfx .. "Gloves",
+    pfx .. "WeaponLeft",
+  }
+end
+
+local function mine_floor_uses_recipe_drop_v43(floor, is_boss)
+  if floor == 3 or floor == 7 or floor == 11 then return not is_boss end
+  if floor == 4 or floor == 8 or floor == 12 then return is_boss == true end
+  return false
+end
+
+--- true если в сундук положен новый предмет-рецепт.
+local function grant_mine_recipe_drop_v43(sheet, floor, is_boss)
+  if not mine_floor_uses_recipe_drop_v43(floor, is_boss) then return false end
+  local color = mine_recipe_color_for_floor(floor)
+  local pool = (floor == 4 or floor == 8 or floor == 12) and "B" or "A"
+  local ids = mine_recipe_drop_pool_ids(color, pool)
+  local unlearned = {}
+  for i = 1, #ids do
+    local id = ids[i]
+    if not sheet_has_learned(sheet, id) then
+      unlearned[#unlearned + 1] = id
+    end
+  end
+  if #unlearned == 0 then return false end
+  if pool == "B" then
+    local pick = unlearned[math.random(1, #unlearned)]
+    return inventory_try_add(sheet, pick, 1) == true
+  end
+  if math.random() > 0.25 then return false end
+  local pick = unlearned[math.random(1, #unlearned)]
+  return inventory_try_add(sheet, pick, 1) == true
 end
 
 local function inventory_remove_def_total(sheet, def_id, amount)
@@ -2123,13 +2244,19 @@ function normalize_mine_unlocked(raw, default_floor)
 end
 
 local function read_pve_progress(user_id)
-  local rows = nk.storage_read({
-    {
-      collection = CFG.PVE_PROGRESS_COLLECTION,
-      key = CFG.PVE_PROGRESS_KEY,
-      user_id = user_id,
-    },
-  })
+  local ok_read, rows = pcall(function()
+    return nk.storage_read({
+      {
+        collection = CFG.PVE_PROGRESS_COLLECTION,
+        key = CFG.PVE_PROGRESS_KEY,
+        user_id = user_id,
+      },
+    })
+  end)
+  if not ok_read then
+    nk.logger_error("read_pve_progress: storage_read failed: " .. tostring(rows))
+    rows = nil
+  end
 
   local function apply_energy_regen(progress, energy_max, now)
     local max_energy = clamp_int(energy_max, 0, nil)
@@ -2230,52 +2357,6 @@ local function read_pve_progress(user_id)
   progress.level = current_level_from_xp(progress.xp)
   apply_energy_regen(progress, energy_max, now)
   return progress, row.version
-end
-
-local function build_resource_payload(progress, user_id)
-  local energy_max = pve_energy_max_for_user(user_id)
-  local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
-  local dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0)
-  -- Итог по ключам для HUD: раньше в progress.keys писалось отдельно и не синхронизировалось с key_items.
-  local keys_total = miner_key + dark_key
-  return {
-    energy = clamp_int(progress.energy, 0, energy_max),
-    energy_max = energy_max,
-    ore = math.max(0, tonumber(progress.ore) or 0),
-    gold = math.max(0, tonumber(progress.gold) or 0),
-    ingots = math.max(0, tonumber(progress.ingots) or 0),
-    matter = math.max(0, tonumber(progress.matter) or 0),
-    keys = keys_total,
-    blueprint_green = math.max(0, tonumber(progress.blueprint_green) or 0),
-    blueprint_blue = math.max(0, tonumber(progress.blueprint_blue) or 0),
-    blueprint_purple = math.max(0, tonumber(progress.blueprint_purple) or 0),
-    blueprint_gold = math.max(0, tonumber(progress.blueprint_gold) or 0),
-    tesseracts = math.max(0, tonumber(progress.tesseracts) or 0),
-    miner_key = miner_key,
-    dark_key = dark_key,
-  }
-end
-
-local function build_progression_payload(progress, user_id)
-  local resources = build_resource_payload(progress, user_id)
-  return {
-    level = progress.level or 1,
-    xp = progress.xp or 0,
-    gold = resources.gold,
-    max_level = CFG.PVE_MAX_LEVEL,
-    energy = resources.energy,
-    energy_max = resources.energy_max,
-    ore = resources.ore,
-    ingots = resources.ingots,
-    matter = resources.matter,
-    keys = resources.keys,
-    -- Клиент (Unity JsonUtility) ожидает key_items; без этого барьер показывает 0 ключей при наличии miner_key.
-    key_items = {
-      miner_key = resources.miner_key,
-      dark_key = resources.dark_key,
-    },
-    mine = progress.mine,
-  }
 end
 
 local function write_pve_progress(user_id, progress, version)
@@ -2393,7 +2474,9 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       progress.key_items = progress.key_items or empty_key_items()
       progress.key_items[reward_key_id] = (tonumber(progress.key_items[reward_key_id]) or 0) + reward_key_amount
     end
-    add_blueprint(progress, bot.reward_blueprint)
+    if not mine_floor_uses_recipe_drop_v43(floor, is_boss) then
+      add_blueprint(progress, bot.reward_blueprint)
+    end
     progress.level = current_level_from_xp(progress.xp)
     local defeated = progress.defeated or {}
     local current_count = tonumber(defeated[bot_id]) or 0
@@ -2443,7 +2526,22 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         if ok_add ~= true then grant_ok = false end
       end
       local bp_r = tostring(bot.reward_blueprint or "")
-      if grant_ok and bp_r ~= "" then
+      local used_v43 = false
+      if grant_ok and mine_floor_uses_recipe_drop_v43(floor, is_boss) then
+        used_v43 = grant_mine_recipe_drop_v43(sheet, floor, is_boss)
+      end
+      if grant_ok and used_v43 then
+        local col = mine_recipe_color_for_floor(floor)
+        local rarity = ({ green = "green", blue = "blue", purple = "purple" })[col]
+        if rarity ~= nil then add_blueprint(progress, rarity) end
+        local ok_bp, err_bp = pcall(function()
+          write_pve_progress(user_id, progress, nil)
+        end)
+        if not ok_bp then
+          nk.logger_error("award_pve_victory: blueprint progress write failed: " .. tostring(err_bp))
+        end
+      end
+      if grant_ok and bp_r ~= "" and not used_v43 and not mine_floor_uses_recipe_drop_v43(floor, is_boss) then
         local rid = ({ green = "recipe_green", blue = "recipe_blue", purple = "recipe_purple", gold = "recipe_gold" })[bp_r]
         if rid ~= nil then
           local ok_add = inventory_try_add(sheet, rid, 1)
@@ -2694,6 +2792,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
     local current_diff = normalize_mine_difficulty(progress.mine and progress.mine.current_difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
     local bots = {}
     for _, bot in pairs(get_merged_bots(current_diff)) do
+      local dps_ehp, dps_h, ehp_h = Metrics.bot_dps_ehp_product(bot)
       bots[#bots + 1] = {
         id = bot.id,
         name = bot.name,
@@ -2718,6 +2817,9 @@ local function duel_match3_pve_catalog_get(ctx, payload)
         base_heal = tonumber(bot.base_heal) or tonumber(bot.healing) or 0,
         cost_attack = bot.cost_attack or PveMineCost.DEFAULT_ATTACK,
         cost_banish = bot.cost_banish or PveMineCost.DEFAULT_BANISH,
+        metrics_dps = dps_h,
+        metrics_ehp = ehp_h,
+        metrics_dps_ehp = dps_ehp,
       }
     end
     table.sort(bots, function(a, b)

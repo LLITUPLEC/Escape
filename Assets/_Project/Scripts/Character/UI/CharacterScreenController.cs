@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
+using Project.Nakama;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -47,6 +48,7 @@ namespace Project.Character.UI
 
         private void Awake()
         {
+            NakamaBootstrap.EnsureExists();
             if (openButton != null) openButton.onClick.AddListener(Open);
             if (closeButton != null) closeButton.onClick.AddListener(Close);
 
@@ -338,8 +340,8 @@ namespace Project.Character.UI
 
             if (isRecipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {
-                _infoModal.SetEquipButton(false, false, string.Empty);
-                _infoModal.SetLearnRecipeButton(true, !learned, learned ? "Уже изучено" : "Изучить рецепт");
+                _infoModal.SetEquipButton(true, !learned, learned ? "Уже изучено" : "Изучить");
+                _infoModal.SetLearnRecipeButton(false, false, string.Empty);
             }
             else
             {
@@ -385,7 +387,15 @@ namespace Project.Character.UI
         private void OnEquipTogglePressed()
         {
             if (_selectedHandle == null || dragController == null || view == null) return;
-            if (!TryResolveItem(_selectedHandle, out var selectedItem) || selectedItem == null || !selectedItem.Equippable) return;
+            if (!TryResolveItem(_selectedHandle, out var selectedItem) || selectedItem == null) return;
+
+            if (selectedItem.Kind == ItemKind.Recipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+            {
+                OnLearnRecipePressed();
+                return;
+            }
+
+            if (!selectedItem.Equippable) return;
 
             if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {

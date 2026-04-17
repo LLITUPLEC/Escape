@@ -17,6 +17,16 @@ namespace Project.Nakama
     {
         public static NakamaBootstrap Instance { get; private set; }
 
+        /// <summary>
+        /// Создаёт bootstrap при открытии сцены без главного меню; конфиг подгружается из Resources в <see cref="Start"/>.
+        /// </summary>
+        public static void EnsureExists()
+        {
+            if (Instance != null) return;
+            var go = new GameObject("NakamaBootstrap");
+            go.AddComponent<NakamaBootstrap>();
+        }
+
         public static int GetLocalSessionEpoch() => PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
 
         [SerializeField] private NakamaConnectionConfig config;

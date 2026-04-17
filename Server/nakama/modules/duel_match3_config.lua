@@ -81,6 +81,10 @@ return {
   MINE_RESPAWN_NORMAL_SECONDS = 10 * 60,
   MINE_RESPAWN_BOSS_SECONDS = 4 * 60 * 60,
   MINE_MATTER_DROP_CHANCE = 0.10,
+  --- Модуль duel_match3_metrics: вклад брони в EHP (чем выше, тем «толще» бот при той же броне).
+  METRICS_ARMOR_TO_EHP_K = 0.05,
+  --- Сравнение с суммами §3.2 (HP/броня в «тысячах»): EHP_игрока ≈ HP×(1 + armor/REF).
+  METRICS_PLAYER_ARMOR_REF = 1000,
   MINE_AFFIX_POOL = {
     "acid",
     "energy_block",

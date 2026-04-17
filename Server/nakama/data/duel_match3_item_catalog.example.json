@@ -260,6 +260,198 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Helmet"
+    },
+    "recipe_drop_green_Helmet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Helmet",
+      "recipe_target_slot": "Helmet"
+    },
+    "recipe_drop_green_Chest": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Chest",
+      "recipe_target_slot": "Chest"
+    },
+    "recipe_drop_green_Gloves": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Gloves",
+      "recipe_target_slot": "Gloves"
+    },
+    "recipe_drop_green_WeaponLeft": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "WeaponLeft",
+      "recipe_target_slot": "WeaponLeft"
+    },
+    "recipe_drop_green_WeaponRight": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "WeaponRight",
+      "recipe_target_slot": "WeaponRight"
+    },
+    "recipe_drop_green_Legs": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Legs",
+      "recipe_target_slot": "Legs"
+    },
+    "recipe_drop_green_Shoulders": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Shoulders",
+      "recipe_target_slot": "Shoulders"
+    },
+    "recipe_drop_green_Feet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "normal",
+      "max_stack": 1,
+      "recipe_slot": "Feet",
+      "recipe_target_slot": "Feet"
+    },
+    "recipe_drop_blue_Helmet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Helmet",
+      "recipe_target_slot": "Helmet"
+    },
+    "recipe_drop_blue_Chest": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Chest",
+      "recipe_target_slot": "Chest"
+    },
+    "recipe_drop_blue_Gloves": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Gloves",
+      "recipe_target_slot": "Gloves"
+    },
+    "recipe_drop_blue_WeaponLeft": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "WeaponLeft",
+      "recipe_target_slot": "WeaponLeft"
+    },
+    "recipe_drop_blue_WeaponRight": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "WeaponRight",
+      "recipe_target_slot": "WeaponRight"
+    },
+    "recipe_drop_blue_Legs": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Legs",
+      "recipe_target_slot": "Legs"
+    },
+    "recipe_drop_blue_Shoulders": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Shoulders",
+      "recipe_target_slot": "Shoulders"
+    },
+    "recipe_drop_blue_Feet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 1,
+      "recipe_slot": "Feet",
+      "recipe_target_slot": "Feet"
+    },
+    "recipe_drop_purple_Helmet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Helmet",
+      "recipe_target_slot": "Helmet"
+    },
+    "recipe_drop_purple_Chest": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Chest",
+      "recipe_target_slot": "Chest"
+    },
+    "recipe_drop_purple_Gloves": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Gloves",
+      "recipe_target_slot": "Gloves"
+    },
+    "recipe_drop_purple_WeaponLeft": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "WeaponLeft",
+      "recipe_target_slot": "WeaponLeft"
+    },
+    "recipe_drop_purple_WeaponRight": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "WeaponRight",
+      "recipe_target_slot": "WeaponRight"
+    },
+    "recipe_drop_purple_Legs": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Legs",
+      "recipe_target_slot": "Legs"
+    },
+    "recipe_drop_purple_Shoulders": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Shoulders",
+      "recipe_target_slot": "Shoulders"
+    },
+    "recipe_drop_purple_Feet": {
+      "kind": "recipe",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 1,
+      "recipe_slot": "Feet",
+      "recipe_target_slot": "Feet"
     }
   }
 }

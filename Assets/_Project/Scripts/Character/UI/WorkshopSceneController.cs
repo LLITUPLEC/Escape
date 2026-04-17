@@ -46,10 +46,12 @@ namespace Project.Character.UI
 
         private void Awake()
         {
+            Project.Nakama.NakamaBootstrap.EnsureExists();
             ResolveRefs();
             BuildExtraUiIfNeeded();
             WireCraftSlots();
         }
+
 
         private void OnDestroy()
         {
