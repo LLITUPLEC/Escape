@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ffe65a1a2fe01e64dafa0ca21f1bb6f3, type: 3}
   m_Name: MainItemCatalog
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemCatalog
-  missingItemIcon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  missingItemIcon: {fileID: 21300000, guid: 55ac7336effd49648a62de26aa40ca34, type: 3}
   items:
   - {fileID: 11400000, guid: b4f5066bf9ad53c48ba92e5565c3493e, type: 2}
   - {fileID: 11400000, guid: c28ae8b43e73ba641b23f60658f8ec42, type: 2}

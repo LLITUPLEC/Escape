@@ -12,6 +12,8 @@ namespace Project.UI
         [Header("Paths (relative to scene)")]
         [SerializeField] private string duelButtonPath = "ArenaMenuWorld/Background2D/ModePanel/DuelButton";
         [SerializeField] private string match3ButtonPath = "ArenaMenuWorld/Background2D/ModePanel/match3Button";
+        [Tooltip("Опционально. Если пусто — ищется кнопка с именем match3ProButton. §14 PvP Pro.")]
+        [SerializeField] private string match3ProButtonPath = "";
         [SerializeField] private string botsButtonPath = "ArenaMenuWorld/Background2D/ModePanel/BotsButton";
         [SerializeField] private string backButtonPath = "ArenaMenuWorld/Background2D/BackButton";
 
@@ -23,6 +25,7 @@ namespace Project.UI
 
         private Button _duel;
         private Button _match3;
+        private Button _match3Pro;
         private Button _bots;
         private Button _back;
         private Text _botsLabelText;
@@ -34,6 +37,9 @@ namespace Project.UI
         {
             _duel = FindButton(duelButtonPath, "DuelButton");
             _match3 = FindButton(match3ButtonPath, "match3Button");
+            _match3Pro = string.IsNullOrWhiteSpace(match3ProButtonPath)
+                ? FindButton("", "match3ProButton")
+                : FindButton(match3ProButtonPath, "match3ProButton");
             _bots = FindButton(botsButtonPath, "BotsButton");
             _back = FindButton(backButtonPath, "BackButton");
             CacheBotsButtonLabel();
@@ -46,6 +52,7 @@ namespace Project.UI
 
             if (_duel != null) _duel.onClick.AddListener(GoDuel);
             if (_match3 != null) _match3.onClick.AddListener(GoMatch3);
+            if (_match3Pro != null) _match3Pro.onClick.AddListener(GoMatch3Pro);
             if (_bots != null) _bots.onClick.AddListener(GoBots);
             if (_back != null) _back.onClick.AddListener(BackToMainMenu);
         }
@@ -62,6 +69,7 @@ namespace Project.UI
         {
             if (_duel != null) _duel.onClick.RemoveListener(GoDuel);
             if (_match3 != null) _match3.onClick.RemoveListener(GoMatch3);
+            if (_match3Pro != null) _match3Pro.onClick.RemoveListener(GoMatch3Pro);
             if (_bots != null) _bots.onClick.RemoveListener(GoBots);
             if (_back != null) _back.onClick.RemoveListener(BackToMainMenu);
         }
@@ -74,6 +82,15 @@ namespace Project.UI
 
         private void GoMatch3()
         {
+            Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
+            Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
+            if (string.IsNullOrWhiteSpace(match3SceneName)) return;
+            SceneManager.LoadScene(match3SceneName);
+        }
+
+        private void GoMatch3Pro()
+        {
+            Match3LaunchContext.SetPvpProForNextMultiplayerMatch(true);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
             if (string.IsNullOrWhiteSpace(match3SceneName)) return;
             SceneManager.LoadScene(match3SceneName);
@@ -98,9 +115,12 @@ namespace Project.UI
 
         private static Button FindButton(string fullPath, string fallbackName)
         {
-            var go = GameObject.Find(fullPath);
-            if (go != null)
-                return go.GetComponent<Button>();
+            if (!string.IsNullOrWhiteSpace(fullPath))
+            {
+                var go = GameObject.Find(fullPath);
+                if (go != null)
+                    return go.GetComponent<Button>();
+            }
 
             // fallback by name
             var all = UnityEngine.Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None);

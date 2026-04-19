@@ -340,6 +340,32 @@ function make_floor_state_key(diff, floor)
   return normalize_mine_difficulty(diff) .. ":" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
 
+local function truthy_match_param(v)
+  if v == true then return true end
+  if v == 1 then return true end
+  if type(v) == "string" and string.lower(v) == "true" then return true end
+  return false
+end
+
+--- §4.6 / §14 фаза 5: статы как в PvE (уровень + экип), без mine_stat_multiplier.
+local function apply_pvp_pro_stats_from_sheet(actor, user_id)
+  if actor == nil or user_id == nil or user_id == "" then return end
+  ensure_character_sheet_initialized(user_id)
+  local progress, _ = read_pve_progress(user_id)
+  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
+  local sheet = read_character_sheet(user_id)
+  ensure_sheet_inventory_counts(sheet)
+  local base = character_stats_base_for_level(level)
+  local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
+  actor.max_hp = math.max(1, math.floor(tonumber(merged.hp) or CFG.MAX_HP))
+  actor.hp = actor.max_hp
+  actor.initial_hp = actor.max_hp
+  actor.base_damage = math.max(0, math.floor(tonumber(merged.damage) or 0))
+  actor.base_armor = math.max(0, math.floor(tonumber(merged.armor) or 0))
+  actor.base_crit = math.max(0, tonumber(merged.crit_chance) or 0)
+  actor.base_heal = math.max(0, math.floor(tonumber(merged.healing) or 0))
+end
+
 local function new_stats()
   return {
     hp = CFG.MAX_HP,
@@ -396,7 +422,7 @@ end
 local function roll_outgoing_damage(state, board, attacker, base_damage)
   local dmg = math.max(0, tonumber(base_damage) or 0)
 
-  -- Character base damage (PVE only; in PVP base_damage is 0).
+  -- База урона с экипа/уровня: PvE и PvP Pro; в классическом PvP base_damage не задаётся.
   if attacker ~= nil then
     dmg = dmg + math.max(0, tonumber(attacker.base_damage) or 0)
   end
@@ -970,6 +996,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardKeyId = state.last_reward.reward_key_id or ""
       game_over_payload.rewardKeyAmount = state.last_reward.reward_key_amount or 0
       game_over_payload.rewardBlueprint = state.last_reward.reward_blueprint or ""
+      game_over_payload.rewardRecipeItemId = state.last_reward.reward_recipe_item_id or ""
       game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode == "pve" and winner == state.bot_user_id then
@@ -2242,9 +2269,9 @@ local function mine_floor_uses_recipe_drop_v43(floor, is_boss)
   return false
 end
 
---- true если в сундук положен новый предмет-рецепт.
+--- Возвращает: успех, def_id выданного рецепта (или пусто) — для клиентского game over.
 local function grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
-  if not mine_floor_uses_recipe_drop_v43(floor, is_boss) then return false end
+  if not mine_floor_uses_recipe_drop_v43(floor, is_boss) then return false, "" end
   local color = mine_recipe_color_for_floor(floor)
   local pool = (floor == 4 or floor == 8 or floor == 12) and "B" or "A"
   local mine_tier = mine_tier_from_diff(diff)
@@ -2256,14 +2283,20 @@ local function grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
       unlearned[#unlearned + 1] = id
     end
   end
-  if #unlearned == 0 then return false end
+  if #unlearned == 0 then return false, "" end
   if pool == "B" then
     local pick = unlearned[math.random(1, #unlearned)]
-    return inventory_try_add(sheet, pick, 1) == true
+    if inventory_try_add(sheet, pick, 1) == true then
+      return true, pick
+    end
+    return false, ""
   end
-  if math.random() > 0.25 then return false end
+  if math.random() > 0.25 then return false, "" end
   local pick = unlearned[math.random(1, #unlearned)]
-  return inventory_try_add(sheet, pick, 1) == true
+  if inventory_try_add(sheet, pick, 1) == true then
+    return true, pick
+  end
+  return false, ""
 end
 
 local function inventory_remove_def_total(sheet, def_id, amount)
@@ -2670,6 +2703,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   if tesseract_chance > 0 and math.random() < tesseract_chance then
     reward_tesseract = 1
   end
+  local reward_recipe_item_id = ""
   local max_retries = 5
 
   for i = 1, max_retries do
@@ -2738,7 +2772,11 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       local bp_r = tostring(bot.reward_blueprint or "")
       local used_v43 = false
       if grant_ok and mine_floor_uses_recipe_drop_v43(floor, is_boss) then
-        used_v43 = grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
+        local ok_rec, rid = grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
+        used_v43 = ok_rec == true
+        if rid ~= nil and rid ~= "" then
+          reward_recipe_item_id = tostring(rid)
+        end
       end
       if grant_ok and used_v43 then
         local col = mine_recipe_color_for_floor(floor)
@@ -2773,6 +2811,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         reward_key_id = reward_key_id,
         reward_key_amount = reward_key_amount,
         reward_blueprint = tostring(bot.reward_blueprint or ""),
+        reward_recipe_item_id = reward_recipe_item_id,
         difficulty = diff,
         floor = floor,
         stat_mul = stat_mul,
@@ -2801,6 +2840,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     reward_key_id = reward_key_id,
     reward_key_amount = reward_key_amount,
     reward_blueprint = tostring(bot and bot.reward_blueprint or ""),
+    reward_recipe_item_id = reward_recipe_item_id,
     level = 1,
     xp = 0,
     gold = 0,
@@ -4518,6 +4558,7 @@ local function match_init(context, params)
   local state = {
     invited = invited,
     mode = params and tostring(params.mode or "pvp") or "pvp",
+    pvp_pro = truthy_match_param(params and params.pvp_pro),
     owner_user_id = params and params.owner_user_id or nil,
     owner_session_epoch = tonumber(params and params.owner_session_epoch or 0) or 0,
     bot_id = params and params.bot_id or mine_bot_id_for_floor(1),
@@ -4667,6 +4708,11 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.players_sorted = sorted_two_players(state.presences)
     state.stats[state.players_sorted[1]] = new_stats()
     state.stats[state.players_sorted[2]] = new_stats()
+    if state.pvp_pro == true and state.mode ~= "pve" then
+      apply_pvp_pro_stats_from_sheet(state.stats[state.players_sorted[1]], state.players_sorted[1])
+      apply_pvp_pro_stats_from_sheet(state.stats[state.players_sorted[2]], state.players_sorted[2])
+      nk.logger_info("duel_match3: PvP Pro — статы уровень+экип для обоих игроков")
+    end
     state.board = init_board()
 
     state.cheat_rows = init_cheat_rows()

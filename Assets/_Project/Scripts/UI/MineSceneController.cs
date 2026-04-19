@@ -1840,7 +1840,24 @@ namespace Project.UI
             }
 
             if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
-                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bot.reward_blueprint), text = "Рецепт: " + bot.reward_blueprint, color = Color.white });
+            {
+                var bp = bot.reward_blueprint.Trim();
+                var bossGuarantee = bot.floor == 4 || bot.floor == 8 || bot.floor == 12;
+                var recipeTxt = bossGuarantee ? "Рецепт: гарантия (" + bp + ")" : "Рецепт: " + bp;
+                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bp), text = recipeTxt, color = Color.white });
+            }
+
+            // §4.3 пул A: этажи 3 / 7 / 11 (в JSON reward_blueprint пустой — дроп только через v43 на сервере).
+            if (bot.floor == 3 || bot.floor == 7 || bot.floor == 11)
+            {
+                var preBossColor = bot.floor <= 4 ? "green" : (bot.floor <= 8 ? "blue" : "purple");
+                entries.Add(new RewardEntry
+                {
+                    icon = ResolveBlueprintRewardSprite(preBossColor),
+                    text = "Рецепт: шанс 25%",
+                    color = new Color(0.95f, 0.92f, 0.75f)
+                });
+            }
 
             if (bot.reward_tesseract_chance > 0f)
             {

@@ -1,6 +1,17 @@
 /**
  * Генерация duel_match3_bots_catalog_{easy,medium,hard}.json
- * Лестница: линейная между якорями; medium₁ ≈ 1.6× easy₁₁ по осям; hard₁ ≈ 1.6× medium₁₁.
+ *
+ * Одна глобальная монотонная лестница из 36 ступеней (Т1 этаж 1 … Т3 этаж 12):
+ *   — easy:   глобальные индексы 0..11
+ *   — medium: 12..23  (монстр 1 средней сильнее монстра 11 лёгкой)
+ *   — hard:   24..35
+ *
+ * Якоря (total HP, урон, броня, лечение — как в каталоге: total HP = MAX_HP + hp_bonus):
+ *   Т1×1:  150 HP, 0 / 0 / 0
+ *   Т3×12: ~12 500 HP, урон 1 200 (вилка ТЗ 1 150–1 250), броня 850, лечение 600 (вилка 550–650)
+ *
+ * Боссы: те же формулы, что и у обычных этажей; точечное ×2 к боссам — вручную в JSON.
+ *
  * Запуск: node gen_mine_bots.js
  */
 const fs = require("fs");
@@ -21,25 +32,47 @@ const NAMES = [
   "Жила",
 ];
 
+/** [totalHp, damage, armor, heal] — конечный якорь: босс 12-го этажа Т3 */
+const ANCHOR_START = [150, 0, 0, 0];
+const ANCHOR_END = [12500, 1200, 850, 600];
+
 function hpBonus(totalHp) {
   return Math.max(0, Math.round(totalHp - MAX_HP));
 }
 
-function lerpRow(a, b, t) {
-  return [
-    lerp(a[0], b[0], t),
-    lerp(a[1], b[1], t),
-    lerp(a[2], b[2], t),
-    lerp(a[3], b[3], t),
-  ];
-}
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function scaleRow([hp, d, a, h], mul) {
-  const s = Math.sqrt(mul);
-  return [hp * s, d * s, a * s, h * s];
+function lerpRow(a, b, t) {
+  return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t)];
+}
+
+/** 36 строк [totalHp, dmg, armor, heal], строго выше предыдущей по HP; остальное неубывающее */
+function buildGlobalRows36() {
+  const rows = [];
+  for (let k = 0; k < 36; k++) {
+    const t = k / 35;
+    const [thp, td, ta, th] = lerpRow(ANCHOR_START, ANCHOR_END, t);
+    rows.push([
+      Math.round(thp),
+      Math.round(td),
+      Math.round(ta),
+      Math.round(th),
+    ]);
+  }
+  for (let k = 1; k < 36; k++) {
+    if (rows[k][0] <= rows[k - 1][0]) rows[k][0] = rows[k - 1][0] + 1;
+    for (let j = 1; j < 4; j++) {
+      if (rows[k][j] < rows[k - 1][j]) rows[k][j] = rows[k - 1][j];
+    }
+  }
+  return rows;
+}
+
+function sliceTier(globalRows, tierIndex) {
+  const start = tierIndex * 12;
+  return globalRows.slice(start, start + 12);
 }
 
 function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cross) {
@@ -58,20 +91,29 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
     const rxp = Math.round((110 + (i - 1) * 22) * rewardScale);
     const rgold = Math.round((55 + (i - 1) * 11) * rewardScale);
     const rore = Math.round((51 + (i - 1) * 17) * rewardScale);
+    const ingGreen = Math.max(1, Math.round(2 * rewardScale));
+    const ingBlue = Math.max(2, Math.round(4 * rewardScale));
+    const ingPurple = Math.max(3, Math.round(7 * rewardScale));
     let ing = 0,
       bp = "",
       rmmn = 0,
       rmmx = 0,
       tch = 0;
-    if (i === 4) {
+    if (i <= 3) {
+      ing = ingGreen;
+    } else if (i === 4) {
       bp = "green";
-      ing = Math.max(1, Math.round(2 * rewardScale));
+      ing = ingGreen;
+    } else if (i <= 7) {
+      ing = ingBlue;
     } else if (i === 8) {
       bp = "blue";
-      ing = Math.max(2, Math.round(4 * rewardScale));
+      ing = ingBlue;
+    } else if (i <= 11) {
+      ing = ingPurple;
     } else if (i === 12) {
       bp = "purple";
-      ing = Math.max(3, Math.round(7 * rewardScale));
+      ing = ingPurple;
       rmmn = Math.round(11 * rewardScale);
       rmmx = Math.round(22 * rewardScale);
       tch = 0.05;
@@ -133,7 +175,7 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
   return { version: 1, bots };
 }
 
-function assertMono(rows, label) {
+function assertMono12(rows, label) {
   for (let i = 1; i < 12; i++) {
     const a = rows[i - 1],
       b = rows[i];
@@ -142,50 +184,49 @@ function assertMono(rows, label) {
         throw new Error(`${label}: этаж ${i + 1} < этаж ${i} по полю ${k}`);
       }
     }
+    if (b[0] <= a[0]) throw new Error(`${label}: HP не растёт на этаже ${i}→${i + 1}`);
   }
 }
 
-/** Easy: якорь 1 и 12; промежуточные вручную монотонны. */
-const EASY = [
-  [150, 0, 0, 0],
-  [650, 18, 6, 0],
-  [1100, 38, 14, 4],
-  [1650, 58, 24, 9],
-  [2100, 72, 34, 14],
-  [2600, 92, 46, 22],
-  [3100, 112, 58, 32],
-  [3800, 138, 74, 44],
-  [4300, 158, 88, 56],
-  [4800, 182, 102, 68],
-  [5400, 210, 118, 82],
-  [8333, 792, 556, 389],
-];
-
-function linear12(start, end) {
-  const o = [];
-  for (let i = 0; i < 12; i++) {
-    o.push(lerpRow(start, end, i / 11));
+function assertCrossTier(easy12, medRows, hardRows, label) {
+  const e11 = easy12[10];
+  const m1 = medRows[0];
+  if (m1[0] <= e11[0] || m1[1] < e11[1] || m1[2] < e11[2] || m1[3] < e11[3]) {
+    throw new Error(`${label}: medium₁ слабее или равен easy₁₁ по одной из осей`);
   }
-  return o;
+  const m11 = medRows[10];
+  const h1 = hardRows[0];
+  if (h1[0] <= m11[0] || h1[1] < m11[1] || h1[2] < m11[2] || h1[3] < m11[3]) {
+    throw new Error(`${label}: hard₁ слабее или равен medium₁₁ по одной из осей`);
+  }
+}
+
+function assertGlobal36(rows) {
+  for (let k = 1; k < 36; k++) {
+    const a = rows[k - 1],
+      b = rows[k];
+    if (b[0] <= a[0]) throw new Error(`global: HP на шаге ${k}`);
+    for (let j = 1; j < 4; j++) {
+      if (b[j] < a[j]) throw new Error(`global: поле ${j} упало на шаге ${k}`);
+    }
+  }
 }
 
 function main() {
-  assertMono(EASY, "easy_raw");
-  const easy = buildFromRows(EASY, 0.06, 0.1, 0.15, 1.0, 0.33);
+  const globalRows = buildGlobalRows36();
+  assertGlobal36(globalRows);
 
-  const e11 = EASY[10];
-  const e12 = EASY[11];
-  const mStart = scaleRow(e11, 1.6);
-  const mEnd = scaleRow(e12, 1.6);
-  const medRows = linear12(mStart, mEnd);
-  assertMono(medRows, "medium_raw");
+  const easyRows = sliceTier(globalRows, 0);
+  const medRows = sliceTier(globalRows, 1);
+  const hardRows = sliceTier(globalRows, 2);
+
+  assertMono12(easyRows, "easy");
+  assertMono12(medRows, "medium");
+  assertMono12(hardRows, "hard");
+  assertCrossTier(easyRows, medRows, hardRows, "cross");
+
+  const easy = buildFromRows(easyRows, 0.06, 0.1, 0.15, 1.0, 0.33);
   const medium = buildFromRows(medRows, 0.12, 0.2, 0.3, 1.5, 0.4);
-
-  const med1 = medRows[0];
-  const hStart = scaleRow(med1, 1.6);
-  const hEnd = [25000, 2375, 1667, 1167];
-  const hardRows = linear12(hStart, hEnd);
-  assertMono(hardRows, "hard_raw");
   const hard = buildFromRows(hardRows, 0.18, 0.3, 0.45, 2.0, 0.49);
 
   const base = __dirname;
@@ -197,15 +238,29 @@ function main() {
     fs.writeFileSync(base + "/" + name, JSON.stringify(obj, null, 2), "utf8");
     console.log("wrote", name);
   }
+
+  const h12 = hard.bots.mine_12;
   console.log(
-    "easy mine_1 HP",
+    "anchors check | easy₁ total HP",
     MAX_HP + easy.bots.mine_1.hp_bonus,
-    "| hard mine_1 HP",
-    MAX_HP + hard.bots.mine_1.hp_bonus,
-    "| hard mine_12 HP",
-    MAX_HP + hard.bots.mine_12.hp_bonus,
+    "| hard₁₂ total HP",
+    MAX_HP + h12.hp_bonus,
     "dmg",
-    hard.bots.mine_12.base_damage
+    h12.base_damage,
+    "armor",
+    h12.base_armor,
+    "heal",
+    h12.base_heal
+  );
+  console.log(
+    "cross | easy₁₁ total HP",
+    MAX_HP + easy.bots.mine_11.hp_bonus,
+    "| med₁ total HP",
+    MAX_HP + medium.bots.mine_1.hp_bonus,
+    "| med₁₁ total HP",
+    MAX_HP + medium.bots.mine_11.hp_bonus,
+    "| hard₁ total HP",
+    MAX_HP + hard.bots.mine_1.hp_bonus
   );
 }
 

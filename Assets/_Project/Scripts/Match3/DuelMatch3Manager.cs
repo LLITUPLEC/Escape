@@ -196,10 +196,12 @@ namespace Project.Match3
         private string _lastRewardKeyId = string.Empty;
         private int _lastRewardKeyAmount;
         private string _lastRewardBlueprint = string.Empty;
+        private string _lastRewardRecipeItemId = string.Empty;
         private int _lastRewardTesseract;
         private bool _pendingGameOver;
         private bool _pendingGameOverWon;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
+        private bool _pvpProQueue;
         private bool _isSoloBotMode;
         private bool _useLocalBotSimulation;
         private System.Random _botRandom;
@@ -257,6 +259,7 @@ namespace Project.Match3
             _opStats = new PlayerStats();
             _launchMode = Match3LaunchContext.ConsumeMode();
             _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
+            _pvpProQueue = !_isSoloBotMode && Match3LaunchContext.ConsumePvpPro();
             Match3LaunchContext.ConsumeSoloMine(out _preferredSoloBotId, out _preferredSoloFloor, out _preferredSoloDifficulty, out _autoStartPreferredSolo);
             _useLocalBotSimulation = false;
             _botRandom = new System.Random(Environment.TickCount);
@@ -267,7 +270,9 @@ namespace Project.Match3
             BuildUI();
             EnsureAudioSource();
             TryAutoAssignSfxInEditor();
-            _searchingPanel?.Show(_isSoloBotMode ? "Подготовка боя с ботом…" : "Поиск соперника…");
+            _searchingPanel?.Show(_isSoloBotMode
+                ? "Подготовка боя с ботом…"
+                : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…"));
 
             if (_isSoloBotMode)
             {
@@ -422,13 +427,18 @@ namespace Project.Match3
             ct.ThrowIfCancellationRequested();
             await CancelMatchmakerTicketAsync();
 
-            // Use "*" — same as existing DuelRoom.
-            // Both players enter from DuelMatch3 scene so they naturally pair up.
+            // Разные очереди: классика (150 HP, без экипа в статах) vs Pro (уровень+экип на сервере, §14 фаза 5).
+            var rules = _pvpProQueue ? "pro" : "classic";
+            var query = $"+properties.mode:match3 +properties.rules:{rules}";
             var ticket = await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(
-                query: "*",
+                query: query,
                 minCount: 2,
                 maxCount: 2,
-                stringProperties: new Dictionary<string, string> { { "mode", "match3" } });
+                stringProperties: new Dictionary<string, string>
+                {
+                    { "mode", "match3" },
+                    { "rules", rules },
+                });
             _matchmakerTicket = ticket?.Ticket;
 
             var matched = await _mmTcs.Task;
@@ -821,11 +831,11 @@ namespace Project.Match3
         // ─── Game Over ────────────────────────────────────────────────────────────
 
         private static string BuildRewardLinesText(int xp, int gold, int ore, int matter)
-            => BuildRewardLinesTextFull(xp, gold, ore, matter, 0, string.Empty, 0, string.Empty, 0);
+            => BuildRewardLinesTextFull(xp, gold, ore, matter, 0, string.Empty, 0, string.Empty, string.Empty, 0);
 
         private static string BuildRewardLinesTextFull(
             int xp, int gold, int ore, int matter,
-            int ingots, string keyId, int keyAmount, string blueprint, int tesseract)
+            int ingots, string keyId, int keyAmount, string blueprint, string recipeItemId, int tesseract)
         {
             var sb = new StringBuilder(128);
             if (xp > 0) sb.Append("+").Append(xp).Append(" опыта");
@@ -854,10 +864,15 @@ namespace Project.Match3
                 if (sb.Length > 0) sb.Append('\n');
                 sb.Append("+").Append(keyAmount).Append(" ").Append(keyId.Trim());
             }
-            if (!string.IsNullOrWhiteSpace(blueprint))
+            if (!string.IsNullOrWhiteSpace(blueprint) && string.IsNullOrWhiteSpace(recipeItemId))
             {
                 if (sb.Length > 0) sb.Append('\n');
                 sb.Append("Рецепт: ").Append(blueprint.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(recipeItemId))
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append("+1 рецепт (").Append(recipeItemId.Trim()).Append(")");
             }
             if (tesseract > 0)
             {
@@ -873,6 +888,7 @@ namespace Project.Match3
             _lastRewardIngots = _lastRewardKeyAmount = _lastRewardTesseract = 0;
             _lastRewardKeyId = string.Empty;
             _lastRewardBlueprint = string.Empty;
+            _lastRewardRecipeItemId = string.Empty;
         }
 
         private string ResolveMyDisplayName()
@@ -986,6 +1002,7 @@ namespace Project.Match3
                                    _lastRewardIngots <= 0 &&
                                    (string.IsNullOrWhiteSpace(_lastRewardKeyId) || _lastRewardKeyAmount <= 0) &&
                                    string.IsNullOrWhiteSpace(_lastRewardBlueprint) &&
+                                   string.IsNullOrWhiteSpace(_lastRewardRecipeItemId) &&
                                    _lastRewardTesseract <= 0;
             if (!won && noNumericRewards && string.IsNullOrWhiteSpace(_lastRewardText))
                 rewardXp = DefaultLossXpReward;
@@ -998,8 +1015,10 @@ namespace Project.Match3
             count += AddRewardRow(rewardIngotsSprite, _lastRewardIngots);
             if (!string.IsNullOrWhiteSpace(_lastRewardKeyId) && _lastRewardKeyAmount > 0)
                 count += AddRewardRowDisplay(rewardKeySprite, "+" + _lastRewardKeyAmount);
-            if (!string.IsNullOrWhiteSpace(_lastRewardBlueprint))
+            if (!string.IsNullOrWhiteSpace(_lastRewardBlueprint) && string.IsNullOrWhiteSpace(_lastRewardRecipeItemId))
                 count += AddRewardRowDisplay(rewardBlueprintSprite, _lastRewardBlueprint.Trim());
+            if (!string.IsNullOrWhiteSpace(_lastRewardRecipeItemId))
+                count += AddRewardRowDisplay(rewardBlueprintSprite, "Рецепт ×1");
             if (_lastRewardTesseract > 0)
                 count += AddRewardRow(rewardTesseractSprite, _lastRewardTesseract);
 
@@ -1269,6 +1288,7 @@ namespace Project.Match3
                         var rkeyAmt = Mathf.Max(0, msg.rewardKeyAmount);
                         var rkeyId = msg.rewardKeyId ?? string.Empty;
                         var rblueprint = msg.rewardBlueprint ?? string.Empty;
+                        var rrecipe = msg.rewardRecipeItemId ?? string.Empty;
                         var rtess = Mathf.Max(0, msg.rewardTesseract);
                         _lastRewardXp = rxp;
                         _lastRewardGold = rgold;
@@ -1278,11 +1298,12 @@ namespace Project.Match3
                         _lastRewardKeyAmount = rkeyAmt;
                         _lastRewardKeyId = rkeyId;
                         _lastRewardBlueprint = rblueprint;
+                        _lastRewardRecipeItemId = rrecipe;
                         _lastRewardTesseract = rtess;
                         _pveProgress.xp += rxp;
                         _pveProgress.gold += rgold;
                         if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
-                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rtess);
+                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
                     }
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;

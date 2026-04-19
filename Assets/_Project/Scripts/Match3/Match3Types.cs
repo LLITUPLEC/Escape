@@ -115,6 +115,8 @@ namespace Project.Match3
         public string rewardKeyId;
         public int rewardKeyAmount;
         public string rewardBlueprint;
+        /// <summary>Def id предмета-рецепта из §4.3 (v43), если сервер положил в сундук.</summary>
+        public string rewardRecipeItemId;
         public int rewardTesseract;
         public int newLevel;
     }

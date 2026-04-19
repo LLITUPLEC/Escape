@@ -24,11 +24,25 @@ local function detect_mode(matched_users)
   return ""
 end
 
+--- §14 фаза 5: очередь match3 с string_properties.rules = "pro".
+local function detect_pvp_pro(matched_users)
+  for _, u in ipairs(matched_users or {}) do
+    local sp = u.string_properties or u.properties
+    if type(sp) == "table" and string.lower(tostring(sp.rules or "")) == "pro" then
+      return true
+    end
+  end
+  return false
+end
+
 local function on_matchmaker_matched(context, matched_users)
   local mode = detect_mode(matched_users)
-  local setup = { invited = matched_users }
+  local setup = { invited = matched_users, mode = "pvp" }
 
   if mode == "match3" then
+    if detect_pvp_pro(matched_users) then
+      setup.pvp_pro = true
+    end
     local match_id = try_create(setup, { "duel_match3", "modules/duel_match3", "modules.duel_match3" })
     if match_id then return match_id end
     error("cannot create match3 authoritative handler (duel_match3)")

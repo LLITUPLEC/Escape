@@ -14,12 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: sword_basic
   displayName: "\u041C\u0435\u0447_\u0431\u043B\u044F"
+  kind: 0
+  maxStack: 1
+  tier: 1
+  quality: 0
+  recipeTargetSlot: 0
+  craftRecipeId: 
+  craftOre: 0
+  craftGold: 0
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 0
   icon: {fileID: 21300000, guid: 0382adaa7f1bc754c82ab7ea98b17dd6, type: 3}
   equippable: 1
   slot: 7
   modifiers: []
   hp: 0
-  damage: 35
+  damage: 835
   armor: 0
   healing: 0
   critChance: 0
