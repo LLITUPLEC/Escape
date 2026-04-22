@@ -30,7 +30,7 @@ MonoBehaviour:
   slot: 7
   modifiers: []
   hp: 0
-  damage: 835
+  damage: 35
   armor: 0
   healing: 0
   critChance: 0

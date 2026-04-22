@@ -155,20 +155,64 @@ namespace Project.UI
         private readonly ResourceValueBinding _ingotsBinding = new("ingots");
         private readonly ResourceValueBinding _matterBinding = new("matter");
         private readonly ResourceValueBinding _keysBinding = new("keys");
+        /// <summary>Синхрон с MINE_BARRIER_REQUIREMENTS в duel_match3.lua (solo.md × ~1,4).</summary>
         private static readonly Dictionary<int, BarrierRequirement> BarrierRequirements = new()
         {
-            [2] = new BarrierRequirement { ore = 100 },
-            [3] = new BarrierRequirement { ore = 350 },
-            [4] = new BarrierRequirement { ore = 800 },
-            [5] = new BarrierRequirement { ore = 1500, key_id = "miner_key", key_amount = 1, gold = 2000 },
-            [6] = new BarrierRequirement { ore = 2500 },
-            [7] = new BarrierRequirement { ore = 3800 },
-            [8] = new BarrierRequirement { ore = 5500 },
-            [9] = new BarrierRequirement { ore = 7500, key_id = "dark_key", key_amount = 1, gold = 10000 },
-            [10] = new BarrierRequirement { ore = 10000 },
-            [11] = new BarrierRequirement { ore = 13000 },
-            [12] = new BarrierRequirement { ore = 17000, matter = 500, gold = 25000 },
+            [2] = new BarrierRequirement { ore = 140 },
+            [3] = new BarrierRequirement { ore = 490 },
+            [4] = new BarrierRequirement { ore = 1120 },
+            [5] = new BarrierRequirement { ore = 2100, key_id = "miner_key", key_amount = 1, gold = 2800 },
+            [6] = new BarrierRequirement { ore = 3500 },
+            [7] = new BarrierRequirement { ore = 5320 },
+            [8] = new BarrierRequirement { ore = 7700 },
+            [9] = new BarrierRequirement { ore = 10500, key_id = "dark_key", key_amount = 1, gold = 14000 },
+            [10] = new BarrierRequirement { ore = 14000 },
+            [11] = new BarrierRequirement { ore = 18200 },
+            [12] = new BarrierRequirement { ore = 23800, matter = 700, gold = 35000 },
         };
+
+        /// <summary>Не-боссы: этажи 1,2,3,5,6,7,9,11 (10 без дропа — пересечение с босс-этажами). См. duel_match3.lua MINE_RECIPE_DROP_FLOORS.</summary>
+        private static readonly int[] MineRecipeDropFloors = { 1, 2, 3, 5, 6, 7, 9, 11 };
+
+        private static int MineRecipeDropChancePercent(int floor)
+        {
+            for (var i = 0; i < MineRecipeDropFloors.Length; i++)
+            {
+                if (MineRecipeDropFloors[i] == floor)
+                    return 50 - i * 5;
+            }
+
+            return 0;
+        }
+
+        private static string MineRecipeColorLabelForDifficulty(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return "синий";
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return "фиолетовый";
+            return "зелёный";
+        }
+
+        private static string MineIngotKindLabelForDifficulty(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return "синий слиток";
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return "фиолет. слиток";
+            return "зелёный слиток";
+        }
+
+        /// <summary>Доля выпадения слитка с обычного монстра (§4.4 / ingot_drop_chance_non_boss в duel_match3.lua).</summary>
+        private static float IngotDropChanceNonBoss(int floor)
+        {
+            var f = Mathf.Clamp(floor, 1, 12);
+            var r = f % 4;
+            if (r == 1) return 0.25f;
+            if (r == 2) return 0.5f;
+            if (r == 3) return 0.75f;
+            return 1f;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoInstall()
@@ -1716,8 +1760,6 @@ namespace Project.UI
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Этаж {floor} закрыт барьером.");
-            if (_progression != null)
-                sb.AppendLine($"Ваш уровень: {_progression.level}");
             return sb.ToString();
         }
 
@@ -1818,6 +1860,8 @@ namespace Project.UI
             if (_blueprintSprite == null) _blueprintSprite = _ingotsSprite;
             _tesseractSprite ??= LoadSpriteAsset(HudTesseractIconAssetPath);
             if (_tesseractSprite == null) _tesseractSprite = _matterSprite;
+
+            var isBossFloor = bot.floor == 4 || bot.floor == 8 || bot.floor == 12;
             if (bot.reward_xp > 0)
                 entries.Add(new RewardEntry { icon = _expSprite, text = FormatCompact(bot.reward_xp), color = Color.white });
             if (bot.reward_gold > 0)
@@ -1825,7 +1869,19 @@ namespace Project.UI
             if (bot.reward_ore > 0)
                 entries.Add(new RewardEntry { icon = _oreSprite, text = FormatCompact(bot.reward_ore), color = Color.white });
             if (bot.reward_ingots > 0)
-                entries.Add(new RewardEntry { icon = _ingotsSprite, text = FormatCompact(bot.reward_ingots), color = Color.white });
+            {
+                var ingotLabel = FormatCompact(bot.reward_ingots);
+                var kind = MineIngotKindLabelForDifficulty(_difficulty);
+                if (!isBossFloor)
+                {
+                    var pct = Mathf.RoundToInt(IngotDropChanceNonBoss(bot.floor) * 100f);
+                    ingotLabel = $"{ingotLabel} (шанс {pct}%, {kind})";
+                }
+                else
+                    ingotLabel = $"{ingotLabel} (босс ×2, {kind})";
+
+                entries.Add(new RewardEntry { icon = _ingotsSprite, text = ingotLabel, color = Color.white });
+            }
             if (!string.IsNullOrWhiteSpace(bot.reward_key_id) && bot.reward_key_amount > 0)
                 entries.Add(new RewardEntry { icon = _lockSprite, text = $"{bot.reward_key_id} x{bot.reward_key_amount}", color = Color.white });
 
@@ -1842,19 +1898,17 @@ namespace Project.UI
             if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
             {
                 var bp = bot.reward_blueprint.Trim();
-                var bossGuarantee = bot.floor == 4 || bot.floor == 8 || bot.floor == 12;
-                var recipeTxt = bossGuarantee ? "Рецепт: гарантия (" + bp + ")" : "Рецепт: " + bp;
-                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bp), text = recipeTxt, color = Color.white });
+                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bp), text = "Рецепт: " + bp, color = Color.white });
             }
 
-            // §4.3 пул A: этажи 3 / 7 / 11 (в JSON reward_blueprint пустой — дроп только через v43 на сервере).
-            if (bot.floor == 3 || bot.floor == 7 || bot.floor == 11)
+            var recipePct = MineRecipeDropChancePercent(bot.floor);
+            if (!isBossFloor && recipePct > 0)
             {
-                var preBossColor = bot.floor <= 4 ? "green" : (bot.floor <= 8 ? "blue" : "purple");
+                var col = MineRecipeColorLabelForDifficulty(_difficulty);
                 entries.Add(new RewardEntry
                 {
-                    icon = ResolveBlueprintRewardSprite(preBossColor),
-                    text = "Рецепт: шанс 25%",
+                    icon = _blueprintSprite,
+                    text = $"Рецепт ({col}, сложность шахты): шанс {recipePct}%",
                     color = new Color(0.95f, 0.92f, 0.75f)
                 });
             }

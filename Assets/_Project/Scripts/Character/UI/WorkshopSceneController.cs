@@ -665,7 +665,7 @@ namespace Project.Character.UI
         }
 
         /// <summary>
-        /// В каталоге craft_recipe_id = recipe_drop_t1_*; в learned_recipes со старых сессий — recipe_drop_green_* без тира.
+        /// craft_recipe_id: recipe_drop_{цвет}_{Slot}, recipe_gold_{Slot}; миграция с recipe_drop_t* / recipe_gold_t*.
         /// </summary>
         private bool IsRecipeLearnedForCraft(string craftRecipeId)
         {
@@ -681,13 +681,27 @@ namespace Project.Character.UI
 
         private static IEnumerable<string> AlternateLearnedIdsForCraftRecipeId(string craftRecipeId)
         {
-            var m = Regex.Match(craftRecipeId, @"^recipe_drop_t1_(green|blue|purple)_(.+)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                yield return $"recipe_drop_{m.Groups[1].Value}_{m.Groups[2].Value}";
-            if (string.Equals(craftRecipeId, "recipe_drop_t2_green_Helmet", StringComparison.Ordinal))
-                yield return "recipe_t2_green_Helmet";
-            if (string.Equals(craftRecipeId, "recipe_drop_t3_green_Helmet", StringComparison.Ordinal))
-                yield return "recipe_t3_green_Helmet";
+            var mNew = Regex.Match(craftRecipeId, @"^recipe_drop_(green|blue|purple)_(.+)$", RegexOptions.IgnoreCase);
+            if (mNew.Success)
+            {
+                for (var t = 1; t <= 3; t++)
+                    yield return $"recipe_drop_t{t}_{mNew.Groups[1].Value}_{mNew.Groups[2].Value}";
+            }
+
+            var mOld = Regex.Match(craftRecipeId, @"^recipe_drop_t[123]_(green|blue|purple)_(.+)$", RegexOptions.IgnoreCase);
+            if (mOld.Success)
+                yield return $"recipe_drop_{mOld.Groups[1].Value}_{mOld.Groups[2].Value}";
+
+            var gNew = Regex.Match(craftRecipeId, @"^recipe_gold_(.+)$", RegexOptions.IgnoreCase);
+            if (gNew.Success)
+            {
+                for (var t = 1; t <= 3; t++)
+                    yield return $"recipe_gold_t{t}_{gNew.Groups[1].Value}";
+            }
+
+            var gOld = Regex.Match(craftRecipeId, @"^recipe_gold_t[123]_(.+)$", RegexOptions.IgnoreCase);
+            if (gOld.Success)
+                yield return $"recipe_gold_{gOld.Groups[1].Value}";
         }
 
         private static int CountDef(CharacterGetRpcResponse resp, string defId)

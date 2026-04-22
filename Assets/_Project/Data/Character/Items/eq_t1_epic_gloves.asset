@@ -19,18 +19,18 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_t1_purple_Gloves
-  craftOre: 83
-  craftGold: 42
+  craftRecipeId: recipe_drop_purple_Gloves
+  craftOre: 254
+  craftGold: 169
   craftIngotDef: ingot_purple
-  craftIngotN: 6
+  craftIngotN: 17
   craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 1
   slot: 3
   modifiers: []
-  hp: 351
-  damage: 78
+  hp: 1067
+  damage: 148
   armor: 0
-  healing: 68
-  critChance: 0.039
+  healing: 737
+  critChance: 0.006

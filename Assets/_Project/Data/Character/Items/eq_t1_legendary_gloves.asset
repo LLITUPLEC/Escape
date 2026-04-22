@@ -19,9 +19,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_t1_Gloves
-  craftOre: 131
-  craftGold: 66
+  craftRecipeId: recipe_gold_Gloves
+  craftOre: 420
+  craftGold: 280
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   equippable: 1
   slot: 3
   modifiers: []
-  hp: 468
-  damage: 104
+  hp: 2175
+  damage: 297
   armor: 0
-  healing: 91
-  critChance: 0.052
+  healing: 1484
+  critChance: 0.006

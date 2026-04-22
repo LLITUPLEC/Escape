@@ -10,7 +10,11 @@
  *   Т1×1:  150 HP, 0 / 0 / 0
  *   Т3×12: ~12 500 HP, урон 1 200 (вилка ТЗ 1 150–1 250), броня 850, лечение 600 (вилка 550–650)
  *
- * Боссы: те же формулы, что и у обычных этажей; точечное ×2 к боссам — вручную в JSON.
+ * start_mana: easy 3, +3 за этаж; medium 4, +4; hard 5, +5 (кап 950).
+ * Боссы 4/8/12: перед ×2 копируют бой и награды с предыдущего этажа (3/7/11), затем удвоение
+ * (кроме крита и шанса тессеракта). У 12-го босса matter/тессеракт/стоимость с matter — как у
+ * финального этажа до копирования, потом ×2 на наградах.
+ * Слитки: количество растёт с этажом; цвет слитка на сервере задаётся сложностью шахты (easy/medium/hard).
  *
  * Запуск: node gen_mine_bots.js
  */
@@ -75,7 +79,24 @@ function sliceTier(globalRows, tierIndex) {
   return globalRows.slice(start, start + 12);
 }
 
-function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cross) {
+function applyBossDouble(b) {
+  const totalHp = MAX_HP + b.hp_bonus;
+  b.hp_bonus = Math.round(totalHp * 2 - MAX_HP);
+  b.base_damage = Math.round(b.base_damage * 2);
+  b.base_armor = Math.round(b.base_armor * 2);
+  b.base_heal = Math.round(b.base_heal * 100 * 2) / 100;
+  b.start_mana = Math.min(950, Math.round(b.start_mana * 2));
+  b.reward_xp = Math.round(b.reward_xp * 2);
+  b.reward_gold = Math.round(b.reward_gold * 2);
+  b.reward_ore = Math.round(b.reward_ore * 2);
+  b.reward_ingots = Math.max(1, Math.round(b.reward_ingots * 2));
+  if ((b.reward_matter_max || 0) > 0) {
+    b.reward_matter_min = Math.round((b.reward_matter_min || 0) * 2);
+    b.reward_matter_max = Math.round(b.reward_matter_max * 2);
+  }
+}
+
+function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cross, manaStep) {
   const bots = {};
   for (let i = 1; i <= 12; i++) {
     const key = "mine_" + i;
@@ -91,29 +112,14 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
     const rxp = Math.round((110 + (i - 1) * 22) * rewardScale);
     const rgold = Math.round((55 + (i - 1) * 11) * rewardScale);
     const rore = Math.round((51 + (i - 1) * 17) * rewardScale);
-    const ingGreen = Math.max(1, Math.round(2 * rewardScale));
-    const ingBlue = Math.max(2, Math.round(4 * rewardScale));
-    const ingPurple = Math.max(3, Math.round(7 * rewardScale));
-    let ing = 0,
+    /** Слиток одного цвета на всю шахту данной сложности; цвет выбирает сервер по difficulty. */
+    const ingCurve = Math.max(1, Math.round((1.4 + (i - 1) * 1.15) * rewardScale));
+    let ing = ingCurve,
       bp = "",
       rmmn = 0,
       rmmx = 0,
       tch = 0;
-    if (i <= 3) {
-      ing = ingGreen;
-    } else if (i === 4) {
-      bp = "green";
-      ing = ingGreen;
-    } else if (i <= 7) {
-      ing = ingBlue;
-    } else if (i === 8) {
-      bp = "blue";
-      ing = ingBlue;
-    } else if (i <= 11) {
-      ing = ingPurple;
-    } else if (i === 12) {
-      bp = "purple";
-      ing = ingPurple;
+    if (i === 12) {
       rmmn = Math.round(11 * rewardScale);
       rmmx = Math.round(22 * rewardScale);
       tch = 0.05;
@@ -155,7 +161,7 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
       cross_bias: cross,
       difficulty: i,
       reward_ore: rore,
-      start_mana: Math.min(950, Math.max(0, hb * 0.11 + i * 18)) | 0,
+      start_mana: Math.min(950, manaStep * i) | 0,
       base_damage: Math.round(td),
       cost_attack,
       cost_banish,
@@ -171,6 +177,43 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
       reward_matter_min: rmmn,
       reward_tesseract_chance: tch,
     };
+    if (isBoss) {
+      const prev = bots["mine_" + (i - 1)];
+      const b = bots[key];
+      let extras12 = null;
+      if (i === 12) {
+        extras12 = {
+          reward_matter_min: rmmn,
+          reward_matter_max: rmmx,
+          reward_tesseract_chance: tch,
+          cost_attack: cost_attack.map((x) => ({ ...x })),
+          cost_banish: cost_banish.map((x) => ({ ...x })),
+        };
+      }
+      b.hp_bonus = prev.hp_bonus;
+      b.base_damage = prev.base_damage;
+      b.base_armor = prev.base_armor;
+      b.base_heal = prev.base_heal;
+      b.base_crit = prev.base_crit;
+      b.start_mana = prev.start_mana;
+      b.reward_xp = prev.reward_xp;
+      b.reward_gold = prev.reward_gold;
+      b.reward_ore = prev.reward_ore;
+      b.reward_ingots = prev.reward_ingots;
+      b.ai_ability_chance = prev.ai_ability_chance;
+      if (extras12) {
+        b.reward_matter_min = extras12.reward_matter_min;
+        b.reward_matter_max = extras12.reward_matter_max;
+        b.reward_tesseract_chance = extras12.reward_tesseract_chance;
+        b.cost_attack = extras12.cost_attack;
+        b.cost_banish = extras12.cost_banish;
+      } else {
+        b.reward_matter_min = prev.reward_matter_min;
+        b.reward_matter_max = prev.reward_matter_max;
+        b.reward_tesseract_chance = prev.reward_tesseract_chance;
+      }
+      applyBossDouble(b);
+    }
   }
   return { version: 1, bots };
 }
@@ -225,9 +268,9 @@ function main() {
   assertMono12(hardRows, "hard");
   assertCrossTier(easyRows, medRows, hardRows, "cross");
 
-  const easy = buildFromRows(easyRows, 0.06, 0.1, 0.15, 1.0, 0.33);
-  const medium = buildFromRows(medRows, 0.12, 0.2, 0.3, 1.5, 0.4);
-  const hard = buildFromRows(hardRows, 0.18, 0.3, 0.45, 2.0, 0.49);
+  const easy = buildFromRows(easyRows, 0.06, 0.1, 0.15, 1.0, 0.33, 3);
+  const medium = buildFromRows(medRows, 0.12, 0.2, 0.3, 1.5, 0.4, 4);
+  const hard = buildFromRows(hardRows, 0.18, 0.3, 0.45, 2.0, 0.49, 5);
 
   const base = __dirname;
   for (const [name, obj] of [

@@ -100,10 +100,10 @@ return {
     "scree",
   },
   SESSION_EPOCH_ACCOUNT_META = "session_epoch",
-  --- Зелёный normal: стоимость по тиру предмета (§4.2 — подгонка баланса отдельно).
-  WORKSHOP_T1_NORMAL_COST = { ore = 40, gold = 20, ingot_def = "ingot_green", ingot_n = 3 },
-  WORKSHOP_T2_NORMAL_COST = { ore = 80, gold = 40, ingot_def = "ingot_green", ingot_n = 6 },
-  WORKSHOP_T3_NORMAL_COST = { ore = 160, gold = 80, ingot_def = "ingot_green", ingot_n = 9 },
-  --- Длительность крафта по тиру предмета (секунды): T1 60 мин, T2 120 мин, T3 240 мин.
+  --- Зелёный normal T1: синхронно с gen_item_catalog.js (упор на накопление ресурсов).
+  WORKSHOP_T1_NORMAL_COST = { ore = 120, gold = 80, ingot_def = "ingot_green", ingot_n = 8 },
+  WORKSHOP_T2_NORMAL_COST = { ore = 120, gold = 80, ingot_def = "ingot_green", ingot_n = 8 },
+  WORKSHOP_T3_NORMAL_COST = { ore = 120, gold = 80, ingot_def = "ingot_green", ingot_n = 8 },
+  --- Длительность крафта (секунды); тиры 2–3 не используются в экипе, оставлены для совместимости.
   WORKSHOP_CRAFT_DURATION_SEC_BY_TIER = { [1] = 60 * 60, [2] = 120 * 60, [3] = 240 * 60 },
 }
