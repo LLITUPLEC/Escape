@@ -40,6 +40,7 @@ local function character_stats_base_for_level(level)
   -- В бою есть базовый урон черепа (SKULL_DAMAGE), поэтому level-бонус идёт отдельной прибавкой.
   local damage = bonus_levels
   local armor = bonus_levels
+  -- Крит: 0.5% на 1-м уровне, +0.5% за уровень → на 12-м = 6% (eqip_stats §3.2 / фаза 0).
   local crit = 0.005 + bonus_levels * 0.005
   local healing = bonus_levels
 
@@ -1813,6 +1814,36 @@ local function ensure_character_sheet_initialized(user_id)
   end
 end
 
+--- 8/8 экипировано, один tier и одно quality: ×1.25 к hp/damage/armor/healing с вещей (см. gen_item_catalog.js SET_BONUS_EQ).
+--- Крит с экипа не умножается (там же mergedFromSlotStats: crit = база + сумма с перчаток).
+local SET_BONUS_FULL_EQUIP_STATS = 1.25
+
+local function equipment_full_set_stat_multiplier(sheet)
+  if sheet == nil or type(sheet.equipment) ~= "table" then
+    return 1.0
+  end
+  local defs = get_merged_item_defs()
+  local first_tier, first_q = nil, nil
+  for i = 1, 8 do
+    local def_id = sheet.equipment[i]
+    if def_id == nil or def_id == "" then
+      return 1.0
+    end
+    local d = defs[def_id]
+    if d == nil or not item_def_is_equipment(d) then
+      return 1.0
+    end
+    local t = clamp_int(tonumber(d.tier) or 1, 1, 99)
+    local q = tostring(d.quality or "normal")
+    if first_tier == nil then
+      first_tier, first_q = t, q
+    elseif t ~= first_tier or q ~= first_q then
+      return 1.0
+    end
+  end
+  return SET_BONUS_FULL_EQUIP_STATS
+end
+
 local function sum_equipment_bonuses(sheet)
   local defs = get_merged_item_defs()
   local hp = 0
@@ -1833,6 +1864,13 @@ local function sum_equipment_bonuses(sheet)
         healing = healing + (tonumber(d.healing) or 0)
       end
     end
+  end
+  local m = equipment_full_set_stat_multiplier(sheet)
+  if m > 1.0 then
+    hp = hp * m
+    damage = damage * m
+    armor = armor * m
+    healing = healing * m
   end
   return {
     hp = hp,
@@ -2025,17 +2063,26 @@ local function sheet_has_learned(sheet, recipe_id)
   return false
 end
 
---- craft_recipe_id в каталоге (recipe_drop_t1_*), learned на аккаунте — старый id без тира (recipe_drop_green_*).
+--- learned в sheet = def_id свитка (часто recipe_drop_t1_*); в каталоге экипа T1 craft_recipe_id = recipe_drop_{цвет}_{Slot} без t1.
+--- Проверяем обе формы в обе стороны.
 local function sheet_has_learned_for_craft(sheet, craft_recipe_id)
   if sheet_has_learned(sheet, craft_recipe_id) then return true end
   if craft_recipe_id == nil or craft_recipe_id == "" then return false end
   local sid = tostring(craft_recipe_id)
+  -- Каталог: recipe_drop_t1_* → в learned может быть recipe_drop_{цвет}_* (старая схема)
   local g = string.match(sid, "^recipe_drop_t1_green_(.+)$")
   if g ~= nil and sheet_has_learned(sheet, "recipe_drop_green_" .. g) then return true end
   local b = string.match(sid, "^recipe_drop_t1_blue_(.+)$")
   if b ~= nil and sheet_has_learned(sheet, "recipe_drop_blue_" .. b) then return true end
   local p = string.match(sid, "^recipe_drop_t1_purple_(.+)$")
   if p ~= nil and sheet_has_learned(sheet, "recipe_drop_purple_" .. p) then return true end
+  -- Каталог T1: recipe_drop_green_* → learned после изучения свитка: recipe_drop_t1_green_*
+  local g2 = string.match(sid, "^recipe_drop_green_(.+)$")
+  if g2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_green_" .. g2) then return true end
+  local b2 = string.match(sid, "^recipe_drop_blue_(.+)$")
+  if b2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_blue_" .. b2) then return true end
+  local p2 = string.match(sid, "^recipe_drop_purple_(.+)$")
+  if p2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_purple_" .. p2) then return true end
   if sid == "recipe_drop_t2_green_Helmet" and sheet_has_learned(sheet, "recipe_t2_green_Helmet") then return true end
   if sid == "recipe_drop_t3_green_Helmet" and sheet_has_learned(sheet, "recipe_t3_green_Helmet") then return true end
   return false
@@ -2272,27 +2319,7 @@ local function ingot_drop_chance_non_boss(floor)
   return 1.0
 end
 
---- id предмета-рецепта: recipe_drop_t{тир_шахты}_{цвет}_{Slot} — совпадает с craft_recipe_id экипа в каталоге.
-local function mine_recipe_drop_pool_ids(color, pool, mine_tier)
-  local c = color
-  if c ~= "green" and c ~= "blue" and c ~= "purple" then c = "green" end
-  local t = clamp_int(tonumber(mine_tier) or 1, 1, 3)
-  local pfx = "recipe_drop_t" .. tostring(t) .. "_" .. c .. "_"
-  if pool == "B" then
-    return {
-      pfx .. "WeaponRight",
-      pfx .. "Legs",
-      pfx .. "Shoulders",
-      pfx .. "Feet",
-    }
-  end
-  return {
-    pfx .. "Helmet",
-    pfx .. "Chest",
-    pfx .. "Gloves",
-    pfx .. "WeaponLeft",
-  }
-end
+--- id предмета-рецепта: recipe_drop_t{тир шахты}_{цвет}_{Slot} — см. mine_recipe_item_id_for_floor_index.
 
 --- Этажи с дропом рецепта (только не-боссы): 10 нет — иначе пересечение с боссом 4/8/12; боссы рецептов не дают.
 local MINE_RECIPE_DROP_FLOORS = { 1, 2, 3, 5, 6, 7, 9, 11 }
@@ -2312,36 +2339,43 @@ local function mine_floor_uses_mine_item_recipe_drop(floor, is_boss)
   return mine_recipe_drop_chance_for_floor(floor) > 0
 end
 
-local function mine_recipe_drop_pool_all_ids(color, mine_tier)
-  local a = mine_recipe_drop_pool_ids(color, "A", mine_tier)
-  local b = mine_recipe_drop_pool_ids(color, "B", mine_tier)
-  local out = {}
-  for i = 1, #a do
-    out[#out + 1] = a[i]
+--- Один рецепт на этаж: индексы 1..8 совпадают с MINE_RECIPE_DROP_FLOORS (порядок: pool A, затем B).
+local MINE_RECIPE_FLOOR_SLOT_ORDER = {
+  "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet",
+}
+
+--- def_id свитка для этажа с дропом рецепта или пусто, если этаж вне списка.
+local function mine_recipe_item_id_for_floor_index(floor, color, mine_tier)
+  local idx = nil
+  for i = 1, #MINE_RECIPE_DROP_FLOORS do
+    if MINE_RECIPE_DROP_FLOORS[i] == floor then
+      idx = i
+      break
+    end
   end
-  for i = 1, #b do
-    out[#out + 1] = b[i]
+  if idx == nil or MINE_RECIPE_FLOOR_SLOT_ORDER[idx] == nil then
+    return ""
   end
-  return out
+  local c = color
+  if c ~= "green" and c ~= "blue" and c ~= "purple" then
+    c = "green"
+  end
+  local t = clamp_int(tonumber(mine_tier) or 1, 1, 3)
+  local slot = MINE_RECIPE_FLOOR_SLOT_ORDER[idx]
+  return "recipe_drop_t" .. tostring(t) .. "_" .. c .. "_" .. slot
 end
 
 --- Возвращает: успех, def_id выданного рецепта (или пусто) — для клиентского game over. Золотые из шахты не выдаём.
+--- Один слот/этаж: этажи 1,2,3,5,6,7,9,11 — ровно один из восьми слотов экипа на монстра.
 local function grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
   if not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then return false, "" end
   local p = mine_recipe_drop_chance_for_floor(floor)
   if p <= 0 or math.random() > p then return false, "" end
   local color = mine_recipe_color_for_difficulty(diff)
   local mine_tier = mine_tier_from_diff(diff)
-  local ids = mine_recipe_drop_pool_all_ids(color, mine_tier)
-  local unlearned = {}
-  for i = 1, #ids do
-    local id = ids[i]
-    if not sheet_has_learned_for_craft(sheet, id) then
-      unlearned[#unlearned + 1] = id
-    end
-  end
-  if #unlearned == 0 then return false, "" end
-  local pick = unlearned[math.random(1, #unlearned)]
+  local pick = mine_recipe_item_id_for_floor_index(floor, color, mine_tier)
+  if pick == nil or pick == "" then return false, "" end
+  if sheet_has_learned_for_craft(sheet, pick) then return false, "" end
   if inventory_try_add(sheet, pick, 1) == true then
     return true, pick
   end

@@ -20,7 +20,12 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 4
   craftRecipeId: 
-  icon: {fileID: 0}
+  craftOre: 0
+  craftGold: 0
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 0
+  icon: {fileID: 21300000, guid: ce99ab9000f77784489a4cffa7bf3876, type: 3}
   equippable: 0
   slot: 0
   modifiers: []

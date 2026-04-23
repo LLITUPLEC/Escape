@@ -25,7 +25,7 @@ MonoBehaviour:
   craftIngotDef: ingot_green
   craftIngotN: 8
   craftTesseractN: 0
-  icon: {fileID: 21300000, guid: 55ac7336effd49648a62de26aa40ca34, type: 3}
+  icon: {fileID: 21300000, guid: 589b3e6bcdacc20419542ac0033e63be, type: 3}
   equippable: 1
   slot: 7
   modifiers: []

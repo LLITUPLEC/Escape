@@ -139,6 +139,8 @@ namespace Project.UI
         private float _resourcesRefreshAccumulator;
         private ProgressionInfo _progression;
         private PlayerResourcesRpcResponse _lastResources;
+        /// <summary>Сервер: duel_character_get learned_recipe_ids — для скрытия строки рецепта в модалке монстра.</summary>
+        private string[] _cachedLearnedRecipeIds = Array.Empty<string>();
         private Transform _headerResourcesRoot;
         private Sprite _lockSprite;
         private Sprite _oreSprite;
@@ -203,6 +205,75 @@ namespace Project.UI
             return "зелёный слиток";
         }
 
+        private static int MineTierFromDifficulty(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return 2;
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return 3;
+            return 1;
+        }
+
+        /// <summary>Ожидаемый def_id свитка с монстра этого этажа (сервер: mine_recipe_item_id_for_floor_index). Иначе null.</summary>
+        private static string MineExpectedRecipeItemId(int floor, string difficulty)
+        {
+            var idx = -1;
+            for (var i = 0; i < MineRecipeDropFloors.Length; i++)
+            {
+                if (MineRecipeDropFloors[i] == floor)
+                {
+                    idx = i;
+                    break;
+                }
+            }
+
+            if (idx < 0)
+                return null;
+            var slots = new[]
+            {
+                "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet"
+            };
+            if (idx >= slots.Length)
+                return null;
+            string color;
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                color = "blue";
+            else if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                color = "purple";
+            else
+                color = "green";
+            var tier = MineTierFromDifficulty(difficulty);
+            return "recipe_drop_t" + tier + "_" + color + "_" + slots[idx];
+        }
+
+        /// <summary>Соответствует sheet_has_learned_for_craft: свиток t1 и legacy recipe_drop_{цвет}_*.</summary>
+        private static bool MineRecipeDropLearned(string expectedRecipeItemId, string[] learned)
+        {
+            if (string.IsNullOrEmpty(expectedRecipeItemId) || learned == null || learned.Length == 0)
+                return false;
+            for (var i = 0; i < learned.Length; i++)
+            {
+                var x = learned[i];
+                if (string.IsNullOrEmpty(x))
+                    continue;
+                if (string.Equals(x, expectedRecipeItemId, StringComparison.Ordinal))
+                    return true;
+            }
+
+            if (expectedRecipeItemId.StartsWith("recipe_drop_t1_", StringComparison.Ordinal))
+            {
+                var rest = expectedRecipeItemId.Substring("recipe_drop_t1_".Length);
+                var legacy = "recipe_drop_" + rest;
+                for (var i = 0; i < learned.Length; i++)
+                {
+                    if (string.Equals(learned[i], legacy, StringComparison.Ordinal))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>Доля выпадения слитка с обычного монстра (§4.4 / ingot_drop_chance_non_boss в duel_match3.lua).</summary>
         private static float IngotDropChanceNonBoss(int floor)
         {
@@ -246,6 +317,7 @@ namespace Project.UI
             _cts = new CancellationTokenSource();
             _ = RefreshAsync(_cts.Token);
             _ = RefreshResourcesAsync(_cts.Token);
+            _ = RefreshLearnedRecipesAsync(_cts.Token);
         }
 
         private void OnDisable()
@@ -307,6 +379,7 @@ namespace Project.UI
             {
                 _resourcesRefreshAccumulator = 0f;
                 _ = RefreshResourcesAsync(_cts.Token);
+                _ = RefreshLearnedRecipesAsync(_cts.Token);
             }
         }
 
@@ -997,7 +1070,7 @@ namespace Project.UI
             return FindFirstObjectByType<Canvas>()?.transform;
         }
 
-        private void OpenMonsterModal(int floor)
+        private async void OpenMonsterModal(int floor)
         {
             if (_modalRoot == null) return;
             _selectedFloor = floor;
@@ -1050,6 +1123,16 @@ namespace Project.UI
 
             _modalTitle.text = name;
             ApplyMonsterStatTexts(hp, dmg, armor, crit, mana, respawn);
+
+            try
+            {
+                if (_cts != null)
+                    await RefreshLearnedRecipesAsync(_cts.Token);
+            }
+            catch (Exception)
+            {
+                // оставляем кэш
+            }
 
             PopulateMonsterRewards(bot);
 
@@ -1489,6 +1572,24 @@ namespace Project.UI
             }
         }
 
+        private async Task RefreshLearnedRecipesAsync(CancellationToken ct)
+        {
+            try
+            {
+                var r = await CharacterProfileService.GetAsync(ct);
+                if (r != null && r.ok && r.learned_recipe_ids != null)
+                    _cachedLearnedRecipeIds = r.learned_recipe_ids;
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] Learned recipes refresh failed: " + e.Message);
+            }
+        }
+
         private void ApplyResourcesFallbackFromProgression()
         {
             if (_lastResources != null || _progression == null)
@@ -1895,22 +1996,30 @@ namespace Project.UI
                 entries.Add(new RewardEntry { icon = _matterSprite, text = matterText, color = Color.white });
             }
 
-            if (!string.IsNullOrWhiteSpace(bot.reward_blueprint))
+            var recipePct = MineRecipeDropChancePercent(bot.floor);
+            var v43RecipeFloor = !isBossFloor && recipePct > 0;
+
+            if (!v43RecipeFloor && !string.IsNullOrWhiteSpace(bot.reward_blueprint))
             {
                 var bp = bot.reward_blueprint.Trim();
                 entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bp), text = "Рецепт: " + bp, color = Color.white });
             }
 
-            var recipePct = MineRecipeDropChancePercent(bot.floor);
-            if (!isBossFloor && recipePct > 0)
+            if (v43RecipeFloor)
             {
-                var col = MineRecipeColorLabelForDifficulty(_difficulty);
-                entries.Add(new RewardEntry
+                var expectedId = MineExpectedRecipeItemId(bot.floor, _difficulty);
+                var already = !string.IsNullOrEmpty(expectedId) &&
+                              MineRecipeDropLearned(expectedId, _cachedLearnedRecipeIds);
+                if (!already)
                 {
-                    icon = _blueprintSprite,
-                    text = $"Рецепт ({col}, сложность шахты): шанс {recipePct}%",
-                    color = new Color(0.95f, 0.92f, 0.75f)
-                });
+                    var col = MineRecipeColorLabelForDifficulty(_difficulty);
+                    entries.Add(new RewardEntry
+                    {
+                        icon = _blueprintSprite,
+                        text = $"Рецепт ({col}, сложность шахты): шанс {recipePct}%",
+                        color = new Color(0.95f, 0.92f, 0.75f)
+                    });
+                }
             }
 
             if (bot.reward_tesseract_chance > 0f)
