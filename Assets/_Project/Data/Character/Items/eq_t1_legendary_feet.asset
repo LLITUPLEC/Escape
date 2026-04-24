@@ -20,8 +20,8 @@ MonoBehaviour:
   quality: 3
   recipeTargetSlot: 0
   craftRecipeId: recipe_gold_Feet
-  craftOre: 420
-  craftGold: 280
+  craftOre: 2555
+  craftGold: 1890
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   equippable: 1
   slot: 5
   modifiers: []
-  hp: 2456
+  hp: 2718
   damage: 0
-  armor: 472
+  armor: 483
   healing: 0
   critChance: 0

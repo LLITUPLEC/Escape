@@ -20,17 +20,17 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_blue_Shoulders
-  craftOre: 182
-  craftGold: 121
+  craftOre: 992
+  craftGold: 746
   craftIngotDef: ingot_blue
-  craftIngotN: 12
+  craftIngotN: 38
   craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 1
   slot: 1
   modifiers: []
-  hp: 769
+  hp: 851
   damage: 0
-  armor: 151
+  armor: 155
   healing: 0
   critChance: 0

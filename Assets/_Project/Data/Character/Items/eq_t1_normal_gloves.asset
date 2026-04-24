@@ -20,17 +20,17 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_green_Gloves
-  craftOre: 120
-  craftGold: 80
+  craftOre: 426
+  craftGold: 348
   craftIngotDef: ingot_green
-  craftIngotN: 8
+  craftIngotN: 13
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: c28f292166cadb04b9098d25b20956a7, type: 3}
   equippable: 1
   slot: 3
   modifiers: []
-  hp: 294
-  damage: 43
+  hp: 347
+  damage: 57
   armor: 0
   healing: 210
   critChance: 0.006

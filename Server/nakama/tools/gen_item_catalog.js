@@ -21,15 +21,21 @@ const path = require("path");
 
 const OUT = path.join(__dirname, "..", "data", "duel_match3_item_catalog.example.json");
 
+/**
+ * Веса распределения полного сета (суммарный бюджет по-прежнему с бота mine_11).
+ * Рецепты зелёного идут по этажам 1→2→3→… — шлем/нагрудник нельзя оставлять с damage=0,
+ * иначе после двух крафтов нет урона против брони mine_3 (49) и прогресс ломается.
+ * Урон слегка «размазан» по ранним слотам; тяжёлый перенос на оружие сохранён.
+ */
 const SLOTS = [
-  { id: "helmet", slot: "Helmet", hp: 420, armor: 35, damage: 0, healing: 0, crit: 0 },
+  { id: "helmet", slot: "Helmet", hp: 320, armor: 32, damage: 42, healing: 0, crit: 0 },
   { id: "shoulders", slot: "Shoulders", hp: 175, armor: 72, damage: 0, healing: 0, crit: 0 },
-  { id: "chest", slot: "Chest", hp: 520, armor: 36, damage: 0, healing: 0, crit: 0 },
-  { id: "gloves", slot: "Gloves", hp: 155, armor: 0, damage: 35, healing: 30, crit: 0.02 },
-  { id: "legs", slot: "Legs", hp: 365, armor: 38, damage: 0, healing: 0, crit: 0 },
+  { id: "chest", slot: "Chest", hp: 400, armor: 32, damage: 34, healing: 0, crit: 0 },
+  { id: "gloves", slot: "Gloves", hp: 165, armor: 0, damage: 50, healing: 30, crit: 0.02 },
+  { id: "legs", slot: "Legs", hp: 365, armor: 38, damage: 10, healing: 0, crit: 0 },
   { id: "feet", slot: "Feet", hp: 175, armor: 72, damage: 0, healing: 0, crit: 0 },
-  { id: "weapon_l", slot: "WeaponLeft", hp: 190, armor: 42, damage: 88, healing: 0, crit: 0 },
-  { id: "weapon_r", slot: "WeaponRight", hp: 175, armor: 26, damage: 228, healing: 0, crit: 0 },
+  { id: "weapon_l", slot: "WeaponLeft", hp: 190, armor: 42, damage: 78, healing: 0, crit: 0 },
+  { id: "weapon_r", slot: "WeaponRight", hp: 175, armor: 26, damage: 168, healing: 0, crit: 0 },
 ];
 
 const QUAL = ["normal", "rare", "epic", "legendary"];

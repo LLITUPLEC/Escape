@@ -20,17 +20,17 @@ MonoBehaviour:
   quality: 2
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_purple_WeaponLeft
-  craftOre: 254
-  craftGold: 169
+  craftOre: 1061
+  craftGold: 837
   craftIngotDef: ingot_purple
-  craftIngotN: 17
+  craftIngotN: 36
   craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 1
   slot: 6
   modifiers: []
-  hp: 1308
-  damage: 372
-  armor: 137
+  hp: 1448
+  damage: 303
+  armor: 140
   healing: 0
   critChance: 0

@@ -20,17 +20,17 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_blue_WeaponLeft
-  craftOre: 182
-  craftGold: 121
+  craftOre: 761
+  craftGold: 600
   craftIngotDef: ingot_blue
-  craftIngotN: 12
+  craftIngotN: 26
   craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 1
   slot: 6
   modifiers: []
-  hp: 834
-  damage: 240
-  armor: 88
+  hp: 924
+  damage: 195
+  armor: 90
   healing: 0
   critChance: 0

@@ -20,17 +20,17 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_blue_Gloves
-  craftOre: 182
-  craftGold: 121
+  craftOre: 646
+  craftGold: 528
   craftIngotDef: ingot_blue
-  craftIngotN: 12
+  craftIngotN: 20
   craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 1
   slot: 3
   modifiers: []
-  hp: 681
-  damage: 95
+  hp: 802
+  damage: 125
   armor: 0
   healing: 474
   critChance: 0.006

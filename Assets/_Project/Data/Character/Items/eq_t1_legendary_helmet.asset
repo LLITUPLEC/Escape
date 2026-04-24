@@ -20,8 +20,8 @@ MonoBehaviour:
   quality: 3
   recipeTargetSlot: 0
   craftRecipeId: recipe_gold_Helmet
-  craftOre: 420
-  craftGold: 280
+  craftOre: 1225
+  craftGold: 1050
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   equippable: 1
   slot: 0
   modifiers: []
-  hp: 5893
-  damage: 0
-  armor: 230
+  hp: 4970
+  damage: 327
+  armor: 215
   healing: 0
   critChance: 0

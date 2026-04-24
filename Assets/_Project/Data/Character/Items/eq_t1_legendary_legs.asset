@@ -20,8 +20,8 @@ MonoBehaviour:
   quality: 3
   recipeTargetSlot: 0
   craftRecipeId: recipe_gold_Legs
-  craftOre: 420
-  craftGold: 280
+  craftOre: 2022
+  craftGold: 1554
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   equippable: 1
   slot: 4
   modifiers: []
-  hp: 5122
-  damage: 0
-  armor: 249
+  hp: 5669
+  damage: 78
+  armor: 255
   healing: 0
   critChance: 0

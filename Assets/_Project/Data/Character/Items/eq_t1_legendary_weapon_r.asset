@@ -20,8 +20,8 @@ MonoBehaviour:
   quality: 3
   recipeTargetSlot: 0
   craftRecipeId: recipe_gold_WeaponRight
-  craftOre: 420
-  craftGold: 280
+  craftOre: 1890
+  craftGold: 1470
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   equippable: 1
   slot: 7
   modifiers: []
-  hp: 2455
-  damage: 1933
-  armor: 171
+  hp: 2718
+  damage: 1309
+  armor: 174
   healing: 0
   critChance: 0
