@@ -1,6 +1,8 @@
 /**
- * Печатает в stdout UTF-8 строки для вставки в ITEM_DEFS_FALLBACK (только eq_t1_* из каталога).
- * Запуск: node sync_lua_fallback_eq.js > ../modules/_eq_snippet.lua (не используйте PowerShell >)
+ * Патчит ITEM_DEFS_FALLBACK в duel_match3.lua из duel_match3_item_catalog.example.json.
+ *
+ * Дамп фрагмента пишется в tools/_eq_snippet.debug.txt (не .lua в modules/ — Nakama грузит
+ * все *.lua как модули, а строки вида `eq_... = {` без обёртки дают syntax error).
  */
 const fs = require("fs");
 const path = require("path");
@@ -35,7 +37,7 @@ for (const q of QUAL_ORDER) {
     lines.push(`  ${id} = { ${a.join(", ")} },`);
   }
 }
-const out = path.join(__dirname, "..", "modules", "_eq_snippet.lua");
+const out = path.join(__dirname, "_eq_snippet.debug.txt");
 const snipText = lines.join("\n");
 fs.writeFileSync(out, snipText.replace(/\n/g, "\r\n") + "\r\n", "utf8");
 console.error("Wrote", out);
@@ -43,7 +45,7 @@ console.error("Wrote", out);
 const luaPath = path.join(__dirname, "..", "modules", "duel_match3.lua");
 let lua = fs.readFileSync(luaPath, "utf8").replace(/\r\n/g, "\n");
 const startMark =
-  "  -- Зелёный T1 (normal): craft_recipe_id = id предмета-рецепта в learned_recipes (§4.3: recipe_drop_t{mine_tier}_{color}_{Slot})\n";
+  "  -- T1-only: craft_recipe_id = recipe_drop_{цвет}_{Slot} / recipe_gold_{Slot} (каталог v3).\n";
 const endMark = "  eq_t2_normal_helmet = ";
 const si = lua.indexOf(startMark);
 const ei = lua.indexOf(endMark);

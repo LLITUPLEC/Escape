@@ -38,6 +38,64 @@ const QUAL_MUL = { normal: 1.0, rare: 1.45, epic: 1.95, legendary: 2.6 };
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 
+/** reward_ore / reward_gold / reward_ingots с того же этажа, что и рецепт (easy — эталон экономики UI). */
+let _easyBotsByFloor = null;
+function easyBotsByFloor() {
+  if (_easyBotsByFloor) return _easyBotsByFloor;
+  const p = path.join(DATA_DIR, "duel_match3_bots_catalog_easy.json");
+  const j = JSON.parse(fs.readFileSync(p, "utf8"));
+  _easyBotsByFloor = {};
+  for (const bot of Object.values(j.bots || {})) {
+    const fl = Number(bot.floor);
+    if (Number.isFinite(fl) && fl >= 1) _easyBotsByFloor[fl] = bot;
+  }
+  return _easyBotsByFloor;
+}
+
+function easyMineRewardOnFloor(floor) {
+  const b = easyBotsByFloor()[floor] || {};
+  return {
+    ore: Math.max(1, Number(b.reward_ore) || 51),
+    gold: Math.max(1, Number(b.reward_gold) || 55),
+    ingots: Math.max(1, Number(b.reward_ingots) || 1),
+  };
+}
+
+/**
+ * Этаж выдачи рецепта (§4.3) ↔ слот — как MINE_RECIPE_DROP_FLOORS + MINE_RECIPE_FLOOR_SLOT_ORDER в duel_match3.lua.
+ * Руда/золото: якорь шлема 350/300, далее +38/+24 за шаг номера этажа (как прежняя кривая, сдвинутая под реальные reward_* из каталога).
+ */
+const MINE_RECIPE_FLOOR_BY_SLOT = {
+  Helmet: 1,
+  Chest: 2,
+  Gloves: 3,
+  WeaponLeft: 5,
+  WeaponRight: 6,
+  Legs: 7,
+  Shoulders: 9,
+  Feet: 11,
+};
+
+function craftOreGoldGreenForRecipeFloor(floor) {
+  const f = Math.max(1, Math.min(12, Math.floor(Number(floor)) || 1));
+  const ore = Math.round(350 + (f - 1) * 38);
+  const gold = Math.round(300 + (f - 1) * 24);
+  return { ore, gold };
+}
+
+/**
+ * Зелёные слитки: шлем = 4 (тяжёлый фарм на 1 этаже). Дальше ceil(reward_ingots × mult(f)),
+ * mult плавно падает с этажом — чтобы при росте reward_ingots не копить огромный профицит
+ * (босс ×2 к награде в рантайме сюда не входит — только номинал из JSON).
+ */
+function greenIngotCraftCountForRecipeFloor(floor) {
+  const f = Math.max(1, Math.min(12, Math.floor(Number(floor)) || 1));
+  if (f <= 1) return 4;
+  const ingR = easyMineRewardOnFloor(f).ingots;
+  const mult = Math.max(2.15, Math.min(4, 3.35 - 0.14 * (f - 1)));
+  return Math.max(5, Math.ceil(ingR * mult));
+}
+
 /** База персонажа 12 ур. (duel_match3.lua). */
 const PLAYER_BASE_L12 = { hp: 480, damage: 11, armor: 11, healing: 11, crit: 0.06 };
 const SET_BONUS_EQ = 1.25;
@@ -106,7 +164,8 @@ function slotStatsArrayForBot(refBot) {
   const armParts = distributeIntegerBudget(armB, SLOTS.map((r) => r.armor));
   const healParts = distributeIntegerBudget(healB, SLOTS.map((r) => r.healing));
   const critRaw = Math.max(0, raw.crit);
-  const critGloves = critRaw > 0 ? roundStat(Math.min(0.25, critRaw)) : 0;
+  /** Весь крит с сета на перчатках (как в каталоге v3: 0.006 на T1-перчатках). */
+  const critGloves = critRaw > 0 ? roundStat(Math.min(0.006, critRaw)) : 0;
   return SLOTS.map((row, i) => ({
     hp: hpParts[i],
     armor: armParts[i],
@@ -144,9 +203,12 @@ function logEquipVerify(label, refBot, arr) {
   );
 }
 
-/** Базовая стоимость зелёного T1 — упор на фарм (синхронизировать с duel_match3_config WORKSHOP_T1_NORMAL_COST). */
-function craftFor(quality) {
-  const base = { ore: 120, gold: 80, ingot_def: "ingot_green", ingot_n: 8 };
+/** Стоимость крафта по слоту (этаж рецепта) и качеству. Fallback WORKSHOP_T1_NORMAL_COST — как зелёный шлем. */
+function craftFor(quality, slotName) {
+  const rf = MINE_RECIPE_FLOOR_BY_SLOT[slotName] || 1;
+  const og = craftOreGoldGreenForRecipeFloor(rf);
+  const ingN0 = greenIngotCraftCountForRecipeFloor(rf);
+  const base = { ore: og.ore, gold: og.gold, ingot_def: "ingot_green", ingot_n: ingN0 };
   const qm = Math.pow(QUAL_MUL[quality], 1.12);
   let ore = Math.round(base.ore * qm);
   let gold = Math.round(base.gold * qm);
@@ -274,7 +336,7 @@ for (const q of QUAL) {
     const eqId = buildEquipmentId(q, row.id);
     const st = arr[si];
     const cr = craftRecipeForEq(q, row.slot);
-    const craft = craftFor(q);
+    const craft = craftFor(q, row.slot);
     addItem(eqId, {
       kind: "equipment",
       tier: 1,

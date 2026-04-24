@@ -18,6 +18,9 @@ namespace Project.UI
         private const int GoldCost = 1000;
         private const int GoldGrant = 100;
 
+        private const int DialogFontSize = 25;
+        private const float PanelInnerWidth = 404f; // ширина Panel 440 − padding VLG 18×2
+
         private readonly Transform _modalParent;
         private readonly Sprite _energySprite;
         private readonly Sprite _matterSprite;
@@ -190,7 +193,7 @@ namespace Project.UI
             panelRt.anchorMin = new Vector2(0.5f, 0.5f);
             panelRt.anchorMax = new Vector2(0.5f, 0.5f);
             panelRt.pivot = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(420f, 300f);
+            panelRt.sizeDelta = new Vector2(440f, 300f);
             panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 1f);
             panel.GetComponent<Image>().raycastTarget = true;
 
@@ -199,18 +202,24 @@ namespace Project.UI
             v.spacing = 8f;
             v.childControlHeight = true;
             v.childControlWidth = true;
+            v.childForceExpandWidth = false;
             v.childAlignment = TextAnchor.UpperCenter;
 
-            NewText(panel.transform, "Title", "Купить энергию", 20, FontStyle.Bold, 32f);
+            NewText(panel.transform, "Title", "Купить энергию", DialogFontSize, FontStyle.Bold, 36f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
 
-            _choiceRoot = new GameObject("ChoiceBlock", typeof(RectTransform), typeof(VerticalLayoutGroup));
+            _choiceRoot = new GameObject("ChoiceBlock", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
             var chRt = _choiceRoot.GetComponent<RectTransform>();
             chRt.SetParent(panel.transform, false);
-            chRt.sizeDelta = new Vector2(380, 150);
+            chRt.sizeDelta = new Vector2(PanelInnerWidth, 150f);
+            var chLe = _choiceRoot.GetComponent<LayoutElement>();
+            chLe.preferredWidth = PanelInnerWidth;
+            chLe.flexibleWidth = 0f;
+            chLe.minHeight = 150f;
             var chV = _choiceRoot.GetComponent<VerticalLayoutGroup>();
             chV.spacing = 10f;
             chV.childControlHeight = true;
             chV.childControlWidth = true;
+            chV.childForceExpandWidth = false;
             chV.childAlignment = TextAnchor.UpperCenter;
 
             MakeOfferRow(_choiceRoot.transform, _matterSprite, MatterCost, _energySprite, MatterGrant, OnPickMatter);
@@ -222,9 +231,10 @@ namespace Project.UI
             cV.spacing = 12f;
             cV.childControlHeight = true;
             cV.childControlWidth = true;
+            cV.childForceExpandWidth = false;
             cV.childAlignment = TextAnchor.MiddleCenter;
 
-            _confirmText = NewText(_confirmRoot.transform, "Q", "", 18, FontStyle.Normal, 40f);
+            _confirmText = NewText(_confirmRoot.transform, "Q", "", DialogFontSize, FontStyle.Normal, 40f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
             var yn = new GameObject("YesNo", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             yn.GetComponent<RectTransform>().SetParent(_confirmRoot.transform, false);
             var h = yn.GetComponent<HorizontalLayoutGroup>();
@@ -247,25 +257,29 @@ namespace Project.UI
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(Button), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             go.GetComponent<RectTransform>().SetParent(parent, false);
-            go.GetComponent<LayoutElement>().minHeight = 44f;
+            var rowLe = go.GetComponent<LayoutElement>();
+            rowLe.minHeight = 48f;
+            rowLe.preferredWidth = PanelInnerWidth;
+            rowLe.flexibleWidth = 0f;
             go.GetComponent<Image>().color = new Color(0.18f, 0.2f, 0.25f, 1f);
             go.GetComponent<Button>().onClick.AddListener(() => onRowClick());
             var h = go.GetComponent<HorizontalLayoutGroup>();
-            h.padding = new RectOffset(8, 8, 6, 6);
-            h.spacing = 8f;
+            h.padding = new RectOffset(10, 10, 6, 6);
+            h.spacing = 4f;
             h.childControlHeight = true;
-            h.childControlWidth = false;
+            h.childControlWidth = true;
+            h.childForceExpandWidth = false;
             h.childAlignment = TextAnchor.MiddleCenter;
             if (costSp != null) AddRowIcon(go.transform, costSp);
-            AddRowLabel(go.transform, "Cost", cost.ToString());
-            AddRowLabel(go.transform, "Eq", "=");
+            AddRowLabel(go.transform, "Cost", cost.ToString(), 72f);
+            AddRowLabel(go.transform, "Eq", "=", 28f);
             if (getSp != null) AddRowIcon(go.transform, getSp);
-            AddRowLabel(go.transform, "Gr", grant.ToString());
+            AddRowLabel(go.transform, "Gr", grant.ToString(), 72f);
         }
 
-        private static void AddRowLabel(Transform p, string name, string s)
+        private static void AddRowLabel(Transform p, string name, string s, float preferredWidth)
         {
-            var t = NewText(p, name, s, 17, FontStyle.Normal, 22f);
+            var t = NewText(p, name, s, DialogFontSize, FontStyle.Normal, 34f, flexibleWidth: 0f, preferredWidth: preferredWidth);
             t.alignment = TextAnchor.MiddleCenter;
         }
 
@@ -275,13 +289,14 @@ namespace Project.UI
             var igo = new GameObject("Ic", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             igo.GetComponent<RectTransform>().SetParent(parent, false);
             var le = igo.GetComponent<LayoutElement>();
-            le.minWidth = le.preferredWidth = 28f;
-            le.minHeight = le.preferredHeight = 28f;
+            le.minWidth = le.preferredWidth = 32f;
+            le.minHeight = le.preferredHeight = 32f;
+            le.flexibleWidth = 0f;
             igo.GetComponent<Image>().sprite = sp;
             igo.GetComponent<Image>().preserveAspect = true;
         }
 
-        private static Text NewText(Transform p, string name, string s, int size, FontStyle fs, float minH)
+        private static Text NewText(Transform p, string name, string s, int size, FontStyle fs, float minH, float flexibleWidth = 1f, float preferredWidth = 0f)
         {
             var tgo = new GameObject(name, typeof(Text), typeof(LayoutElement));
             tgo.transform.SetParent(p, false);
@@ -292,10 +307,14 @@ namespace Project.UI
             t.fontStyle = fs;
             t.color = new Color(0.94f, 0.92f, 0.86f);
             t.alignment = TextAnchor.MiddleCenter;
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            t.verticalOverflow = VerticalWrapMode.Overflow;
             t.raycastTarget = false;
             var le = tgo.GetComponent<LayoutElement>();
             le.minHeight = minH;
-            le.flexibleWidth = 1f;
+            le.flexibleWidth = flexibleWidth;
+            if (preferredWidth > 0.5f)
+                le.preferredWidth = preferredWidth;
             return t;
         }
 
@@ -307,7 +326,7 @@ namespace Project.UI
             bgo.GetComponent<LayoutElement>().minHeight = 40f;
             bgo.GetComponent<Image>().color = new Color(0.28f, 0.25f, 0.3f, 1f);
             bgo.GetComponent<Button>().onClick.AddListener(() => act());
-            NewText(bgo.transform, "L", label, 18, FontStyle.Normal, 40f);
+            NewText(bgo.transform, "L", label, DialogFontSize, FontStyle.Normal, 40f, flexibleWidth: 0f, preferredWidth: 88f);
         }
 
         private static Transform FindChildByName(Transform root, string name)

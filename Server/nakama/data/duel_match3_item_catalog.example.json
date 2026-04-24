@@ -108,10 +108,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 350,
+      "craft_gold": 300,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 4,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_shoulders": {
@@ -125,10 +125,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 654,
+      "craft_gold": 492,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 25,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_chest": {
@@ -142,10 +142,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 388,
+      "craft_gold": 324,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 10,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_gloves": {
@@ -159,10 +159,10 @@
       "damage": 43,
       "healing": 210,
       "crit_chance": 0.006,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 426,
+      "craft_gold": 348,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 13,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_legs": {
@@ -176,10 +176,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 578,
+      "craft_gold": 444,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 21,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_feet": {
@@ -193,10 +193,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 730,
+      "craft_gold": 540,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 28,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_weapon_l": {
@@ -210,10 +210,10 @@
       "damage": 108,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 502,
+      "craft_gold": 396,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 17,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_weapon_r": {
@@ -227,10 +227,10 @@
       "damage": 279,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 120,
-      "craft_gold": 80,
+      "craft_ore": 540,
+      "craft_gold": 420,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 8,
+      "craft_ingot_n": 19,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_helmet": {
@@ -244,10 +244,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 531,
+      "craft_gold": 455,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 6,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_shoulders": {
@@ -261,10 +261,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 992,
+      "craft_gold": 746,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 38,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_chest": {
@@ -278,10 +278,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 588,
+      "craft_gold": 491,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 15,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_gloves": {
@@ -295,10 +295,10 @@
       "damage": 95,
       "healing": 474,
       "crit_chance": 0.006,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 646,
+      "craft_gold": 528,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 20,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_legs": {
@@ -312,10 +312,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 876,
+      "craft_gold": 673,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 32,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_feet": {
@@ -329,10 +329,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 1107,
+      "craft_gold": 819,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 42,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_weapon_l": {
@@ -346,10 +346,10 @@
       "damage": 240,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 761,
+      "craft_gold": 600,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 26,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_weapon_r": {
@@ -363,10 +363,10 @@
       "damage": 621,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 182,
-      "craft_gold": 121,
+      "craft_ore": 819,
+      "craft_gold": 637,
       "craft_ingot_def": "ingot_blue",
-      "craft_ingot_n": 12,
+      "craft_ingot_n": 29,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_helmet": {
@@ -380,10 +380,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 739,
+      "craft_gold": 634,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 8,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_shoulders": {
@@ -397,10 +397,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 1382,
+      "craft_gold": 1039,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 53,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_chest": {
@@ -414,10 +414,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 820,
+      "craft_gold": 685,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 21,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_gloves": {
@@ -431,10 +431,10 @@
       "damage": 148,
       "healing": 737,
       "crit_chance": 0.006,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 900,
+      "craft_gold": 735,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 27,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_legs": {
@@ -448,10 +448,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 1221,
+      "craft_gold": 938,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 44,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_feet": {
@@ -465,10 +465,10 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 1542,
+      "craft_gold": 1141,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 59,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_weapon_l": {
@@ -482,10 +482,10 @@
       "damage": 372,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 1061,
+      "craft_gold": 837,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 36,
       "craft_tesseract_n": 0
     },
     "eq_t1_epic_weapon_r": {
@@ -499,10 +499,10 @@
       "damage": 964,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 254,
-      "craft_gold": 169,
+      "craft_ore": 1141,
+      "craft_gold": 887,
       "craft_ingot_def": "ingot_purple",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 40,
       "craft_tesseract_n": 0
     },
     "eq_t1_legendary_helmet": {
@@ -516,8 +516,8 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 1225,
+      "craft_gold": 1050,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -533,8 +533,8 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 2288,
+      "craft_gold": 1722,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -550,8 +550,8 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 1357,
+      "craft_gold": 1134,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -567,8 +567,8 @@
       "damage": 297,
       "healing": 1484,
       "crit_chance": 0.006,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 1490,
+      "craft_gold": 1218,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -584,8 +584,8 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 2022,
+      "craft_gold": 1554,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -601,8 +601,8 @@
       "damage": 0,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 2555,
+      "craft_gold": 1890,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -618,8 +618,8 @@
       "damage": 746,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 1757,
+      "craft_gold": 1386,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
@@ -635,8 +635,8 @@
       "damage": 1933,
       "healing": 0,
       "crit_chance": 0,
-      "craft_ore": 420,
-      "craft_gold": 280,
+      "craft_ore": 1890,
+      "craft_gold": 1470,
       "craft_ingot_def": "",
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1

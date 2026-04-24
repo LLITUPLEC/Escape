@@ -24,6 +24,12 @@ namespace Project.UI
         [SerializeField] private float onlinePollSeconds = 5f;
         [SerializeField] private float resourcesPollSeconds = 5f;
         [SerializeField] private float match3StatsPollSeconds = 5f;
+        [Header("Покупка энергии (+): иконки в рантайм-диалоге")]
+        [Tooltip("В APK AssetDatabase недоступен, а пути вне Resources не грузятся — задайте те же спрайты, что на строках шапки, либо положите PNG в Assets/Resources/…")]
+        [SerializeField] private Sprite energyBuyDialogEnergyIcon;
+        [SerializeField] private Sprite energyBuyDialogMatterIcon;
+        [SerializeField] private Sprite energyBuyDialogGoldIcon;
+
         [Header("Debug")]
         [SerializeField] private bool debugUiStats = false;
         [Header("Navigation")]
@@ -567,9 +573,42 @@ namespace Project.UI
 
         private void EnsureHeaderHudIconsForEnergyPurchase()
         {
-            if (_hudEnergySprite == null) _hudEnergySprite = LoadHudSprite(HudEnergyIconAssetPath);
-            if (_hudMatterSprite == null) _hudMatterSprite = LoadHudSprite(HudMatterIconAssetPath);
-            if (_hudGoldSprite == null) _hudGoldSprite = LoadHudSprite(HudGoldIconAssetPath);
+            if (_hudEnergySprite == null)
+                _hudEnergySprite = energyBuyDialogEnergyIcon
+                    ?? TryGetHeaderResourceIconSprite(_headerResourcesRoot, "Energy")
+                    ?? LoadHudSprite(HudEnergyIconAssetPath);
+            if (_hudMatterSprite == null)
+                _hudMatterSprite = energyBuyDialogMatterIcon
+                    ?? TryGetHeaderResourceIconSprite(_headerResourcesRoot, "matter")
+                    ?? LoadHudSprite(HudMatterIconAssetPath);
+            if (_hudGoldSprite == null)
+                _hudGoldSprite = energyBuyDialogGoldIcon
+                    ?? TryGetHeaderResourceIconSprite(_headerResourcesRoot, "Gold")
+                    ?? LoadHudSprite(HudGoldIconAssetPath);
+        }
+
+        /// <summary>Берёт спрайт с уже размеченной строки ресурса в шапке (работает в сборке без Resources).</summary>
+        private static Sprite TryGetHeaderResourceIconSprite(Transform headerRoot, string entryName)
+        {
+            if (headerRoot == null || string.IsNullOrEmpty(entryName)) return null;
+            var entryRoot = FindChildByName(headerRoot, entryName, StringComparison.OrdinalIgnoreCase);
+            if (entryRoot == null) return null;
+            var valueRoot = FindChildByName(entryRoot, "Value", StringComparison.OrdinalIgnoreCase);
+            foreach (var img in entryRoot.GetComponentsInChildren<Image>(true))
+            {
+                if (img == null || img.sprite == null) continue;
+                if (valueRoot != null && img.transform.IsChildOf(valueRoot.transform)) continue;
+                return img.sprite;
+            }
+
+            var iconTr = FindChildByName(entryRoot, "Icon", StringComparison.OrdinalIgnoreCase);
+            if (iconTr != null)
+            {
+                var ic = iconTr.GetComponent<Image>();
+                if (ic != null && ic.sprite != null) return ic.sprite;
+            }
+
+            return null;
         }
 
         private static Sprite LoadHudSprite(string assetPath)
