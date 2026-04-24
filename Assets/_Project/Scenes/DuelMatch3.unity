@@ -1020,8 +1020,9 @@ MonoBehaviour:
   rewardKeySprite: {fileID: 0}
   rewardBlueprintSprite: {fileID: 0}
   rewardTesseractSprite: {fileID: 0}
+  itemCatalog: {fileID: 11400000, guid: 1e007d3c1d27cfc4d894d77c6cb422e6, type: 2}
   damagePopupPrefab: {fileID: 1563794341977534896, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
-  affixCatalog: {fileID: 0}
+  affixCatalog: {fileID: 11400000, guid: 0cb93842da3f91b4ebb3067fb38bcbc6, type: 2}
   cheatRowsOverlayCellsPrefab: {fileID: 8564567523557899235, guid: 2c5f112379cf13343935c7cab488f4b8, type: 3}
   furyCritChance: 0.18
 --- !u!1 &218046105

@@ -147,6 +147,9 @@ namespace Project.UI.Editor
                     so.FindProperty("monsterCatalog").objectReferenceValue = catalog;
                 if (frameCatalog != null)
                     so.FindProperty("monsterFrameCatalog").objectReferenceValue = frameCatalog;
+                var itemCat = AssetDatabase.LoadAssetAtPath<Project.Character.ItemCatalog>(MainItemCatalogPath);
+                if (itemCat != null)
+                    so.FindProperty("itemCatalog").objectReferenceValue = itemCat;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(controller);
             }
@@ -197,12 +200,16 @@ namespace Project.UI.Editor
                 new Color(0.22f, 0.18f, 0.18f, 0.95f), new Vector2(0.03f, 0.03f), new Vector2(0.18f, 0.10f));
 
             var itemCatalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>(MainItemCatalogPath);
+            var bgRt = bg.GetComponent<RectTransform>();
+            WorkshopRecipePanelSetup.Build(bgRt);
+
             var ws = canvasGo.AddComponent<WorkshopSceneController>();
             var wso = new SerializedObject(ws);
             wso.FindProperty("itemCatalog").objectReferenceValue = itemCatalog;
             var craftRoot = bg.transform.Find("CraftSlots");
             if (craftRoot != null)
                 wso.FindProperty("craftSlotsRoot").objectReferenceValue = craftRoot;
+            wso.FindProperty("workshopBackground").objectReferenceValue = bgRt;
             var hint = bg.transform.Find("Hint");
             if (hint != null)
                 wso.FindProperty("hintText").objectReferenceValue = hint.GetComponent<Text>();

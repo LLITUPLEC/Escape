@@ -124,7 +124,7 @@
       "floor": 4,
       "is_boss": true,
       "hp_bonus": 18498,
-      "base_crit": 0.0135,
+      "base_crit": 0.15,
       "base_heal": 892,
       "reward_xp": 616,
       "base_armor": 1262,
@@ -153,8 +153,8 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.21,
       "reward_key_amount": 0,
-      "reward_matter_max": 0,
-      "reward_matter_min": 0,
+      "reward_matter_max": 8,
+      "reward_matter_min": 4,
       "reward_tesseract_chance": 0
     },
     "mine_5": {
@@ -280,7 +280,7 @@
       "floor": 8,
       "is_boss": true,
       "hp_bonus": 21322,
-      "base_crit": 0.0275,
+      "base_crit": 0.3,
       "base_heal": 1028,
       "reward_xp": 968,
       "base_armor": 1458,
@@ -309,8 +309,8 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.33,
       "reward_key_amount": 0,
-      "reward_matter_max": 0,
-      "reward_matter_min": 0,
+      "reward_matter_max": 12,
+      "reward_matter_min": 4,
       "reward_tesseract_chance": 0
     },
     "mine_9": {
@@ -436,7 +436,7 @@
       "floor": 12,
       "is_boss": true,
       "hp_bonus": 24144,
-      "base_crit": 0.0415,
+      "base_crit": 0.45,
       "base_heal": 1166,
       "reward_xp": 1320,
       "base_armor": 1652,
@@ -473,8 +473,8 @@
       "reward_blueprint": "",
       "ai_ability_chance": 0.45,
       "reward_key_amount": 0,
-      "reward_matter_max": 88,
-      "reward_matter_min": 44,
+      "reward_matter_max": 16,
+      "reward_matter_min": 8,
       "reward_tesseract_chance": 0.05
     }
   }

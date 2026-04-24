@@ -10,6 +10,7 @@ namespace Project.Character
     {
         private const string RpcPlayerResourcesGet = "duel_player_resources_get";
         private const string RpcPlayerResourcesSpend = "duel_player_resources_spend";
+        private const string RpcPveEnergyBuy = "duel_pve_energy_buy";
         private const string PlayerResourcesCacheKey = "nakama.cache.player_resources_v1";
 
         /// <summary>Последний успешный снимок ресурсов (устраняет краткий «—» на медленном старте / APK).</summary>
@@ -85,6 +86,43 @@ namespace Project.Character
             };
 
             return SpendAsync(JsonUtility.ToJson(request), ct);
+        }
+
+        public static async Task<PlayerResourcesRpcResponse> BuyEnergyAsync(string mode, CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null)
+                return new PlayerResourcesRpcResponse { ok = false, err = "nakama_not_initialized" };
+
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                return new PlayerResourcesRpcResponse { ok = false, err = "nakama_not_ready" };
+
+            if (!string.Equals(mode, "matter", StringComparison.Ordinal) && !string.Equals(mode, "gold", StringComparison.Ordinal))
+                return new PlayerResourcesRpcResponse { ok = false, err = "bad_mode" };
+
+            try
+            {
+                var request = new EnergyBuyRpcRequest
+                {
+                    mode = string.Equals(mode, "gold", StringComparison.Ordinal) ? "gold" : "matter",
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                };
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcPveEnergyBuy, JsonUtility.ToJson(request), canceller: ct);
+
+                var body = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(body))
+                    return new PlayerResourcesRpcResponse { ok = false, err = "empty_payload" };
+
+                var model = JsonUtility.FromJson<PlayerResourcesRpcResponse>(body);
+                if (model != null && model.ok)
+                    WriteCache(model);
+                return model ?? new PlayerResourcesRpcResponse { ok = false, err = "parse_failed" };
+            }
+            catch (Exception e)
+            {
+                return new PlayerResourcesRpcResponse { ok = false, err = e.Message };
+            }
         }
 
         private static async Task<PlayerResourcesRpcResponse> SpendAsync(string payload, CancellationToken ct)

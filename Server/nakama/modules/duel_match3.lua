@@ -2573,21 +2573,22 @@ local function read_pve_progress(user_id)
     rows = nil
   end
 
-  local function apply_energy_regen(progress, energy_max, now)
-    local max_energy = clamp_int(energy_max, 0, nil)
-    if max_energy <= 0 then
+  -- Регенерация по времени только до min(storage_max, PVE_ENERGY_REGEN_CAP); «скупленная» энергия не капается выше 100.
+  local function apply_energy_regen(progress, storage_max, now)
+    local cap = clamp_int(storage_max, 0, nil)
+    if cap <= 0 then
       progress.energy = 0
       progress.energy_updated_at = now
       return
     end
-
-    local energy = clamp_int(progress.energy, 0, max_energy)
+    local regen_top = math.min(cap, math.max(0, tonumber(CFG.PVE_ENERGY_REGEN_CAP) or 100))
+    local energy = clamp_int(progress.energy, 0, cap)
     local updated_at = math.floor(tonumber(progress.energy_updated_at) or now)
     if updated_at <= 0 then updated_at = now end
     if updated_at > now then updated_at = now end
 
-    if energy >= max_energy then
-      progress.energy = max_energy
+    if energy >= regen_top then
+      progress.energy = energy
       progress.energy_updated_at = now
       return
     end
@@ -2599,9 +2600,9 @@ local function read_pve_progress(user_id)
       return
     end
 
-    energy = math.min(max_energy, energy + gained)
+    energy = math.min(regen_top, energy + gained)
     progress.energy = energy
-    if energy >= max_energy then
+    if energy >= regen_top then
       progress.energy_updated_at = now
     else
       progress.energy_updated_at = updated_at + gained * CFG.PVE_ENERGY_REGEN_SECONDS
@@ -2626,7 +2627,7 @@ local function read_pve_progress(user_id)
       blueprint_gold = 0,
       tesseracts = 0,
       key_items = empty_key_items(),
-      energy = energy_max,
+      energy = math.min(energy_max, math.max(0, tonumber(CFG.PVE_ENERGY_REGEN_CAP) or 100)),
       energy_updated_at = now,
       mine = {
         current_difficulty = CFG.MINE_DIFFICULTY_DEFAULT,
@@ -3744,6 +3745,149 @@ local function duel_player_resources_spend(ctx, payload)
 
   if not ok then
     nk.logger_error("duel_player_resources_spend: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_pve_energy_buy(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local mode = tostring(p.mode or "")
+    if mode ~= "matter" and mode ~= "gold" then
+      return nk.json_encode({ ok = false, err = "bad_mode" })
+    end
+    local matter_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_COST) or 1))
+    local matter_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_GRANT) or 100))
+    local gold_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_COST) or 1000))
+    local gold_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_GRANT) or 100))
+    local max_retries = 5
+    for i = 1, max_retries do
+      local progress, version = read_pve_progress(user_id)
+      local energy_max = pve_energy_max_for_user(user_id)
+      local e = clamp_int(progress.energy, 0, energy_max)
+      if e >= energy_max then
+        return nk.json_encode({ ok = false, err = "energy_full" })
+      end
+      if mode == "matter" then
+        local m = math.max(0, tonumber(progress.matter) or 0)
+        if m < matter_cost then
+          return nk.json_encode({ ok = false, err = "not_enough_matter" })
+        end
+        local add = matter_grant
+        if e + add > energy_max then
+          return nk.json_encode({ ok = false, err = "energy_full" })
+        end
+        progress.matter = m - matter_cost
+        progress.energy = e + add
+      else
+        local g = math.max(0, tonumber(progress.gold) or 0)
+        if g < gold_cost then
+          return nk.json_encode({ ok = false, err = "not_enough_gold" })
+        end
+        local add = gold_grant
+        if e + add > energy_max then
+          return nk.json_encode({ ok = false, err = "energy_full" })
+        end
+        progress.gold = g - gold_cost
+        progress.energy = e + add
+      end
+      progress.energy = clamp_int(progress.energy, 0, energy_max)
+      progress.energy_updated_at = os.time()
+      local write_ok, write_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if write_ok then
+        local resources = build_resource_payload(progress, user_id)
+        resources.ok = true
+        return nk.json_encode(resources)
+      end
+      local err_text = tostring(write_err)
+      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+        error(write_err)
+      end
+    end
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+  if not ok then
+    nk.logger_error("duel_pve_energy_buy: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+local function duel_workshop_craft_rush(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local slot_index = tonumber(p.slot_index)
+    if slot_index == nil or slot_index < 0 or slot_index > 7 then
+      return nk.json_encode({ ok = false, err = "bad_slot_index" })
+    end
+    slot_index = math.floor(slot_index)
+    local rush_gold = math.max(1, math.floor(tonumber(CFG.WORKSHOP_CRAFT_RUSH_GOLD) or 500))
+    local rush_sec = math.max(60, math.floor(tonumber(CFG.WORKSHOP_CRAFT_RUSH_SECONDS) or 1200))
+    ensure_character_sheet_initialized(user_id)
+    local max_retries = 5
+    for attempt = 1, max_retries do
+      local progress, version = read_pve_progress(user_id)
+      if (tonumber(progress.gold) or 0) < rush_gold then
+        return nk.json_encode({ ok = false, err = "not_enough_gold" })
+      end
+      local sheet = read_character_sheet(user_id)
+      ensure_sheet_inventory_counts(sheet)
+      ensure_sheet_workshop(sheet)
+      local wslot = sheet.workshop_slots[slot_index + 1]
+      if wslot == nil or tostring(wslot.output_def_id or "") == "" then
+        return nk.json_encode({ ok = false, err = "empty_workshop_slot" })
+      end
+      local wend = tonumber(wslot.ends_at) or 0
+      if wend <= os.time() then
+        return nk.json_encode({ ok = false, err = "craft_already_ready" })
+      end
+      progress.gold = (tonumber(progress.gold) or 0) - rush_gold
+      wend = wend - rush_sec
+      if wend < os.time() then
+        wend = os.time()
+      end
+      wslot.ends_at = wend
+      local w_ok, w_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if w_ok then
+        write_character_sheet(user_id, sheet)
+        return encode_character_ok_response(sheet, progress, user_id)
+      end
+      local err_text = tostring(w_err)
+      if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+        error(w_err)
+      end
+    end
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+  if not ok then
+    nk.logger_error("duel_workshop_craft_rush: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -5105,6 +5249,8 @@ nk.register_rpc(duel_workshop_craft_start, "duel_workshop_craft_start")
 nk.register_rpc(duel_workshop_craft_claim, "duel_workshop_craft_claim")
 nk.register_rpc(duel_player_resources_get, "duel_player_resources_get")
 nk.register_rpc(duel_player_resources_spend, "duel_player_resources_spend")
+nk.register_rpc(duel_pve_energy_buy, "duel_pve_energy_buy")
+nk.register_rpc(duel_workshop_craft_rush, "duel_workshop_craft_rush")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 
 return {

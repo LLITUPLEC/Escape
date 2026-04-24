@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
 using Project.Nakama;
+using Project.UI;
 using Project.Utils;
+using Project.Character;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -88,6 +90,8 @@ namespace Project.Match3
         [SerializeField] private Sprite rewardKeySprite;
         [SerializeField] private Sprite rewardBlueprintSprite;
         [SerializeField] private Sprite rewardTesseractSprite;
+        [Tooltip("Иконки слитков/свитков в панели награды. Пусто — в редакторе подставляется MainItemCatalog.asset.")]
+        [SerializeField] private ItemCatalog itemCatalog;
 
         [Header("UI Prefabs")]
         [SerializeField] private DamagePopupView damagePopupPrefab;
@@ -977,6 +981,22 @@ namespace Project.Match3
             _gameOverRewardRowsRoot.gameObject.SetActive(false);
         }
 
+        private string GetActiveMineDifficultyForRewardIcons()
+        {
+            if (_pveProgress != null && _pveProgress.mine != null &&
+                !string.IsNullOrWhiteSpace(_pveProgress.mine.current_difficulty))
+                return _pveProgress.mine.current_difficulty;
+            if (!string.IsNullOrWhiteSpace(_preferredSoloDifficulty))
+                return _preferredSoloDifficulty;
+            return "easy";
+        }
+
+        private Sprite ResolvePveIngotRewardRowSprite()
+            => MineRewardFormat.IngotIconForDifficulty(
+                GetActiveMineDifficultyForRewardIcons(),
+                itemCatalog,
+                rewardIngotsSprite);
+
         private void RefreshGameOverRewardRows(bool won)
         {
             EnsureRewardSpritesAssigned();
@@ -1012,13 +1032,21 @@ namespace Project.Match3
             count += AddRewardRow(rewardGoldSprite, rewardGold);
             count += AddRewardRow(rewardOreSprite, rewardOre);
             count += AddRewardRow(rewardMatterSprite, rewardMatter);
-            count += AddRewardRow(rewardIngotsSprite, _lastRewardIngots);
+            count += AddRewardRow(ResolvePveIngotRewardRowSprite(), _lastRewardIngots);
             if (!string.IsNullOrWhiteSpace(_lastRewardKeyId) && _lastRewardKeyAmount > 0)
                 count += AddRewardRowDisplay(rewardKeySprite, "+" + _lastRewardKeyAmount);
             if (!string.IsNullOrWhiteSpace(_lastRewardBlueprint) && string.IsNullOrWhiteSpace(_lastRewardRecipeItemId))
-                count += AddRewardRowDisplay(rewardBlueprintSprite, _lastRewardBlueprint.Trim());
+                count += AddRewardRowDisplay(
+                    rewardBlueprintSprite,
+                    MineRewardFormat.LegacyBlueprintShortLabel(_lastRewardBlueprint));
             if (!string.IsNullOrWhiteSpace(_lastRewardRecipeItemId))
-                count += AddRewardRowDisplay(rewardBlueprintSprite, "Рецепт ×1");
+            {
+                var rIcon = MineRewardFormat.ItemIconOrFallback(
+                    itemCatalog, _lastRewardRecipeItemId, rewardBlueprintSprite);
+                var slotRu = MineRewardFormat.RecipeSlotNameRuFromRecipeItemId(_lastRewardRecipeItemId);
+                var rText = string.IsNullOrEmpty(slotRu) ? "Рецепт ×1" : "Рецепт " + slotRu;
+                count += AddRewardRowDisplay(rIcon, rText);
+            }
             if (_lastRewardTesseract > 0)
                 count += AddRewardRow(rewardTesseractSprite, _lastRewardTesseract);
 
@@ -2451,6 +2479,7 @@ namespace Project.Match3
             if (rewardKeySprite == null) rewardKeySprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardKeyIconPath);
             if (rewardBlueprintSprite == null) rewardBlueprintSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardBlueprintIconPath);
             if (rewardTesseractSprite == null) rewardTesseractSprite = AssetDatabase.LoadAssetAtPath<Sprite>(RewardTesseractIconPath);
+            if (itemCatalog == null) itemCatalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>(MineRewardFormat.MainItemCatalogAssetPath);
 #endif
         }
 
@@ -2466,6 +2495,9 @@ namespace Project.Match3
             if (rewardTesseractSprite == null) rewardTesseractSprite = LoadRewardSprite(RewardTesseractIconPath);
             if (rewardBlueprintSprite == null) rewardBlueprintSprite = rewardIngotsSprite;
             if (rewardTesseractSprite == null) rewardTesseractSprite = rewardMatterSprite;
+#if UNITY_EDITOR
+            if (itemCatalog == null) itemCatalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>(MineRewardFormat.MainItemCatalogAssetPath);
+#endif
         }
 
         private static Sprite LoadRewardSprite(string assetPath)

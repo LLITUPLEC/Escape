@@ -7,7 +7,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Project.Character;
 using Project.Match3;
+using Project.UI;
 
 /// <summary>
 /// Menu: Tools → Match3 → Собрать UI в сцене DuelMatch3.
@@ -135,6 +137,7 @@ public static class Match3DuelSceneUiBuilder
         Set<Match3GameHUD>("hudPrefab", "Assets/_Project/Resources/UI/Match3GameHUD.prefab");
         Set<Match3SearchingPanel>("searchingPanelPrefab", $"{PrefabDir}/Match3SearchingPanel.prefab");
         Set<Match3GameOverPanel>("gameOverPanelPrefab", $"{PrefabDir}/Match3GameOverPanel.prefab");
+        Set<ItemCatalog>("itemCatalog", MineRewardFormat.MainItemCatalogAssetPath);
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 

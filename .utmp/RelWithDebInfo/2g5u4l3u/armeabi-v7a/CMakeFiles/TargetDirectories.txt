@@ -1,0 +1,5 @@
+C:/Users/ProKrust/Desktop/Develope/Escape/.utmp/RelWithDebInfo/2g5u4l3u/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/ProKrust/Desktop/Develope/Escape/.utmp/RelWithDebInfo/2g5u4l3u/armeabi-v7a/CMakeFiles/rebuild_cache.dir
+C:/Users/ProKrust/Desktop/Develope/Escape/.utmp/RelWithDebInfo/2g5u4l3u/armeabi-v7a/GameActivity/CMakeFiles/game.dir
+C:/Users/ProKrust/Desktop/Develope/Escape/.utmp/RelWithDebInfo/2g5u4l3u/armeabi-v7a/GameActivity/CMakeFiles/edit_cache.dir
+C:/Users/ProKrust/Desktop/Develope/Escape/.utmp/RelWithDebInfo/2g5u4l3u/armeabi-v7a/GameActivity/CMakeFiles/rebuild_cache.dir

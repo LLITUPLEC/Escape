@@ -20,6 +20,8 @@ namespace Project.UI
         [SerializeField] private MonsterCatalog monsterCatalog;
         [SerializeField] private MonsterFrameCatalog monsterFrameCatalog;
         [SerializeField] private AffixCatalog affixCatalog;
+        [Tooltip("Иконки ingot_*/свитков в превью наград (как в мастерской). Пусто — в редакторе грузится MainItemCatalog.asset.")]
+        [SerializeField] private ItemCatalog itemCatalog;
         [SerializeField] private Sprite keyIconSprite;
         [SerializeField] private Sprite oreIconSprite;
         [SerializeField] private Sprite goldIconSprite;
@@ -141,6 +143,7 @@ namespace Project.UI
         private PlayerResourcesRpcResponse _lastResources;
         /// <summary>Сервер: duel_character_get learned_recipe_ids — для скрытия строки рецепта в модалке монстра.</summary>
         private string[] _cachedLearnedRecipeIds = Array.Empty<string>();
+        private EnergyHeaderPurchaseController _energyHeaderPurchase;
         private Transform _headerResourcesRoot;
         private Sprite _lockSprite;
         private Sprite _oreSprite;
@@ -185,24 +188,6 @@ namespace Project.UI
             }
 
             return 0;
-        }
-
-        private static string MineRecipeColorLabelForDifficulty(string difficulty)
-        {
-            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
-                return "синий";
-            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
-                return "фиолетовый";
-            return "зелёный";
-        }
-
-        private static string MineIngotKindLabelForDifficulty(string difficulty)
-        {
-            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
-                return "синий слиток";
-            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
-                return "фиолет. слиток";
-            return "зелёный слиток";
         }
 
         private static int MineTierFromDifficulty(string difficulty)
@@ -318,10 +303,12 @@ namespace Project.UI
             _ = RefreshAsync(_cts.Token);
             _ = RefreshResourcesAsync(_cts.Token);
             _ = RefreshLearnedRecipesAsync(_cts.Token);
+            TryInstallEnergyHeaderPurchase();
         }
 
         private void OnDisable()
         {
+            _energyHeaderPurchase = null;
             if (_insufficientResourcesToastRoutine != null)
             {
                 StopCoroutine(_insufficientResourcesToastRoutine);
@@ -1613,6 +1600,23 @@ namespace Project.UI
             ApplyHeaderResourceValues(_lastResources);
         }
 
+        private void TryInstallEnergyHeaderPurchase()
+        {
+            if (_energyHeaderPurchase != null || _headerResourcesRoot == null) return;
+            if (!_energyBinding.IsBound) return;
+            EnsureHudIconReferences();
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            _energyHeaderPurchase = new EnergyHeaderPurchaseController(
+                canvas.transform,
+                _energySprite,
+                _matterSprite,
+                _goldSprite,
+                async ct => { await RefreshResourcesAsync(ct).ConfigureAwait(true); },
+                _cts != null ? _cts.Token : CancellationToken.None);
+            _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
+        }
+
         private void EnsureHeaderResources()
         {
             if (_headerResourcesRoot == null)
@@ -1632,6 +1636,8 @@ namespace Project.UI
         private void OnValidate()
         {
             TryAutoAssignHudIconReferencesInEditor();
+            if (itemCatalog == null)
+                itemCatalog = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemCatalog>(MineRewardFormat.MainItemCatalogAssetPath);
         }
 #endif
 
@@ -1800,7 +1806,7 @@ namespace Project.UI
         private void ApplyHeaderResourceValues(PlayerResourcesRpcResponse model)
         {
             if (model == null) return;
-            SetHeaderResourceText(_energyBinding, $"{Mathf.Max(0, model.energy)}/{Mathf.Max(0, model.energy_max)}");
+            SetHeaderResourceText(_energyBinding, Mathf.Max(0, model.energy).ToString());
             SetHeaderResourceText(_oreBinding, FormatCompact(model.ore));
             SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
             SetHeaderResourceText(_ingotsBinding, FormatCompact(model.ingots));
@@ -1971,17 +1977,21 @@ namespace Project.UI
                 entries.Add(new RewardEntry { icon = _oreSprite, text = FormatCompact(bot.reward_ore), color = Color.white });
             if (bot.reward_ingots > 0)
             {
-                var ingotLabel = FormatCompact(bot.reward_ingots);
-                var kind = MineIngotKindLabelForDifficulty(_difficulty);
+                var n = FormatCompact(bot.reward_ingots);
+                string ingotLabel;
                 if (!isBossFloor)
                 {
                     var pct = Mathf.RoundToInt(IngotDropChanceNonBoss(bot.floor) * 100f);
-                    ingotLabel = $"{ingotLabel} (шанс {pct}%, {kind})";
+                    ingotLabel = pct >= 100 ? n : $"{n}(~{pct}%)";
                 }
                 else
-                    ingotLabel = $"{ingotLabel} (босс ×2, {kind})";
+                {
+                    var doubled = bot.reward_ingots * 2;
+                    ingotLabel = FormatCompact(doubled);
+                }
 
-                entries.Add(new RewardEntry { icon = _ingotsSprite, text = ingotLabel, color = Color.white });
+                var ingotIcon = MineRewardFormat.IngotIconForDifficulty(_difficulty, itemCatalog, _ingotsSprite);
+                entries.Add(new RewardEntry { icon = ingotIcon, text = ingotLabel, color = Color.white });
             }
             if (!string.IsNullOrWhiteSpace(bot.reward_key_id) && bot.reward_key_amount > 0)
                 entries.Add(new RewardEntry { icon = _lockSprite, text = $"{bot.reward_key_id} x{bot.reward_key_amount}", color = Color.white });
@@ -2002,7 +2012,12 @@ namespace Project.UI
             if (!v43RecipeFloor && !string.IsNullOrWhiteSpace(bot.reward_blueprint))
             {
                 var bp = bot.reward_blueprint.Trim();
-                entries.Add(new RewardEntry { icon = ResolveBlueprintRewardSprite(bp), text = "Рецепт: " + bp, color = Color.white });
+                entries.Add(new RewardEntry
+                {
+                    icon = ResolveBlueprintRewardSprite(bp),
+                    text = MineRewardFormat.LegacyBlueprintShortLabel(bp),
+                    color = Color.white
+                });
             }
 
             if (v43RecipeFloor)
@@ -2012,11 +2027,25 @@ namespace Project.UI
                               MineRecipeDropLearned(expectedId, _cachedLearnedRecipeIds);
                 if (!already)
                 {
-                    var col = MineRecipeColorLabelForDifficulty(_difficulty);
+                    var slotRu = MineRewardFormat.RecipeSlotNameRuFromRecipeItemId(expectedId);
+                    string recipeLabel;
+                    if (recipePct >= 100)
+                    {
+                        recipeLabel = string.IsNullOrEmpty(slotRu) ? "Рецепт" : $"Рецепт {slotRu}";
+                    }
+                    else
+                    {
+                        recipeLabel = string.IsNullOrEmpty(slotRu)
+                            ? $"Рецепт(~{recipePct}%)"
+                            : $"Рецепт {slotRu}(~{recipePct}%)";
+                    }
+                    var recipeIcon = string.IsNullOrEmpty(expectedId)
+                        ? _blueprintSprite
+                        : MineRewardFormat.ItemIconOrFallback(itemCatalog, expectedId, _blueprintSprite);
                     entries.Add(new RewardEntry
                     {
-                        icon = _blueprintSprite,
-                        text = $"Рецепт ({col}, сложность шахты): шанс {recipePct}%",
+                        icon = recipeIcon,
+                        text = recipeLabel,
                         color = new Color(0.95f, 0.92f, 0.75f)
                     });
                 }

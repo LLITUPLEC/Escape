@@ -13,6 +13,7 @@ namespace Project.Character
         private const string RpcCharacterRecipeLearn = "duel_character_recipe_learn";
         private const string RpcWorkshopCraftStart = "duel_workshop_craft_start";
         private const string RpcWorkshopCraftClaim = "duel_workshop_craft_claim";
+        private const string RpcWorkshopCraftRush = "duel_workshop_craft_rush";
 
         public static async Task<CharacterGetRpcResponse> GetAsync(CancellationToken ct)
         {
@@ -73,6 +74,14 @@ namespace Project.Character
             if (slotIndex < 0 || slotIndex > 7)
                 return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
             return RpcCharacterPayloadAsync(RpcWorkshopCraftClaim,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex + "}", ct);
+        }
+
+        public static Task<CharacterGetRpcResponse> WorkshopCraftRushAsync(int slotIndex, CancellationToken ct)
+        {
+            if (slotIndex < 0 || slotIndex > 7)
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            return RpcCharacterPayloadAsync(RpcWorkshopCraftRush,
                 "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex + "}", ct);
         }
 

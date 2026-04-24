@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: eq_t1_normal_weapon_l
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_normal_weapon_l
-  displayName: eq_t1_normal_weapon_l
+  displayName: "\u0417\u0430\u0442\u043E\u0447\u043A\u0430"
   kind: 0
   maxStack: 1
   tier: 1

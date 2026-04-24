@@ -40,6 +40,7 @@ namespace Project.Character.UI
         private Text _detailText;
         private Button _createButton;
         private Button _claimButton;
+        private Button _rushButton;
         private readonly List<GameObject> _recipeRows = new();
 
         private Image[] _slotIcons;
@@ -107,77 +108,44 @@ namespace Project.Character.UI
                 hr.offsetMax = Vector2.zero;
             }
 
-            if (workshopBackground.Find("WorkshopRecipePanel") != null)
-                return;
+            WorkshopRecipePanelSetup.Refs r;
+            if (WorkshopRecipePanelSetup.TryBindExisting(workshopBackground, out r))
+                ApplyWorkshopPanelRefs(r, workshopBackground);
+            else
+                ApplyWorkshopPanelRefs(WorkshopRecipePanelSetup.Build(workshopBackground), workshopBackground);
 
-            var panel = new GameObject("WorkshopRecipePanel", typeof(RectTransform), typeof(Image));
-            var pr = panel.GetComponent<RectTransform>();
-            pr.SetParent(workshopBackground, false);
-            pr.anchorMin = new Vector2(0.5f, 0.22f);
-            pr.anchorMax = new Vector2(0.98f, 0.88f);
-            pr.offsetMin = Vector2.zero;
-            pr.offsetMax = Vector2.zero;
-            panel.GetComponent<Image>().color = new Color(0.14f, 0.11f, 0.1f, 0.95f);
+            WireRecipePanelButtons();
+        }
 
-            _recipeHeader = CreateUiText("RecipeHeader", pr, "Выберите слот слева", 22, TextAnchor.UpperLeft,
-                new Vector2(0f, 0.86f), new Vector2(1f, 1f), new Vector2(12f, -8f), new Vector2(-12f, -8f));
+        private void ApplyWorkshopPanelRefs(WorkshopRecipePanelSetup.Refs r, RectTransform workshopBackground)
+        {
+            _recipeHeader = r.recipeHeader;
+            _recipeContent = r.recipeContent;
+            _detailText = r.detailText;
+            _createButton = r.createButton;
+            _claimButton = r.claimButton;
+            _rushButton = r.rushButton;
+            if (_rushButton == null)
+                _rushButton = WorkshopRecipePanelSetup.EnsureRushButton(workshopBackground);
+        }
 
-            var scrollGo = new GameObject("RecipeScroll", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
-            var sr = scrollGo.GetComponent<RectTransform>();
-            sr.SetParent(pr, false);
-            sr.anchorMin = new Vector2(0f, 0.28f);
-            sr.anchorMax = new Vector2(1f, 0.84f);
-            sr.offsetMin = new Vector2(8f, 4f);
-            sr.offsetMax = new Vector2(-8f, -4f);
-            scrollGo.GetComponent<Image>().color = new Color(0.1f, 0.08f, 0.08f, 1f);
-
-            var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
-            var vp = viewport.GetComponent<RectTransform>();
-            vp.SetParent(sr, false);
-            vp.anchorMin = Vector2.zero;
-            vp.anchorMax = Vector2.one;
-            vp.offsetMin = Vector2.zero;
-            vp.offsetMax = Vector2.zero;
-            viewport.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.02f);
-            viewport.GetComponent<Mask>().showMaskGraphic = false;
-
-            var content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-            _recipeContent = content.GetComponent<RectTransform>();
-            _recipeContent.SetParent(vp, false);
-            _recipeContent.anchorMin = new Vector2(0f, 1f);
-            _recipeContent.anchorMax = new Vector2(1f, 1f);
-            _recipeContent.pivot = new Vector2(0.5f, 1f);
-            var vlg = content.GetComponent<VerticalLayoutGroup>();
-            vlg.childAlignment = TextAnchor.UpperCenter;
-            vlg.spacing = 4f;
-            vlg.padding = new RectOffset(4, 4, 4, 4);
-            vlg.childControlHeight = true;
-            vlg.childControlWidth = true;
-            vlg.childForceExpandHeight = false;
-            vlg.childForceExpandWidth = true;
-            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            var scroll = scrollGo.GetComponent<ScrollRect>();
-            scroll.viewport = vp;
-            scroll.content = _recipeContent;
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-
-            _detailText = CreateUiText("DetailText", pr, "", 18, TextAnchor.UpperLeft,
-                new Vector2(0f, 0f), new Vector2(1f, 0.26f), new Vector2(12f, 8f), new Vector2(-12f, 8f));
-
-            var btnRow = new GameObject("Buttons", typeof(RectTransform));
-            var br = btnRow.GetComponent<RectTransform>();
-            br.SetParent(pr, false);
-            br.anchorMin = new Vector2(0f, 0f);
-            br.anchorMax = new Vector2(1f, 0.12f);
-            br.offsetMin = new Vector2(12f, 8f);
-            br.offsetMax = new Vector2(-12f, 8f);
-
-            _createButton = CreateUiButton(br, "CreateButton", "Создать", new Vector2(0f, 0f), new Vector2(0.48f, 1f), () => _ = OnCreateClicked());
-            _claimButton = CreateUiButton(br, "ClaimButton", "Забрать в сундук", new Vector2(0.52f, 0f), new Vector2(1f, 1f), () => _ = OnClaimClicked());
-            _claimButton.gameObject.SetActive(false);
+        private void WireRecipePanelButtons()
+        {
+            if (_createButton != null)
+            {
+                _createButton.onClick.RemoveAllListeners();
+                _createButton.onClick.AddListener(() => _ = OnCreateClicked());
+            }
+            if (_claimButton != null)
+            {
+                _claimButton.onClick.RemoveAllListeners();
+                _claimButton.onClick.AddListener(() => _ = OnClaimClicked());
+            }
+            if (_rushButton != null)
+            {
+                _rushButton.onClick.RemoveAllListeners();
+                _rushButton.onClick.AddListener(() => _ = OnRushClicked());
+            }
         }
 
         private static Text CreateUiText(string name, Transform parent, string msg, int size, TextAnchor align,
@@ -369,6 +337,23 @@ namespace Project.Character.UI
             await ClaimAtSlot(_selectedSlot);
         }
 
+        private async Task OnRushClicked()
+        {
+            if (_profile == null || !_profile.ok || _selectedSlot < 0) return;
+            if (WorkshopState(_selectedSlot) != WorkshopSlotState.Busy) return;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            var ct = _cts.Token;
+            var resp = await CharacterProfileService.WorkshopCraftRushAsync(_selectedSlot, ct).ConfigureAwait(true);
+            if (!resp.ok)
+            {
+                if (hintText != null) hintText.text = "Ошибка: " + ErrToRu(resp.err);
+                return;
+            }
+            _profile = resp;
+            ApplyProfile(resp);
+        }
+
         private async Task ClaimAtSlot(int slotIndex)
         {
             _cts?.Cancel();
@@ -445,6 +430,7 @@ namespace Project.Character.UI
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
                 _detailText.text = "Готово: " + (def != null ? def.DisplayName : oid) + " — нажмите слот или «Забрать».";
                 if (_createButton != null) _createButton.interactable = false;
+                if (_rushButton != null) _rushButton.gameObject.SetActive(false);
                 if (_claimButton != null)
                 {
                     _claimButton.gameObject.SetActive(true);
@@ -457,13 +443,20 @@ namespace Project.Character.UI
             {
                 var oid = GetWorkshopOut(_selectedSlot);
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
-                _detailText.text = "Идёт крафт: " + (def != null ? def.ItemId : oid);
+                var craftTitle = (def != null && !string.IsNullOrEmpty(def.DisplayName)) ? def.DisplayName : (def != null ? def.ItemId : oid);
+                _detailText.text = "Идёт крафт: " + craftTitle;
                 if (_createButton != null) _createButton.interactable = false;
                 if (_claimButton != null) _claimButton.gameObject.SetActive(false);
+                if (_rushButton != null)
+                {
+                    _rushButton.gameObject.SetActive(true);
+                    _rushButton.interactable = (_profile.progression?.gold ?? 0) >= 500;
+                }
                 return;
             }
 
             if (_claimButton != null) _claimButton.gameObject.SetActive(false);
+            if (_rushButton != null) _rushButton.gameObject.SetActive(false);
 
             if (string.IsNullOrEmpty(_selectedOutputDefId))
             {
@@ -764,6 +757,10 @@ namespace Project.Character.UI
                 case "bad_craft_cost": return "некорректная стоимость крафта в каталоге";
                 case "session_stale": return "сессия устарела";
                 case "session_epoch_required": return "нужен session_epoch";
+                case "craft_already_ready": return "уже готово — заберите предмет";
+                case "not_enough_matter": return "мало материи";
+                case "energy_full": return "энергия на максимуме";
+                case "bad_mode": return "неверный режим покупки";
                 default: return err;
             }
         }

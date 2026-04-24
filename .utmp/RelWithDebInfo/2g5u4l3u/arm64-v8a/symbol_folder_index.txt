@@ -1,0 +1,1 @@
+C:\Users\ProKrust\Desktop\Develope\Escape\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\RelWithDebInfo\2g5u4l3u\obj\arm64-v8a

@@ -33,4 +33,12 @@ namespace Project.Character
         public string reason;
         public int session_epoch;
     }
+
+    [Serializable]
+    public sealed class EnergyBuyRpcRequest
+    {
+        public int session_epoch;
+        /// <summary>Server: "matter" (1 → 100 эн) или "gold" (1000 → 100 эн).</summary>
+        public string mode;
+    }
 }

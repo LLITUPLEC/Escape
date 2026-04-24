@@ -32,6 +32,10 @@ namespace Project.UI
         [SerializeField] private string mineButtonName = "MineButton";
         [SerializeField] private string workshopButtonName = "BottomButtonWorkshop";
 
+        private const string HudGoldIconAssetPath = "Assets/_Project/img/resources_hud/gold.png";
+        private const string HudMatterIconAssetPath = "Assets/_Project/img/resources_hud/matter.png";
+        private const string HudEnergyIconAssetPath = "Assets/_Project/img/resources_hud/energy.png";
+
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcMatch3StatsGet = "duel_match3_stats_get";
         private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
@@ -69,6 +73,10 @@ namespace Project.UI
         private readonly ResourceValueBinding _keysBinding = new("keys");
         private Button _mineButton;
         private Button _workshopButton;
+        private EnergyHeaderPurchaseController _energyHeaderPurchase;
+        private Sprite _hudEnergySprite;
+        private Sprite _hudMatterSprite;
+        private Sprite _hudGoldSprite;
 
         private void Awake()
         {
@@ -97,11 +105,13 @@ namespace Project.UI
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
             EnsureMainMenuNavigationButtons();
+            TryInstallEnergyHeaderPurchase();
             ApplySafeAreaClamp();
         }
 
         private void OnDisable()
         {
+            _energyHeaderPurchase = null;
             _onlineCts?.Cancel();
             _onlineCts?.Dispose();
             _onlineCts = null;
@@ -538,6 +548,45 @@ namespace Project.UI
             BindHeaderResource(_keysBinding, _headerResourcesRoot);
         }
 
+        private void TryInstallEnergyHeaderPurchase()
+        {
+            if (_energyHeaderPurchase != null || _headerResourcesRoot == null) return;
+            if (!_energyBinding.IsBound) return;
+            EnsureHeaderHudIconsForEnergyPurchase();
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            _energyHeaderPurchase = new EnergyHeaderPurchaseController(
+                canvas.transform,
+                _hudEnergySprite,
+                _hudMatterSprite,
+                _hudGoldSprite,
+                async ct => { await RefreshHeaderResourcesAsync(ct).ConfigureAwait(true); },
+                _onlineCts != null ? _onlineCts.Token : CancellationToken.None);
+            _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
+        }
+
+        private void EnsureHeaderHudIconsForEnergyPurchase()
+        {
+            if (_hudEnergySprite == null) _hudEnergySprite = LoadHudSprite(HudEnergyIconAssetPath);
+            if (_hudMatterSprite == null) _hudMatterSprite = LoadHudSprite(HudMatterIconAssetPath);
+            if (_hudGoldSprite == null) _hudGoldSprite = LoadHudSprite(HudGoldIconAssetPath);
+        }
+
+        private static Sprite LoadHudSprite(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+                return null;
+#if UNITY_EDITOR
+            var byAssetPath = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (byAssetPath != null)
+                return byAssetPath;
+#endif
+            var resourcesPath = assetPath.Replace("Assets/Resources/", string.Empty);
+            if (resourcesPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                resourcesPath = resourcesPath.Substring(0, resourcesPath.Length - 4);
+            return Resources.Load<Sprite>(resourcesPath);
+        }
+
         private async Task RefreshHeaderResourcesAsync(CancellationToken ct)
         {
             EnsureHeaderResources();
@@ -545,7 +594,7 @@ namespace Project.UI
 
             if (PlayerResourcesService.TryReadCached(out var cached))
             {
-                SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy, cached.energy_max));
+                SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy));
                 SetHeaderResourceText(_oreBinding, FormatCompact(cached.ore));
                 SetHeaderResourceText(_goldBinding, FormatCompact(cached.gold));
                 SetHeaderResourceText(_ingotsBinding, FormatCompact(cached.ingots));
@@ -564,7 +613,7 @@ namespace Project.UI
                     return;
                 }
 
-                SetHeaderResourceText(_energyBinding, FormatEnergy(model.energy, model.energy_max));
+                SetHeaderResourceText(_energyBinding, FormatEnergy(model.energy));
                 SetHeaderResourceText(_oreBinding, FormatCompact(model.ore));
                 SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
                 SetHeaderResourceText(_ingotsBinding, FormatCompact(model.ingots));
@@ -859,14 +908,10 @@ namespace Project.UI
             if (tmpText != null) tmpText.text = value;
         }
 
-        private static string FormatEnergy(int current, int max)
+        private static string FormatEnergy(int current)
         {
             var safeCurrent = Mathf.Max(0, current);
-            var safeMax = Mathf.Max(0, max);
-            if (safeMax <= 0)
-                return safeCurrent.ToString(CultureInfo.InvariantCulture);
-            return safeCurrent.ToString(CultureInfo.InvariantCulture) + "/" +
-                   safeMax.ToString(CultureInfo.InvariantCulture);
+            return safeCurrent.ToString(CultureInfo.InvariantCulture);
         }
 
         private static string FormatCompact(long value)
