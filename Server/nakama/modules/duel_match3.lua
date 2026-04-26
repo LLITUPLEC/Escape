@@ -1265,6 +1265,21 @@ local function count_present_players(state)
   return n
 end
 
+--- Владелец PvE отключился: убрать зависание на turn_deadline_paused (ожидание OP 17 с клиента).
+local function on_pve_owner_socket_gone(state, tick)
+  if state.mode ~= "pve" or state.owner_user_id == nil or state.owner_user_id == "" then return end
+  if state.turn_deadline_paused == true then
+    state.turn_deadline_paused = false
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
+    state.turn_pause_started_tick = tick
+    if state.active_user_id == state.bot_user_id then
+      state.bot_turn_pending = true
+      state.bot_long_think_next = false
+      state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS_FAST
+    end
+  end
+end
+
 local function parse_action(data)
   if not data or data == "" then return nil end
   local ok, action = pcall(nk.json_decode, data)
@@ -4801,6 +4816,8 @@ local function match_init(context, params)
     bot_fury_open_mana = nil,
     _bot_pre_mana = nil,
     pve_run = params and params.pve_run or nil,
+    reconnect_grace_for_user_id = nil,
+    reconnect_deadline_tick = nil,
   }
 
   return state, CFG.TICK_RATE, "mode=duel_match3"
@@ -4834,6 +4851,41 @@ end
 local function match_join(context, dispatcher, tick, state, presences)
   for _, p in ipairs(presences) do
     state.presences[p.user_id] = p
+  end
+
+  -- PvP: повторный вход после обрыва связи — полная рассылка состояния ушедшему игроку.
+  if state.mode ~= "pve" and state.started and not state.ended and state.reconnect_grace_for_user_id ~= nil then
+    for _, p in ipairs(presences) do
+      if p.user_id == state.reconnect_grace_for_user_id then
+        state.reconnect_grace_for_user_id = nil
+        state.reconnect_deadline_tick = nil
+        local cheat = {}
+        if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
+          cheat = state.cheat_rows or {}
+        end
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
+        dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
+        return state
+      end
+    end
+  end
+
+  -- PvE: владелец вернулся в тот же матч после обрыва.
+  if state.mode == "pve" and state.started and not state.ended and state.reconnect_grace_for_user_id ~= nil
+      and state.owner_user_id ~= nil and state.owner_user_id ~= "" then
+    for _, p in ipairs(presences) do
+      if p.user_id == state.reconnect_grace_for_user_id and p.user_id == state.owner_user_id then
+        state.reconnect_grace_for_user_id = nil
+        state.reconnect_deadline_tick = nil
+        local cheat = {}
+        if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
+          cheat = state.cheat_rows or {}
+        end
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
+        dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
+        return state
+      end
+    end
   end
 
   if state.mode == "pve" then
@@ -4961,12 +5013,34 @@ local function match_join(context, dispatcher, tick, state, presences)
 end
 
 local function match_leave(context, dispatcher, tick, state, presences)
+  local left_duelist_uid = nil
+  if state.players_sorted and state.started and not state.ended and state.mode ~= "pve" then
+    for _, p in ipairs(presences) do
+      for _, uid in ipairs(state.players_sorted) do
+        if uid == p.user_id then
+          left_duelist_uid = p.user_id
+          break
+        end
+      end
+      if left_duelist_uid then break end
+    end
+  end
+
   for _, p in ipairs(presences) do
     state.presences[p.user_id] = nil
   end
 
   if state.started and not state.ended then
     local count = count_present_players(state)
+    -- Один дуэлянт ушёл по сети — не завершать матч сразу; дать время на JoinMatch.
+    if state.mode ~= "pve" and count == 1 and left_duelist_uid ~= nil
+        and state.players_sorted ~= nil and #state.players_sorted >= 2 then
+      state.reconnect_grace_for_user_id = left_duelist_uid
+      state.reconnect_deadline_tick = tick + math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5)
+      local msg = { disconnectedUserId = left_duelist_uid, reconnectGraceSeconds = CFG.RECONNECT_GRACE_SECONDS }
+      dispatcher.broadcast_message(CFG.OP_PEER_DISCONNECT, nk.json_encode(msg), nil, nil)
+      return state
+    end
     if count <= 1 and state.mode ~= "pve" then
       state.ended = true
       local winner = nil
@@ -4977,6 +5051,19 @@ local function match_leave(context, dispatcher, tick, state, presences)
       return nil
     end
     if count <= 0 and state.mode == "pve" then
+      local owner_left = false
+      for _, p in ipairs(presences) do
+        if state.owner_user_id ~= nil and p.user_id == state.owner_user_id then
+          owner_left = true
+          break
+        end
+      end
+      if owner_left and state.owner_user_id ~= nil and state.owner_user_id ~= "" then
+        state.reconnect_grace_for_user_id = state.owner_user_id
+        state.reconnect_deadline_tick = tick + math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5)
+        on_pve_owner_socket_gone(state, tick)
+        return state
+      end
       state.ended = true
       return nil
     end
@@ -4987,6 +5074,41 @@ end
 
 local function match_loop(context, dispatcher, tick, state, messages)
   if state.ended then return nil end
+
+  if state.started and not state.ended
+      and state.reconnect_deadline_tick ~= nil and state.reconnect_grace_for_user_id ~= nil then
+    local q = state.reconnect_grace_for_user_id
+    if tick >= state.reconnect_deadline_tick and state.presences[q] == nil then
+      state.reconnect_deadline_tick = nil
+      state.reconnect_grace_for_user_id = nil
+
+      if state.mode == "pve" then
+        local oh = state.owner_user_id
+        local st = oh ~= nil and state.stats ~= nil and state.stats[oh] or nil
+        if oh ~= nil and st ~= nil and state.bot_user_id ~= nil
+            and tonumber(st.hp or 0) > 0 then
+          state.ended = true
+          state.last_reward = award_pve_defeat(oh, state.owner_session_epoch)
+          local game_over_payload = { winnerUserId = state.bot_user_id }
+          game_over_payload.rewardXp = state.last_reward.reward_xp or 0
+          game_over_payload.rewardGold = 0
+          game_over_payload.rewardOre = 0
+          game_over_payload.rewardMatter = 0
+          game_over_payload.newLevel = state.last_reward.level or 1
+          dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+        end
+        return nil
+      end
+
+      state.ended = true
+      local winner = other_player_id(state, q)
+      if winner ~= nil then
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+      end
+      return nil
+    end
+  end
+
   if state.turn_deadline_paused == nil then state.turn_deadline_paused = false end
   if state.turn_pause_started_tick == nil then state.turn_pause_started_tick = 0 end
 

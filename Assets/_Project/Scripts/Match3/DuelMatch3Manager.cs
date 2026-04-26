@@ -113,6 +113,7 @@ namespace Project.Match3
             public const long SnapshotRequest = 16;
             /// <summary>Сервер запускает turn_deadline после анимаций на клиенте (см. duel_match3 turn_deadline_paused).</summary>
             public const long TurnInputReady = 17;
+            public const long PeerDisconnect = 18;
         }
 
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
@@ -171,6 +172,9 @@ namespace Project.Match3
         private bool      _isLeavingToMenu;
         private CancellationTokenSource _cts;
         private TaskCompletionSource<IMatchmakerMatched> _mmTcs;
+        private ISocket _hookedSocket;
+        private bool _reconnectInFlight;
+        private float _socketDownAccum;
 
         // ─── Game State ───────────────────────────────────────────────────────────
         private Match3BoardLogic _board;
@@ -298,7 +302,7 @@ namespace Project.Match3
             {
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
                 _myUserId = NakamaBootstrap.Instance.Session.UserId;
-                HookSocket(NakamaBootstrap.Instance.Socket);
+                ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
                 await FindMatchAsync(_cts.Token);
                 MainThreadDispatcher.Enqueue(OnMatchFound);
             }
@@ -322,14 +326,99 @@ namespace Project.Match3
             _ = CancelMatchmakerTicketAsync();
             _cts?.Cancel();
             _cts?.Dispose();
-            if (NakamaBootstrap.Instance?.Socket != null)
-                UnhookSocket(NakamaBootstrap.Instance.Socket);
+            if (_hookedSocket != null)
+            {
+                UnhookSocket(_hookedSocket);
+                _hookedSocket = null;
+            }
         }
 
         private void Update()
         {
             if (_gameEnded) return;
+            if (!_useLocalBotSimulation && _match != null && _hasInitialBoardSync)
+            {
+                var socket = NakamaBootstrap.Instance?.Socket;
+                if (socket != null && !socket.IsConnected && !_reconnectInFlight)
+                {
+                    _socketDownAccum += Time.unscaledDeltaTime;
+                    if (_socketDownAccum >= 1.25f)
+                    {
+                        _socketDownAccum = 0f;
+                        TryRecoverMatchNetworkFireAndForget();
+                    }
+                }
+                else
+                    _socketDownAccum = 0f;
+            }
             UpdateHudTimerAndPhase();
+        }
+
+        private void OnApplicationPause(bool pauseStatus)
+        {
+            if (pauseStatus || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            TryRecoverMatchNetworkFireAndForget();
+        }
+
+        private void TryRecoverMatchNetworkFireAndForget()
+        {
+            if (_reconnectInFlight || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            _ = RecoverMatchNetworkAsync();
+        }
+
+        private async Task RecoverMatchNetworkAsync()
+        {
+            if (_reconnectInFlight || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            _reconnectInFlight = true;
+            try
+            {
+                await Task.Yield();
+                if (_cts == null || _cts.IsCancellationRequested || _match == null) return;
+
+                _searchingPanel?.Show("Восстановление связи…\nПожалуйста, подождите.");
+
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (_match == null || _gameEnded) return;
+
+                ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
+                var socket = NakamaBootstrap.Instance.Socket;
+                if (socket != null && socket.IsConnected)
+                {
+                    var mid = _match.Id;
+                    _match = await socket.JoinMatchAsync(mid);
+                }
+
+                _searchingPanel?.Hide();
+                RequestSnapshot();
+            }
+            catch (OperationCanceledException)
+            {
+                /* сцена закрыта */
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Match3] Восстановление матча: " + e.Message);
+                _searchingPanel?.Show(
+                    "Проблемы со связью.\nПроверьте интернет — идёт повторное подключение.");
+            }
+            finally
+            {
+                _reconnectInFlight = false;
+            }
+        }
+
+        private void ReplaceMatchSocketHooks(ISocket socket)
+        {
+            if (socket == null) return;
+            if (ReferenceEquals(_hookedSocket, socket)) return;
+            if (_hookedSocket != null)
+            {
+                try { UnhookSocket(_hookedSocket); }
+                catch { /* ignore */ }
+                _hookedSocket = null;
+            }
+            HookSocket(socket);
+            _hookedSocket = socket;
         }
 
         private static long UtcNowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -476,7 +565,7 @@ namespace Project.Match3
         {
             await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
             _myUserId = NakamaBootstrap.Instance.Session.UserId;
-            HookSocket(NakamaBootstrap.Instance.Socket);
+            ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
             await LoadPveCatalogAsync(ct);
             ApplyPreferredPveSelection();
             MainThreadDispatcher.Enqueue(() =>
@@ -1277,12 +1366,32 @@ namespace Project.Match3
 
         private void OnMatchPresence(IMatchPresenceEvent e)
         {
-            if (e.Leaves == null) return;
+            var matchId = e.MatchId;
             MainThreadDispatcher.Enqueue(() =>
             {
+                if (_match == null || matchId != _match.Id || _gameEnded) return;
+
+                if (e.Joins != null)
+                {
+                    foreach (var p in e.Joins)
+                    {
+                        if (p.UserId != _myUserId && !string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId)
+                            _searchingPanel?.Hide();
+                    }
+                }
+
+                if (e.Leaves == null) return;
+
                 foreach (var p in e.Leaves)
-                    if (p.UserId != _myUserId && !_gameEnded)
-                    { _gameEnded = true; ShowGameOver(won: true); }
+                {
+                    if (p.UserId == _myUserId) continue;
+                    if (_useLocalBotSimulation) continue;
+                    // PvP: сервер даёт окно на переподключение; итог — только OP_GAME_OVER / явный уход.
+                    if (!string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId) continue;
+
+                    _gameEnded = true;
+                    ShowGameOver(won: true);
+                }
             });
         }
 
@@ -1336,6 +1445,20 @@ namespace Project.Match3
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
                     TryShowDeferredGameOver();
+                });
+            }
+            else if (state.OpCode == M3Op.PeerDisconnect)
+            {
+                M3PeerDisconnectMsg msg;
+                try { msg = JsonUtility.FromJson<M3PeerDisconnectMsg>(json); } catch { return; }
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    if (_gameEnded) return;
+                    if (string.IsNullOrEmpty(msg.disconnectedUserId) || msg.disconnectedUserId == _myUserId)
+                        return;
+                    var sec = msg.reconnectGraceSeconds > 0 ? msg.reconnectGraceSeconds : 300;
+                    var min = Mathf.Max(1, Mathf.CeilToInt(sec / 60f));
+                    _hud?.SetTurn("Соперник offline — ждём до ~" + min + " мин. Матч продолжается.");
                 });
             }
             else if (state.OpCode == M3Op.PlayerLeft)

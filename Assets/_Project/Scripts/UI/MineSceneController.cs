@@ -1121,6 +1121,10 @@ namespace Project.UI
                 // оставляем кэш
             }
 
+            // После await объект мог быть выключен (OnDisable → Destroy UI); RefreshLearnedRecipesAsync не пробрасывает отмену.
+            if (this == null || _modalRoot == null)
+                return;
+
             PopulateMonsterRewards(bot);
 
             _modalCanUnlock = false;

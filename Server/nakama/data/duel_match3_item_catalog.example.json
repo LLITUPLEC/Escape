@@ -162,7 +162,7 @@
       "craft_ore": 426,
       "craft_gold": 348,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 13,
+      "craft_ingot_n": 18,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_legs": {
@@ -213,7 +213,7 @@
       "craft_ore": 502,
       "craft_gold": 396,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 17,
+      "craft_ingot_n": 36,
       "craft_tesseract_n": 0
     },
     "eq_t1_normal_weapon_r": {
@@ -230,7 +230,7 @@
       "craft_ore": 540,
       "craft_gold": 420,
       "craft_ingot_def": "ingot_green",
-      "craft_ingot_n": 19,
+      "craft_ingot_n": 72,
       "craft_tesseract_n": 0
     },
     "eq_t1_rare_helmet": {

@@ -121,6 +121,14 @@ namespace Project.Match3
         public int newLevel;
     }
 
+    /// <summary>Сервер (duel_match3): соперник временно потерял связь; матч продолжается до истечения grace.</summary>
+    [Serializable]
+    public class M3PeerDisconnectMsg
+    {
+        public string disconnectedUserId;
+        public int reconnectGraceSeconds;
+    }
+
     [Serializable]
     public class M3ActionRequest
     {

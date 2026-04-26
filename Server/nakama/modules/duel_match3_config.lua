@@ -51,6 +51,10 @@ return {
   OP_ACTION_REJECT = 14,
   OP_SELECTION_SYNC = 15,
   OP_SNAPSHOT_REQUEST = 16,
+  --- Уведомление: соперник временно потерял связь (клиент показывает ожидание; матч не завершается сразу).
+  OP_PEER_DISCONNECT = 18,
+  --- Сколько секунд ждать переподключения ушедшего игрока в PvP, прежде чем засчитать поражение.
+  RECONNECT_GRACE_SECONDS = 300,
   STATS_COLLECTION = "duel_match3_stats",
   STATS_KEY = "summary",
   PVE_PROGRESS_COLLECTION = "duel_match3_progress",
