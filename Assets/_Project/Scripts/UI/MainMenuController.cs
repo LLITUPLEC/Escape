@@ -69,6 +69,11 @@ namespace Project.UI
         [SerializeField] private Texture2D eyeTexture;
         [SerializeField] private Sprite eyeOpenSprite;
         [SerializeField] private Sprite eyeClosedSprite;
+
+        [Header("Server aura")]
+        [Tooltip("Иконка ServerAuraButton. В билде без редактора назначьте здесь (путь по умолчанию: Assets/_Project/img/items/WeaponLeft_green.png).")]
+        [SerializeField] private Sprite serverAuraButtonIcon;
+        private const string ServerAuraButtonIconAssetPath = "Assets/_Project/img/items/WeaponLeft_green.png";
         private bool _match3StatsVisible;
         private Transform _headerResourcesRoot;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
@@ -84,11 +89,18 @@ namespace Project.UI
         private Sprite _hudMatterSprite;
         private Sprite _hudGoldSprite;
 
+        private GameObject _serverAuraButtonGo;
+        private GameObject _serverAuraModalRoot;
+        private Text _serverAuraModalBodyText;
+        private ServerAuraGetRpcResponse _serverAuraLast;
+
         private void Awake()
         {
             TryAutoAssignEyeSpritesInEditor();
+            TryAutoAssignServerAuraIconInEditor();
             EnsureOnlineBadge();
             EnsurePlayerUsernameLabel();
+            EnsureServerAuraButton();
             EnsureHeaderResources();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
@@ -100,6 +112,7 @@ namespace Project.UI
         private void OnValidate()
         {
             TryAutoAssignEyeSpritesInEditor();
+            TryAutoAssignServerAuraIconInEditor();
         }
 #endif
 
@@ -110,6 +123,7 @@ namespace Project.UI
             _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
+            _ = ServerAuraLoopAsync(_onlineCts.Token);
             EnsureMainMenuNavigationButtons();
             TryInstallEnergyHeaderPurchase();
             ApplySafeAreaClamp();
@@ -482,6 +496,14 @@ namespace Project.UI
 #endif
         }
 
+        private void TryAutoAssignServerAuraIconInEditor()
+        {
+#if UNITY_EDITOR
+            if (serverAuraButtonIcon == null)
+                serverAuraButtonIcon = AssetDatabase.LoadAssetAtPath<Sprite>(ServerAuraButtonIconAssetPath);
+#endif
+        }
+
         private void EnsureOnlineBadge()
         {
             if (_onlineCountText != null || _onlineCountTmp != null) return;
@@ -528,6 +550,230 @@ namespace Project.UI
             var cached = GetCachedUsernameForCurrentContext();
             _lastUsername = string.IsNullOrWhiteSpace(cached) ? "—" : cached;
             SetPlayerUsernameText(_lastUsername);
+        }
+
+        private void EnsureServerAuraButton()
+        {
+            if (_serverAuraButtonGo != null) return;
+
+            var parent = ResolveMainMenuHudLayoutRoot();
+            if (parent == null) return;
+
+            var logoRoot = FindRectTransformChildByName(parent, "BottomHeaderLogo");
+            if (logoRoot == null) return;
+
+            _serverAuraButtonGo = new GameObject("ServerAuraButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var rt = _serverAuraButtonGo.GetComponent<RectTransform>();
+            rt.SetParent(logoRoot, false);
+            rt.sizeDelta = new Vector2(46f, 46f);
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(1f, 0f);
+            rt.anchoredPosition = new Vector2(-6f, 6f);
+
+            var img = _serverAuraButtonGo.GetComponent<Image>();
+            TryAutoAssignServerAuraIconInEditor();
+            if (serverAuraButtonIcon != null)
+            {
+                img.sprite = serverAuraButtonIcon;
+                img.type = Image.Type.Simple;
+                img.preserveAspect = true;
+            }
+            else if (debugUiStats)
+                Debug.LogWarning("[MainMenu] serverAuraButtonIcon не назначен — кнопка аномалии без спрайта.");
+
+            img.color = Color.white;
+
+            var btn = _serverAuraButtonGo.GetComponent<Button>();
+            btn.onClick.AddListener(ShowServerAuraModal);
+        }
+
+        private void EnsureServerAuraModal()
+        {
+            if (_serverAuraModalRoot != null) return;
+
+            var parent = ResolveMainMenuHudLayoutRoot();
+            if (parent == null) return;
+
+            _serverAuraModalRoot = new GameObject("ServerAuraModal", typeof(RectTransform), typeof(Image));
+            var rootRt = _serverAuraModalRoot.GetComponent<RectTransform>();
+            rootRt.SetParent(parent, false);
+            rootRt.anchorMin = Vector2.zero;
+            rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
+            var dim = _serverAuraModalRoot.GetComponent<Image>();
+            dim.color = new Color(0f, 0f, 0f, 0.55f);
+            dim.raycastTarget = true;
+
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
+            var pr = panel.GetComponent<RectTransform>();
+            pr.SetParent(rootRt, false);
+            pr.anchorMin = new Vector2(0.12f, 0.22f);
+            pr.anchorMax = new Vector2(0.88f, 0.78f);
+            pr.offsetMin = pr.offsetMax = Vector2.zero;
+            panel.GetComponent<Image>().color = new Color(0.14f, 0.12f, 0.16f, 0.98f);
+
+            var titleGo = new GameObject("Title", typeof(RectTransform), typeof(Text));
+            var titleRt = titleGo.GetComponent<RectTransform>();
+            titleRt.SetParent(pr, false);
+            titleRt.anchorMin = new Vector2(0f, 0.86f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.offsetMin = new Vector2(16f, 0f);
+            titleRt.offsetMax = new Vector2(-16f, -8f);
+            var titleTx = titleGo.GetComponent<Text>();
+            titleTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            titleTx.fontSize = 35;
+            titleTx.fontStyle = FontStyle.Bold;
+            titleTx.alignment = TextAnchor.MiddleCenter;
+            titleTx.color = new Color(0.95f, 0.88f, 0.65f);
+            titleTx.text = "Аномалия сервера";
+
+            var bodyGo = new GameObject("Body", typeof(RectTransform), typeof(Text));
+            var bodyRt = bodyGo.GetComponent<RectTransform>();
+            bodyRt.SetParent(pr, false);
+            bodyRt.anchorMin = new Vector2(0f, 0.14f);
+            bodyRt.anchorMax = new Vector2(1f, 0.84f);
+            bodyRt.offsetMin = new Vector2(20f, 8f);
+            bodyRt.offsetMax = new Vector2(-20f, -8f);
+            _serverAuraModalBodyText = bodyGo.GetComponent<Text>();
+            _serverAuraModalBodyText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _serverAuraModalBodyText.fontSize = 35;
+            _serverAuraModalBodyText.alignment = TextAnchor.UpperLeft;
+            _serverAuraModalBodyText.color = new Color(0.92f, 0.9f, 0.86f);
+            _serverAuraModalBodyText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _serverAuraModalBodyText.verticalOverflow = VerticalWrapMode.Overflow;
+
+            var closeGo = new GameObject("CloseButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var cr = closeGo.GetComponent<RectTransform>();
+            cr.SetParent(pr, false);
+            cr.anchorMin = new Vector2(0.2f, 0.04f);
+            cr.anchorMax = new Vector2(0.8f, 0.12f);
+            cr.offsetMin = cr.offsetMax = Vector2.zero;
+            closeGo.GetComponent<Image>().color = new Color(0.32f, 0.26f, 0.22f, 1f);
+            var closeBtn = closeGo.GetComponent<Button>();
+            closeBtn.onClick.AddListener(HideServerAuraModal);
+
+            var closeLabelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var clr = closeLabelGo.GetComponent<RectTransform>();
+            clr.SetParent(closeGo.transform, false);
+            clr.anchorMin = Vector2.zero;
+            clr.anchorMax = Vector2.one;
+            clr.offsetMin = clr.offsetMax = Vector2.zero;
+            var closeTx = closeLabelGo.GetComponent<Text>();
+            closeTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            closeTx.fontSize = 35;
+            closeTx.alignment = TextAnchor.MiddleCenter;
+            closeTx.color = Color.white;
+            closeTx.text = "Закрыть";
+
+            var canvas = _serverAuraModalRoot.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 4000;
+            _serverAuraModalRoot.AddComponent<GraphicRaycaster>();
+            _serverAuraModalRoot.SetActive(false);
+        }
+
+        private void ShowServerAuraModal()
+        {
+            EnsureServerAuraModal();
+            if (_serverAuraModalBodyText != null)
+                _serverAuraModalBodyText.text = FormatServerAuraModalText(_serverAuraLast);
+            _serverAuraModalRoot?.SetActive(true);
+        }
+
+        private void HideServerAuraModal()
+        {
+            if (_serverAuraModalRoot != null)
+                _serverAuraModalRoot.SetActive(false);
+        }
+
+        private static string FormatServerAuraModalText(ServerAuraGetRpcResponse r)
+        {
+            if (r == null || !r.ok)
+                return "Не удалось загрузить данные аномалии. Проверьте подключение.";
+            if (!r.active)
+                return "Сейчас нет активной серверной аномалии для PvE match3.";
+
+            var sb = new System.Text.StringBuilder();
+            if (!string.IsNullOrWhiteSpace(r.title))
+                sb.AppendLine(r.title.Trim());
+            if (!string.IsNullOrWhiteSpace(r.description))
+                sb.AppendLine(r.description.Trim());
+            sb.AppendLine();
+            if (r.endsAtUnix > 0)
+            {
+                var dto = DateTimeOffset.FromUnixTimeSeconds(r.endsAtUnix).ToLocalTime();
+                sb.AppendLine("До: " + dto.ToString("g", CultureInfo.CurrentCulture));
+            }
+            else if (r.durationHours > 0.5f)
+                sb.AppendLine($"Длительность (в конфиге): ~{r.durationHours:0.#} ч");
+
+            void Line(string label, float v, string suffix = "%")
+            {
+                if (Mathf.Abs(v) < 0.0001f) return;
+                sb.AppendLine($"{label}: {(v > 0 ? "+" : "")}{v:0.#}{suffix}");
+            }
+
+            Line("Все статы (кроме крита)", r.allStatsPct);
+            Line("Крит", r.critPct);
+            Line("Здоровье", r.hpPct);
+            Line("Урон", r.damagePct);
+            Line("Броня", r.armorPct);
+            Line("Лечение", r.healingPct);
+            Line("Опыт", r.xpBonusPct);
+            Line("Таймер респавна монстров (+ ускоряет, − замедляет)", r.mineRespawnWaitPct);
+
+            sb.AppendLine();
+            sb.AppendLine("Действует в боях match3 PvE (шахта) на сервере.");
+            return sb.ToString().TrimEnd();
+        }
+
+        private async Task ServerAuraLoopAsync(CancellationToken ct)
+        {
+            await Task.Yield();
+            while (!ct.IsCancellationRequested)
+            {
+                try
+                {
+                    await RefreshServerAuraAsync(ct).ConfigureAwait(true);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception e)
+                {
+                    if (debugUiStats)
+                        Debug.LogWarning("[MainMenu] Server aura: " + e.Message);
+                }
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(45), ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        private async Task RefreshServerAuraAsync(CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null || !NakamaBootstrap.Instance.IsReady)
+                return;
+            var resp = await ServerAuraRpc.GetAsync(NakamaBootstrap.Instance.Client, NakamaBootstrap.Instance.Session, ct)
+                .ConfigureAwait(true);
+            _serverAuraLast = resp;
+            ApplyServerAuraButtonVisual();
+        }
+
+        private void ApplyServerAuraButtonVisual()
+        {
+            if (_serverAuraButtonGo == null) return;
+            var img = _serverAuraButtonGo.GetComponent<Image>();
+            if (img == null) return;
+            img.color = Color.white;
         }
 
         private void EnsureHeaderResources()

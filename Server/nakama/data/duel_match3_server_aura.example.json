@@ -1,0 +1,14 @@
+{
+  "active": true,
+  "title": "Магнитная буря",
+  "description": "Временное усиление для всех PvE-боёв match3 (шахта).",
+  "duration_hours": 3,
+  "all_stats_pct": 30,
+  "crit_pct": 0,
+  "hp_pct": 0,
+  "damage_pct": 0,
+  "armor_pct": 0,
+  "healing_pct": 0,
+  "xp_bonus_pct": 10,
+  "mine_respawn_wait_pct": 50
+}

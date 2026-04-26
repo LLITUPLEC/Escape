@@ -873,9 +873,9 @@ RectTransform:
   m_Father: {fileID: 1231432504}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.22}
-  m_AnchorMax: {x: 0.98, y: 0.88}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMax: {x: 0.98, y: 0.87700003}
+  m_AnchoredPosition: {x: -6.61438, y: -3.3587952}
+  m_SizeDelta: {x: 13.229, y: 32.616}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &435363671
 MonoBehaviour:
@@ -1372,6 +1372,9 @@ MonoBehaviour:
   hintText: {fileID: 1334800406}
   craftSlotsRoot: {fileID: 1397016974}
   workshopBackground: {fileID: 1231432504}
+  applyDefaultWorkshopAnchors: 0
+  applyEquipmentStyleCraftLayout: 1
+  overrideSlotLabelStyle: 1
 --- !u!1 &1164557847
 GameObject:
   m_ObjectHideFlags: 0
@@ -1945,8 +1948,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.12, y: 0.2}
   m_AnchorMax: {x: 0.88, y: 0.82}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -529.34705, y: 34.49999}
+  m_SizeDelta: {x: -719.1263, y: 69}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1397016975
 MonoBehaviour:

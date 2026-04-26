@@ -29,6 +29,14 @@ namespace Project.Character.UI
         [SerializeField] private Transform craftSlotsRoot;
         [SerializeField] private RectTransform workshopBackground;
 
+        [Header("Layout")]
+        [Tooltip("Если выключено — не трогаем якоря CraftSlots/Hint из кода (остаётся настройка сцены).")]
+        [SerializeField] private bool applyDefaultWorkshopAnchors;
+        [Tooltip("Слоты в раскладке как EquipmentRoot (колонны + центр + оружие снизу).")]
+        [SerializeField] private bool applyEquipmentStyleCraftLayout = true;
+        [Tooltip("Перезаписывать размер шрифта подписей слотов (иначе только текст SlotRu).")]
+        [SerializeField] private bool overrideSlotLabelStyle = true;
+
         private CancellationTokenSource _cts;
         private CharacterGetRpcResponse _profile;
 
@@ -37,6 +45,7 @@ namespace Project.Character.UI
 
         private RectTransform _recipeContent;
         private Text _recipeHeader;
+        private Text _itemStatsText;
         private Text _detailText;
         private Button _createButton;
         private Button _claimButton;
@@ -90,8 +99,10 @@ namespace Project.Character.UI
         {
             if (workshopBackground == null || craftSlotsRoot == null) return;
 
+            EnsureEquipmentStyleCraftSlots();
+
             var slotsRt = craftSlotsRoot as RectTransform;
-            if (slotsRt != null)
+            if (applyDefaultWorkshopAnchors && slotsRt != null)
             {
                 slotsRt.anchorMin = new Vector2(0.02f, 0.22f);
                 slotsRt.anchorMax = new Vector2(0.48f, 0.88f);
@@ -99,7 +110,7 @@ namespace Project.Character.UI
                 slotsRt.offsetMax = Vector2.zero;
             }
 
-            if (hintText != null)
+            if (applyDefaultWorkshopAnchors && hintText != null)
             {
                 var hr = hintText.rectTransform;
                 hr.anchorMin = new Vector2(0.02f, 0.02f);
@@ -107,6 +118,8 @@ namespace Project.Character.UI
                 hr.offsetMin = Vector2.zero;
                 hr.offsetMax = Vector2.zero;
             }
+
+            WorkshopRecipePanelSetup.NormalizeRecipePanelLayout(workshopBackground);
 
             WorkshopRecipePanelSetup.Refs r;
             if (WorkshopRecipePanelSetup.TryBindExisting(workshopBackground, out r))
@@ -120,6 +133,7 @@ namespace Project.Character.UI
         private void ApplyWorkshopPanelRefs(WorkshopRecipePanelSetup.Refs r, RectTransform workshopBackground)
         {
             _recipeHeader = r.recipeHeader;
+            _itemStatsText = r.itemStatsText;
             _recipeContent = r.recipeContent;
             _detailText = r.detailText;
             _createButton = r.createButton;
@@ -188,6 +202,100 @@ namespace Project.Character.UI
             return b;
         }
 
+        private void EnsureEquipmentStyleCraftSlots()
+        {
+            if (craftSlotsRoot == null || !applyEquipmentStyleCraftLayout) return;
+
+            var root = craftSlotsRoot as RectTransform;
+            if (root == null) return;
+
+            var grid = root.GetComponent<GridLayoutGroup>();
+            if (grid != null)
+                Destroy(grid);
+
+            const string layoutName = "EquipmentWorkshopLayout";
+            RectTransform layoutRt;
+            if (root.Find(layoutName) != null)
+                layoutRt = root.Find(layoutName) as RectTransform;
+            else
+            {
+                var layoutGo = new GameObject(layoutName, typeof(RectTransform));
+                layoutRt = layoutGo.GetComponent<RectTransform>();
+                layoutRt.SetParent(root, false);
+                layoutRt.anchorMin = Vector2.zero;
+                layoutRt.anchorMax = Vector2.one;
+                layoutRt.offsetMin = new Vector2(6f, 6f);
+                layoutRt.offsetMax = new Vector2(-6f, -6f);
+
+                var center = new GameObject("CharacterPlaceholder", typeof(RectTransform), typeof(Image));
+                var crt = center.GetComponent<RectTransform>();
+                crt.SetParent(layoutRt, false);
+                crt.anchorMin = new Vector2(0.24f, 0.34f);
+                crt.anchorMax = new Vector2(0.76f, 0.98f);
+                crt.offsetMin = crt.offsetMax = Vector2.zero;
+                center.GetComponent<Image>().color = new Color(0.12f, 0.12f, 0.15f, 0.55f);
+                CreateUiText("Ph", center.transform, "?", 52, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+
+                var left = CreateWorkshopColumn(layoutRt, "LeftColumn", new Vector2(0.02f, 0.34f), new Vector2(0.22f, 0.98f));
+                var right = CreateWorkshopColumn(layoutRt, "RightColumn", new Vector2(0.78f, 0.34f), new Vector2(0.98f, 0.98f));
+                var bottom = CreateWorkshopWeaponsRow(layoutRt, "WeaponsRow", new Vector2(0.08f, 0.02f), new Vector2(0.92f, 0.30f));
+
+                void MoveUnder(string slotName, Transform parent)
+                {
+                    var s = root.Find(slotName);
+                    if (s == null || parent == null) return;
+                    s.SetParent(parent, false);
+                }
+
+                MoveUnder("Slot_0", left);
+                MoveUnder("Slot_1", left);
+                MoveUnder("Slot_2", left);
+                MoveUnder("Slot_3", right);
+                MoveUnder("Slot_4", right);
+                MoveUnder("Slot_5", right);
+                MoveUnder("Slot_6", bottom);
+                MoveUnder("Slot_7", bottom);
+            }
+        }
+
+        private static RectTransform CreateWorkshopColumn(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            var v = go.AddComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(2, 2, 6, 6);
+            v.spacing = 8f;
+            v.childAlignment = TextAnchor.UpperCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = false;
+            return rt;
+        }
+
+        private static RectTransform CreateWorkshopWeaponsRow(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            var h = go.AddComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(6, 6, 4, 6);
+            h.spacing = 12f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            h.childForceExpandHeight = false;
+            h.childForceExpandWidth = false;
+            return rt;
+        }
+
         private void WireCraftSlots()
         {
             if (craftSlotsRoot == null) return;
@@ -197,15 +305,29 @@ namespace Project.Character.UI
             for (var i = 0; i < 8; i++)
             {
                 var slot = craftSlotsRoot.Find("Slot_" + i);
+                if (slot == null)
+                    slot = FindSlotRecursive(craftSlotsRoot, "Slot_" + i);
                 if (slot == null) continue;
+
+                if (applyEquipmentStyleCraftLayout)
+                {
+                    var le = slot.GetComponent<LayoutElement>();
+                    if (le == null) le = slot.gameObject.AddComponent<LayoutElement>();
+                    const float sz = 104f;
+                    le.minWidth = le.preferredWidth = sz;
+                    le.minHeight = le.preferredHeight = sz;
+                }
 
                 var labelTr = slot.Find("SlotLabel");
                 var label = labelTr != null ? labelTr.GetComponent<Text>() : null;
                 if (label != null)
                 {
-                    label.fontSize = 16;
-                    label.alignment = TextAnchor.UpperCenter;
                     label.text = SlotRu[i];
+                    if (overrideSlotLabelStyle)
+                    {
+                        label.fontSize = 18;
+                        label.alignment = TextAnchor.LowerCenter;
+                    }
                 }
 
                 var iconTr = slot.Find("Icon");
@@ -239,11 +361,16 @@ namespace Project.Character.UI
                     trt.offsetMax = Vector2.zero;
                     timerTx = timerGo.GetComponent<Text>();
                     timerTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    timerTx.fontSize = 14;
+                    timerTx.fontSize = overrideSlotLabelStyle ? 15 : 14;
                     timerTx.alignment = TextAnchor.MiddleCenter;
                     timerTx.color = new Color(0.9f, 0.85f, 0.6f);
                 }
-                else timerTx = timerTr.GetComponent<Text>();
+                else
+                {
+                    timerTx = timerTr.GetComponent<Text>();
+                    if (overrideSlotLabelStyle && timerTx.fontSize < 15)
+                        timerTx.fontSize = 15;
+                }
 
                 _slotTimers[i] = timerTx;
 
@@ -255,6 +382,18 @@ namespace Project.Character.UI
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => OnSlotClicked(idx));
             }
+        }
+
+        private static Transform FindSlotRecursive(Transform root, string name)
+        {
+            if (root == null) return null;
+            if (root.name == name) return root;
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var f = FindSlotRecursive(root.GetChild(i), name);
+                if (f != null) return f;
+            }
+            return null;
         }
 
         private void Start()
@@ -391,14 +530,14 @@ namespace Project.Character.UI
                 var line = new GameObject("Recipe_" + def.ItemId, typeof(RectTransform), typeof(Image), typeof(Button));
                 var rt = line.GetComponent<RectTransform>();
                 rt.SetParent(_recipeContent, false);
-                line.GetComponent<Image>().color = new Color(0.22f, 0.18f, 0.16f, 1f);
+                line.GetComponent<Image>().color = RecipeRowQualityTint(def.Quality);
                 var le = line.AddComponent<LayoutElement>();
-                le.minHeight = 36f;
+                le.minHeight = 40f;
                 var bt = line.GetComponent<Button>();
                 var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
                 var lineTitle = title + " (T" + def.Tier + ", " + WorkshopCraftRules.QualityRu(def.Quality) + ")";
-                CreateUiText("Txt", line.transform, lineTitle, 17, TextAnchor.MiddleLeft,
-                    new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(8f, 2f), new Vector2(-8f, -2f));
+                CreateUiText("Txt", line.transform, lineTitle, 21, TextAnchor.MiddleLeft,
+                    new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(10f, 3f), new Vector2(-10f, -3f));
                 var idCopy = def.ItemId;
                 bt.onClick.AddListener(() =>
                 {
@@ -418,6 +557,7 @@ namespace Project.Character.UI
             if (_profile == null || !_profile.ok || _selectedSlot < 0)
             {
                 _detailText.text = "";
+                UpdateItemStatsPreview(null);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_claimButton != null) _claimButton.gameObject.SetActive(false);
                 return;
@@ -429,6 +569,7 @@ namespace Project.Character.UI
                 var oid = GetWorkshopOut(_selectedSlot);
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
                 _detailText.text = "Готово: " + (def != null ? def.DisplayName : oid) + " — нажмите слот или «Забрать».";
+                UpdateItemStatsPreview(def);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_rushButton != null) _rushButton.gameObject.SetActive(false);
                 if (_claimButton != null)
@@ -445,6 +586,7 @@ namespace Project.Character.UI
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
                 var craftTitle = (def != null && !string.IsNullOrEmpty(def.DisplayName)) ? def.DisplayName : (def != null ? def.ItemId : oid);
                 _detailText.text = "Идёт крафт: " + craftTitle;
+                UpdateItemStatsPreview(def);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_claimButton != null) _claimButton.gameObject.SetActive(false);
                 if (_rushButton != null)
@@ -461,6 +603,7 @@ namespace Project.Character.UI
             if (string.IsNullOrEmpty(_selectedOutputDefId))
             {
                 _detailText.text = "Выберите рецепт в списке.";
+                UpdateItemStatsPreview(null);
                 if (_createButton != null) _createButton.interactable = false;
                 return;
             }
@@ -494,9 +637,68 @@ namespace Project.Character.UI
             var okRes = fodderOk && resOk;
             sb.Append(okRes ? "\nУсловий достаточно." : "\nНе хватает ресурсов или поглощаемого предмета.");
             _detailText.text = sb.ToString();
+            UpdateItemStatsPreview(od);
             if (_createButton != null)
                 _createButton.interactable = okRes && IsRecipeLearnedForCraft(od != null ? od.CraftRecipeId : "");
         }
+
+        private void UpdateItemStatsPreview(ItemDefinition def)
+        {
+            if (_itemStatsText == null) return;
+            if (def == null)
+            {
+                _itemStatsText.text = "Выберите рецепт — здесь будут характеристики создаваемого предмета.";
+                return;
+            }
+
+            _itemStatsText.text = BuildCraftStatsSummary(def);
+        }
+
+        private static string BuildCraftStatsSummary(ItemDefinition def)
+        {
+            if (def == null) return "";
+            var order = new[] { StatId.Hp, StatId.Damage, StatId.Armor, StatId.Healing, StatId.CritChance };
+            var lines = new List<string>();
+            foreach (var sid in order)
+            {
+                var v = def.GetStatValue(sid);
+                if (Mathf.Abs(v) < 0.0001f) continue;
+                lines.Add(FormatCraftStatLine(sid, v));
+            }
+
+            var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
+            var head = $"{title}  ·  T{def.Tier}, {WorkshopCraftRules.QualityRu(def.Quality)}";
+            if (lines.Count == 0)
+                return head + "\n— в каталоге нет бонусов к статам (или они нулевые).";
+            return head + "\n" + string.Join("\n", lines);
+        }
+
+        private static string FormatCraftStatLine(string statId, float value)
+        {
+            var title = StatNameRu(statId);
+            if (statId == StatId.CritChance)
+                return $"{title}: {Mathf.RoundToInt(value * 100f)}%";
+            return $"{title}: {Mathf.RoundToInt(value)}";
+        }
+
+        private static string StatNameRu(string statId) => statId switch
+        {
+            StatId.Hp => "Здоровье",
+            StatId.Damage => "Урон",
+            StatId.Armor => "Броня",
+            StatId.Healing => "Лечение",
+            StatId.CritChance => "Шанс крита",
+            _ => statId
+        };
+
+        private static Color RecipeRowQualityTint(ItemQualityTier q) => q switch
+        {
+            ItemQualityTier.Normal => new Color(0.14f, 0.22f, 0.16f, 0.92f),
+            ItemQualityTier.Rare => new Color(0.13f, 0.17f, 0.26f, 0.92f),
+            ItemQualityTier.Epic => new Color(0.22f, 0.15f, 0.26f, 0.92f),
+            ItemQualityTier.Legendary => new Color(0.26f, 0.20f, 0.12f, 0.92f),
+            _ => new Color(0.20f, 0.17f, 0.16f, 0.95f),
+        };
 
         private static void AppendFodderLines(StringBuilder sb, ItemDefinition od, int slotIndex)
         {

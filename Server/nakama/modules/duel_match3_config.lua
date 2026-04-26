@@ -63,7 +63,13 @@ return {
   CHARACTER_SHEET_KEY = "sheet",
   ITEM_DEFS_COLLECTION = "duel_match3_item_defs",
   ITEM_DEFS_KEY = "catalog",
-  ITEM_DEFS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c",
+  ITEM_DEFS_STORAGE_USER_ID = "4ad57156-201b-4abf-8d-7b4ed6a0364c",
+  --- Глобальные «аномалии» для PvE match3: Storage с user_id = SERVER_AURA_STORAGE_USER_ID.
+  SERVER_AURA_COLLECTION = "duel_match3_server_aura",
+  SERVER_AURA_KEY = "active",
+  SERVER_AURA_STORAGE_USER_ID = "4ad57156-201b-4abf-8d5d-7b4ed6a0364c",
+  --- Кэш чтения ауры (секунды); снижает нагрузку на storage.
+  SERVER_AURA_CACHE_TTL_SECONDS = 30,
   BOTS_COLLECTION = "duel_match3_bot_defs",
   BOTS_KEY = "catalog",
   --- Дополнительные каталоги по сложности шахты (фаза 3): перекрывают id из BOTS_KEY и BOTS_FALLBACK.
