@@ -16,6 +16,12 @@ namespace Project.Match3
         private static string _preferredDifficulty;
         private static bool _autoStartSolo;
 
+        /// <summary>Турнир арены: присоединиться к уже созданному authoritative матчу без матчмейкера.</summary>
+        private static bool _arenaJoinPending;
+        private static string _arenaJoinMatchId;
+        private static string _arenaOpponentDisplayHint;
+        private static bool _arenaJoinOpponentIsBot;
+
         public static Match3LaunchMode ConsumeMode()
         {
             var mode = _nextMode;
@@ -61,6 +67,42 @@ namespace Project.Match3
             _preferredFloor = 0;
             _preferredDifficulty = null;
             _autoStartSolo = false;
+        }
+
+        /// <summary>Вызвать перед загрузкой сцены DuelMatch3 для боя турнира арены.</summary>
+        public static void ArmArenaJoin(string matchId, string opponentDisplayHint = null, bool opponentIsBot = false)
+        {
+            _arenaJoinMatchId = string.IsNullOrWhiteSpace(matchId) ? null : matchId.Trim();
+            _arenaJoinPending = !string.IsNullOrEmpty(_arenaJoinMatchId);
+            _arenaOpponentDisplayHint = string.IsNullOrWhiteSpace(opponentDisplayHint) ? null : opponentDisplayHint.Trim();
+            _arenaJoinOpponentIsBot = opponentIsBot;
+        }
+
+        /// <summary>Проверка без сброса (до успешного JoinMatchAsync).</summary>
+        public static bool TryPeekArenaJoin(out string matchId, out string opponentDisplayHint, out bool opponentIsBot)
+        {
+            matchId = _arenaJoinMatchId;
+            opponentDisplayHint = _arenaOpponentDisplayHint;
+            opponentIsBot = _arenaJoinOpponentIsBot;
+            return _arenaJoinPending && !string.IsNullOrEmpty(matchId);
+        }
+
+        /// <summary>Снять флаг после успешного JoinMatchAsync.</summary>
+        public static void ConsumeArenaJoinArm()
+        {
+            _arenaJoinPending = false;
+            _arenaJoinMatchId = null;
+            _arenaOpponentDisplayHint = null;
+            _arenaJoinOpponentIsBot = false;
+        }
+
+        /// <summary>Сброс при ошибке join или выходе со сцены до входа в матч.</summary>
+        public static void ClearArenaJoinArm()
+        {
+            _arenaJoinPending = false;
+            _arenaJoinMatchId = null;
+            _arenaOpponentDisplayHint = null;
+            _arenaJoinOpponentIsBot = false;
         }
     }
 }

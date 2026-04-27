@@ -1016,7 +1016,7 @@ MonoBehaviour:
   rewardOreSprite: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
   rewardGoldSprite: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
   rewardMatterSprite: {fileID: 21300000, guid: 98adc8eac42d30d4894322f3a75eae8e, type: 3}
-  rewardIngotsSprite: {fileID: 0}
+  rewardIngotsSprite: {fileID: 21300000, guid: 3d6e2f36ea74b40468de1343904c1104, type: 3}
   rewardKeySprite: {fileID: 0}
   rewardBlueprintSprite: {fileID: 0}
   rewardTesseractSprite: {fileID: 0}

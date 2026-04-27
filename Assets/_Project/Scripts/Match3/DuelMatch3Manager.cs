@@ -184,6 +184,8 @@ namespace Project.Match3
         private float _turnTimer;
         /// <summary>Абсолютный дедлайн текущего хода (UTC ms). Приходит из BoardSync; иначе локальная оценка.</summary>
         private long _turnEndsAtUnixMs;
+        /// <summary>PvE/арена: соперник — серверный бот (user_id с префиксом zz-bot-), нужен OP 17 от владельца, когда ход у бота.</summary>
+        private bool _opponentIsServerBot;
         /// <summary>Смещение клиентских UTC ms относительно сервера (serverNow - clientNow), задаётся из BoardSync.</summary>
         private long _serverClockOffsetMs;
         private bool _hasServerClockSample;
@@ -303,8 +305,46 @@ namespace Project.Match3
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
                 _myUserId = NakamaBootstrap.Instance.Session.UserId;
                 ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
-                await FindMatchAsync(_cts.Token);
-                MainThreadDispatcher.Enqueue(OnMatchFound);
+                if (_launchMode == Match3LaunchMode.Multiplayer &&
+                    Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out var arenaOppHint, out var arenaOppIsBot))
+                {
+                    _pvpProQueue = false;
+                    _mmTcs?.TrySetCanceled();
+                    await CancelMatchmakerTicketAsync();
+                    try
+                    {
+                        _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(arenaMatchId);
+                    }
+                    catch (Exception joinEx)
+                    {
+                        Match3LaunchContext.ClearArenaJoinArm();
+                        ArenaMatch8Bridge.BlockArenaJoinMatchId(arenaMatchId);
+                        Debug.LogWarning("[Match3] Arena JoinMatchAsync: " + joinEx.Message);
+                        MainThreadDispatcher.Enqueue(() => { SceneManager.LoadScene("ArenaMenu"); });
+                        return;
+                    }
+
+                    Match3LaunchContext.ConsumeArenaJoinArm();
+                    if (_match?.Presences != null)
+                        foreach (var p in _match.Presences)
+                            if (p.UserId != _myUserId)
+                            {
+                                _opUserId = p.UserId;
+                                _opDisplayName = ReadPresenceUsername(p);
+                                break;
+                            }
+                    _opponentIsServerBot = arenaOppIsBot ||
+                                          (!string.IsNullOrEmpty(_opUserId) &&
+                                           _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal));
+                    if (!string.IsNullOrWhiteSpace(arenaOppHint))
+                        _opDisplayName = arenaOppHint;
+                    MainThreadDispatcher.Enqueue(OnMatchFound);
+                }
+                else
+                {
+                    await FindMatchAsync(_cts.Token);
+                    MainThreadDispatcher.Enqueue(OnMatchFound);
+                }
             }
             catch (OperationCanceledException) { /* destroyed */ }
             catch (Exception e)
@@ -335,7 +375,7 @@ namespace Project.Match3
 
         private void Update()
         {
-            if (_gameEnded) return;
+            if (_gameEnded || _pendingGameOver) return;
             if (!_useLocalBotSimulation && _match != null && _hasInitialBoardSync)
             {
                 var socket = NakamaBootstrap.Instance?.Socket;
@@ -356,19 +396,22 @@ namespace Project.Match3
 
         private void OnApplicationPause(bool pauseStatus)
         {
-            if (pauseStatus || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            if (pauseStatus || _gameEnded || _pendingGameOver || _useLocalBotSimulation || _match == null)
+                return;
             TryRecoverMatchNetworkFireAndForget();
         }
 
         private void TryRecoverMatchNetworkFireAndForget()
         {
-            if (_reconnectInFlight || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            if (_reconnectInFlight || _gameEnded || _pendingGameOver || _useLocalBotSimulation || _match == null)
+                return;
             _ = RecoverMatchNetworkAsync();
         }
 
         private async Task RecoverMatchNetworkAsync()
         {
-            if (_reconnectInFlight || _gameEnded || _useLocalBotSimulation || _match == null) return;
+            if (_reconnectInFlight || _gameEnded || _pendingGameOver || _useLocalBotSimulation || _match == null)
+                return;
             _reconnectInFlight = true;
             try
             {
@@ -385,7 +428,23 @@ namespace Project.Match3
                 if (socket != null && socket.IsConnected)
                 {
                     var mid = _match.Id;
-                    _match = await socket.JoinMatchAsync(mid);
+                    try
+                    {
+                        _match = await socket.JoinMatchAsync(mid);
+                    }
+                    catch (Exception je)
+                    {
+                        var jmsg = je.Message ?? string.Empty;
+                        if (jmsg.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            _match = null;
+                            _gameEnded = true;
+                            _searchingPanel?.Hide();
+                            return;
+                        }
+
+                        throw;
+                    }
                 }
 
                 _searchingPanel?.Hide();
@@ -397,7 +456,16 @@ namespace Project.Match3
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[Match3] Восстановление матча: " + e.Message);
+                var msg = e.Message ?? string.Empty;
+                if (msg.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    _match = null;
+                    _gameEnded = true;
+                    _searchingPanel?.Hide();
+                    return;
+                }
+
+                Debug.LogWarning("[Match3] Восстановление матча: " + msg);
                 _searchingPanel?.Show(
                     "Проблемы со связью.\nПроверьте интернет — идёт повторное подключение.");
             }
@@ -548,6 +616,9 @@ namespace Project.Match3
                         _opUserId = u.Presence.UserId;
                         _opDisplayName = ReadPresenceUsername(u.Presence);
                     }
+
+            _opponentIsServerBot = !string.IsNullOrEmpty(_opUserId) &&
+                                  _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal);
         }
 
         private void OnMatchFound()
@@ -1747,13 +1818,14 @@ namespace Project.Match3
             else             BeginOpponentTurn();
 
             // Онлайн PVP и PVE: сервер ждёт OP 17 после анимаций. Активный игрок шлёт при своём ходе;
-            // в PVE против бота тот же сигнал с клиента владельца, когда на доске отыгран ход и активен бот.
+            // в PVE/арене против zz-bot- владелец шлёт OP 17, когда ход у бота (как в соло PvE).
             if (_turnEndsAtUnixMs <= 0 && !_gameEnded)
             {
                 if (isMyTurnNow)
                     SendTurnInputReadyToServerFireAndForget();
-                else if (_isSoloBotMode && !string.IsNullOrEmpty(_opUserId) &&
-                         string.Equals(msg.activeUserId, _opUserId, StringComparison.Ordinal))
+                else if (!string.IsNullOrEmpty(_opUserId) &&
+                         string.Equals(msg.activeUserId, _opUserId, StringComparison.Ordinal) &&
+                         (_isSoloBotMode || _opponentIsServerBot))
                     SendTurnInputReadyToServerFireAndForget();
             }
 
@@ -3001,7 +3073,11 @@ namespace Project.Match3
                 }
             }
             catch { /* ignore */ }
-            finally { SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu"); }
+            finally
+            {
+                Match3LaunchContext.ClearArenaJoinArm();
+                SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+            }
         }
 
         private async Task CancelMatchmakerTicketAsync()
@@ -3166,6 +3242,7 @@ namespace Project.Match3
 
         private void ReturnFromGameOver()
         {
+            Match3LaunchContext.ClearArenaJoinArm();
             SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
         }
 

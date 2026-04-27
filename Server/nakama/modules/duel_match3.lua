@@ -912,11 +912,17 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
   }
 end
 
+--- Арена (турнир 8 игроков): forward refs — реализации ниже после инвентаря.
+local arena_mirror_commit
+local arena_on_match_finished
+
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
   if action == nil then
     state.last_crit = false
   end
+
+  arena_mirror_commit(state)
 
   local allowed_presences = {}
   local other_presences = {}
@@ -970,7 +976,20 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
 
     local game_over_payload = { winnerUserId = winner }
     if state.mode == "pve" and winner == state.owner_user_id then
-      state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch, state.pve_run)
+      if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
+        local progress = read_pve_progress(state.owner_user_id)
+        state.last_reward = {
+          reward_xp = 0,
+          reward_gold = 0,
+          reward_ore = 0,
+          reward_matter = 0,
+          reward_ingots = 0,
+          level = progress.level or 1,
+          xp = progress.xp or 0,
+        }
+      else
+        state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch, state.pve_run)
+      end
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
       game_over_payload.rewardOre = state.last_reward.reward_ore or 0
@@ -983,13 +1002,26 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode == "pve" and winner == state.bot_user_id then
-      state.last_reward = award_pve_defeat(state.owner_user_id, state.owner_session_epoch)
+      if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
+        local progress = read_pve_progress(state.owner_user_id)
+        state.last_reward = {
+          reward_xp = 0,
+          reward_gold = 0,
+          reward_ore = 0,
+          reward_matter = 0,
+          level = progress.level or 1,
+          xp = progress.xp or 0,
+        }
+      else
+        state.last_reward = award_pve_defeat(state.owner_user_id, state.owner_session_epoch)
+      end
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = 0
       game_over_payload.rewardOre = 0
       game_over_payload.rewardMatter = 0
       game_over_payload.newLevel = state.last_reward.level or 1
     end
+    arena_on_match_finished(state, winner)
     dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
   end
@@ -4074,6 +4106,24 @@ local function try_match_create(setup)
   return nil
 end
 
+local arena_factory = runtime_lua_require("modules.arena_tournament", "arena_tournament")
+local Arena = arena_factory({
+  try_match_create = try_match_create,
+  make_bot_user_id = make_bot_user_id,
+  guard_read_metadata_epoch = guard_read_metadata_epoch,
+  guard_assert_client_epoch_matches = guard_assert_client_epoch_matches,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  read_character_sheet = read_character_sheet,
+  write_character_sheet = write_character_sheet,
+  ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
+  inventory_remove_def_total = inventory_remove_def_total,
+  inventory_try_add = inventory_try_add,
+})
+arena_mirror_commit = Arena.mirror_commit
+arena_on_match_finished = Arena.on_match_finished
+
+
 function parse_floor_from_bot_id(bot_id)
   local sid = tostring(bot_id or "")
   local n = string.match(sid, "mine_(%d+)")
@@ -4970,6 +5020,9 @@ local function match_init(context, params)
     bot_fury_open_mana = nil,
     _bot_pre_mana = nil,
     pve_run = params and params.pve_run or nil,
+    arena_mirror = params and params.arena_mirror or nil,
+    --- Арена человек×бот: те же базовые статы, что у классического PvP (150 HP и т.д.), без шахты.
+    arena_pvp_style = truthy_match_param(params and params.arena_pvp_style),
     reconnect_grace_for_user_id = nil,
     reconnect_deadline_tick = nil,
   }
@@ -5047,6 +5100,48 @@ local function match_join(context, dispatcher, tick, state, presences)
       local player_id = nil
       for uid, _ in pairs(state.presences) do player_id = uid end
       if player_id == nil then return state end
+
+      -- Арена: один живой игрок vs серверный «бот» — правила как у authoritative PvP (150 HP, без экипа).
+      if state.arena_pvp_style == true then
+        state.bot_id = "arena_bot"
+        state.bot_user_id = make_bot_user_id("arena_bot")
+
+        state.started = true
+        state.players_sorted = { player_id, state.bot_user_id }
+        state.stats[player_id] = new_stats()
+        state.stats[state.bot_user_id] = new_stats()
+
+        state.board = init_board()
+
+        state.cheat_rows = init_cheat_rows()
+        state.spawn_queues = {}
+        for x = 0, CFG.SIZE - 1 do ensure_spawn_queue(state, x) end
+        update_cheat_rows_from_board(state)
+        state.cheat_rows_allowed = {}
+        local wl = build_cheat_whitelist_set({ player_id })
+        local p_email = user_email_lower(player_id)
+        local p_allowed = is_user_allowed_for_cheat_rows(player_id, wl)
+        state.cheat_rows_allowed[player_id] = p_allowed
+        state.cheat_rows_allowed[state.bot_user_id] = is_user_allowed_for_cheat_rows(state.bot_user_id, wl)
+        nk.logger_info("duel_match3 cheat_rows_allowed (arena_pvp_style): user_id=" .. tostring(player_id) ..
+          " email=" .. tostring(p_email) .. " allowed=" .. tostring(p_allowed))
+
+        state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
+
+        tick_cooldowns(state.stats[state.active_user_id])
+        state.turn_deadline_paused = true
+        state.turn_pause_started_tick = tick
+        state.turn_deadline_tick = tick
+        if state.active_user_id == state.bot_user_id then
+          state.bot_turn_pending = true
+          state.bot_turn_ready_tick = 0
+        else
+          state.bot_turn_pending = false
+          state.bot_turn_ready_tick = 0
+        end
+        broadcast_sync(dispatcher, state, nil, false, nil, tick)
+        return state
+      end
 
       local pve_diff = normalize_mine_difficulty((state.pve_run or {}).difficulty)
       local bot_profile = get_bot_profile(state.bot_id, pve_diff)
@@ -5202,6 +5297,7 @@ local function match_leave(context, dispatcher, tick, state, presences)
       local winner = nil
       for uid, _ in pairs(state.presences) do winner = uid end
       if winner ~= nil then
+        arena_on_match_finished(state, winner)
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
@@ -5296,6 +5392,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
       if winner then
+        arena_on_match_finished(state, winner)
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
@@ -5531,6 +5628,9 @@ nk.register_rpc(duel_pve_energy_buy, "duel_pve_energy_buy")
 nk.register_rpc(duel_workshop_craft_rush, "duel_workshop_craft_rush")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 nk.register_rpc(duel_match3_server_aura_get, "duel_match3_server_aura_get")
+nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
+nk.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_leave")
+nk.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")
 
 return {
   match_init = match_init,

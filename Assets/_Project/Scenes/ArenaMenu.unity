@@ -786,6 +786,7 @@ GameObject:
   - component: {fileID: 200000102}
   - component: {fileID: 200000103}
   - component: {fileID: 200000104}
+  - component: {fileID: 200000105}
   m_Layer: 0
   m_Name: ArenaMenuBinder
   m_TagString: Untagged
@@ -862,6 +863,26 @@ MonoBehaviour:
   statsCardName: Match3StatsCard
   match3StatsPollSeconds: 6
   debug: 0
+--- !u!114 &200000105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 200000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8e7d6c5b4a394837261554433221100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.UI.ArenaMatch8Bridge
+  match3ArenaButtonName: match3Arena
+  queueTextObjectName: queue
+  duelMatch3SceneName: DuelMatch3
+  iconGreenIngot: {fileID: 21300000, guid: 3f9110e28a7a4c44d80ba02c2b0f0960, type: 3}
+  iconBlueIngot: {fileID: 21300000, guid: 03f729f742b07574cb85b2dbbe47019a, type: 3}
+  iconPurpleIngot: {fileID: 21300000, guid: 7d658a37e9d3c8143945c0cf4a7f5afa, type: 3}
+  iconOre: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
+  iconGold: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
 --- !u!1 &577752366
 GameObject:
   m_ObjectHideFlags: 0
