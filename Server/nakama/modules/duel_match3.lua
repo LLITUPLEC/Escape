@@ -112,16 +112,16 @@ function mine_bot_id_for_floor(floor)
   return "mine_" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
 
---- Базовые значения из solo.md × ~1,4 (руда/золото/материя); ключи — количество без множителя.
+--- Базовые значения из solo.md × ~1,4 (руда/золото/материя); ключи в барьерах не используются.
 local MINE_BARRIER_REQUIREMENTS = {
   [2] = { ore = 140 },
   [3] = { ore = 490 },
   [4] = { ore = 1120 },
-  [5] = { ore = 2100, key_id = "miner_key", key_amount = 1, gold = 2800 },
+  [5] = { ore = 2100, gold = 2800 },
   [6] = { ore = 3500 },
   [7] = { ore = 5320 },
   [8] = { ore = 7700 },
-  [9] = { ore = 10500, key_id = "dark_key", key_amount = 1, gold = 14000 },
+  [9] = { ore = 10500, gold = 14000 },
   [10] = { ore = 14000 },
   [11] = { ore = 18200 },
   [12] = { ore = 23800, matter = 700, gold = 35000 },
@@ -347,25 +347,6 @@ local function truthy_match_param(v)
   if v == 1 then return true end
   if type(v) == "string" and string.lower(v) == "true" then return true end
   return false
-end
-
---- §4.6 / §14 фаза 5: статы как в PvE (уровень + экип), без mine_stat_multiplier.
-local function apply_pvp_pro_stats_from_sheet(actor, user_id)
-  if actor == nil or user_id == nil or user_id == "" then return end
-  ensure_character_sheet_initialized(user_id)
-  local progress, _ = read_pve_progress(user_id)
-  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
-  local sheet = read_character_sheet(user_id)
-  ensure_sheet_inventory_counts(sheet)
-  local base = character_stats_base_for_level(level)
-  local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
-  actor.max_hp = math.max(1, math.floor(tonumber(merged.hp) or CFG.MAX_HP))
-  actor.hp = actor.max_hp
-  actor.initial_hp = actor.max_hp
-  actor.base_damage = math.max(0, math.floor(tonumber(merged.damage) or 0))
-  actor.base_armor = math.max(0, math.floor(tonumber(merged.armor) or 0))
-  actor.base_crit = math.max(0, tonumber(merged.crit_chance) or 0)
-  actor.base_heal = math.max(0, math.floor(tonumber(merged.healing) or 0))
 end
 
 local function new_stats()
@@ -2842,6 +2823,25 @@ local function read_pve_progress(user_id)
   return progress, row.version
 end
 
+--- §4.6 / §14 фаза 5: статы как в PvE (уровень + экип), без mine_stat_multiplier.
+local function apply_pvp_pro_stats_from_sheet(actor, user_id)
+  if actor == nil or user_id == nil or user_id == "" then return end
+  ensure_character_sheet_initialized(user_id)
+  local progress, _ = read_pve_progress(user_id)
+  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
+  local sheet = read_character_sheet(user_id)
+  ensure_sheet_inventory_counts(sheet)
+  local base = character_stats_base_for_level(level)
+  local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
+  actor.max_hp = math.max(1, math.floor(tonumber(merged.hp) or CFG.MAX_HP))
+  actor.hp = actor.max_hp
+  actor.initial_hp = actor.max_hp
+  actor.base_damage = math.max(0, math.floor(tonumber(merged.damage) or 0))
+  actor.base_armor = math.max(0, math.floor(tonumber(merged.armor) or 0))
+  actor.base_crit = math.max(0, tonumber(merged.crit_chance) or 0)
+  actor.base_heal = math.max(0, math.floor(tonumber(merged.healing) or 0))
+end
+
 local function write_pve_progress(user_id, progress, version)
   local write_obj = {
     collection = CFG.PVE_PROGRESS_COLLECTION,
@@ -2926,15 +2926,12 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   reward_xp = aura_apply_to_pve_reward_xp(reward_xp, get_active_server_aura())
   local reward_gold = math.ceil((tonumber(bot.reward_gold) or 0) * reward_mul)
   local reward_ore = math.ceil((tonumber(bot.reward_ore) or 0) * reward_mul)
+  -- Материя только из каталога бота (min/max); отдельного «рандомного» дропа с обычных нет.
   local reward_matter = 0
-  if is_boss then
-    local mmn = math.max(0, tonumber(bot.reward_matter_min) or 0)
-    local mmx = math.max(mmn, tonumber(bot.reward_matter_max) or mmn)
+  local mmn = math.max(0, tonumber(bot.reward_matter_min) or 0)
+  local mmx = math.max(mmn, tonumber(bot.reward_matter_max) or mmn)
+  if mmn > 0 or mmx > 0 then
     reward_matter = math.max(0, math.ceil(math.random(mmn, mmx) * reward_mul))
-  else
-    if math.random() < CFG.MINE_MATTER_DROP_CHANCE then
-      reward_matter = math.max(1, math.ceil(math.random(1, 3) * reward_mul))
-    end
   end
   local reward_key_id = tostring(bot.reward_key_id or "")
   local reward_key_amount = math.max(0, tonumber(bot.reward_key_amount) or 0)

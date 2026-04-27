@@ -129,6 +129,7 @@ namespace Project.UI
         private GameObject _insufficientResourcesToastRoot;
         private Text _insufficientResourcesToastText;
         private Coroutine _insufficientResourcesToastRoutine;
+        private int _monsterModalPresentGeneration;
         private int _selectedFloor;
         private bool _modalCanSummon;
         private bool _modalCanUnlock;
@@ -166,11 +167,11 @@ namespace Project.UI
             [2] = new BarrierRequirement { ore = 140 },
             [3] = new BarrierRequirement { ore = 490 },
             [4] = new BarrierRequirement { ore = 1120 },
-            [5] = new BarrierRequirement { ore = 2100, key_id = "miner_key", key_amount = 1, gold = 2800 },
+            [5] = new BarrierRequirement { ore = 2100, gold = 2800 },
             [6] = new BarrierRequirement { ore = 3500 },
             [7] = new BarrierRequirement { ore = 5320 },
             [8] = new BarrierRequirement { ore = 7700 },
-            [9] = new BarrierRequirement { ore = 10500, key_id = "dark_key", key_amount = 1, gold = 14000 },
+            [9] = new BarrierRequirement { ore = 10500, gold = 14000 },
             [10] = new BarrierRequirement { ore = 14000 },
             [11] = new BarrierRequirement { ore = 18200 },
             [12] = new BarrierRequirement { ore = 23800, matter = 700, gold = 35000 },
@@ -353,7 +354,7 @@ namespace Project.UI
             {
                 ApplyRows();
                 if (_modalRoot != null && _modalRoot.activeSelf)
-                    OpenMonsterModal(_selectedFloor);
+                    RefreshOpenMonsterModalRespawnOnly();
             }
 
             if (_serverRefreshAccumulator >= ServerRefreshIntervalSeconds && !_refreshInFlight)
@@ -1037,7 +1038,7 @@ namespace Project.UI
             _modalBarrierRequirementsTitle = view.BarrierRequirementsSectionTitle;
             _modalBarrierRequirementsRoot = view.BarrierRequirementsRoot;
 
-            _modalCloseButton.onClick.AddListener(() => _modalRoot.SetActive(false));
+            _modalCloseButton.onClick.AddListener(CloseMonsterModal);
             _modalFightButton.onClick.AddListener(OnFightClicked);
             _modalDismissButton.onClick.AddListener(HandleSecondaryButtonClicked);
             EnsureFooterRowWithCostStrip(_modalFightButton, "В бой");
@@ -1057,9 +1058,38 @@ namespace Project.UI
             return FindFirstObjectByType<Canvas>()?.transform;
         }
 
+        private void CloseMonsterModal()
+        {
+            _monsterModalPresentGeneration++;
+            if (_modalRoot != null)
+                _modalRoot.SetActive(false);
+        }
+
+        /// <summary>Обновить только строку таймера респавна и кнопки — без ClearDynamicRows (секундный тик респавна).</summary>
+        private void RefreshOpenMonsterModalRespawnOnly()
+        {
+            if (_modalRoot == null || !_modalRoot.activeSelf || _monsterContentRoot == null || !_monsterContentRoot.activeSelf)
+                return;
+
+            _mineByFloor.TryGetValue(_selectedFloor, out var mine);
+            if (mine == null || !mine.unlocked)
+                return;
+
+            var respawn = Mathf.Max(0, mine.respawn_left_seconds);
+            if (_modalStatTexts != null && _modalStatTexts.Length >= 6)
+                _modalStatTexts[5].text = respawn > 0 ? $"Появится: {FormatSeconds(respawn)}" : "—";
+
+            _botByFloor.TryGetValue(_selectedFloor, out var bot);
+            if (_modalFightButton != null)
+                _modalFightButton.interactable = respawn <= 0 && bot != null;
+            _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(_selectedFloor);
+            ApplyDismissButtonCosts(_modalCanSummon, bot);
+        }
+
         private async void OpenMonsterModal(int floor)
         {
             if (_modalRoot == null) return;
+            var presentGeneration = ++_monsterModalPresentGeneration;
             _selectedFloor = floor;
             _mineByFloor.TryGetValue(floor, out var mine);
             _botByFloor.TryGetValue(floor, out var bot);
@@ -1122,7 +1152,8 @@ namespace Project.UI
             }
 
             // После await объект мог быть выключен (OnDisable → Destroy UI); RefreshLearnedRecipesAsync не пробрасывает отмену.
-            if (this == null || _modalRoot == null)
+            // Если окно уже закрыли или успели открыть другой этаж — не трогаем UI (иначе «закрыл — снова вылезло»).
+            if (this == null || _modalRoot == null || presentGeneration != _monsterModalPresentGeneration)
                 return;
 
             PopulateMonsterRewards(bot);
@@ -1133,6 +1164,8 @@ namespace Project.UI
             ApplyFightButtonCosts(bot);
             ApplyDismissButtonCosts(_modalCanSummon, bot);
             _modalDismissButton.interactable = true;
+            if (presentGeneration != _monsterModalPresentGeneration)
+                return;
             _modalRoot.SetActive(true);
         }
 
@@ -1198,8 +1231,7 @@ namespace Project.UI
             var unlockedFloor = mineUnlocked != null && mineUnlocked.unlocked;
             if (!unlockedFloor)
             {
-                if (_modalRoot != null)
-                    _modalRoot.SetActive(false);
+                CloseMonsterModal();
                 return;
             }
 
@@ -1263,8 +1295,7 @@ namespace Project.UI
                 }
 
                 ApplyRows();
-                if (_modalRoot != null)
-                    _modalRoot.SetActive(false);
+                CloseMonsterModal();
                 try
                 {
                     await RefreshResourcesAsync(_cts.Token);
