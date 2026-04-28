@@ -488,9 +488,9 @@ namespace Project.UI
             var titleGo = CreateTmp(panel.transform, "Ставка турнира и награда при победе", 26, FontStyles.Bold);
             titleGo.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 44f);
 
-            MakeBetRow(panel.transform, "green", "100 зелёных слитков", "600 руды · 600 золота", iconGreenIngot);
-            MakeBetRow(panel.transform, "blue", "100 синих слитков", "1200 руды · 1200 золота", iconBlueIngot);
-            MakeBetRow(panel.transform, "purple", "100 фиолетовых слитков", "2400 руды · 2400 золота", iconPurpleIngot);
+            MakeBetRow(panel.transform, "green", "50 зелёных слитков", "300 руды · 300 золота", iconGreenIngot);
+            MakeBetRow(panel.transform, "blue", "50 синих слитков", "600 руды · 600 золота", iconBlueIngot);
+            MakeBetRow(panel.transform, "purple", "50 фиолетовых слитков", "1200 руды · 1200 золота", iconPurpleIngot);
 
             var closeBtn = CreateButton(panel.transform, "Закрыть", () =>
             {
@@ -616,11 +616,11 @@ namespace Project.UI
 
             if (iconOre != null)
                 CreateIconImage(prizeGo.transform, iconOre);
-            var prizeOreTxt = CreateTmp(prizeGo.transform, tier == "green" ? "600" : (tier == "blue" ? "1200" : "2400"), 22, FontStyles.Bold);
+            var prizeOreTxt = CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
 
             if (iconGold != null)
                 CreateIconImage(prizeGo.transform, iconGold);
-            var prizeGoldTxt = CreateTmp(prizeGo.transform, tier == "green" ? "600" : (tier == "blue" ? "1200" : "2400"), 22, FontStyles.Bold);
+            var prizeGoldTxt = CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
 
             var btn = row.AddComponent<Button>();
             btn.targetGraphic = rowImg;

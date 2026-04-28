@@ -21,6 +21,7 @@ return function(deps)
 
 local ARENA_QUEUE_MAX = 8
 local ARENA_COUNTDOWN_SEC = 20
+local ARENA_QUEUE_BET_INGOTS = 50
 
 -- Persisted state (RPC and match loops can run in different Lua contexts).
 local STORAGE_COLL_TOURN = "arena_tournament"
@@ -36,6 +37,7 @@ local arena_runtime = {
   tournaments = {},
   user_tid = {},
   allow_bot_fill = true,
+  last_tourn_storage_sweep = 0,
 }
 
 local function storage_read_one(user_id, collection, key)
@@ -100,6 +102,33 @@ local function arena_load_tournament(tid)
   return arena_runtime.tournaments[tid]
 end
 
+--- Удаление по TTL работало только при следующем read по tid; без обхода коллекции записи «done» копились.
+local function arena_sweep_expired_done_storage()
+  local now = os.time()
+  local cursor = ""
+  while true do
+    local ok, objects, next_cursor = pcall(function()
+      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
+    end)
+    if not ok then
+      nk.logger_error("arena storage_list failed: " .. tostring(objects))
+      break
+    end
+    if objects == nil then break end
+    for _, row in ipairs(objects) do
+      local v = row.value
+      if v ~= nil and v.phase == "done" then
+        local da = tonumber(v.done_at)
+        if da ~= nil and now > da + TOURNAMENT_TTL_SEC then
+          arena_delete_tournament(row.key)
+        end
+      end
+    end
+    if next_cursor == nil or next_cursor == "" then break end
+    cursor = next_cursor
+  end
+end
+
 local function arena_save_user_tid(user_id, tid)
   if user_id == nil or user_id == "" then return end
   if tid == nil or tid == "" then
@@ -155,12 +184,12 @@ end
 local function arena_final_prize_ore_gold(bet)
   local b = string.lower(tostring(bet or ""))
   if b == "blue" then
-    return 1200, 1200
+    return 600, 600
   end
   if b == "purple" then
-    return 2400, 2400
+    return 1200, 1200
   end
-  return 600, 600
+  return 300, 300
 end
 
 local function arena_make_bot_uid()
@@ -752,7 +781,7 @@ local function duel_arena_queue_join(ctx, payload)
     local sheet = read_character_sheet(user_id)
     ensure_sheet_inventory_counts(sheet)
     local ingot_def = arena_bet_to_ingot_def(bet)
-    if inventory_remove_def_total(sheet, ingot_def, 100) ~= true then
+    if inventory_remove_def_total(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS) ~= true then
       return nk.json_encode({ ok = false, err = "not_enough_ingots", ingot_def = ingot_def })
     end
     write_character_sheet(user_id, sheet)
@@ -830,7 +859,7 @@ local function duel_arena_queue_leave(ctx, payload)
     local sheet = read_character_sheet(user_id)
     ensure_sheet_inventory_counts(sheet)
     local ingot_def = arena_bet_to_ingot_def(removed_bet)
-    inventory_try_add(sheet, ingot_def, 100)
+    inventory_try_add(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS)
     write_character_sheet(user_id, sheet)
     if #q == 0 then
       arena_runtime.queue_bet_tier = ""
@@ -857,6 +886,12 @@ local function duel_arena_queue_poll(ctx, payload)
     end
     arena_tick_countdowns()
     arena_maybe_fill_bot()
+
+    local tnow = os.time()
+    if tnow - (arena_runtime.last_tourn_storage_sweep or 0) >= 60 then
+      arena_runtime.last_tourn_storage_sweep = tnow
+      arena_sweep_expired_done_storage()
+    end
 
     local in_queue = false
     local bet = arena_runtime.queue_bet_tier

@@ -9,6 +9,7 @@ using Project.Nakama;
 using Project.UI;
 using Project.Utils;
 using Project.Character;
+using Project.Achievements;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -213,6 +214,9 @@ namespace Project.Match3
         private bool _isArenaTournamentMatch;
         private string _arenaGameOverRound = string.Empty;
         private string _arenaGameOverBetTier = string.Empty;
+        private bool _pendingPetardFinisherForAchievement;
+        /// <summary>Счётчик сегментов линий 5+ за один локальный ход (swap / крест / квадрат).</summary>
+        private int _fivePlusLinesThisAction;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
         private bool _pvpProQueue;
         private bool _isSoloBotMode;
@@ -1337,6 +1341,9 @@ namespace Project.Match3
                 _resultRecorded = true;
                 _ = RecordMatch3ResultServerAsync(won);
             }
+
+            ReportAchievementProgressAfterGameOver(won);
+
             _isMyTurn    = false;
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
@@ -1351,6 +1358,41 @@ namespace Project.Match3
             }
             _gameOverPanel?.Show(won, null, arenaTitle);
             RefreshGameOverRewardRows(won);
+        }
+
+        private void ReportAchievementProgressAfterGameOver(bool won)
+        {
+            if (!won)
+            {
+                _pendingPetardFinisherForAchievement = false;
+                return;
+            }
+
+            if (_isArenaTournamentMatch && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
+                AchievementTracker.NotifyBlacksmithTournamentFinalWin();
+            else if (!_isArenaTournamentMatch)
+                AchievementTracker.NotifyTriMatchDuelWin();
+
+            if (_pendingPetardFinisherForAchievement)
+                AchievementTracker.NotifyPetardFinisherWin();
+
+            if (_myStats.hp == 1)
+                AchievementTracker.NotifyWinAtOneHp();
+
+            _pendingPetardFinisherForAchievement = false;
+        }
+
+        private void TryReportAchievementsFromBoardSync(M3BoardSyncMsg msg, int prevMyHp, int prevOpHp)
+        {
+            if (msg == null || string.IsNullOrEmpty(_myUserId)) return;
+            if (!string.Equals(msg.activeUserId, _myUserId, StringComparison.Ordinal)) return;
+            if (_gameEnded) return;
+
+            if (msg.actionType >= 2 && msg.actionType <= 6)
+                AchievementTracker.NotifyAbilityUsedMatch3(msg.actionType);
+
+            if (msg.actionType == 4 && prevOpHp > 0 && _opStats.hp <= 0 && _myStats.hp > 0)
+                _pendingPetardFinisherForAchievement = true;
         }
 
         private async Task RecordMatch3ResultServerAsync(bool won)
@@ -1545,7 +1587,7 @@ namespace Project.Match3
                         _lastRewardTesseract = 0;
                         _lastRewardText = BuildRewardLinesTextFull(0, _lastRewardGold, _lastRewardOre, 0, 0, "", 0, "", "", 0);
                     }
-                    TryShowDeferredGameOver();
+            TryShowDeferredGameOver();
                 });
             }
             else if (state.OpCode == M3Op.PeerDisconnect)
@@ -1818,6 +1860,8 @@ namespace Project.Match3
             RecalcDerivedBuffs(_myStats);
             RecalcDerivedBuffs(_opStats);
 
+            AchievementCombatBonuses.ApplyToMyStats(_myStats);
+
             _boardView?.RefreshAll(_board);
             if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
                 yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
@@ -1846,6 +1890,8 @@ namespace Project.Match3
             }
 
             ApplyTurnDeadlineFromBoardSync(msg);
+
+            TryReportAchievementsFromBoardSync(msg, prevMyHp, prevOpHp);
 
             bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 5 || msg.actionType == 6)
                                              && ((msg.activeUserId == _myUserId) == _isMyTurn);
@@ -2012,7 +2058,7 @@ namespace Project.Match3
 
             bool keepTurn;
             bool extraTurn;
-            var actionApplied = ResolveLocalAction(simBoard, req, actorStats, oppStats, msg, out extraTurn, out keepTurn);
+            var actionApplied = ResolveLocalAction(simBoard, req, actorStats, oppStats, msg, out extraTurn, out keepTurn, actorId);
             if (!actionApplied)
             {
                 if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
@@ -2102,11 +2148,13 @@ namespace Project.Match3
             PlayerStats oppStats,
             M3BoardSyncMsg msg,
             out bool extraTurn,
-            out bool keepTurn)
+            out bool keepTurn,
+            string achievementActorId)
         {
             extraTurn = false;
             keepTurn = false;
             msg.animSteps = new List<M3AnimStep>();
+            _fivePlusLinesThisAction = 0;
 
             if (req.actionType == 1)
             {
@@ -2123,6 +2171,7 @@ namespace Project.Match3
 
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
+                NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
 
@@ -2161,10 +2210,22 @@ namespace Project.Match3
                 msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
+                NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
 
             return false;
+        }
+
+        private void NotifyDoubleFiveAchievementIfEligible(string achievementActorId)
+        {
+            if (string.IsNullOrEmpty(achievementActorId) || string.IsNullOrEmpty(_myUserId))
+                return;
+            if (!string.Equals(achievementActorId, _myUserId, StringComparison.Ordinal))
+                return;
+            if (_fivePlusLinesThisAction < 2)
+                return;
+            AchievementTracker.NotifyDoubleFivePlusLinesSameTurn();
         }
 
         private void ResolveCascades(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, M3BoardSyncMsg msg, ref bool extraTurn)
@@ -2187,7 +2248,11 @@ namespace Project.Match3
             var pendingHeal = 0;
             foreach (var match in matches)
             {
-                if (match.count >= 5) extraTurn = true;
+                if (match.count >= 5)
+                {
+                    extraTurn = true;
+                    _fivePlusLinesThisAction++;
+                }
                 if (match.type == PieceType.GemRed || match.type == PieceType.GemYellow || match.type == PieceType.GemGreen)
                 {
                     actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(match.type) * match.count);
