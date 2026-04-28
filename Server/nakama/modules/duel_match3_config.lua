@@ -14,6 +14,11 @@ return {
   -- Задержка между ходами бота в одном «сегменте» (доп. ход, петарда и т.д.), после анимаций (OP 17).
   BOT_THINK_SECONDS_FAST = 2.5,
   BOT_THINK_TICKS_FAST = math.max(1, math.floor(2.5 * 6 + 0.5)),
+  --- С какой server-y строки бот учитывает поле при симуляции "качества" хода.
+  --  0 = как раньше (качество по всей 6x8, с preview-строками),
+  --  1 = учитывать 6x7 (y=1..7),
+  --  2 = только активная зона 6x6 (y=2..7).
+  BOT_SIM_QUALITY_Y_MIN = 2,
   CROSS_ABILITY_COST = 20,
   SQUARE_ABILITY_COST = 20,
   PETARD_ABILITY_COST = 30,

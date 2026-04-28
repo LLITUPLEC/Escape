@@ -20,7 +20,14 @@ return function(deps)
 --- ═══════════════════════════════════════════════════════════════════════════
 
 local ARENA_QUEUE_MAX = 8
-local ARENA_COUNTDOWN_SEC = 60
+local ARENA_COUNTDOWN_SEC = 20
+
+-- Persisted state (RPC and match loops can run in different Lua contexts).
+local STORAGE_COLL_TOURN = "arena_tournament"
+local STORAGE_COLL_USER_TID = "arena_user_tid"
+local STORAGE_USER_TID_KEY = "tid"
+local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
+local TOURNAMENT_TTL_SEC = 15 * 60
 
 local arena_runtime = {
   queue = {},
@@ -30,6 +37,89 @@ local arena_runtime = {
   user_tid = {},
   allow_bot_fill = true,
 }
+
+local function storage_read_one(user_id, collection, key)
+  local ok, rows = pcall(function()
+    return nk.storage_read({ { user_id = user_id, collection = collection, key = key } })
+  end)
+  if not ok then
+    nk.logger_error("arena storage_read failed: " .. tostring(rows))
+    return nil
+  end
+  if rows == nil or #rows == 0 or rows[1] == nil then
+    return nil
+  end
+  return rows[1].value
+end
+
+local function storage_write_one(user_id, collection, key, value)
+  local ok, err = pcall(function()
+    nk.storage_write({ { user_id = user_id, collection = collection, key = key, value = value } })
+  end)
+  if not ok then
+    nk.logger_error("arena storage_write failed: " .. tostring(err))
+    return false
+  end
+  return true
+end
+
+local function storage_delete_one(user_id, collection, key)
+  local ok, err = pcall(function()
+    nk.storage_delete({ { user_id = user_id, collection = collection, key = key } })
+  end)
+  if not ok then
+    nk.logger_error("arena storage_delete failed: " .. tostring(err))
+    return false
+  end
+  return true
+end
+
+local function arena_save_tournament(T)
+  if T == nil or T.id == nil or T.id == "" then return end
+  storage_write_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(T.id), T)
+end
+
+local function arena_delete_tournament(tid)
+  if tid == nil or tid == "" then return end
+  arena_runtime.tournaments[tid] = nil
+  storage_delete_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(tid))
+end
+
+local function arena_load_tournament(tid)
+  if tid == nil or tid == "" then return nil end
+  -- Always refresh from storage: RPC and match loops can update in different Lua contexts.
+  local v = storage_read_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(tid))
+  if v ~= nil then
+    if v.phase == "done" and tonumber(v.done_at) ~= nil and os.time() > tonumber(v.done_at) + TOURNAMENT_TTL_SEC then
+      arena_delete_tournament(tid)
+      return nil
+    end
+    arena_runtime.tournaments[tid] = v
+    return v
+  end
+  return arena_runtime.tournaments[tid]
+end
+
+local function arena_save_user_tid(user_id, tid)
+  if user_id == nil or user_id == "" then return end
+  if tid == nil or tid == "" then
+    storage_delete_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
+  else
+    storage_write_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY, { tid = tid })
+  end
+end
+
+local function arena_load_user_tid(user_id)
+  if user_id == nil or user_id == "" then return nil end
+  -- Always refresh from storage: user_tid is modified by match context on elimination.
+  local v = storage_read_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
+  if v ~= nil and v.tid ~= nil and v.tid ~= "" then
+    arena_runtime.user_tid[user_id] = v.tid
+    return v.tid
+  end
+  arena_runtime.user_tid[user_id] = nil
+  return nil
+end
 
 local ARENA_BOT_DISPLAY_NAMES = {
   "Грейвен",
@@ -74,12 +164,27 @@ local function arena_final_prize_ore_gold(bet)
 end
 
 local function arena_make_bot_uid()
-  return "arena-bot-" .. nk.uuid_v4()
+  -- Must match duel_match3 bot_user_id format (zz-bot- prefix) so that:
+  -- - winner_uid matches tournament participant uid
+  -- - mirror_commit maps HP correctly for bot side
+  return make_bot_user_id("arena_" .. nk.uuid_v4())
 end
 
 local function arena_random_bot_display()
   local names = ARENA_BOT_DISPLAY_NAMES
-  return names[math.random(1, #names)]
+  local idx = math.random(1, #names)
+  local name = names[idx]
+  table.remove(names, idx) -- no duplicates within one tournament fill batch
+  if #names == 0 then
+    -- reset pool
+    for _, n in ipairs({
+      "Грейвен","Фестер","Морозко","Шипогрыз","Кремнебород",
+      "Пепельный","Туманный","Жнец","Осколок","Шутиха",
+    }) do
+      names[#names + 1] = n
+    end
+  end
+  return name
 end
 
 local function arena_uid_is_bot(T, uid)
@@ -93,18 +198,21 @@ local function mirror_commit(state)
     return
   end
   local tid = am.tournament_id
-  local T = arena_runtime.tournaments[tid]
+  local T = arena_load_tournament(tid)
   if T == nil then
+    nk.logger_warn("arena mirror_commit: tournament not found tid=" .. tostring(tid))
     return
   end
   local rk = am.round or "qf"
   local idx = tonumber(am.slot_index) or 1
   local plist = T[rk]
   if plist == nil then
+    nk.logger_warn("arena mirror_commit: round list missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk))
     return
   end
   local pr = plist[idx]
   if pr == nil then
+    nk.logger_warn("arena mirror_commit: pair missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx))
     return
   end
   if state.players_sorted == nil or #state.players_sorted < 2 then
@@ -128,6 +236,7 @@ local function mirror_commit(state)
     pr.hp_a = hpa
     pr.hp_b = hpb
   end
+  arena_save_tournament(T)
 end
 
 local function arena_grant_final_progress(user_id, bet_tier)
@@ -154,6 +263,7 @@ end
 
 local function arena_clear_human_tid(user_id)
   arena_runtime.user_tid[user_id] = nil
+  arena_save_user_tid(user_id, nil)
 end
 
 local function arena_pair_row_from_slots(a, b)
@@ -239,11 +349,12 @@ local function arena_spawn_round_if_pending(T, rk)
     elseif pr.bot_a or pr.bot_b then
       local human_uid = pr.bot_a and pr.uid_b or pr.uid_a
       local epoch = guard_read_metadata_epoch(human_uid)
+      local bot_uid = pr.bot_a and pr.uid_a or pr.uid_b
       local mid = try_match_create({
         mode = "pve",
         owner_user_id = human_uid,
         bot_id = "arena_bot",
-        bot_user_id = make_bot_user_id("arena_bot"),
+        bot_user_id = bot_uid,
         owner_level = 1,
         owner_session_epoch = epoch,
         arena_pvp_style = true,
@@ -259,6 +370,7 @@ local function arena_spawn_round_if_pending(T, rk)
           tournament_id = T.id,
           round = rk,
           slot_index = i,
+          bet_tier = T.bet_tier,
         },
       })
       if mid ~= nil and mid ~= "" then
@@ -277,6 +389,7 @@ local function arena_spawn_round_if_pending(T, rk)
           tournament_id = T.id,
           round = rk,
           slot_index = i,
+          bet_tier = T.bet_tier,
         },
       })
       if mid ~= nil and mid ~= "" then
@@ -299,6 +412,7 @@ local function arena_begin_next_round(T, rk_next, slots)
   T[rk_next] = arena_build_round_from_slots(slots)
   T.phase = rk_next
   arena_spawn_round_if_pending(T, rk_next)
+  arena_save_tournament(T)
 end
 
 arena_on_pair_completed = function(T, rk)
@@ -310,7 +424,15 @@ arena_on_pair_completed = function(T, rk)
     if #winners ~= 4 then
       return
     end
-    arena_begin_next_round(T, "sf", winners)
+    -- Prepare next bracket immediately (no history in UI).
+    arena_shuffle_inplace(winners)
+    T.sf = arena_build_round_from_slots(winners)
+    T.qf = {}
+    T.phase = "countdown"
+    T.countdown_until = os.time() + ARENA_COUNTDOWN_SEC
+    T.next_round = "sf"
+    T.next_slots = nil
+    arena_save_tournament(T)
     return
   end
   if rk == "sf" then
@@ -318,7 +440,15 @@ arena_on_pair_completed = function(T, rk)
     if #winners ~= 2 then
       return
     end
-    arena_begin_next_round(T, "final", winners)
+    arena_shuffle_inplace(winners)
+    T.final = arena_build_round_from_slots(winners)
+    T.sf = {}
+    T.qf = {}
+    T.phase = "countdown"
+    T.countdown_until = os.time() + ARENA_COUNTDOWN_SEC
+    T.next_round = "final"
+    T.next_slots = nil
+    arena_save_tournament(T)
     return
   end
   if rk == "final" then
@@ -332,55 +462,93 @@ arena_on_pair_completed = function(T, rk)
       arena_grant_final_progress(w, T.bet_tier)
     end
     T.phase = "done"
+    T.done_at = os.time()
     for uid, meta in pairs(T.parts) do
       if meta.bot ~= true then
         arena_clear_human_tid(uid)
       end
     end
+    arena_save_tournament(T)
   end
 end
 
 local function on_match_finished(state, winner_uid)
   local am = state.arena_mirror
   if am == nil then
+    nk.logger_warn("arena on_match_finished: missing arena_mirror winner=" .. tostring(winner_uid))
     return
   end
   local tid = am.tournament_id
-  local T = arena_runtime.tournaments[tid]
+  local T = arena_load_tournament(tid)
   if T == nil then
+    nk.logger_warn("arena on_match_finished: tournament not found tid=" .. tostring(tid) .. " winner=" .. tostring(winner_uid))
     return
   end
   local rk = am.round or "qf"
   local idx = tonumber(am.slot_index) or 1
   local plist = T[rk]
   if plist == nil then
+    nk.logger_warn("arena on_match_finished: round list missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk))
     return
   end
   local pr = plist[idx]
   if pr == nil then
+    nk.logger_warn("arena on_match_finished: pair missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx))
     return
   end
+  nk.logger_info("arena on_match_finished: tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx) ..
+    " winner=" .. tostring(winner_uid) .. " a=" .. tostring(pr.uid_a) .. " b=" .. tostring(pr.uid_b))
+
   local loser_uid = nil
   if pr.uid_a == winner_uid then
     loser_uid = pr.uid_b
   elseif pr.uid_b == winner_uid then
     loser_uid = pr.uid_a
+  else
+    -- Fallback: sometimes duel_match3 may report a bot user id that doesn't match stored uid
+    -- (older tournaments / stale state). If one side is a bot participant, assume bot is winner.
+    local a_is_bot = arena_uid_is_bot(T, pr.uid_a)
+    local b_is_bot = arena_uid_is_bot(T, pr.uid_b)
+    if a_is_bot and not b_is_bot and string.find(tostring(winner_uid or ""), "zz%-bot%-", 1) == 1 then
+      winner_uid = pr.uid_a
+      loser_uid = pr.uid_b
+    elseif b_is_bot and not a_is_bot and string.find(tostring(winner_uid or ""), "zz%-bot%-", 1) == 1 then
+      winner_uid = pr.uid_b
+      loser_uid = pr.uid_a
+    end
   end
   pr.status = "done"
   pr.winner_uid = winner_uid
+  -- Match is over and may be deleted; never offer join to a finished match.
+  pr.match_id = ""
+  -- Ensure HP looks correct in bracket even if last mirror_commit didn't arrive.
+  if loser_uid ~= nil then
+    if pr.uid_a == loser_uid then pr.hp_a = 0 end
+    if pr.uid_b == loser_uid then pr.hp_b = 0 end
+  end
   if loser_uid ~= nil and T.parts[loser_uid] ~= nil and T.parts[loser_uid].bot ~= true then
     T.eliminated[loser_uid] = true
     arena_clear_human_tid(loser_uid)
   end
   arena_on_pair_completed(T, rk)
+  arena_save_tournament(T)
 end
 
 local function arena_tick_countdowns()
   local now = os.time()
   for _, T in pairs(arena_runtime.tournaments) do
     if T.phase == "countdown" and tonumber(T.countdown_until) ~= nil and now >= tonumber(T.countdown_until) then
-      T.phase = "qf"
-      arena_spawn_round_if_pending(T, "qf")
+      if T.next_round ~= nil and T.next_round ~= "" then
+        local rk_next = T.next_round
+        T.next_round = nil
+        T.next_slots = nil
+        T.phase = rk_next
+        arena_spawn_round_if_pending(T, rk_next)
+      else
+        T.phase = "qf"
+        arena_spawn_round_if_pending(T, "qf")
+      end
+      arena_save_tournament(T)
     end
   end
 end
@@ -393,6 +561,8 @@ local function arena_start_tournament_from_entries(entries)
     bet_tier = bet,
     phase = "countdown",
     countdown_until = os.time() + ARENA_COUNTDOWN_SEC,
+    next_round = nil,
+    next_slots = nil,
     parts = {},
     qf = {},
     sf = {},
@@ -404,6 +574,7 @@ local function arena_start_tournament_from_entries(entries)
     T.parts[p.uid] = { display = p.display, bot = p.bot == true }
     if p.bot ~= true then
       arena_runtime.user_tid[p.uid] = tid
+      arena_save_user_tid(p.uid, tid)
     end
   end
   local slots = {}
@@ -412,6 +583,7 @@ local function arena_start_tournament_from_entries(entries)
   end
   T.qf = arena_build_round_from_slots(slots)
   arena_runtime.tournaments[tid] = T
+  arena_save_tournament(T)
 end
 
 local function arena_try_pop_queue_full()
@@ -460,11 +632,11 @@ end
 local function arena_json_for_user(user_id)
   arena_tick_countdowns()
   arena_maybe_fill_bot()
-  local tid = arena_runtime.user_tid[user_id]
+  local tid = arena_load_user_tid(user_id)
   if tid == nil then
     return nil
   end
-  local T = arena_runtime.tournaments[tid]
+  local T = arena_load_tournament(tid)
   if T == nil then
     arena_clear_human_tid(user_id)
     return nil
@@ -539,6 +711,7 @@ local function arena_json_for_user(user_id)
     phase = T.phase,
     bet_tier = T.bet_tier,
     countdown_left = countdown_left,
+    next_round = T.next_round,
     join_match_id = join_mid,
     join_opponent_is_bot = join_opponent_is_bot,
     qf = pack_pairs("qf"),
@@ -570,7 +743,7 @@ local function duel_arena_queue_join(ctx, payload)
         return nk.json_encode({ ok = false, err = "already_in_queue" })
       end
     end
-    if arena_runtime.user_tid[user_id] ~= nil then
+    if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "already_in_tournament" })
     end
     if arena_runtime.queue_bet_tier ~= "" and arena_runtime.queue_bet_tier ~= bet then
@@ -611,7 +784,7 @@ local function duel_arena_queue_join(ctx, payload)
     arena_try_pop_queue_full()
 
     -- После попа очередь может быть пуста — клиенту нужно различать «0 в очереди, но вы уже в турнире».
-    local in_tournament = arena_runtime.user_tid[user_id] ~= nil
+    local in_tournament = arena_load_user_tid(user_id) ~= nil
 
     return nk.json_encode({
       ok = true,
@@ -638,7 +811,7 @@ local function duel_arena_queue_leave(ctx, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
-    if arena_runtime.user_tid[user_id] ~= nil then
+    if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "in_tournament" })
     end
     local removed_bet = ""

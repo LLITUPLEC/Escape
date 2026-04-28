@@ -119,6 +119,11 @@ namespace Project.Match3
         public string rewardRecipeItemId;
         public int rewardTesseract;
         public int newLevel;
+
+        // Arena tournament meta (optional).
+        public string arenaTournamentId;
+        public string arenaRound;   // "qf" | "sf" | "final"
+        public string arenaBetTier; // "green" | "blue" | "purple"
     }
 
     /// <summary>Сервер (duel_match3): соперник временно потерял связь; матч продолжается до истечения grace.</summary>

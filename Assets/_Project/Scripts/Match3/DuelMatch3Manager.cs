@@ -210,6 +210,9 @@ namespace Project.Match3
         private int _lastRewardTesseract;
         private bool _pendingGameOver;
         private bool _pendingGameOverWon;
+        private bool _isArenaTournamentMatch;
+        private string _arenaGameOverRound = string.Empty;
+        private string _arenaGameOverBetTier = string.Empty;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
         private bool _pvpProQueue;
         private bool _isSoloBotMode;
@@ -309,6 +312,7 @@ namespace Project.Match3
                     Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out var arenaOppHint, out var arenaOppIsBot))
                 {
                     _pvpProQueue = false;
+                    _isArenaTournamentMatch = true;
                     _mmTcs?.TrySetCanceled();
                     await CancelMatchmakerTicketAsync();
                     try
@@ -342,6 +346,7 @@ namespace Project.Match3
                 }
                 else
                 {
+                    _isArenaTournamentMatch = false;
                     await FindMatchAsync(_cts.Token);
                     MainThreadDispatcher.Enqueue(OnMatchFound);
                 }
@@ -1336,7 +1341,15 @@ namespace Project.Match3
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
             PlaySfx(won ? sfxVictory : sfxDefeat);
-            _gameOverPanel?.Show(won, null);
+            string arenaTitle = null;
+            if (_isArenaTournamentMatch)
+            {
+                if (!won)
+                    arenaTitle = "Вы выбыли из турнира";
+                else if (string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
+                    arenaTitle = "Победа в турнире!";
+            }
+            _gameOverPanel?.Show(won, null, arenaTitle);
             RefreshGameOverRewardRows(won);
         }
 
@@ -1515,6 +1528,23 @@ namespace Project.Match3
                     }
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
+                    _arenaGameOverRound = msg.arenaRound ?? string.Empty;
+                    _arenaGameOverBetTier = msg.arenaBetTier ?? string.Empty;
+                    // If server included final prize for UI, reuse existing reward UI.
+                    if (_isArenaTournamentMatch && _pendingGameOverWon && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
+                    {
+                        _lastRewardGold = msg.rewardGold;
+                        _lastRewardOre = msg.rewardOre;
+                        _lastRewardXp = 0;
+                        _lastRewardMatter = 0;
+                        _lastRewardIngots = 0;
+                        _lastRewardKeyId = "";
+                        _lastRewardKeyAmount = 0;
+                        _lastRewardBlueprint = "";
+                        _lastRewardRecipeItemId = "";
+                        _lastRewardTesseract = 0;
+                        _lastRewardText = BuildRewardLinesTextFull(0, _lastRewardGold, _lastRewardOre, 0, 0, "", 0, "", "", 0);
+                    }
                     TryShowDeferredGameOver();
                 });
             }
@@ -1625,6 +1655,26 @@ namespace Project.Match3
             if (_remoteSyncRoutine != null || _pendingBoardSyncs.Count > 0) return;
             _pendingGameOver = false;
             _gameEnded = true;
+            if (_isArenaTournamentMatch)
+            {
+                // Arena tournament:
+                // - show defeat modal always
+                // - show victory modal only on final win
+                // - otherwise auto return to ArenaMenu
+                var showModal = !_pendingGameOverWon ||
+                                (_pendingGameOverWon && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal));
+                if (!showModal)
+                {
+                    try
+                    {
+                        if (_match != null)
+                            ArenaMatch8Bridge.BlockArenaJoinMatchId(_match.Id);
+                    }
+                    catch { /* ignore */ }
+                    ReturnFromGameOver();
+                    return;
+                }
+            }
             ShowGameOver(_pendingGameOverWon);
         }
 
@@ -1823,9 +1873,7 @@ namespace Project.Match3
             {
                 if (isMyTurnNow)
                     SendTurnInputReadyToServerFireAndForget();
-                else if (!string.IsNullOrEmpty(_opUserId) &&
-                         string.Equals(msg.activeUserId, _opUserId, StringComparison.Ordinal) &&
-                         (_isSoloBotMode || _opponentIsServerBot))
+                else if (_isSoloBotMode || _opponentIsServerBot)
                     SendTurnInputReadyToServerFireAndForget();
             }
 

@@ -23,6 +23,7 @@ namespace Project.UI
         private const string RpcArenaJoin = "duel_arena_queue_join";
         private const string RpcArenaLeave = "duel_arena_queue_leave";
         private const string RpcArenaPoll = "duel_arena_queue_poll";
+        private const string BracketPrefabResourcesPath = "UI/ArenaBracketOverlay";
 
         [SerializeField] private string match3ArenaButtonName = "match3Arena";
         [SerializeField] private string queueTextObjectName = "queue";
@@ -40,6 +41,13 @@ namespace Project.UI
 
         private GameObject _modalRoot;
         private GameObject _bracketRoot;
+        private Transform _rowsRoot;
+        private TMP_Text _cdText;
+        private TMP_Text _headerTemplate;
+        private Transform _pairRowTemplate;
+        private GameObject _toastRoot;
+        private TMP_Text _toastText;
+        private Coroutine _toastRoutine;
 
         private Coroutine _pollRoutine;
         private bool _busyJoin;
@@ -83,6 +91,7 @@ namespace Project.UI
         {
             public bool ok;
             public string err;
+            public string ingot_def;
             public int queue_count;
             public int queue_max;
             public string bet_tier;
@@ -105,6 +114,7 @@ namespace Project.UI
             public string id;
             public bool eliminated;
             public string phase;
+            public string next_round;
             public string bet_tier;
             public int countdown_left;
             public string join_match_id;
@@ -249,7 +259,8 @@ namespace Project.UI
             foreach (var r in rows)
             {
                 if (r == null) continue;
-                s += $"{r.slot}:{r.status}:{Mathf.RoundToInt(r.hp_a)}:{Mathf.RoundToInt(r.hp_b)}:{r.match_id ?? ""};";
+                // HP can come as float; keep precision so bracket refreshes while HP changes.
+                s += $"{r.slot}:{r.status}:{Mathf.RoundToInt(r.hp_a * 100f)}:{Mathf.RoundToInt(r.hp_b * 100f)}:{r.match_id ?? ""};";
             }
 
             return s;
@@ -393,7 +404,14 @@ namespace Project.UI
                     _ = PollOnceFireAndForget();
                 }
                 else
-                    Debug.LogWarning("[Arena8] join failed: " + (resp?.err ?? raw));
+                {
+                    var err = resp?.err ?? raw;
+                    Debug.LogWarning("[Arena8] join failed: " + err);
+                    if (string.Equals(resp?.err, "not_enough_ingots", StringComparison.Ordinal))
+                        ShowToast("Недостаточно слитков для ставки", 2.6f);
+                    else if (string.Equals(resp?.err, "bet_tier_mismatch", StringComparison.Ordinal))
+                        ShowToast("Очередь занята другой ставкой", 2.6f);
+                }
             }
             catch (Exception e)
             {
@@ -441,6 +459,14 @@ namespace Project.UI
             var dim = _modalRoot.AddComponent<Image>();
             dim.color = new Color(0f, 0f, 0f, 0.62f);
             dim.raycastTarget = true;
+            // Click on dim background closes modal.
+            var dimBtn = _modalRoot.AddComponent<Button>();
+            dimBtn.targetGraphic = dim;
+            dimBtn.onClick.AddListener(() =>
+            {
+                if (_modalRoot != null)
+                    _modalRoot.SetActive(false);
+            });
 
             var panel = new GameObject("Panel");
             panel.transform.SetParent(_modalRoot.transform, false);
@@ -466,9 +492,83 @@ namespace Project.UI
             MakeBetRow(panel.transform, "blue", "100 синих слитков", "1200 руды · 1200 золота", iconBlueIngot);
             MakeBetRow(panel.transform, "purple", "100 фиолетовых слитков", "2400 руды · 2400 золота", iconPurpleIngot);
 
-            var closeBtn = CreateButton(panel.transform, "Закрыть", CloseBetModal);
+            var closeBtn = CreateButton(panel.transform, "Закрыть", () =>
+            {
+                if (_modalRoot != null)
+                    _modalRoot.SetActive(false);
+            });
 
             _modalRoot.SetActive(false);
+        }
+
+        private void EnsureToastBuilt()
+        {
+            if (_toastRoot != null)
+                return;
+            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            if (canvas == null)
+                return;
+
+            _toastRoot = new GameObject("ArenaToast", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            _toastRoot.transform.SetParent(canvas.transform, false);
+            var rt = _toastRoot.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -22f);
+            rt.sizeDelta = new Vector2(720f, 64f);
+
+            var bg = _toastRoot.GetComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.72f);
+            bg.raycastTarget = false;
+
+            var cg = _toastRoot.GetComponent<CanvasGroup>();
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+
+            var txtGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtGo.transform.SetParent(_toastRoot.transform, false);
+            var txt = txtGo.GetComponent<TextMeshProUGUI>();
+            txt.text = "";
+            txt.fontSize = 26;
+            txt.alignment = TextAlignmentOptions.Center;
+            txt.color = Color.white;
+            var trt = txtGo.GetComponent<RectTransform>();
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(14f, 8f);
+            trt.offsetMax = new Vector2(-14f, -8f);
+
+            _toastText = txt;
+            _toastRoot.SetActive(false);
+        }
+
+        private void ShowToast(string msg, float seconds)
+        {
+            EnsureToastBuilt();
+            if (_toastRoot == null || _toastText == null)
+                return;
+
+            if (_toastRoutine != null)
+            {
+                StopCoroutine(_toastRoutine);
+                _toastRoutine = null;
+            }
+            _toastRoutine = StartCoroutine(ToastRoutine(msg, seconds));
+        }
+
+        private IEnumerator ToastRoutine(string msg, float seconds)
+        {
+            _toastRoot.SetActive(true);
+            _toastText.text = msg ?? "";
+            var cg = _toastRoot.GetComponent<CanvasGroup>();
+            if (cg == null) yield break;
+            cg.alpha = 1f;
+            yield return new WaitForSecondsRealtime(Mathf.Max(0.5f, seconds));
+            cg.alpha = 0f;
+            _toastRoot.SetActive(false);
+            _toastRoutine = null;
         }
 
         private void MakeBetRow(Transform parent, string tier, string cost, string prize, Sprite ingotSp)
@@ -588,15 +688,53 @@ namespace Project.UI
             if (canvas == null)
                 return;
 
-            _bracketRoot = new GameObject("ArenaBracketOverlay");
-            _bracketRoot.transform.SetParent(canvas.transform, false);
-            var rect = _bracketRoot.AddComponent<RectTransform>();
+            var prefab = Resources.Load<GameObject>(BracketPrefabResourcesPath);
+            if (prefab != null)
+                _bracketRoot = UnityEngine.Object.Instantiate(prefab, canvas.transform, false);
+            else
+                _bracketRoot = new GameObject("ArenaBracketOverlay", typeof(RectTransform));
+
+            if (_bracketRoot.transform.parent != canvas.transform)
+                _bracketRoot.transform.SetParent(canvas.transform, false);
+
+            _cdText = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
+            _rowsRoot = _bracketRoot.transform.Find("ArenaRows");
+            _headerTemplate = _rowsRoot != null
+                ? _rowsRoot.Find("RoundHeaderTemplate")?.GetComponent<TMP_Text>()
+                : null;
+            _pairRowTemplate = _rowsRoot != null
+                ? _rowsRoot.Find("PairRowTemplate")
+                : null;
+
+            // Fallback: if prefab missing OR prefab does not contain required nodes, build procedurally.
+            if (_rowsRoot == null || _cdText == null)
+            {
+                UnityEngine.Object.Destroy(_bracketRoot);
+                _bracketRoot = BuildBracketProcedural(canvas.transform);
+                _cdText = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
+                _rowsRoot = _bracketRoot.transform.Find("ArenaRows");
+                _headerTemplate = null;
+                _pairRowTemplate = null;
+            }
+
+            _bracketRoot.SetActive(false);
+        }
+
+        private static GameObject BuildBracketProcedural(Transform canvas)
+        {
+            var root = new GameObject("ArenaBracketOverlay");
+            root.transform.SetParent(canvas, false);
+            var rect = root.AddComponent<RectTransform>();
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
-            var vl = _bracketRoot.AddComponent<VerticalLayoutGroup>();
+            var cg = root.AddComponent<CanvasGroup>();
+            cg.interactable = true;
+            cg.blocksRaycasts = true;
+
+            var vl = root.AddComponent<VerticalLayoutGroup>();
             vl.padding = new RectOffset(24, 24, 90, 24);
             vl.spacing = 12f;
             vl.childAlignment = TextAnchor.UpperCenter;
@@ -605,23 +743,23 @@ namespace Project.UI
             vl.childForceExpandWidth = true;
             vl.childForceExpandHeight = false;
 
-            var bg = _bracketRoot.AddComponent<Image>();
+            var bg = root.AddComponent<Image>();
             bg.color = new Color(0.03f, 0.06f, 0.12f, 0.88f);
-            bg.raycastTarget = false;
+            bg.raycastTarget = true;
 
-            var titleGo = CreateTmp(_bracketRoot.transform, "Турнир Match3", 28, FontStyles.Bold);
+            var titleGo = CreateTmp(root.transform, "Турнир Match3", 28, FontStyles.Bold);
             var titleLe = titleGo.AddComponent<LayoutElement>();
             titleLe.preferredHeight = 44f;
             titleLe.flexibleWidth = 1f;
 
-            var cdGo = CreateTmp(_bracketRoot.transform, "-", 36, FontStyles.Bold);
+            var cdGo = CreateTmp(root.transform, "-", 36, FontStyles.Bold);
             cdGo.name = "ArenaCd";
             var cdLe = cdGo.AddComponent<LayoutElement>();
             cdLe.preferredHeight = 52f;
             cdLe.flexibleWidth = 1f;
 
             var rowsGo = new GameObject("ArenaRows");
-            rowsGo.transform.SetParent(_bracketRoot.transform, false);
+            rowsGo.transform.SetParent(root.transform, false);
             var rowsRt = rowsGo.AddComponent<RectTransform>();
             rowsRt.anchorMin = Vector2.zero;
             rowsRt.anchorMax = Vector2.one;
@@ -641,7 +779,7 @@ namespace Project.UI
             rowsVl.childForceExpandWidth = true;
             rowsVl.childForceExpandHeight = false;
 
-            _bracketRoot.SetActive(false);
+            return root;
         }
 
         private void ShowBracket(ArenaTournamentState t)
@@ -652,25 +790,136 @@ namespace Project.UI
 
             _bracketRoot.SetActive(true);
 
-            var cd = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
-            if (cd != null)
+            if (_cdText != null)
             {
                 if (t.phase == "countdown")
-                    cd.text = Mathf.Max(0, t.countdown_left).ToString();
+                    _cdText.text = Mathf.Max(0, t.countdown_left).ToString();
                 else
-                    cd.text = PhaseTitle(t.phase);
+                    _cdText.text = PhaseTitle(t.phase);
             }
 
-            var rowsParent = _bracketRoot.transform.Find("ArenaRows");
-            if (rowsParent == null)
+            if (_rowsRoot == null)
                 return;
 
-            for (var i = rowsParent.childCount - 1; i >= 0; i--)
-                Destroy(rowsParent.GetChild(i).gameObject);
+            ClearRowsKeepingTemplates(_rowsRoot);
 
-            LayoutBracketRound(rowsParent, "1/4", t.qf);
-            LayoutBracketRound(rowsParent, "1/2", t.sf);
-            LayoutBracketRound(rowsParent, "Финал", t.final_pairs);
+            // Show only current/upcoming round (no history).
+            if (t.phase == "qf")
+                LayoutBracketRoundFromTemplate(_rowsRoot, "1/4", t.qf);
+            else if (t.phase == "sf")
+                LayoutBracketRoundFromTemplate(_rowsRoot, "1/2", t.sf);
+            else if (t.phase == "final")
+                LayoutBracketRoundFromTemplate(_rowsRoot, "Финал", t.final_pairs);
+            else if (t.phase == "countdown")
+            {
+                // During countdown show the upcoming bracket (already prepared on server).
+                if (t.next_round == "sf")
+                    LayoutBracketRoundFromTemplate(_rowsRoot, "1/2", t.sf);
+                else if (t.next_round == "final")
+                    LayoutBracketRoundFromTemplate(_rowsRoot, "Финал", t.final_pairs);
+                else
+                    LayoutBracketRoundFromTemplate(_rowsRoot, "1/4", t.qf);
+            }
+        }
+
+        private void ClearRowsKeepingTemplates(Transform rowsRoot)
+        {
+            if (rowsRoot == null) return;
+            for (var i = rowsRoot.childCount - 1; i >= 0; i--)
+            {
+                var ch = rowsRoot.GetChild(i);
+                if (ch == null) continue;
+                if (ch.name == "RoundHeaderTemplate" || ch.name == "PairRowTemplate")
+                    continue;
+                Destroy(ch.gameObject);
+            }
+
+            var hdrT = rowsRoot.Find("RoundHeaderTemplate");
+            if (hdrT != null) hdrT.gameObject.SetActive(false);
+            var rowT = rowsRoot.Find("PairRowTemplate");
+            if (rowT != null) rowT.gameObject.SetActive(false);
+        }
+
+        private void LayoutBracketRoundFromTemplate(Transform parent, string title, ArenaPairRow[] rows)
+        {
+            if (parent == null || rows == null || rows.Length == 0)
+                return;
+
+            var hdrT = _headerTemplate != null ? _headerTemplate : parent.Find("RoundHeaderTemplate")?.GetComponent<TMP_Text>();
+            TMP_Text header;
+            if (hdrT != null)
+            {
+                header = UnityEngine.Object.Instantiate(hdrT, parent);
+                header.gameObject.name = "RoundHeader";
+                header.gameObject.SetActive(true);
+                header.text = title;
+            }
+            else
+            {
+                var headerGo = CreateTmp(parent, title, 22, FontStyles.Bold);
+                header = headerGo.GetComponent<TMP_Text>();
+            }
+
+            foreach (var pr in rows)
+                CreatePairRowFromTemplate(parent, pr);
+        }
+
+        private void CreatePairRowFromTemplate(Transform parent, ArenaPairRow pr)
+        {
+            if (parent == null || pr == null) return;
+
+            var rowT = _pairRowTemplate != null ? _pairRowTemplate : parent.Find("PairRowTemplate");
+            Transform row;
+            if (rowT != null)
+            {
+                row = UnityEngine.Object.Instantiate(rowT, parent);
+                row.gameObject.name = "BracketRow";
+                row.gameObject.SetActive(true);
+            }
+            else
+            {
+                // Old procedural fallback
+                var rowGo = new GameObject("BracketRow", typeof(RectTransform));
+                rowGo.transform.SetParent(parent, false);
+                row = rowGo.transform;
+                var rowRt = rowGo.GetComponent<RectTransform>();
+                rowRt.anchorMin = new Vector2(0f, 1f);
+                rowRt.anchorMax = new Vector2(1f, 1f);
+                rowRt.pivot = new Vector2(0.5f, 1f);
+                rowRt.sizeDelta = new Vector2(0f, 72f);
+                var rowLe = rowGo.AddComponent<LayoutElement>();
+                rowLe.minHeight = 64f;
+                rowLe.preferredHeight = 72f;
+                rowLe.flexibleWidth = 1f;
+                var hl = rowGo.AddComponent<HorizontalLayoutGroup>();
+                hl.childAlignment = TextAnchor.MiddleCenter;
+                hl.spacing = 10f;
+                hl.padding = new RectOffset(10, 10, 6, 6);
+                hl.childForceExpandHeight = true;
+                hl.childForceExpandWidth = false;
+            }
+
+            var leftName = row.Find("LeftName")?.GetComponent<TMP_Text>();
+            if (leftName == null) leftName = row.Find("Txt")?.GetComponent<TMP_Text>();
+            if (leftName != null) leftName.text = pr.display_a ?? "";
+
+            var rightName = row.Find("RightName")?.GetComponent<TMP_Text>();
+            if (rightName != null) rightName.text = pr.display_b ?? "";
+
+            var hpA = row.Find("HpA/Fill")?.GetComponent<Image>();
+            if (hpA != null) SetHp(hpA, pr.hp_a);
+            else
+            {
+                // legacy name: "Hp" was a fill image itself
+                var legacy = row.Find("Hp")?.GetComponent<Image>();
+                if (legacy != null) SetHp(legacy, pr.hp_a);
+            }
+
+            var hpB = row.Find("HpB/Fill")?.GetComponent<Image>();
+            if (hpB != null) SetHp(hpB, pr.hp_b);
+
+            var status = row.Find("Status")?.GetComponent<TMP_Text>();
+            if (status != null) status.text = FormatPairStatus(pr.status);
         }
 
         private static string PhaseTitle(string phase)
@@ -795,7 +1044,11 @@ namespace Project.UI
         {
             if (img == null)
                 return;
-            img.fillAmount = Mathf.Clamp01(hp / 150f);
+            // Server may send hp as 0..150 or as normalized 0..1. Support both.
+            if (hp <= 1.01f)
+                img.fillAmount = Mathf.Clamp01(hp);
+            else
+                img.fillAmount = Mathf.Clamp01(hp / 150f);
         }
 
         private void HideBracket()

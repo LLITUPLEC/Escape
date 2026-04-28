@@ -742,6 +742,43 @@ local function apply_gravity_and_refill(state)
   return find_matches(board)
 end
 
+-- Simulation-only gravity/refill:
+-- Make bot's "quality" simulation configurable by y_min.
+-- Also avoid consuming spawn queues (otherwise bot "knows" upcoming pieces),
+-- so refill uses RNG from SPAWN_POOL.
+local function apply_gravity_and_refill_sim_ymin(state, y_min)
+  local board = state.board
+  local ymin = tonumber(y_min)
+  if ymin == nil then ymin = CFG.ACTIVE_Y_MIN end
+  if ymin < 0 then ymin = 0 end
+  if ymin > CFG.HEIGHT - 1 then ymin = CFG.HEIGHT - 1 end
+
+  for x = 0, CFG.SIZE - 1 do
+    local write_y = CFG.HEIGHT - 1
+    for y = CFG.HEIGHT - 1, ymin, -1 do
+      local t = bget(board, x, y)
+      if t ~= 0 then
+        bset(board, x, write_y, t)
+        if write_y ~= y then bset(board, x, y, 0) end
+        write_y = write_y - 1
+      end
+    end
+    for y = write_y, ymin, -1 do
+      bset(board, x, y, 0)
+    end
+  end
+
+  for y = ymin, CFG.HEIGHT - 1 do
+    for x = 0, CFG.SIZE - 1 do
+      if bget(board, x, y) == 0 then
+        bset(board, x, y, CFG.SPAWN_POOL[math.random(1, #CFG.SPAWN_POOL)])
+      end
+    end
+  end
+
+  return find_matches(board)
+end
+
 local function try_swap(board, x1, y1, x2, y2)
   if not in_active_server(x1, y1) or not in_active_server(x2, y2) then return false, nil end
   if math.abs(x1 - x2) + math.abs(y1 - y2) ~= 1 then return false, nil end
@@ -975,9 +1012,18 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
 
     local game_over_payload = { winnerUserId = winner }
+    -- Arena tournament meta for client UX (no history bracket, show modal on final win / any loss).
+    if state.arena_mirror ~= nil then
+      game_over_payload.arenaTournamentId = state.arena_mirror.tournament_id or ""
+      game_over_payload.arenaRound = state.arena_mirror.round or ""
+      game_over_payload.arenaBetTier = state.arena_mirror.bet_tier or ""
+    end
     if state.mode == "pve" and winner == state.owner_user_id then
       if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
-        local progress = read_pve_progress(state.owner_user_id)
+        local progress = { level = 1, xp = 0 }
+        if type(read_pve_progress) == "function" then
+          progress = read_pve_progress(state.owner_user_id) or progress
+        end
         state.last_reward = {
           reward_xp = 0,
           reward_gold = 0,
@@ -1003,7 +1049,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode == "pve" and winner == state.bot_user_id then
       if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
-        local progress = read_pve_progress(state.owner_user_id)
+        local progress = { level = 1, xp = 0 }
+        if type(read_pve_progress) == "function" then
+          progress = read_pve_progress(state.owner_user_id) or progress
+        end
         state.last_reward = {
           reward_xp = 0,
           reward_gold = 0,
@@ -1021,7 +1070,31 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardMatter = 0
       game_over_payload.newLevel = state.last_reward.level or 1
     end
-    arena_on_match_finished(state, winner)
+
+    -- Arena финал: показываем финальную награду в UI (сама выдача — в arena_tournament.lua).
+    if game_over_payload.arenaRound == "final"
+        and state.owner_user_id ~= nil and winner == state.owner_user_id then
+      local bt = string.lower(tostring(game_over_payload.arenaBetTier or "green"))
+      if bt == "blue" then
+        game_over_payload.rewardGold = 1200
+        game_over_payload.rewardOre = 1200
+      elseif bt == "purple" then
+        game_over_payload.rewardGold = 2400
+        game_over_payload.rewardOre = 2400
+      else
+        game_over_payload.rewardGold = 600
+        game_over_payload.rewardOre = 600
+      end
+    end
+    -- Arena tournament hook must never break match loop.
+    local ok_arena, err_arena = pcall(function()
+      if type(arena_on_match_finished) == "function" then
+        arena_on_match_finished(state, winner)
+      end
+    end)
+    if not ok_arena then
+      nk.logger_error("arena_on_match_finished failed: " .. tostring(err_arena))
+    end
     dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
   end
@@ -1246,7 +1319,17 @@ local function resolve_action(state, action, actor_id, opponent_id)
   end
 
   while true do
-    local cascade = apply_gravity_and_refill(state)
+    local cascade = nil
+    if state._sim_quality_y_min ~= nil then
+      local ymin = tonumber(state._sim_quality_y_min)
+      if ymin ~= nil and ymin > 0 then
+        cascade = apply_gravity_and_refill_sim_ymin(state, ymin)
+      else
+        cascade = apply_gravity_and_refill(state)
+      end
+    else
+      cascade = apply_gravity_and_refill(state)
+    end
     anim_steps[#anim_steps + 1] = clone_step(state.board, 2)
     if #cascade == 0 then break end
     extra_turn = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
@@ -4748,6 +4831,7 @@ local function simulate_and_score_action(state, bot_user_id, player_user_id, act
       [player_user_id] = sim_player,
     },
     _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0 },
+    _sim_quality_y_min = (tonumber(CFG.BOT_SIM_QUALITY_Y_MIN) or CFG.ACTIVE_Y_MIN),
   }
 
   if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
@@ -5104,7 +5188,11 @@ local function match_join(context, dispatcher, tick, state, presences)
       -- Арена: один живой игрок vs серверный «бот» — правила как у authoritative PvP (150 HP, без экипа).
       if state.arena_pvp_style == true then
         state.bot_id = "arena_bot"
-        state.bot_user_id = make_bot_user_id("arena_bot")
+        -- IMPORTANT: arena_tournament may pass a unique bot_user_id per bracket slot.
+        -- Do not override it if it's already set.
+        if state.bot_user_id == nil or state.bot_user_id == "" then
+          state.bot_user_id = make_bot_user_id("arena_bot")
+        end
 
         state.started = true
         state.players_sorted = { player_id, state.bot_user_id }
@@ -5297,7 +5385,14 @@ local function match_leave(context, dispatcher, tick, state, presences)
       local winner = nil
       for uid, _ in pairs(state.presences) do winner = uid end
       if winner ~= nil then
-        arena_on_match_finished(state, winner)
+        local ok_arena, err_arena = pcall(function()
+          if type(arena_on_match_finished) == "function" then
+            arena_on_match_finished(state, winner)
+          end
+        end)
+        if not ok_arena then
+          nk.logger_error("arena_on_match_finished failed (disconnect): " .. tostring(err_arena))
+        end
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
@@ -5392,7 +5487,14 @@ local function match_loop(context, dispatcher, tick, state, messages)
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
       if winner then
-        arena_on_match_finished(state, winner)
+        local ok_arena, err_arena = pcall(function()
+          if type(arena_on_match_finished) == "function" then
+            arena_on_match_finished(state, winner)
+          end
+        end)
+        if not ok_arena then
+          nk.logger_error("arena_on_match_finished failed (timeout): " .. tostring(err_arena))
+        end
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil

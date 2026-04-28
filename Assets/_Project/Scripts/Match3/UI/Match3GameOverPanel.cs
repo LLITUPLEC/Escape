@@ -28,13 +28,15 @@ namespace Project.Match3
             rewardText ??= transform.Find("RewardText")?.GetComponent<TMP_Text>();
         }
 
-        public void Show(bool won, string customRewardText = null)
+        public void Show(bool won, string customRewardText = null, string customTitle = null)
         {
             gameObject.SetActive(true);
 
             if (titleText != null)
             {
-                titleText.text  = won ? "Победа!" : "Поражение!";
+                titleText.text = !string.IsNullOrWhiteSpace(customTitle)
+                    ? customTitle
+                    : (won ? "Победа!" : "Поражение!");
                 titleText.color = won
                     ? new Color(1f, 0.90f, 0.25f)
                     : new Color(0.85f, 0.35f, 0.35f);
