@@ -825,32 +825,74 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   local healed = false
   local pending_heal = 0
 
+  -- find_matches() возвращает линии по горизонтали/вертикали.
+  -- В L/T-формах один и тот же камень попадает в две линии (пересечение),
+  -- и прежняя логика считала его дважды (мана/урон/хил). Считаем эффекты по уникальным клеткам.
+  local seen = {} -- key -> true
+  local unique_counts = {} -- type -> count
+
+  local function mark_cell(t, x, y)
+    if t == nil then return end
+    local k = tostring(t) .. ":" .. tostring(x) .. ":" .. tostring(y)
+    if seen[k] then return end
+    seen[k] = true
+    unique_counts[t] = (unique_counts[t] or 0) + 1
+  end
+
   for _, m in ipairs(matches) do
     if m.count >= 5 then extra_turn = true end
     if sim ~= nil and m.count >= 5 then sim.extra_turn = true end
-    if m.type == 1 or m.type == 2 or m.type == 3 then
-      local gain = mana_gain_per_object(state, CFG.GEM_MANA[m.type] or 0) * m.count
+    if m.cells ~= nil then
+      for _, c in ipairs(m.cells) do
+        if c ~= nil and in_active_server(c.x, c.y) then
+          mark_cell(m.type, c.x, c.y)
+        end
+      end
+    end
+  end
+
+  local function cnt(t)
+    return tonumber(unique_counts[t]) or 0
+  end
+
+  -- Mana gems (1..3)
+  for t = 1, 3 do
+    local c = cnt(t)
+    if c > 0 then
+      local gain = mana_gain_per_object(state, CFG.GEM_MANA[t] or 0) * c
       actor.mana = math.min(CFG.MAX_MANA, actor.mana + gain)
       if sim ~= nil then
-        if m.type == 1 then sim.red = sim.red + m.count
-        elseif m.type == 2 then sim.yellow = sim.yellow + m.count
-        elseif m.type == 3 then sim.green = sim.green + m.count end
+        if t == 1 then sim.red = sim.red + c
+        elseif t == 2 then sim.yellow = sim.yellow + c
+        elseif t == 3 then sim.green = sim.green + c end
       end
-    elseif m.type == 4 then
+    end
+  end
+
+  -- Skulls (4)
+  do
+    local c = cnt(4)
+    if c > 0 then
       if affix == "energy_block" then
-        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * m.count
+        actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * c
       else
         -- Весь урон от черепов за ход (все каскады) + база персонажа — один бросок в конце resolve_action.
-        state._action_damage_flat = (state._action_damage_flat or 0) + CFG.SKULL_DAMAGE * m.count
+        state._action_damage_flat = (state._action_damage_flat or 0) + CFG.SKULL_DAMAGE * c
       end
       if affix == "monster_rage" and actor_id == state.bot_user_id then
-        state._monster_rage_bombs_action = (state._monster_rage_bombs_action or 0) + m.count
+        state._monster_rage_bombs_action = (state._monster_rage_bombs_action or 0) + c
       end
-    elseif m.type == 5 then
+    end
+  end
+
+  -- Ankhs (5)
+  do
+    local c = cnt(5)
+    if c > 0 then
       healed = true
-      pending_heal = pending_heal + CFG.ANKH_HEAL * m.count
+      pending_heal = pending_heal + CFG.ANKH_HEAL * c
       if affix == "mana_vampire" and opp ~= nil then
-        local vamp_gain = mana_gain_per_object(state, 2) * m.count
+        local vamp_gain = mana_gain_per_object(state, 2) * c
         opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
       end
     end
@@ -1088,14 +1130,14 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
         and state.owner_user_id ~= nil and winner == state.owner_user_id then
       local bt = string.lower(tostring(game_over_payload.arenaBetTier or "green"))
       if bt == "blue" then
-        game_over_payload.rewardGold = 1200
-        game_over_payload.rewardOre = 1200
-      elseif bt == "purple" then
-        game_over_payload.rewardGold = 2400
-        game_over_payload.rewardOre = 2400
-      else
         game_over_payload.rewardGold = 600
         game_over_payload.rewardOre = 600
+      elseif bt == "purple" then
+        game_over_payload.rewardGold = 1200
+        game_over_payload.rewardOre = 1200
+      else
+        game_over_payload.rewardGold = 300
+        game_over_payload.rewardOre = 300
       end
     end
     -- Arena tournament hook must never break match loop.

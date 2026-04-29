@@ -96,6 +96,26 @@ MonoBehaviour:
   progressTmp: {fileID: 4810224791170980780}
   rewardTmp: {fileID: 3779370088465469917}
   lockOverlay: {fileID: 406354794153790091}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 0.61154795, g: 1, b: 0, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 36
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 2.4
+  unclaimedGlowExpandPx: 10
+  unclaimedGlowZOffset: 0.1
 --- !u!114 &5163102497308366121
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -512,6 +532,7 @@ MonoBehaviour:
   - {fileID: 9022676030541892077}
   - {fileID: 195738802302598604}
   - {fileID: 5825418940541033126}
+  overrideArrowColorByState: 0
 --- !u!1 &1142626364746735440
 GameObject:
   m_ObjectHideFlags: 0
@@ -772,6 +793,26 @@ MonoBehaviour:
   progressTmp: {fileID: 4092454736412999410}
   rewardTmp: {fileID: 1923140302641196251}
   lockOverlay: {fileID: 5001127656385073678}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 0.6117647, g: 1, b: 0, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 36
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 2.4
+  unclaimedGlowExpandPx: 10
+  unclaimedGlowZOffset: 0.1
 --- !u!114 &7765151644205129090
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1460,8 +1501,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3152,6 +3193,26 @@ MonoBehaviour:
   progressTmp: {fileID: 7919134671826215603}
   rewardTmp: {fileID: 5510763984907755532}
   lockOverlay: {fileID: 351912034508282867}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 0.6117647, g: 1, b: 0, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 36
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 2.4
+  unclaimedGlowExpandPx: 10
+  unclaimedGlowZOffset: 0.1
 --- !u!114 &3826057184258573220
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3614,8 +3675,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3773,6 +3834,26 @@ MonoBehaviour:
   progressTmp: {fileID: 4882317067331790426}
   rewardTmp: {fileID: 4304789322729380547}
   lockOverlay: {fileID: 8881411801399029923}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 0.6117647, g: 1, b: 0, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 36
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 2.4
+  unclaimedGlowExpandPx: 10
+  unclaimedGlowZOffset: 0.1
 --- !u!114 &7530542944280792965
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4152,8 +4233,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:

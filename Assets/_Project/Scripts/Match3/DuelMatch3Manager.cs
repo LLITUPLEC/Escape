@@ -1894,7 +1894,10 @@ namespace Project.Match3
             RecalcDerivedBuffs(_myStats);
             RecalcDerivedBuffs(_opStats);
 
-            AchievementCombatBonuses.ApplyToMyStats(_myStats);
+            // PvP classic и арена-турниры: всегда базовые статы 150/0 (сервер уже присылает),
+            // поэтому бонусы достижений/экипировки НЕ применяем. В PvE и PvP(Pro) — применяем.
+            if (_isSoloBotMode || _pvpProQueue)
+                AchievementCombatBonuses.ApplyToMyStats(_myStats);
 
             _boardView?.RefreshAll(_board);
             if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
