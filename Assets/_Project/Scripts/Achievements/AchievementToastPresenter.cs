@@ -49,12 +49,12 @@ namespace Project.Achievements
 
         private void OnEnable()
         {
-            AchievementTracker.StepCompleted += Enqueue;
+            AchievementLifecycle.OnRewardClaimed += Enqueue;
         }
 
         private void OnDisable()
         {
-            AchievementTracker.StepCompleted -= Enqueue;
+            AchievementLifecycle.OnRewardClaimed -= Enqueue;
         }
 
         private void Enqueue(AchievementUnlockInfo info)

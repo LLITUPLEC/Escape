@@ -57,6 +57,45 @@ namespace Project.Achievements
                 SaveSet(PrefClaimedJson, _claimedStepTokens);
         }
 
+        /// <summary>Слияние с данными Nakama (duel_match3_stats / achievement_sync): счётчики берём как max(local,server), метки полученных — объединение.</summary>
+        public static void MergeFromAuthoritativeSnapshot(
+            IList<StringIntPair> serverStatsEntries,
+            IList<string> serverClaimedTokens)
+        {
+            EnsureLoaded();
+            var changedClaims = false;
+            var changedStats = false;
+            if (serverClaimedTokens != null)
+            {
+                foreach (var tok in serverClaimedTokens)
+                {
+                    if (string.IsNullOrEmpty(tok)) continue;
+                    if (_claimedStepTokens.Add(tok))
+                        changedClaims = true;
+                }
+                if (changedClaims)
+                    SaveSet(PrefClaimedJson, _claimedStepTokens);
+            }
+            if (serverStatsEntries != null && serverStatsEntries.Count > 0)
+            {
+                foreach (var e in serverStatsEntries)
+                {
+                    if (e == null || string.IsNullOrEmpty(e.k)) continue;
+                    var cur = GetStat(e.k);
+                    var merged = Mathf.Max(cur, e.v);
+                    if (merged != cur)
+                    {
+                        _stats[e.k] = merged;
+                        changedStats = true;
+                    }
+                }
+                if (changedStats)
+                    SaveDict(PrefStatsJson, _stats);
+            }
+            if (changedClaims || changedStats)
+                AchievementLifecycle.NotifyDataChanged();
+        }
+
         private static string StepToken(string chainId, int stepIndex) => chainId + ":" + stepIndex;
 
         private static Dictionary<string, int> LoadDict(string prefKey)
@@ -134,7 +173,7 @@ namespace Project.Achievements
         }
 
         [Serializable]
-        private sealed class StringIntPair
+        public sealed class StringIntPair
         {
             public string k;
             public int v;
@@ -147,17 +186,15 @@ namespace Project.Achievements
         }
     }
 
-    /// <summary>Статический вход для игровых систем: счётчики и события UI.</summary>
+    /// <summary>Статический вход для игровых систем: счётчики событий. Награды шагов выдаются только через <see cref="AchievementRewardClaim"/>.</summary>
     public static class AchievementTracker
     {
-        public static event Action<AchievementUnlockInfo> StepCompleted;
-
         public static void AddStat(string key, int delta = 1)
         {
             if (delta == 0 || string.IsNullOrEmpty(key))
                 return;
             AchievementProgressStorage.AddStat(key, delta);
-            EvaluateChainsForStat(key);
+            AchievementLifecycle.NotifyDataChanged();
         }
 
         public static void NotifyAbilityUsedMatch3(int actionType)
@@ -207,44 +244,11 @@ namespace Project.Achievements
             AddStat(AchievementStatKeys.DnnWinAtOneHp);
         }
 
-        private static void EvaluateChainsForStat(string statKey)
-        {
-            foreach (var chain in AchievementCatalog.Chains)
-            {
-                if (!string.Equals(chain.StatKey, statKey, StringComparison.Ordinal))
-                    continue;
-                EvaluateChain(chain);
-            }
-        }
-
-        private static void EvaluateChain(AchievementChainDefinition chain)
-        {
-            var count = AchievementProgressStorage.GetStat(chain.StatKey);
-            for (var i = 0; i < chain.Thresholds.Length; i++)
-            {
-                if (AchievementProgressStorage.IsStepClaimed(chain.ChainId, i))
-                    continue;
-                if (count < chain.Thresholds[i])
-                    continue;
-
-                AchievementProgressStorage.MarkStepClaimed(chain.ChainId, i);
-                var info = new AchievementUnlockInfo
-                {
-                    ChainId = chain.ChainId,
-                    StepIndex = i,
-                    Title = chain.Descriptions[i],
-                    RewardLine = chain.RewardTexts[i],
-                };
-                StepCompleted?.Invoke(info);
-            }
-        }
-
-        /// <summary>Повторная проверка всех цепочек (например после загрузки).</summary>
+        /// <summary>Синхронизация счётчиков с сервером / перерисовка грида — без автоматической выдачи наград.</summary>
         public static void ReevaluateAll()
         {
             AchievementProgressStorage.EnsureLoaded();
-            foreach (var chain in AchievementCatalog.Chains)
-                EvaluateChain(chain);
+            AchievementLifecycle.NotifyDataChanged();
         }
     }
 }

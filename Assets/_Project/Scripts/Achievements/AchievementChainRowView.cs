@@ -9,6 +9,7 @@ namespace Project.Achievements
     {
         [SerializeField] private AchievementChainSlotView[] slots;
         [SerializeField] private Graphic[] arrows;
+        [SerializeField] private bool overrideArrowColorByState;
 
         public void Bind(AchievementChainDefinition chain, Action<string, int> onStepClick)
         {
@@ -37,23 +38,32 @@ namespace Project.Achievements
                     : Color.white;
                 var target = chain.Thresholds[i];
                 var locked = AchievementUiRules.IsSlotLocked(chain, i, stat);
-                var completed = stat >= target;
+                var cumulativeNeed = AchievementUiRules.CumulativeRequired(chain, i);
+                var thresholdMet = stat >= cumulativeNeed;
+                var prevCumulative = i > 0 ? AchievementUiRules.CumulativeRequired(chain, i - 1) : 0;
+                var stepNeed = Mathf.Max(1, target);
 
-                var numerator = locked ? 0 : Mathf.Clamp(stat, 0, target);
+                var numerator = locked ? 0 : Mathf.Clamp(stat - prevCumulative, 0, stepNeed);
+
+                var rewardClaimed = AchievementProgressStorage.IsStepClaimed(chain.ChainId, i);
+                var canClaimReward = AchievementRewardClaim.CanClaimStep(chain, i);
 
                 slot.Apply(chain.ChainId, i, tierColor,
                     chain.Descriptions[i],
                     chain.RewardTexts[i],
                     numerator,
-                    target,
+                    stepNeed,
                     locked,
-                    completed,
+                    thresholdMet,
+                    rewardClaimed,
+                    canClaimReward,
                     onStepClick);
 
                 if (arrows != null && i < n - 1 && i < arrows.Length && arrows[i] != null)
                 {
                     arrows[i].gameObject.SetActive(true);
-                    arrows[i].color = locked ? new Color(0.35f, 0.35f, 0.37f, 1f) : new Color(1f, 0.82f, 0.16f, 1f);
+                    if (overrideArrowColorByState)
+                        arrows[i].color = locked ? new Color(0.35f, 0.35f, 0.37f, 1f) : new Color(1f, 0.82f, 0.16f, 1f);
                 }
             }
         }

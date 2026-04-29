@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +9,10 @@ using UnityEngine.UI;
 namespace Project.Achievements
 {
     /// <summary>Панель достижений на главном экране: вкладки, скролл, выезд снизу.</summary>
+    /// <remarks>
+    /// Корень <see cref="PanelRootName"/>: без LayoutGroup — дочерние RectTransform’ы (Dimmer, Sheet, …) задаются якорями вручную.
+    /// Внутри <c>AchievementChainRowPrefabTemplate</c> горизонтальный ряд слотов/стрелок позиционируется вручную; вертикальный стек строк в скролле остаётся через VerticalLayoutGroup на Content + ContentSizeFitter (высота строки — LayoutElement на корне строки).
+    /// </remarks>
     public sealed class AchievementsPanelController : MonoBehaviour
     {
         public const string PanelRootName = "AchievementsPanelRoot";
@@ -77,12 +82,12 @@ namespace Project.Achievements
         private void OnEnable()
         {
             TryBindOpenButton();
-            AchievementTracker.StepCompleted += OnStepCompleted;
+            AchievementLifecycle.OnDataChanged += OnAchievementLifecycleChanged;
         }
 
         private void OnDisable()
         {
-            AchievementTracker.StepCompleted -= OnStepCompleted;
+            AchievementLifecycle.OnDataChanged -= OnAchievementLifecycleChanged;
         }
 
         private void OnDestroy()
@@ -95,7 +100,7 @@ namespace Project.Achievements
                 dimmerButton.onClick.RemoveListener(Hide);
         }
 
-        private void OnStepCompleted(AchievementUnlockInfo _)
+        private void OnAchievementLifecycleChanged()
         {
             RefreshGrid(_currentTab);
         }
@@ -232,7 +237,22 @@ namespace Project.Achievements
             if (_stepDetailModal == null)
                 _stepDetailModal = AchievementStepDetailModal.Ensure(transform, achievementUiFont);
             var reward = def.RewardTexts != null && stepIndex < def.RewardTexts.Length ? def.RewardTexts[stepIndex] : string.Empty;
-            _stepDetailModal.Show(def.Descriptions[stepIndex], reward);
+            var claimed = AchievementProgressStorage.IsStepClaimed(def.ChainId, stepIndex);
+            var canClaim = AchievementRewardClaim.CanClaimStep(def, stepIndex);
+
+            Action onClaim = null;
+            if (canClaim)
+            {
+                onClaim = () => ClaimStepRoutineAsync(def.ChainId, stepIndex);
+            }
+
+            _stepDetailModal.Show(def.Descriptions[stepIndex], reward, canClaim, claimed, onClaim);
+        }
+
+        private async void ClaimStepRoutineAsync(string chainId, int stepIndex)
+        {
+            await AchievementRewardClaim.TryClaimStepAsync(chainId, stepIndex, CancellationToken.None);
+            RefreshGrid(_currentTab);
         }
 
         private void TryBindOpenButton()

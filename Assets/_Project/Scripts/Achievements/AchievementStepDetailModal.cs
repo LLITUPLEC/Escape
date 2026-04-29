@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,10 +8,15 @@ namespace Project.Achievements
     /// <summary>Модалка с текстом условия и награды для шага цепочки (открывается по тапу по слоту).</summary>
     public sealed class AchievementStepDetailModal : MonoBehaviour
     {
+        private const string RewardFontResourcePath = "Fonts & Materials/LiberationSans SDF";
+        private const string RewardMaterialResourcePath = "Fonts & Materials/LiberationSans SDF - Drop Shadow";
+
         private CanvasGroup _rootCg;
         private TMP_Text _titleTmp;
         private TMP_Text _bodyTmp;
         private TMP_Text _rewardTmp;
+        private Button _primaryButton;
+        private TMP_Text _primaryButtonLabel;
 
         public static AchievementStepDetailModal Ensure(Transform parent, TMP_FontAsset font)
         {
@@ -57,45 +63,51 @@ namespace Project.Achievements
             prt.anchorMin = new Vector2(0.5f, 0.5f);
             prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.pivot = new Vector2(0.5f, 0.5f);
-            prt.sizeDelta = new Vector2(560f, 360f);
+            prt.sizeDelta = new Vector2(560f, 0f);
             var pImg = panel.AddComponent<Image>();
             pImg.color = new Color(0.09f, 0.10f, 0.14f, 0.98f);
+            var panelFitter = panel.AddComponent<ContentSizeFitter>();
+            panelFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            panelFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var vl = panel.AddComponent<VerticalLayoutGroup>();
             vl.padding = new RectOffset(20, 20, 18, 14);
             vl.spacing = 12f;
-            vl.childAlignment = TextAnchor.UpperLeft;
+            vl.childAlignment = TextAnchor.MiddleCenter;
             vl.childControlHeight = true;
             vl.childControlWidth = true;
             vl.childForceExpandWidth = true;
 
-            _titleTmp = MakeTmp(panel.transform, "Title", "Что сделать", 22f, FontStyles.Bold);
-            _bodyTmp = MakeTmp(panel.transform, "Body", "", 18f, FontStyles.Normal);
+            _titleTmp = MakeTmp(panel.transform, "Title", "Что сделать", 30f, FontStyles.Bold);
+            _titleTmp.alignment = TextAlignmentOptions.Center;
+            _bodyTmp = MakeTmp(panel.transform, "Body", "", 30f, FontStyles.Normal);
+            _bodyTmp.alignment = TextAlignmentOptions.Center;
             _bodyTmp.textWrappingMode = TextWrappingModes.Normal;
             var bodyLe = _bodyTmp.gameObject.AddComponent<LayoutElement>();
-            bodyLe.flexibleHeight = 1f;
+            bodyLe.flexibleHeight = 0f;
             bodyLe.minHeight = 80f;
 
-            _rewardTmp = MakeTmp(panel.transform, "Reward", "", 17f, FontStyles.Italic);
+            _rewardTmp = MakeTmp(panel.transform, "Reward", "", 30f, FontStyles.Italic);
+            _rewardTmp.alignment = TextAlignmentOptions.Center;
             _rewardTmp.color = new Color(0.55f, 0.92f, 0.48f, 1f);
 
             var btnGo = new GameObject("OkButton", typeof(RectTransform));
             btnGo.transform.SetParent(panel.transform, false);
             var btnRt = btnGo.GetComponent<RectTransform>();
-            btnRt.sizeDelta = new Vector2(200f, 44f);
+            btnRt.sizeDelta = new Vector2(220f, 44f);
             var btnLe = btnGo.AddComponent<LayoutElement>();
             btnLe.preferredHeight = 44f;
             btnLe.minHeight = 44f;
             var btnImg = btnGo.AddComponent<Image>();
             btnImg.color = new Color(0.28f, 0.52f, 0.85f, 1f);
-            var btn = btnGo.AddComponent<Button>();
-            btn.targetGraphic = btnImg;
-            btn.onClick.AddListener(Hide);
-            var btnLbl = MakeTmp(btnGo.transform, "Label", "Понятно", 18f, FontStyles.Bold);
-            Stretch(btnLbl.rectTransform);
-            btnLbl.alignment = TextAlignmentOptions.Center;
+            _primaryButton = btnGo.AddComponent<Button>();
+            _primaryButton.targetGraphic = btnImg;
+            _primaryButtonLabel = MakeTmp(btnGo.transform, "Label", "Понятно", 35f, FontStyles.Bold);
+            Stretch(_primaryButtonLabel.rectTransform);
+            _primaryButtonLabel.alignment = TextAlignmentOptions.Center;
 
             AchievementsTmpMaterialRepair.RepairHierarchy(root, _font);
+            ApplyRewardFontPreset();
         }
 
         private TMP_Text MakeTmp(Transform parent, string name, string text, float size, FontStyles fs)
@@ -129,12 +141,37 @@ namespace Project.Achievements
 
         public void Show(string requirementText, string rewardText)
         {
+            Show(requirementText, rewardText, false, false, null);
+        }
+
+        public void Show(string requirementText, string rewardText, bool showClaimReward, bool alreadyClaimed, Action onClaimClicked)
+        {
             if (_titleTmp != null)
-                _titleTmp.text = "Условие";
+                _titleTmp.text = alreadyClaimed ? "Получено" : "Условие";
             if (_bodyTmp != null)
                 _bodyTmp.text = requirementText ?? string.Empty;
             if (_rewardTmp != null)
                 _rewardTmp.text = string.IsNullOrEmpty(rewardText) ? string.Empty : rewardText;
+            ApplyRewardFontPreset();
+
+            if (_primaryButton != null)
+            {
+                _primaryButton.onClick.RemoveAllListeners();
+                var claim = !alreadyClaimed && showClaimReward && onClaimClicked != null;
+                if (_primaryButtonLabel != null)
+                    _primaryButtonLabel.text = alreadyClaimed ? "Получено" : (claim ? "Получить" : "Понятно");
+                if (claim)
+                {
+                    _primaryButton.onClick.AddListener(() =>
+                    {
+                        onClaimClicked.Invoke();
+                        Hide();
+                    });
+                }
+                else
+                    _primaryButton.onClick.AddListener(Hide);
+            }
+
             gameObject.SetActive(true);
             if (_rootCg != null)
             {
@@ -144,6 +181,22 @@ namespace Project.Achievements
             }
 
             transform.SetAsLastSibling();
+        }
+
+        private void ApplyRewardFontPreset()
+        {
+            if (_rewardTmp == null)
+                return;
+
+            var rewardFont = Resources.Load<TMP_FontAsset>(RewardFontResourcePath);
+            if (rewardFont != null)
+                _rewardTmp.font = rewardFont;
+
+            var dropShadowPreset = Resources.Load<Material>(RewardMaterialResourcePath);
+            if (dropShadowPreset != null)
+                _rewardTmp.fontSharedMaterial = dropShadowPreset;
+            else if (rewardFont != null && rewardFont.material != null)
+                _rewardTmp.fontSharedMaterial = rewardFont.material;
         }
 
         public void Hide()

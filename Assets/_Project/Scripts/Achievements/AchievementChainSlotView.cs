@@ -14,6 +14,12 @@ namespace Project.Achievements
         [SerializeField] private TMP_Text progressTmp;
         [SerializeField] private TMP_Text rewardTmp;
         [SerializeField] private GameObject lockOverlay;
+        [Header("Optional runtime color overrides")]
+        [SerializeField] private bool overrideFrameColorByState;
+        [SerializeField] private bool overrideFillColorsByTier;
+        [Header("Claimed visuals")]
+        [SerializeField] private bool showClaimedOverlay = true;
+        [SerializeField] private Color claimedOverlayColor = new Color(0.45f, 0.95f, 0.55f, 0.22f);
 
         private CanvasGroup _rootCanvasGroup;
         private Button _infoButton;
@@ -35,13 +41,15 @@ namespace Project.Achievements
             int numerator,
             int denominator,
             bool lockedByChain,
-            bool completed,
+            bool thresholdMet,
+            bool rewardClaimed,
+            bool canClaimReward,
             Action<string, int> onStepClick)
         {
             if (rewardTmp != null)
                 rewardTmp.text = rewardLine ?? string.Empty;
 
-            var grayLocked = lockedByChain && !completed;
+            var grayLocked = lockedByChain && !thresholdMet;
 
             if (progressTmp != null)
                 progressTmp.text = denominator > 0 ? numerator + "/" + denominator : string.Empty;
@@ -55,7 +63,7 @@ namespace Project.Achievements
                 progressSlider.interactable = false;
 
                 var fill = progressSlider.fillRect != null ? progressSlider.fillRect.GetComponent<Image>() : null;
-                if (fill != null)
+                if (fill != null && overrideFillColorsByTier)
                     fill.color = tierAccent;
 
                 var bg = progressSlider.transform.Find("Background");
@@ -67,13 +75,18 @@ namespace Project.Achievements
                 }
             }
 
-            if (fillImage != null)
+            if (fillImage != null && overrideFillColorsByTier)
                 fillImage.color = tierAccent;
 
-            if (frameImage != null)
-                frameImage.color = grayLocked
+            if (frameImage != null && overrideFrameColorByState)
+            {
+                Color frameCol = grayLocked
                     ? new Color(0.35f, 0.35f, 0.37f, 1f)
-                    : tierAccent;
+                    : canClaimReward
+                        ? new Color(0.95f, 0.76f, 0.22f, 1f)
+                        : tierAccent;
+                frameImage.color = frameCol;
+            }
 
             if (iconImage != null)
             {
@@ -93,14 +106,19 @@ namespace Project.Achievements
 
             if (lockOverlay != null)
             {
-                lockOverlay.SetActive(grayLocked);
+                var showOverlay = grayLocked || (showClaimedOverlay && rewardClaimed);
+                lockOverlay.SetActive(showOverlay);
                 var lockImg = lockOverlay.GetComponent<Image>();
                 if (lockImg != null)
+                {
+                    if (rewardClaimed && !grayLocked)
+                        lockImg.color = claimedOverlayColor;
                     lockImg.raycastTarget = false;
+                }
             }
 
             if (_rootCanvasGroup != null)
-                _rootCanvasGroup.alpha = completed ? 1f : grayLocked ? 0.55f : 1f;
+                _rootCanvasGroup.alpha = rewardClaimed ? 1f : grayLocked ? 0.55f : 1f;
 
             gameObject.name = "Step_" + stepIndex + "_" + chainId;
 

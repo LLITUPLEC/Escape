@@ -10,6 +10,7 @@ end
 
 local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
 local Metrics = runtime_lua_require("modules.duel_match3_metrics", "duel_match3_metrics")
+local Ach = runtime_lua_require("modules.duel_match3_achievements", "duel_match3_achievements")
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -1002,9 +1003,20 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   local prev_active_user_id = state.active_user_id
   local action_type = action and tonumber(action.actionType) or 0
 
+  if actor ~= nil and action ~= nil then
+    local ask = Ach.map_action_to_stat(action.actionType)
+    if ask ~= nil then
+      Ach.inc_session(state, actor, ask, 1)
+    end
+  end
+
+  Ach.snapshot_hp_was_exactly_one(state)
+
   if not keep_turn and actor ~= nil and opponent ~= nil then
     apply_turn_end_affix_effects(state, actor, opponent, extra_turn == true)
   end
+
+  Ach.snapshot_hp_was_exactly_one(state)
 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then
     local winner = state.stats[actor].hp > 0 and actor or opponent
@@ -1094,6 +1106,12 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     end)
     if not ok_arena then
       nk.logger_error("arena_on_match_finished failed: " .. tostring(err_arena))
+    end
+    local ok_achi, err_achi = pcall(function()
+      Ach.flush_match_finish(state, winner, actor, opponent, action_type)
+    end)
+    if not ok_achi then
+      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
     end
     dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
@@ -1281,6 +1299,14 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local anim_steps = {}
   local keep_turn = false
   local crit_triggered = false
+  local five_plus_segments = 0
+  local function tally_five_plus(matches)
+    if matches == nil then return end
+    for _, m in ipairs(matches) do
+      local c = tonumber(m.count)
+      if c ~= nil and c >= 5 then five_plus_segments = five_plus_segments + 1 end
+    end
+  end
   if action.actionType == 1 then
     local fy = client_to_server_y(action.fromY)
     local ty = client_to_server_y(action.toY)
@@ -1313,6 +1339,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local extra_turn = false
 
   if #initial_matches > 0 then
+    tally_five_plus(initial_matches)
     extra_turn = apply_match_effects(state, actor_id, opponent_id, initial_matches, extra_turn)
     clear_matches(state.board, initial_matches)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
@@ -1332,6 +1359,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
     end
     anim_steps[#anim_steps + 1] = clone_step(state.board, 2)
     if #cascade == 0 then break end
+    tally_five_plus(cascade)
     extra_turn = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
     clear_matches(state.board, cascade)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
@@ -1349,6 +1377,10 @@ local function resolve_action(state, action, actor_id, opponent_id)
   if has_affix(state, "monster_rage") and actor_id == state.bot_user_id and mrb > 0 then
     local actor = state.stats[actor_id]
     actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 3 * mrb
+  end
+
+  if five_plus_segments >= 2 then
+    Ach.inc_session(state, actor_id, Ach.stat_key_dnn(), 1)
   end
 
   state.last_crit = crit_triggered
@@ -3278,26 +3310,13 @@ award_pve_defeat = function(user_id, match_epoch_snapshot)
 end
 
 local function read_match3_stats(user_id)
-  local rows = nk.storage_read({
-    {
-      collection = CFG.STATS_COLLECTION,
-      key = CFG.STATS_KEY,
-      user_id = user_id,
-    },
-  })
-
-  if rows == nil or #rows == 0 then
-    return { played = 0, wins = 0, losses = 0 }, nil
-  end
-
-  local row = rows[1]
-  local val = decode_storage_value(row) or {}
+  local val, version = Ach.storage_read_match3_summary_val(user_id)
   local stats = {
     played = tonumber(val.played) or 0,
     wins = tonumber(val.wins) or 0,
     losses = tonumber(val.losses) or 0,
   }
-  return stats, row.version
+  return stats, version
 end
 
 local function duel_match3_stats_get(ctx, payload)
@@ -3307,12 +3326,23 @@ local function duel_match3_stats_get(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local stats = read_match3_stats(user_id)
+    local stats, _ = read_match3_stats(user_id)
+    local val_full, _fv = Ach.storage_read_match3_summary_val(user_id)
+    local ach = {}
+    if type(val_full.achievement_stats) == "table" then
+      ach = val_full.achievement_stats
+    end
+    local claimed = {}
+    if type(val_full.achievement_claimed) == "table" then
+      claimed = val_full.achievement_claimed
+    end
     return nk.json_encode({
       ok = true,
       played = stats.played or 0,
       wins = stats.wins or 0,
       losses = stats.losses or 0,
+      achievement_stats = ach,
+      achievement_claimed = claimed,
     })
   end)
 
@@ -3345,24 +3375,25 @@ local function duel_match3_stats_record(ctx, payload)
 
     local max_retries = 5
     for i = 1, max_retries do
-      local stats, version = read_match3_stats(user_id)
-      stats.played = (stats.played or 0) + 1
+      local val, version = Ach.storage_read_match3_summary_val(user_id)
+      local played = (tonumber(val.played) or 0) + 1
+      local wins = tonumber(val.wins) or 0
+      local losses = tonumber(val.losses) or 0
       if won then
-        stats.wins = (stats.wins or 0) + 1
+        wins = wins + 1
       else
-        stats.losses = (stats.losses or 0) + 1
+        losses = losses + 1
       end
+      val.played = played
+      val.wins = wins
+      val.losses = losses
+      val.updated_at = os.time()
 
       local write_obj = {
         collection = CFG.STATS_COLLECTION,
         key = CFG.STATS_KEY,
         user_id = user_id,
-        value = {
-          played = stats.played,
-          wins = stats.wins,
-          losses = stats.losses,
-          updated_at = os.time(),
-        },
+        value = val,
         permission_read = 1,
         permission_write = 0,
       }
@@ -3377,9 +3408,9 @@ local function duel_match3_stats_record(ctx, payload)
       if write_ok then
         return nk.json_encode({
           ok = true,
-          played = stats.played,
-          wins = stats.wins,
-          losses = stats.losses,
+          played = played,
+          wins = wins,
+          losses = losses,
         })
       end
 
@@ -5712,8 +5743,18 @@ local function duel_match3_item_catalog_get(ctx, payload)
   return result
 end
 
+Ach.configure({
+  decode_storage_value = decode_storage_value,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  ensure_character_sheet_initialized = ensure_character_sheet_initialized,
+  guard_assert_client_epoch_matches = guard_assert_client_epoch_matches,
+})
+
 nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
 nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
+nk.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
+nk.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")

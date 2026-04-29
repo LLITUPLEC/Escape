@@ -118,6 +118,7 @@ namespace Project.Match3
         }
 
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
+        private const string RpcMatch3AchievementSync = "duel_match3_achievement_sync";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
         private const string DefaultPveBotId = "mine_1";
         private const string RewardExpIconPath = "Assets/_Project/img/resources_hud/exp.png";
@@ -1344,6 +1345,9 @@ namespace Project.Match3
 
             ReportAchievementProgressAfterGameOver(won);
 
+            if (_match != null)
+                _ = PullAchievementsAuthoritativeSyncAsync();
+
             _isMyTurn    = false;
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
@@ -1368,6 +1372,12 @@ namespace Project.Match3
                 return;
             }
 
+            if (_match != null)
+            {
+                _pendingPetardFinisherForAchievement = false;
+                return;
+            }
+
             if (_isArenaTournamentMatch && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
                 AchievementTracker.NotifyBlacksmithTournamentFinalWin();
             else if (!_isArenaTournamentMatch)
@@ -1382,8 +1392,32 @@ namespace Project.Match3
             _pendingPetardFinisherForAchievement = false;
         }
 
+        private async Task PullAchievementsAuthoritativeSyncAsync()
+        {
+            try
+            {
+                if (NakamaBootstrap.Instance?.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts != null ? _cts.Token : CancellationToken.None);
+                var rpc = JsonUtility.ToJson(new SessionEpochRpcPayload { session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
+                var result =
+                    await NakamaBootstrap.Instance.Client.RpcAsync(
+                        NakamaBootstrap.Instance.Session, RpcMatch3AchievementSync, rpc);
+                var parsed = JsonUtility.FromJson<AchievementSyncRpcResponse>(result.Payload ?? "");
+                if (parsed == null || !parsed.ok)
+                    return;
+                AchievementProgressStorage.MergeFromAuthoritativeSnapshot(parsed.achievement_stats_flat, parsed.achievement_claimed);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Match3] achievement sync: " + e.Message);
+            }
+        }
+
         private void TryReportAchievementsFromBoardSync(M3BoardSyncMsg msg, int prevMyHp, int prevOpHp)
         {
+            if (_match != null)
+                return;
             if (msg == null || string.IsNullOrEmpty(_myUserId)) return;
             if (!string.Equals(msg.activeUserId, _myUserId, StringComparison.Ordinal)) return;
             if (_gameEnded) return;
@@ -4205,6 +4239,21 @@ namespace Project.Match3
         {
             public bool won;
             public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class SessionEpochRpcPayload
+        {
+            public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class AchievementSyncRpcResponse
+        {
+            public bool ok;
+            public AchievementProgressStorage.StringIntPair[] achievement_stats_flat;
+            public string[] achievement_claimed;
+            public string err;
         }
 
         [Serializable]
