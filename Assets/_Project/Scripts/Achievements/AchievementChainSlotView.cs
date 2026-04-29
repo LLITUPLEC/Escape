@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -62,6 +63,8 @@ namespace Project.Achievements
         private RectTransform _glowRt;
         private Image _glowImg;
 
+        private Coroutine _sliderLayoutRefreshCo;
+
         private void Awake()
         {
             _rootCanvasGroup = GetComponent<CanvasGroup>();
@@ -69,6 +72,11 @@ namespace Project.Achievements
 
         private void OnDisable()
         {
+            if (_sliderLayoutRefreshCo != null)
+            {
+                StopCoroutine(_sliderLayoutRefreshCo);
+                _sliderLayoutRefreshCo = null;
+            }
             SetClaimHintActive(false);
         }
 
@@ -96,15 +104,33 @@ namespace Project.Achievements
 
             if (progressSlider != null)
             {
+                var numClamped = Mathf.Clamp(numerator, 0, denominator);
+                var denClamped = Mathf.Max(1, denominator);
+                var t01 = Mathf.Clamp01(numClamped / (float)denClamped);
+
+                // Interactable=false у Slider часто откладывает/пропускает пересчёт Fill (якоря fillRect) при value из кода,
+                // пока не дернётся инспектор/ребилд — полоска визуально остаётся «полной». Клики всё равно не нужны: raycast ниже.
+                progressSlider.interactable = true;
                 progressSlider.wholeNumbers = true;
                 progressSlider.minValue = 0;
-                progressSlider.maxValue = Mathf.Max(1, denominator);
-                progressSlider.value = Mathf.Clamp(numerator, 0, denominator);
-                progressSlider.interactable = false;
+                progressSlider.maxValue = denClamped;
+                progressSlider.value = numClamped;
+                Canvas.ForceUpdateCanvases();
 
-                var fill = progressSlider.fillRect != null ? progressSlider.fillRect.GetComponent<Image>() : null;
-                if (fill != null && overrideFillColorsByTier)
-                    fill.color = tierAccent;
+                // После Instantiate + Scroll/layout ширина трека в первом кадре может быть ещё неверной —
+                // Slider рисует fillRect до финального layout и «колбаска» выглядит полной. Повтор через кадр.
+                ApplyProgressFillManual(t01);
+                ScheduleProgressSliderLayoutRefresh(numClamped, denClamped);
+
+                // Slider двигает только RectTransform.Fill; режим Image «Filled» рисуется по fillAmount и игнорирует ширину — нужен Simple.
+                Image fillImg = progressSlider.fillRect != null ? progressSlider.fillRect.GetComponent<Image>() : null;
+                if (fillImg != null)
+                {
+                    fillImg.type = Image.Type.Simple;
+                    fillImg.fillAmount = 1f;
+                    if (overrideFillColorsByTier)
+                        fillImg.color = tierAccent;
+                }
 
                 var bg = progressSlider.transform.Find("Background");
                 if (bg != null)
@@ -115,8 +141,18 @@ namespace Project.Achievements
                 }
             }
 
-            if (fillImage != null && overrideFillColorsByTier)
-                fillImage.color = tierAccent;
+            if (fillImage != null)
+            {
+                var sameAsSliderFill = progressSlider != null && progressSlider.fillRect != null
+                    && fillImage.gameObject == progressSlider.fillRect.gameObject;
+                if (!sameAsSliderFill)
+                {
+                    fillImage.type = Image.Type.Simple;
+                    fillImage.fillAmount = 1f;
+                    if (overrideFillColorsByTier)
+                        fillImage.color = tierAccent;
+                }
+            }
 
             if (frameImage != null && overrideFrameColorByState)
             {
@@ -177,6 +213,78 @@ namespace Project.Achievements
                     _infoButton.onClick.AddListener(HandleSlotClick);
                 _infoButton.interactable = _onStepClick != null;
             }
+        }
+
+        /// <summary>
+        /// Повторная установка value после того, как ScrollRect/Layout успеют рассчитать размеры трека.
+        /// </summary>
+        private void ScheduleProgressSliderLayoutRefresh(float valueClamped, float maxClamped)
+        {
+            if (progressSlider == null)
+                return;
+            if (_sliderLayoutRefreshCo != null)
+                StopCoroutine(_sliderLayoutRefreshCo);
+            _sliderLayoutRefreshCo = StartCoroutine(CoProgressSliderAfterLayout(valueClamped, maxClamped));
+        }
+
+        private IEnumerator CoProgressSliderAfterLayout(float valueClamped, float maxClamped)
+        {
+            yield return null;
+            yield return null;
+
+            _sliderLayoutRefreshCo = null;
+
+            var s = progressSlider;
+            if (s == null || !s.isActiveAndEnabled)
+                yield break;
+
+            var slotRt = transform as RectTransform;
+            if (slotRt != null)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(slotRt);
+
+            if (s.fillRect != null)
+            {
+                var fillParent = s.fillRect.parent as RectTransform;
+                if (fillParent != null)
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(fillParent);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(s.fillRect);
+            }
+
+            var rt = s.transform as RectTransform;
+            if (rt != null)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+
+            Canvas.ForceUpdateCanvases();
+
+            // На всякий случай ещё раз фиксируем fill вручную, без зависимости от Slider.UpdateVisuals.
+            var den = Mathf.Max(1f, maxClamped);
+            ApplyProgressFillManual(Mathf.Clamp01((valueClamped / den)));
+
+            s.value = valueClamped;
+            Canvas.ForceUpdateCanvases();
+        }
+
+        private void ApplyProgressFillManual(float t01)
+        {
+            var s = progressSlider;
+            if (s == null || s.fillRect == null)
+                return;
+
+            // Делаем fillRect полностью растянутым по треку и масштабируем по X с pivot слева.
+            // Это самый надёжный способ: не зависит от внутреннего UpdateVisuals Slider’а и любых лагов layout’а.
+            var fr = s.fillRect;
+            fr.anchorMin = new Vector2(0f, 0f);
+            fr.anchorMax = new Vector2(1f, 1f);
+            fr.offsetMin = Vector2.zero;
+            fr.offsetMax = Vector2.zero;
+            fr.pivot = new Vector2(0f, 0.5f);
+            fr.anchoredPosition = Vector2.zero;
+
+            var sc = fr.localScale;
+            sc.x = Mathf.Clamp01(t01);
+            sc.y = 1f;
+            sc.z = 1f;
+            fr.localScale = sc;
         }
 
         private void HandleSlotClick()

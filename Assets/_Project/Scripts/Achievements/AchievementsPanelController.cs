@@ -38,6 +38,9 @@ namespace Project.Achievements
         [SerializeField] private float slideDuration = 0.38f;
         [SerializeField] private float hiddenAnchoredY = -1400f;
 
+        [Header("TabBar")]
+        [SerializeField, Range(0.12f, 1f)] private float inactiveTabAlpha = 0.48f;
+
         private Button _openButton;
         private readonly List<AchievementChainRowView> _spawnedRows = new List<AchievementChainRowView>();
         private Coroutine _slideRoutine;
@@ -197,7 +200,28 @@ namespace Project.Achievements
             if (scrollObs != null) scrollObs.SetActive(tab == AchievementTab.Obsession);
             if (scrollSl != null) scrollSl.SetActive(tab == AchievementTab.Slaughter);
             if (scrollDn != null) scrollDn.SetActive(tab == AchievementTab.Dnn);
+            RefreshTabVisuals(tab);
             RefreshGrid(tab);
+        }
+
+        /// <summary>Неактивные вкладки приглушаем альфой; активная — полная яркость.</summary>
+        private void RefreshTabVisuals(AchievementTab tab)
+        {
+            ApplyToggleTabMuted(tabObsession, tab != AchievementTab.Obsession);
+            ApplyToggleTabMuted(tabSlaughter, tab != AchievementTab.Slaughter);
+            ApplyToggleTabMuted(tabDnn, tab != AchievementTab.Dnn);
+        }
+
+        private void ApplyToggleTabMuted(Toggle t, bool muted)
+        {
+            if (t == null)
+                return;
+            var cg = t.GetComponent<CanvasGroup>();
+            if (cg == null)
+                cg = t.gameObject.AddComponent<CanvasGroup>();
+            cg.alpha = muted ? inactiveTabAlpha : 1f;
+            cg.blocksRaycasts = true;
+            cg.interactable = true;
         }
 
         private void RefreshGrid(AchievementTab tab)
