@@ -310,16 +310,18 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
       return e
     end
 
+    -- «Бойня»: дуэль/турнир против людей и ботов арены; без solo PvE (шахта, mode == "pve").
     if am ~= nil then
       if tostring(am.round or "") == "final" then
         e[ACH_STAT_BLACKSMITH] = (e[ACH_STAT_BLACKSMITH] or 0) + 1
       end
-    else
+      e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
+    elseif state.mode ~= "pve" then
       e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
     end
 
     local at_n = tonumber(action_type) or 0
-    if actor ~= nil and opponent ~= nil and uid == actor and uid == winner and at_n == 4 then
+    if state.mode ~= "pve" and actor ~= nil and opponent ~= nil and uid == actor and uid == winner and at_n == 4 then
       local oh = tonumber(state.stats[opponent] and state.stats[opponent].hp) or 0
       if oh <= 0 then
         e[ACH_STAT_PETARD_FINISH] = (e[ACH_STAT_PETARD_FINISH] or 0) + 1

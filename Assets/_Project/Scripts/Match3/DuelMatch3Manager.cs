@@ -1372,19 +1372,26 @@ namespace Project.Match3
                 return;
             }
 
-            if (_match != null)
-            {
-                _pendingPetardFinisherForAchievement = false;
-                return;
-            }
-
-            if (_isArenaTournamentMatch && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
+            // Турнир «Кузница»: отдельный ключ — только финал матчбука.
+            if (_isArenaTournamentMatch &&
+                string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
                 AchievementTracker.NotifyBlacksmithTournamentFinalWin();
-            else if (!_isArenaTournamentMatch)
+
+            // Solo PvE (шахта / выбор бота): не считаем ключи slaughter.duel_tri_win / duel_petard_finish.
+            // Арена турнир и живая дуэль matchmaking против игрока — считаются.
+            var soloPvEMineVersusBots = _isSoloBotMode;
+
+            var countSlaughterDuelChains =
+                !soloPvEMineVersusBots &&
+                (_isArenaTournamentMatch || (_match != null && !_opponentIsServerBot));
+
+            if (countSlaughterDuelChains)
+            {
                 AchievementTracker.NotifyTriMatchDuelWin();
 
-            if (_pendingPetardFinisherForAchievement)
-                AchievementTracker.NotifyPetardFinisherWin();
+                if (_pendingPetardFinisherForAchievement)
+                    AchievementTracker.NotifyPetardFinisherWin();
+            }
 
             if (_myStats.hp == 1)
                 AchievementTracker.NotifyWinAtOneHp();
@@ -1416,8 +1423,6 @@ namespace Project.Match3
 
         private void TryReportAchievementsFromBoardSync(M3BoardSyncMsg msg, int prevMyHp, int prevOpHp)
         {
-            if (_match != null)
-                return;
             if (msg == null || string.IsNullOrEmpty(_myUserId)) return;
             if (!string.Equals(msg.activeUserId, _myUserId, StringComparison.Ordinal)) return;
             if (_gameEnded) return;

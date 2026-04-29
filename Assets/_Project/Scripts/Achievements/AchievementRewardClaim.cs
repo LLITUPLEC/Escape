@@ -54,6 +54,7 @@ namespace Project.Achievements
                     if (resp != null && resp.ok == true)
                     {
                         AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
+                        AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
                         RaiseClaimed(def, stepIndex);
                         return true;
                     }
@@ -70,6 +71,7 @@ namespace Project.Achievements
             }
 
             AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
+            AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
             RaiseClaimed(def, stepIndex);
             return true;
         }
@@ -80,6 +82,7 @@ namespace Project.Achievements
             {
                 ChainId = def.ChainId,
                 StepIndex = stepIndex,
+                NoticeKind = AchievementNoticeKind.RewardGrantedToast,
                 Title = def.Descriptions != null && stepIndex < def.Descriptions.Length ? def.Descriptions[stepIndex] : def.ChainId,
                 RewardLine = def.RewardTexts != null && stepIndex < def.RewardTexts.Length ? def.RewardTexts[stepIndex] : "",
             };

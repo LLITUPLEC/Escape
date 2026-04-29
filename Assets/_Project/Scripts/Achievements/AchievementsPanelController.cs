@@ -49,6 +49,13 @@ namespace Project.Achievements
         private bool _wiredOpenButton;
         private AchievementStepDetailModal _stepDetailModal;
 
+        private RectTransform _pendingBadgeRt;
+        private CanvasGroup _pendingBadgeCanvasGroup;
+        private TMP_Text _pendingBadgeText;
+        private Vector2 _pendingBadgeAnchoredRest;
+        private Coroutine _pendingBadgeIdleCo;
+        private BottomButtonAchievementBadgeConfig _openButtonBadgeConfig;
+
         internal TMP_FontAsset AchievementUiFontReference => achievementUiFont;
 
         private void Awake()
@@ -78,6 +85,7 @@ namespace Project.Achievements
 
             WireTabs();
             TryBindOpenButton();
+            EnsurePendingClaimBadge();
             _stepDetailModal = AchievementStepDetailModal.Ensure(transform, achievementUiFont);
             SwitchTab(AchievementTab.Obsession);
         }
@@ -85,12 +93,17 @@ namespace Project.Achievements
         private void OnEnable()
         {
             TryBindOpenButton();
+            EnsurePendingClaimBadge();
+            RefreshPendingClaimBadge();
+            StopPendingBadgeIdle();
+            _pendingBadgeIdleCo = StartCoroutine(PendingClaimBadgeIdleLoop());
             AchievementLifecycle.OnDataChanged += OnAchievementLifecycleChanged;
         }
 
         private void OnDisable()
         {
             AchievementLifecycle.OnDataChanged -= OnAchievementLifecycleChanged;
+            StopPendingBadgeIdle();
         }
 
         private void OnDestroy()
@@ -106,6 +119,7 @@ namespace Project.Achievements
         private void OnAchievementLifecycleChanged()
         {
             RefreshGrid(_currentTab);
+            RefreshPendingClaimBadge();
         }
 
         private void ResolveRefsBestEffort()
@@ -277,6 +291,7 @@ namespace Project.Achievements
         {
             await AchievementRewardClaim.TryClaimStepAsync(chainId, stepIndex, CancellationToken.None);
             RefreshGrid(_currentTab);
+            RefreshPendingClaimBadge();
         }
 
         private void TryBindOpenButton()
@@ -291,6 +306,170 @@ namespace Project.Achievements
                 return;
             _openButton.onClick.AddListener(TogglePanel);
             _wiredOpenButton = true;
+            EnsurePendingClaimBadge();
+            RefreshPendingClaimBadge();
+        }
+
+        private void EnsurePendingClaimBadge()
+        {
+            if (_openButton == null || _pendingBadgeRt != null)
+                return;
+
+            var parentRt = _openButton.transform as RectTransform;
+            if (parentRt == null)
+                return;
+
+            if (_openButtonBadgeConfig == null)
+                _openButtonBadgeConfig = _openButton.GetComponent<BottomButtonAchievementBadgeConfig>();
+
+            var cfg = _openButtonBadgeConfig;
+            var badgeSize = cfg != null ? cfg.BadgeSpriteSize : new Vector2(44f, 44f);
+            var badgeBgColor = cfg != null
+                ? cfg.BadgeColor
+                : new Color(0.85f, 0.22f, 0.26f, 0.96f);
+
+            var root = new GameObject("PendingClaimBadge", typeof(RectTransform), typeof(CanvasGroup));
+            root.transform.SetParent(parentRt, false);
+            root.transform.SetAsLastSibling();
+            _pendingBadgeRt = root.GetComponent<RectTransform>();
+            _pendingBadgeCanvasGroup = root.GetComponent<CanvasGroup>();
+            _pendingBadgeRt.anchorMin = new Vector2(1f, 1f);
+            _pendingBadgeRt.anchorMax = new Vector2(1f, 1f);
+            _pendingBadgeRt.pivot = new Vector2(1f, 1f);
+            _pendingBadgeRt.anchoredPosition = new Vector2(-10f, -8f);
+            _pendingBadgeRt.sizeDelta = badgeSize;
+            _pendingBadgeAnchoredRest = _pendingBadgeRt.anchoredPosition;
+            _pendingBadgeCanvasGroup.blocksRaycasts = false;
+            _pendingBadgeCanvasGroup.interactable = false;
+
+            var bgGo = new GameObject("BadgeBg", typeof(RectTransform), typeof(Image));
+            bgGo.transform.SetParent(_pendingBadgeRt, false);
+            var bgRt = bgGo.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.offsetMin = Vector2.zero;
+            bgRt.offsetMax = Vector2.zero;
+
+            var img = bgGo.GetComponent<Image>();
+            img.raycastTarget = false;
+            img.type = Image.Type.Simple;
+            if (cfg != null && cfg.BadgeSprite != null)
+            {
+                img.sprite = cfg.BadgeSprite;
+                img.color = badgeBgColor;
+            }
+            else
+            {
+                var t = Texture2D.whiteTexture;
+                img.sprite = Sprite.Create(
+                    t,
+                    new Rect(0f, 0f, t.width, t.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f);
+                img.color = badgeBgColor;
+            }
+
+            var labelGo =
+                new GameObject("BadgeLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelGo.transform.SetParent(_pendingBadgeRt, false);
+            var lr = labelGo.GetComponent<RectTransform>();
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = Vector2.zero;
+            lr.offsetMax = Vector2.zero;
+
+            var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+            var fo = AchievementUiFontReference;
+            tmp.font = fo;
+            tmp.fontSize = 22f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 14f;
+            tmp.fontSizeMax = 24f;
+            tmp.alignment = TextAlignmentOptions.Midline;
+            tmp.color = new Color(0.98f, 0.98f, 0.93f);
+
+            AchievementsTmpMaterialRepair.RepairHierarchy(labelGo.transform, fo);
+            _pendingBadgeText = tmp;
+
+            RefreshPendingClaimBadge();
+        }
+
+        private void RefreshPendingClaimBadge()
+        {
+            EnsurePendingClaimBadge();
+            var n = AchievementUiPending.CountEligibleClaimSteps();
+            if (_pendingBadgeText != null)
+                _pendingBadgeText.text = n > 99 ? "99+" : n.ToString();
+            if (_pendingBadgeCanvasGroup != null)
+                _pendingBadgeCanvasGroup.alpha = n > 0 ? 1f : 0f;
+        }
+
+        private void StopPendingBadgeIdle()
+        {
+            if (_pendingBadgeIdleCo != null)
+            {
+                StopCoroutine(_pendingBadgeIdleCo);
+                _pendingBadgeIdleCo = null;
+            }
+
+            if (_pendingBadgeRt != null)
+            {
+                _pendingBadgeRt.anchoredPosition = _pendingBadgeAnchoredRest;
+                _pendingBadgeRt.localEulerAngles = Vector3.zero;
+            }
+        }
+
+        private IEnumerator PendingClaimBadgeIdleLoop()
+        {
+            while (isActiveAndEnabled)
+            {
+                TryBindOpenButton();
+                RefreshPendingClaimBadge();
+                var n = AchievementUiPending.CountEligibleClaimSteps();
+                if (n <= 0)
+                {
+                    yield return new WaitForSecondsRealtime(1.85f);
+                    continue;
+                }
+
+                yield return new WaitForSecondsRealtime(5.2f);
+
+                if (_pendingBadgeRt == null || _pendingBadgeCanvasGroup == null
+                    || _pendingBadgeCanvasGroup.alpha < 0.01f
+                    || AchievementUiPending.CountEligibleClaimSteps() <= 0)
+                    continue;
+
+                yield return ShakeBadgeRoutine();
+            }
+        }
+
+        private IEnumerator ShakeBadgeRoutine()
+        {
+            var rt = _pendingBadgeRt;
+            if (rt == null)
+                yield break;
+
+            var rest = _pendingBadgeAnchoredRest;
+            const float dur = 0.52f;
+            var t = 0f;
+
+            while (t < dur)
+            {
+                t += Time.unscaledDeltaTime;
+                var k = t / dur;
+                var damping = Mathf.Lerp(1f, 0f, k);
+                var phase = k * Mathf.PI * 22f;
+                var bx = Mathf.Sin(phase) * 10f * damping;
+                var by = Mathf.Cos(phase * 0.93f + 1.1f) * 8f * damping;
+                rt.anchoredPosition = rest + new Vector2(bx, by);
+                rt.localEulerAngles =
+                    new Vector3(0f, 0f, Mathf.Sin(phase + 2.3f) * 9f * damping);
+                yield return null;
+            }
+
+            rt.anchoredPosition = rest;
+            rt.localEulerAngles = Vector3.zero;
         }
 
         private static Transform FindDeepChild(Transform root, string name)

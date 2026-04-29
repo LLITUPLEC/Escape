@@ -63,6 +63,8 @@ namespace Project.Achievements
             IList<string> serverClaimedTokens)
         {
             EnsureLoaded();
+            var eligibleBeforeMerge = AchievementUiPending.CaptureEligibleClaimStepTokens();
+
             var changedClaims = false;
             var changedStats = false;
             if (serverClaimedTokens != null)
@@ -92,7 +94,9 @@ namespace Project.Achievements
                 if (changedStats)
                     SaveDict(PrefStatsJson, _stats);
             }
-            if (changedClaims || changedStats)
+
+            var newAwaitClaims = AchievementUiPending.RaiseNewEligibleSince(eligibleBeforeMerge);
+            if (changedClaims || changedStats || newAwaitClaims > 0)
                 AchievementLifecycle.NotifyDataChanged();
         }
 
@@ -193,7 +197,10 @@ namespace Project.Achievements
         {
             if (delta == 0 || string.IsNullOrEmpty(key))
                 return;
+            AchievementProgressStorage.EnsureLoaded();
+            var eligibleBeforeStat = AchievementUiPending.CaptureEligibleClaimStepTokens();
             AchievementProgressStorage.AddStat(key, delta);
+            AchievementUiPending.RaiseNewEligibleSince(eligibleBeforeStat);
             AchievementLifecycle.NotifyDataChanged();
         }
 

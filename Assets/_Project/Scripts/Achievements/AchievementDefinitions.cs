@@ -10,11 +10,20 @@ namespace Project.Achievements
         Dnn = 2,
     }
 
+    public enum AchievementNoticeKind
+    {
+        RewardGrantedToast = 0,
+        /// <summary>Порог достигнут, награду можно забрать вручную (ещё не нажата «Получить»).</summary>
+        CriterionMetAwaitClaim = 1,
+    }
+
     /// <summary>Сводная информация для toast после автоматического получения шага.</summary>
     public sealed class AchievementUnlockInfo
     {
         public string ChainId;
         public int StepIndex;
+        /// <remarks>По умолчанию локально не сериализуется с сервером — только код.</remarks>
+        public AchievementNoticeKind NoticeKind = AchievementNoticeKind.RewardGrantedToast;
         public string Title;
         public string RewardLine;
     }

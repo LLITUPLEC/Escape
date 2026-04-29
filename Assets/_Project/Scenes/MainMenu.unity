@@ -2893,6 +2893,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5419902644366406405, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       insertIndex: -1
       addedObject: {fileID: 210000004}
+    - targetCorrespondingSourceObject: {fileID: 2569224599184035874, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 896510509}
   m_SourcePrefab: {fileID: 100100000, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
 --- !u!1 &210000003 stripped
 GameObject:
@@ -3172,6 +3175,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &896510504 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2569224599184035874, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+  m_PrefabInstance: {fileID: 210000002}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &896510509
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 896510504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82305a0bfe41076438d5fbae9ff83714, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.BottomButtonAchievementBadgeConfig
+  badgeSpriteSize: {x: 60, y: 60}
+  badgeSprite: {fileID: 411300544, guid: 975025268a9c40a45a96655e6f8a368e, type: 3}
+  badgeColor: {r: 0.9169811, g: 0.5519188, b: 0.5745935, a: 0.96}
 --- !u!1 &909392426
 GameObject:
   m_ObjectHideFlags: 0
