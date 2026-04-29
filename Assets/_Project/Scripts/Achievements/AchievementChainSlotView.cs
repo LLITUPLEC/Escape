@@ -36,8 +36,9 @@ namespace Project.Achievements
         [SerializeField] private Color unclaimedGlowColor = new Color(0.25f, 1f, 0.35f, 0.85f);
         [SerializeField, Min(0f)] private float unclaimedGlowMinAlpha = 0.12f;
         [SerializeField, Min(0f)] private float unclaimedGlowMaxAlpha = 0.45f;
-        [SerializeField, Min(0.1f)] private float unclaimedGlowPulseSpeed = 2.4f;
-        [SerializeField, Min(0f)] private float unclaimedGlowExpandPx = 10f;
+        [SerializeField, Min(0.1f)] private float unclaimedGlowPulseSpeed = 0.7f;
+        [SerializeField, Min(0f)] private float unclaimedGlowOutsetHorizontal = 77f;
+        [SerializeField, Min(0f)] private float unclaimedGlowOutsetVertical = 100f;
         [SerializeField, Range(0f, 4f)] private float unclaimedGlowZOffset = 0.1f;
 
         private CanvasGroup _rootCanvasGroup;
@@ -506,8 +507,10 @@ namespace Project.Achievements
         private void ApplyGlowVisuals()
         {
             if (_glowRt == null || _glowImg == null) return;
-            _glowRt.offsetMin = new Vector2(-unclaimedGlowExpandPx, -unclaimedGlowExpandPx);
-            _glowRt.offsetMax = new Vector2(unclaimedGlowExpandPx, unclaimedGlowExpandPx);
+            var ox = Mathf.Max(0f, unclaimedGlowOutsetHorizontal);
+            var oy = Mathf.Max(0f, unclaimedGlowOutsetVertical);
+            _glowRt.offsetMin = new Vector2(-ox, -oy);
+            _glowRt.offsetMax = new Vector2(ox, oy);
 
             var c = unclaimedGlowColor;
             c.a = Mathf.Clamp01(c.a);

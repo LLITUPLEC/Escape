@@ -268,6 +268,12 @@ local function mirror_commit(state)
   arena_save_tournament(T)
 end
 
+--- Награды финала турнира (золото/руда) — та же шкала, что в arena_grant_final_progress и в OP_GAME_OVER.
+local function final_prize_for_bet_tier(bet_tier)
+  local ore_g, gold_g = arena_final_prize_ore_gold(bet_tier)
+  return tonumber(gold_g) or 0, tonumber(ore_g) or 0
+end
+
 local function arena_grant_final_progress(user_id, bet_tier)
   local ore_g, gold_g = arena_final_prize_ore_gold(bet_tier)
   local max_retries = 5
@@ -504,7 +510,7 @@ end
 local function on_match_finished(state, winner_uid)
   local am = state.arena_mirror
   if am == nil then
-    nk.logger_warn("arena on_match_finished: missing arena_mirror winner=" .. tostring(winner_uid))
+    -- Обычный PvP/тренировочный бой без турнира: хук вызывается из duel_match3 всегда — без зеркала нечего обновлять.
     return
   end
   local tid = am.tournament_id
@@ -925,6 +931,7 @@ end
   return {
     mirror_commit = mirror_commit,
     on_match_finished = on_match_finished,
+    final_prize_for_bet_tier = final_prize_for_bet_tier,
     duel_arena_queue_join = duel_arena_queue_join,
     duel_arena_queue_leave = duel_arena_queue_leave,
     duel_arena_queue_poll = duel_arena_queue_poll,

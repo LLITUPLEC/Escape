@@ -113,8 +113,9 @@ MonoBehaviour:
   unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
   unclaimedGlowMinAlpha: 0.12
   unclaimedGlowMaxAlpha: 0.45
-  unclaimedGlowPulseSpeed: 2.4
-  unclaimedGlowExpandPx: 10
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
   unclaimedGlowZOffset: 0.1
 --- !u!114 &5163102497308366121
 MonoBehaviour:
@@ -810,8 +811,9 @@ MonoBehaviour:
   unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
   unclaimedGlowMinAlpha: 0.12
   unclaimedGlowMaxAlpha: 0.45
-  unclaimedGlowPulseSpeed: 2.4
-  unclaimedGlowExpandPx: 10
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
   unclaimedGlowZOffset: 0.1
 --- !u!114 &7765151644205129090
 MonoBehaviour:
@@ -3210,8 +3212,9 @@ MonoBehaviour:
   unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
   unclaimedGlowMinAlpha: 0.12
   unclaimedGlowMaxAlpha: 0.45
-  unclaimedGlowPulseSpeed: 2.4
-  unclaimedGlowExpandPx: 10
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
   unclaimedGlowZOffset: 0.1
 --- !u!114 &3826057184258573220
 MonoBehaviour:
@@ -3851,8 +3854,9 @@ MonoBehaviour:
   unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
   unclaimedGlowMinAlpha: 0.12
   unclaimedGlowMaxAlpha: 0.45
-  unclaimedGlowPulseSpeed: 2.4
-  unclaimedGlowExpandPx: 10
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
   unclaimedGlowZOffset: 0.1
 --- !u!114 &7530542944280792965
 MonoBehaviour:

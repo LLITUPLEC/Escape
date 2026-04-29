@@ -995,6 +995,7 @@ end
 --- Арена (турнир 8 игроков): forward refs — реализации ниже после инвентаря.
 local arena_mirror_commit
 local arena_on_match_finished
+local arena_final_prize_gold_ore
 
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
@@ -1125,20 +1126,14 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.newLevel = state.last_reward.level or 1
     end
 
-    -- Arena финал: показываем финальную награду в UI (сама выдача — в arena_tournament.lua).
+    -- Arena финал: награда в UI совпадает с arena_grant_final_progress (та же функция, что в Arena).
     if game_over_payload.arenaRound == "final"
-        and state.owner_user_id ~= nil and winner == state.owner_user_id then
-      local bt = string.lower(tostring(game_over_payload.arenaBetTier or "green"))
-      if bt == "blue" then
-        game_over_payload.rewardGold = 600
-        game_over_payload.rewardOre = 600
-      elseif bt == "purple" then
-        game_over_payload.rewardGold = 1200
-        game_over_payload.rewardOre = 1200
-      else
-        game_over_payload.rewardGold = 300
-        game_over_payload.rewardOre = 300
-      end
+        and state.arena_mirror ~= nil
+        and type(arena_final_prize_gold_ore) == "function" then
+      local bt = string.lower(tostring(state.arena_mirror.bet_tier or game_over_payload.arenaBetTier or "green"))
+      local rg, ro = arena_final_prize_gold_ore(bt)
+      game_over_payload.rewardGold = tonumber(rg) or 0
+      game_over_payload.rewardOre = tonumber(ro) or 0
     end
     -- Arena tournament hook must never break match loop.
     local ok_arena, err_arena = pcall(function()
@@ -4278,6 +4273,7 @@ local Arena = arena_factory({
 })
 arena_mirror_commit = Arena.mirror_commit
 arena_on_match_finished = Arena.on_match_finished
+arena_final_prize_gold_ore = Arena.final_prize_for_bet_tier
 
 
 function parse_floor_from_bot_id(bot_id)
@@ -5466,6 +5462,12 @@ local function match_leave(context, dispatcher, tick, state, presences)
         if not ok_arena then
           nk.logger_error("arena_on_match_finished failed (disconnect): " .. tostring(err_arena))
         end
+        local ok_achi, err_achi = pcall(function()
+          Ach.flush_match_finish(state, winner, nil, nil, 0)
+        end)
+        if not ok_achi then
+          nk.logger_error("achievement_flush_match_finish failed (match_leave): " .. tostring(err_achi))
+        end
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
@@ -5523,6 +5525,20 @@ local function match_loop(context, dispatcher, tick, state, messages)
       state.ended = true
       local winner = other_player_id(state, q)
       if winner ~= nil then
+        local ok_arena, err_arena = pcall(function()
+          if type(arena_on_match_finished) == "function" then
+            arena_on_match_finished(state, winner)
+          end
+        end)
+        if not ok_arena then
+          nk.logger_error("arena_on_match_finished failed (reconnect_timeout): " .. tostring(err_arena))
+        end
+        local ok_achi, err_achi = pcall(function()
+          Ach.flush_match_finish(state, winner, nil, nil, 0)
+        end)
+        if not ok_achi then
+          nk.logger_error("achievement_flush_match_finish failed (reconnect_timeout): " .. tostring(err_achi))
+        end
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
       return nil
@@ -5567,6 +5583,12 @@ local function match_loop(context, dispatcher, tick, state, messages)
         end)
         if not ok_arena then
           nk.logger_error("arena_on_match_finished failed (timeout): " .. tostring(err_arena))
+        end
+        local ok_achi, err_achi = pcall(function()
+          Ach.flush_match_finish(state, winner, nil, nil, 0)
+        end)
+        if not ok_achi then
+          nk.logger_error("achievement_flush_match_finish failed (player_left): " .. tostring(err_achi))
         end
         dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
       end
