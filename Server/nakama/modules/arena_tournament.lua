@@ -557,6 +557,19 @@ local function on_match_finished(state, winner_uid)
   -- Match is over and may be deleted; never offer join to a finished match.
   pr.match_id = ""
   -- Ensure HP looks correct in bracket even if last mirror_commit didn't arrive.
+  -- We persist final HP snapshot from match state, then force loser HP to 0 for clarity.
+  if state ~= nil and type(state.stats) == "table" then
+    local function hp_of(uid)
+      if uid == nil or uid == "" then return nil end
+      local s = state.stats[uid]
+      if s == nil then return nil end
+      return math.max(0, tonumber(s.hp) or 0)
+    end
+    local ha = hp_of(pr.uid_a)
+    local hb = hp_of(pr.uid_b)
+    if ha ~= nil then pr.hp_a = ha end
+    if hb ~= nil then pr.hp_b = hb end
+  end
   if loser_uid ~= nil then
     if pr.uid_a == loser_uid then pr.hp_a = 0 end
     if pr.uid_b == loser_uid then pr.hp_b = 0 end

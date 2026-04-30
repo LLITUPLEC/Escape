@@ -108,8 +108,6 @@ public static class Match3DuelSceneUiBuilder
         TryDeactivateDirectChildNamed(root, "Match3SearchingPanel");
         TryDeactivateDirectChildNamed(root, "Match3GameOverPanel");
 
-        BuildPveSelectorBlock(root);
-
         EnsureEventSystemInScene();
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());

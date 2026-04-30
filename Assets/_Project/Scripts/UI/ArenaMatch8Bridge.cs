@@ -313,7 +313,16 @@ namespace Project.UI
             Match3LaunchContext.ArmArenaJoin(t.join_match_id, oppHint, t.join_opponent_is_bot);
 
             if (!string.IsNullOrEmpty(duelMatch3SceneName))
+            {
+                // Fail-safe: ensure bracket overlay can't survive scene switch visually.
+                HideBracket();
+                if (_bracketRoot != null)
+                {
+                    UnityEngine.Object.Destroy(_bracketRoot);
+                    _bracketRoot = null;
+                }
                 SceneManager.LoadScene(duelMatch3SceneName);
+            }
         }
 
         private static string ResolveArenaOpponentDisplay(ArenaTournamentState t, string myUserId)
@@ -919,6 +928,8 @@ namespace Project.UI
             if (hpB != null) SetHp(hpB, pr.hp_b);
 
             var status = row.Find("Status")?.GetComponent<TMP_Text>();
+            if (status == null)
+                status = row.Find("Vs/Status")?.GetComponent<TMP_Text>();
             if (status != null) status.text = FormatPairStatus(pr.status);
         }
 

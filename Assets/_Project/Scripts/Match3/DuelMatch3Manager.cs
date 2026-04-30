@@ -1912,6 +1912,9 @@ namespace Project.Match3
             if (msg.critTriggered && _boardView != null)
                 _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
 
+            if (!string.IsNullOrWhiteSpace(msg.boardPopup) && _boardView != null)
+                _boardView.ShowCenterAnnouncement(msg.boardPopup, new Color(0.75f, 0.9f, 1f), 2.2f);
+
             // Damage popups (computed by HP delta). Both clients see it on the damaged side.
             var myDamageTaken = Mathf.Max(0, prevMyHp - _myStats.hp);
             var opDamageTaken = Mathf.Max(0, prevOpHp - _opStats.hp);

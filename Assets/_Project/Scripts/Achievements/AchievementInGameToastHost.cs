@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Project.Achievements
@@ -18,6 +19,8 @@ namespace Project.Achievements
         private RectTransform _panelRt;
         private TMP_Text _titleTmp;
         private TMP_Text _rewardTmp;
+        private Canvas _internalCanvas;
+        private GraphicRaycaster _internalRaycaster;
 
         private const float ShowSeconds = 4.35f;
         private const float SlidePixels = 110f;
@@ -36,13 +39,55 @@ namespace Project.Achievements
 
         private void Awake()
         {
-            BuildUi();
+            // Prefer external, scene-stylable hierarchy if present.
+            if (!TryBindExternalHierarchy())
+                BuildUi();
             AchievementLifecycle.OnAwaitingClaim += Handle;
+            SceneManager.activeSceneChanged += HandleSceneChanged;
         }
 
         private void OnDestroy()
         {
             AchievementLifecycle.OnAwaitingClaim -= Handle;
+            SceneManager.activeSceneChanged -= HandleSceneChanged;
+        }
+
+        private void HandleSceneChanged(Scene prev, Scene next)
+        {
+            // When entering a new scene, try to bind to external hierarchy again.
+            // If found, hide internal canvas (if any) to avoid duplicate toasts.
+            if (TryBindExternalHierarchy())
+                SetInternalVisible(false);
+            else
+                SetInternalVisible(true);
+        }
+
+        private void SetInternalVisible(bool visible)
+        {
+            if (_internalCanvas != null) _internalCanvas.enabled = visible;
+            if (_internalRaycaster != null) _internalRaycaster.enabled = visible;
+        }
+
+        private bool TryBindExternalHierarchy()
+        {
+            var root = GameObject.Find("AchievementInGameToast");
+            if (root == null) return false;
+
+            var cg = root.GetComponent<CanvasGroup>();
+            var rt = root.GetComponent<RectTransform>();
+            if (cg == null || rt == null) return false;
+
+            var title = root.transform.Find("ToastTitle")?.GetComponent<TMP_Text>();
+            var reward = root.transform.Find("ToastRewardLine")?.GetComponent<TMP_Text>();
+            if (title == null || reward == null) return false;
+
+            _panelGroup = cg;
+            _panelRt = rt;
+            _titleTmp = title;
+            _rewardTmp = reward;
+            _titleTmp.richText = true;
+            _rewardTmp.richText = true;
+            return true;
         }
 
         private void Handle(AchievementUnlockInfo info)
@@ -228,6 +273,7 @@ namespace Project.Achievements
         private void BuildUi()
         {
             var canv = gameObject.AddComponent<Canvas>();
+            _internalCanvas = canv;
             canv.renderMode = RenderMode.ScreenSpaceOverlay;
             canv.overrideSorting = true;
             canv.sortingOrder = 6200;
@@ -237,7 +283,7 @@ namespace Project.Achievements
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            gameObject.AddComponent<GraphicRaycaster>();
+            _internalRaycaster = gameObject.AddComponent<GraphicRaycaster>();
 
             var pan = new GameObject("ToastPanel", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
             pan.transform.SetParent(transform, false);
@@ -272,6 +318,7 @@ namespace Project.Achievements
                 tt.font = fo;
                 tt.fontSize = ToastFontPx;
                 tt.fontStyle = FontStyles.Normal;
+                tt.richText = true;
                 tt.alignment = TextAlignmentOptions.Center;
                 tt.textWrappingMode = TextWrappingModes.Normal;
                 tt.color = new Color(0.96f, 0.93f, 0.74f);
@@ -295,6 +342,7 @@ namespace Project.Achievements
                 rw.fontSize = ToastFontPx;
                 rw.alignment = TextAlignmentOptions.Bottom;
                 rw.color = new Color(0.75f, 1f, 0.78f);
+                rw.richText = true;
 
                 AchievementsTmpMaterialRepair.RepairHierarchy(subGo.transform, fo);
                 _rewardTmp = rw;

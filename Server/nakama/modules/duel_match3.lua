@@ -648,13 +648,83 @@ local function regenerate_active_board_without_matches(state)
   update_cheat_rows_from_board(state)
 end
 
+-- Forward declarations (used by safety shuffle).
+local find_matches
+local enumerate_valid_swaps
+
+-- If the active 6x6 board ends up with zero valid swaps (rare but possible),
+-- shuffle the active area until at least one valid swap exists.
+-- Preview rows (server y=0..1) are never touched.
+local function ensure_active_board_has_valid_swaps(state)
+  if state == nil or state.board == nil then return false end
+
+  local function has_any_valid_swap()
+    local swaps = enumerate_valid_swaps(state.board)
+    return swaps ~= nil and #swaps > 0
+  end
+
+  -- Fast path.
+  if has_any_valid_swap() then return false end
+
+  local function shuffle_once()
+    -- Collect active cells.
+    local cells = {}
+    for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+      for x = 0, CFG.SIZE - 1 do
+        cells[#cells + 1] = bget(state.board, x, y)
+      end
+    end
+
+    -- Fisher–Yates.
+    for i = #cells, 2, -1 do
+      local j = math.random(1, i)
+      cells[i], cells[j] = cells[j], cells[i]
+    end
+
+    -- Write back.
+    local k = 1
+    for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
+      for x = 0, CFG.SIZE - 1 do
+        bset(state.board, x, y, cells[k])
+        k = k + 1
+      end
+    end
+
+    update_cheat_rows_from_board(state)
+  end
+
+  -- Try a number of shuffles; require "no immediate matches" and "has at least one swap".
+  for _ = 1, 60 do
+    shuffle_once()
+    local m = find_matches(state.board)
+    if (m == nil or #m == 0) and has_any_valid_swap() then
+      return true
+    end
+  end
+
+  -- Fallback: regenerate active area (no matches) and retry shuffle a bit.
+  for _ = 1, 4 do
+    regenerate_active_board_without_matches(state)
+    if has_any_valid_swap() then return true end
+    for _ = 1, 30 do
+      shuffle_once()
+      local m = find_matches(state.board)
+      if (m == nil or #m == 0) and has_any_valid_swap() then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
 local function do_swap(board, x1, y1, x2, y2)
   local t = bget(board, x1, y1)
   bset(board, x1, y1, bget(board, x2, y2))
   bset(board, x2, y2, t)
 end
 
-local function find_matches(board)
+find_matches = function(board)
   local results = {}
 
   for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
@@ -941,6 +1011,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
   return {
     board = export_active_board(),
     cheatRows = cheatRowsForUser or {},
+    boardPopup = state._sync_popup or "",
     aHp = a.hp,
     aMana = a.mana,
     aCrossCd = a.cross_cd,
@@ -1021,6 +1092,7 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
   if state.cheat_rows_allowed == nil then
     local msg = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
     dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
+    state._sync_popup = nil
     return
   end
 
@@ -1033,6 +1105,7 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
   if #other_presences > 0 then
     dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg_other), other_presences, nil)
   end
+  state._sync_popup = nil
 end
 
 local function send_reject(dispatcher, presence, reason)
@@ -1231,6 +1304,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       and state.active_user_id == state.owner_user_id
       and prev_active_user_id ~= state.owner_user_id then
       regenerate_active_board_without_matches(state)
+      ensure_active_board_has_valid_swaps(state)
     end
   end
   broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
@@ -1332,6 +1406,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   state.last_crit = false
   state._action_damage_flat = 0
   state._monster_rage_bombs_action = 0
+  state._sync_popup = nil
   local initial_matches = {}
   local anim_steps = {}
   local keep_turn = false
@@ -1400,6 +1475,13 @@ local function resolve_action(state, action, actor_id, opponent_id)
     extra_turn = apply_match_effects(state, actor_id, opponent_id, cascade, extra_turn)
     clear_matches(state.board, cascade)
     anim_steps[#anim_steps + 1] = clone_step(state.board, 1)
+  end
+
+  -- Safety: if the resulting active board has zero valid swaps, reshuffle it.
+  -- This avoids rare softlocks (no moves + no mana).
+  local did_shuffle = ensure_active_board_has_valid_swaps(state)
+  if did_shuffle then
+    state._sync_popup = "Нет доступных ходов.\nПеремешиваем поле"
   end
 
   -- Один расчёт урона за ход: сумма бомб (все каскады) + урон способности (если был); base_damage персонажа и крит — в roll_outgoing_damage.
@@ -4828,7 +4910,7 @@ local function validate_action_basic(state, sender_id, action)
   return false, "unknown_action"
 end
 
-local function enumerate_valid_swaps(board)
+enumerate_valid_swaps = function(board)
   local swaps = {}
   for y = 0, CFG.ACTIVE_ROWS - 1 do
     for x = 0, CFG.SIZE - 1 do
@@ -5269,6 +5351,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         state.stats[state.bot_user_id] = new_stats()
 
         state.board = init_board()
+        ensure_active_board_has_valid_swaps(state)
 
         state.cheat_rows = init_cheat_rows()
         state.spawn_queues = {}
@@ -5350,6 +5433,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       end
       state.stats[state.bot_user_id].initial_hp = state.stats[state.bot_user_id].max_hp
       state.board = init_board()
+      ensure_active_board_has_valid_swaps(state)
 
       state.cheat_rows = init_cheat_rows()
       state.spawn_queues = {}
@@ -5393,6 +5477,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       nk.logger_info("duel_match3: PvP Pro — статы уровень+экип для обоих игроков")
     end
     state.board = init_board()
+    ensure_active_board_has_valid_swaps(state)
 
     state.cheat_rows = init_cheat_rows()
     state.spawn_queues = {}

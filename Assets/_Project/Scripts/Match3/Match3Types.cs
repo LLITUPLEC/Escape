@@ -57,6 +57,9 @@ namespace Project.Match3
         // Only included for whitelisted users; others should receive empty array.
         public int[] cheatRows = new int[0];
 
+        /// <summary>Optional one-off popup message shown on the board.</summary>
+        public string boardPopup;
+
         // "a" = sorted userId[0], "b" = sorted userId[1]
         public int aHp, aMana, aCrossCd, aSquareCd, aPetardCd, aShieldCd, aFuryCd;
         public int aMaxHp;

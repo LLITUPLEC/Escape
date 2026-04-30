@@ -84,7 +84,10 @@ namespace Project.Achievements
                 {
                     if (e == null || string.IsNullOrEmpty(e.k)) continue;
                     var cur = GetStat(e.k);
-                    var merged = Mathf.Max(cur, e.v);
+                    // Server is authoritative for these counters. Using max(local,server) can permanently
+                    // lock inflated local values if we ever mis-count in a match (e.g. counting opponent actions).
+                    // Overwrite local stat with server value.
+                    var merged = Mathf.Max(0, e.v);
                     if (merged != cur)
                     {
                         _stats[e.k] = merged;
