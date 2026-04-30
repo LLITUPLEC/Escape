@@ -157,6 +157,46 @@ local function arena_sweep_expired_done_storage()
   end
 end
 
+local function arena_clear_all_human_tids_from_tournament(T)
+  if T == nil or type(T.parts) ~= "table" then
+    return
+  end
+  for uid, meta in pairs(T.parts) do
+    if meta ~= nil and meta.bot ~= true then
+      arena_clear_human_tid(uid)
+    end
+  end
+end
+
+--- Удаляем «мертвые» турниры: нет ни одного активного (не eliminated) реального игрока.
+--- Также удаляем турниры, где вообще не было людей (только боты).
+local function arena_sweep_dead_tournaments_storage()
+  local cursor = ""
+  while true do
+    local ok, objects, next_cursor = pcall(function()
+      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
+    end)
+    if not ok then
+      nk.logger_error("arena storage_list failed: " .. tostring(objects))
+      break
+    end
+    if objects == nil then break end
+    for _, row in ipairs(objects) do
+      local v = row.value
+      if v ~= nil and v.phase ~= "done" then
+        local has_any_humans = arena_tournament_has_any_humans(v)
+        local remaining_humans = arena_tournament_count_remaining_humans(v)
+        if (not has_any_humans) or remaining_humans <= 0 then
+          arena_clear_all_human_tids_from_tournament(v)
+          arena_delete_tournament(row.key)
+        end
+      end
+    end
+    if next_cursor == nil or next_cursor == "" then break end
+    cursor = next_cursor
+  end
+end
+
 local function arena_save_user_tid(user_id, tid)
   if user_id == nil or user_id == "" then return end
   if tid == nil or tid == "" then
@@ -253,6 +293,32 @@ end
 local function arena_uid_is_bot(T, uid)
   local p = T.parts[uid]
   return p == nil or p.bot == true
+end
+
+local function arena_tournament_has_any_humans(T)
+  if T == nil or type(T.parts) ~= "table" then
+    return false
+  end
+  for _, meta in pairs(T.parts) do
+    if meta ~= nil and meta.bot ~= true then
+      return true
+    end
+  end
+  return false
+end
+
+local function arena_tournament_count_remaining_humans(T)
+  if T == nil or type(T.parts) ~= "table" then
+    return 0
+  end
+  local eliminated = (type(T.eliminated) == "table") and T.eliminated or {}
+  local n = 0
+  for uid, meta in pairs(T.parts) do
+    if meta ~= nil and meta.bot ~= true and eliminated[uid] ~= true then
+      n = n + 1
+    end
+  end
+  return n
 end
 
 local function mirror_commit(state)
@@ -648,6 +714,19 @@ local function arena_start_tournament_from_entries(kind, entries)
   local k = normalize_kind(kind)
   local tid = nk.uuid_v4()
   local bet = entries[1] ~= nil and entries[1].bet_tier or "green"
+
+  -- Если в пачке 8 только боты — не создаём турнир/сетку и не пишем в storage.
+  local has_human = false
+  for _, p in ipairs(entries or {}) do
+    if p ~= nil and p.bot ~= true then
+      has_human = true
+      break
+    end
+  end
+  if not has_human then
+    return
+  end
+
   local T = {
     id = tid,
     kind = k,
@@ -661,6 +740,7 @@ local function arena_start_tournament_from_entries(kind, entries)
     sf = {},
     final = {},
     eliminated = {},
+    created_at = os.time(),
   }
   arena_shuffle_inplace(entries)
   for _, p in ipairs(entries) do
@@ -707,6 +787,21 @@ local function arena_maybe_fill_bot(kind)
   end
   local q = ks.queue
   if #q >= ARENA_QUEUE_MAX or #q == 0 then
+    return
+  end
+  -- Если в очереди не осталось ни одного человека — очищаем очередь от ботов и выходим.
+  local has_human = false
+  for i = 1, #q do
+    local e = q[i]
+    if e ~= nil and e.bot ~= true then
+      has_human = true
+      break
+    end
+  end
+  if not has_human then
+    ks.queue = {}
+    ks.queue_bet_tier = (k == ARENA_KIND_SMITH) and "" or "fixed"
+    ks.next_bot_at = 0
     return
   end
   local now = os.time()
@@ -1056,6 +1151,7 @@ local function duel_arena_queue_poll(ctx, payload)
     if tnow - (arena_runtime.last_tourn_storage_sweep or 0) >= 60 then
       arena_runtime.last_tourn_storage_sweep = tnow
       arena_sweep_expired_done_storage()
+      arena_sweep_dead_tournaments_storage()
     end
 
     local in_queue = false
