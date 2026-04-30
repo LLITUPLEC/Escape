@@ -64,6 +64,7 @@ namespace Project.UI
         private Transform _modalCloseButtonTr;
         private GameObject _bracketRoot;
         private Transform _rowsRoot;
+        private TMP_Text _bracketTitle;
         private TMP_Text _cdText;
         private TMP_Text _headerTemplate;
         private Transform _pairRowTemplate;
@@ -74,6 +75,9 @@ namespace Project.UI
         private Coroutine _pollRoutine;
         private bool _busyJoin;
         private string _selectedArenaKind = ArenaKindSmith;
+
+        /// <summary>Без Sprite у UI Image режим «Filled» + Fill Amount часто визуально не работает (сплошной прямоугольник).</summary>
+        private static Sprite _arenaBracketHpSprite;
 
         private string _sceneArmMidGuard;
         private float _suppressFightReloadUntil;
@@ -275,7 +279,7 @@ namespace Project.UI
                     ShowBracket(m.tournament);
                 }
                 else
-                    RefreshArenaCountdownOnly(m.tournament);
+                    RefreshBracketInPlace(m.tournament);
 
                 TryArmFightScene(m.tournament);
             }
@@ -299,8 +303,8 @@ namespace Project.UI
             foreach (var r in rows)
             {
                 if (r == null) continue;
-                // HP can come as float; keep precision so bracket refreshes while HP changes.
-                s += $"{r.slot}:{r.status}:{Mathf.RoundToInt(r.hp_a * 100f)}:{Mathf.RoundToInt(r.hp_b * 100f)}:{r.match_id ?? ""};";
+                // HP обновляются отдельно в RefreshBracketInPlace (каждый poll), чтобы полоски «дышали» без пересборки рядов.
+                s += $"{r.slot}:{r.status}:{r.match_id ?? ""}:{r.winner_uid ?? ""};";
             }
 
             return s;
@@ -309,12 +313,137 @@ namespace Project.UI
         private void RefreshArenaCountdownOnly(ArenaTournamentState t)
         {
             if (_bracketRoot == null || t == null) return;
+            ApplyBracketOverlayTitle(t);
             var cd = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
             if (cd == null) return;
             if (t.phase == "countdown")
                 cd.text = Mathf.Max(0, t.countdown_left).ToString();
             else
                 cd.text = PhaseTitle(t.phase);
+        }
+
+        private static string BracketOverlayMainTitle(string kindRaw)
+        {
+            var k = string.IsNullOrWhiteSpace(kindRaw) ? ArenaKindSmith : kindRaw.Trim().ToLowerInvariant();
+            if (k == ArenaKindOre)
+                return "Турнир Руды";
+            if (k == ArenaKindGold)
+                return "Турнир Золота";
+            return "Турнир Кузнеца";
+        }
+
+        private void ApplyBracketOverlayTitle(ArenaTournamentState t)
+        {
+            if (_bracketTitle == null || t == null)
+                return;
+            _bracketTitle.text = BracketOverlayMainTitle(t.kind);
+        }
+
+        private ArenaPairRow[] RowsForCurrentBracketPhase(ArenaTournamentState t)
+        {
+            if (t == null) return null;
+            if (t.phase == "qf") return t.qf;
+            if (t.phase == "sf") return t.sf;
+            if (t.phase == "final") return t.final_pairs;
+            if (t.phase == "countdown")
+            {
+                if (string.Equals(t.next_round, "sf", StringComparison.Ordinal)) return t.sf;
+                if (string.Equals(t.next_round, "final", StringComparison.Ordinal)) return t.final_pairs;
+                return t.qf;
+            }
+
+            return null;
+        }
+
+        /// <summary>Перерисовка HP/статусов без пересборки сетки (сервер шлёт актуальные hp_* из mirror_commit).</summary>
+        private void RefreshBracketInPlace(ArenaTournamentState t)
+        {
+            if (_bracketRoot == null || !_bracketRoot.activeInHierarchy || _rowsRoot == null || t == null)
+                return;
+
+            RefreshArenaCountdownOnly(t);
+
+            var rows = RowsForCurrentBracketPhase(t);
+            if (rows == null || rows.Length == 0)
+                return;
+
+            var list = CollectBracketRows(_rowsRoot);
+            var n = Mathf.Min(list.Count, rows.Length);
+            for (var i = 0; i < n; i++)
+                BindPairRowData(list[i], rows[i]);
+        }
+
+        private static List<Transform> CollectBracketRows(Transform rowsRoot)
+        {
+            var list = new List<Transform>();
+            if (rowsRoot == null)
+                return list;
+            for (var i = 0; i < rowsRoot.childCount; i++)
+            {
+                var ch = rowsRoot.GetChild(i);
+                if (ch != null && ch.name == "BracketRow")
+                    list.Add(ch);
+            }
+
+            return list;
+        }
+
+        private static Image ResolveHpFillImage(Transform row, string barName)
+        {
+            if (row == null || string.IsNullOrEmpty(barName))
+                return null;
+
+            var fillPath = barName + "/Fill";
+            var fill = row.Find(fillPath)?.GetComponent<Image>();
+            if (fill != null)
+                return fill;
+
+            var bar = row.Find(barName);
+            if (bar == null)
+                return null;
+
+            fill = bar.Find("Fill")?.GetComponent<Image>();
+            if (fill != null)
+                return fill;
+
+            var img = bar.GetComponent<Image>();
+            return img != null && img.type == Image.Type.Filled ? img : null;
+        }
+
+        /// <summary>Привязать данные пары к уже созданному ряду (prefab или процедурный).</summary>
+        private static void BindPairRowData(Transform row, ArenaPairRow pr)
+        {
+            if (row == null || pr == null)
+                return;
+
+            var leftName = row.Find("LeftName")?.GetComponent<TMP_Text>();
+            if (leftName == null) leftName = row.Find("Txt")?.GetComponent<TMP_Text>();
+            if (leftName != null)
+                leftName.text = pr.display_a ?? "";
+
+            var rightName = row.Find("RightName")?.GetComponent<TMP_Text>();
+            if (rightName != null)
+                rightName.text = pr.display_b ?? "";
+
+            var hpA = ResolveHpFillImage(row, "HpA");
+            if (hpA != null)
+                SetHp(hpA, pr.hp_a);
+            else
+            {
+                var legacyHp = row.Find("Hp")?.GetComponent<Image>();
+                if (legacyHp != null)
+                    SetHp(legacyHp, pr.hp_a);
+            }
+
+            var hpB = ResolveHpFillImage(row, "HpB");
+            if (hpB != null)
+                SetHp(hpB, pr.hp_b);
+
+            var status = row.Find("Status")?.GetComponent<TMP_Text>();
+            if (status == null)
+                status = row.Find("Vs/Status")?.GetComponent<TMP_Text>();
+            if (status != null)
+                status.text = FormatPairStatus(pr.status);
         }
 
         private void UpdateQueueUi(ArenaPollResponse m)
@@ -548,29 +677,16 @@ namespace Project.UI
             var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
             if (canvas == null)
                 return;
-            var canvasRt = canvas.transform as RectTransform;
 
-            var parent = _queueTmp.transform.parent != null ? _queueTmp.transform.parent : canvas.transform;
             var go = new GameObject("ArenaLeaveQueueButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(parent, false);
+            go.transform.SetParent(canvas.transform, false);
 
             var rt = go.GetComponent<RectTransform>();
-            // Fixed anchors so it can't stretch to full screen (queue text may have stretch anchors).
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-
-            // Position near the queue counter (convert world->canvas local).
-            var qrt = _queueTmp.transform as RectTransform;
-            if (canvasRt != null && qrt != null)
-            {
-                var screen = RectTransformUtility.WorldToScreenPoint(null, qrt.position);
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, null, out var local))
-                    rt.anchoredPosition = local + new Vector2(0f, -44f);
-                else
-                    rt.anchoredPosition = new Vector2(0f, -220f);
-            }
-            else rt.anchoredPosition = new Vector2(0f, -220f);
+            // Фиксированно: правый нижний угол экрана с полями 100 px.
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(1f, 0f);
+            rt.anchoredPosition = new Vector2(-100f, 100f);
             rt.sizeDelta = new Vector2(260f, 54f);
 
             var img = go.GetComponent<Image>();
@@ -985,6 +1101,7 @@ namespace Project.UI
             if (_bracketRoot.transform.parent != canvas.transform)
                 _bracketRoot.transform.SetParent(canvas.transform, false);
 
+            _bracketTitle = _bracketRoot.transform.Find("Title")?.GetComponent<TMP_Text>();
             _cdText = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
             _rowsRoot = _bracketRoot.transform.Find("ArenaRows");
             _headerTemplate = _rowsRoot != null
@@ -999,6 +1116,7 @@ namespace Project.UI
             {
                 UnityEngine.Object.Destroy(_bracketRoot);
                 _bracketRoot = BuildBracketProcedural(canvas.transform);
+                _bracketTitle = _bracketRoot.transform.Find("Title")?.GetComponent<TMP_Text>();
                 _cdText = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
                 _rowsRoot = _bracketRoot.transform.Find("ArenaRows");
                 _headerTemplate = null;
@@ -1035,7 +1153,8 @@ namespace Project.UI
             bg.color = new Color(0.03f, 0.06f, 0.12f, 0.88f);
             bg.raycastTarget = true;
 
-            var titleGo = CreateTmp(root.transform, "Турнир Match3", 28, FontStyles.Bold);
+            var titleGo = CreateTmp(root.transform, BracketOverlayMainTitle(ArenaKindSmith), 28, FontStyles.Bold);
+            titleGo.name = "Title";
             var titleLe = titleGo.AddComponent<LayoutElement>();
             titleLe.preferredHeight = 44f;
             titleLe.flexibleWidth = 1f;
@@ -1077,6 +1196,8 @@ namespace Project.UI
                 return;
 
             _bracketRoot.SetActive(true);
+
+            ApplyBracketOverlayTitle(t);
 
             if (_cdText != null)
             {
@@ -1187,29 +1308,7 @@ namespace Project.UI
                 hl.childForceExpandWidth = false;
             }
 
-            var leftName = row.Find("LeftName")?.GetComponent<TMP_Text>();
-            if (leftName == null) leftName = row.Find("Txt")?.GetComponent<TMP_Text>();
-            if (leftName != null) leftName.text = pr.display_a ?? "";
-
-            var rightName = row.Find("RightName")?.GetComponent<TMP_Text>();
-            if (rightName != null) rightName.text = pr.display_b ?? "";
-
-            var hpA = row.Find("HpA/Fill")?.GetComponent<Image>();
-            if (hpA != null) SetHp(hpA, pr.hp_a);
-            else
-            {
-                // legacy name: "Hp" was a fill image itself
-                var legacy = row.Find("Hp")?.GetComponent<Image>();
-                if (legacy != null) SetHp(legacy, pr.hp_a);
-            }
-
-            var hpB = row.Find("HpB/Fill")?.GetComponent<Image>();
-            if (hpB != null) SetHp(hpB, pr.hp_b);
-
-            var status = row.Find("Status")?.GetComponent<TMP_Text>();
-            if (status == null)
-                status = row.Find("Vs/Status")?.GetComponent<TMP_Text>();
-            if (status != null) status.text = FormatPairStatus(pr.status);
+            BindPairRowData(row, pr);
         }
 
         private static string PhaseTitle(string phase)
@@ -1301,12 +1400,52 @@ namespace Project.UI
             }
         }
 
+        private static Sprite ArenaBracketHpWhiteSprite()
+        {
+            if (_arenaBracketHpSprite != null)
+                return _arenaBracketHpSprite;
+
+            var t = Texture2D.whiteTexture;
+            _arenaBracketHpSprite =
+                Sprite.Create(
+                    t,
+                    new Rect(0, 0, t.width, t.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f,
+                    0,
+                    SpriteMeshType.FullRect);
+
+            _arenaBracketHpSprite.name = "ArenaBracketHpFill";
+            return _arenaBracketHpSprite;
+        }
+
+        private static void EnsureHpFillRenderable(Image img)
+        {
+            if (img == null)
+                return;
+            img.sprite ??= ArenaBracketHpWhiteSprite();
+            img.type = Image.Type.Filled;
+            img.fillMethod = Image.FillMethod.Horizontal;
+            img.fillOrigin = (int)Image.OriginHorizontal.Left;
+            img.preserveAspect = false;
+            img.maskable = true;
+            var rt = img.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one;
+        }
+
         private static Image MakeHpBar(Transform parent)
         {
             var go = new GameObject("Hp");
             go.transform.SetParent(parent, false);
             var bg = go.AddComponent<Image>();
             bg.color = new Color(0.15f, 0.15f, 0.18f, 1f);
+            bg.sprite = ArenaBracketHpWhiteSprite();
             var rt = go.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(140f, 22f);
 
@@ -1314,9 +1453,7 @@ namespace Project.UI
             fill.transform.SetParent(go.transform, false);
             var fillImg = fill.AddComponent<Image>();
             fillImg.color = new Color(0.28f, 0.82f, 0.38f, 1f);
-            fillImg.type = Image.Type.Filled;
-            fillImg.fillMethod = Image.FillMethod.Horizontal;
-            fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            EnsureHpFillRenderable(fillImg);
             var frt = fill.GetComponent<RectTransform>();
             frt.anchorMin = Vector2.zero;
             frt.anchorMax = Vector2.one;
@@ -1334,11 +1471,16 @@ namespace Project.UI
         {
             if (img == null)
                 return;
-            // Server may send hp as 0..150 or as normalized 0..1. Support both.
+            EnsureHpFillRenderable(img);
+
+            float t;
+            // Server может слать hp как 0..150 или нормализовано 0..1.
             if (hp <= 1.01f)
-                img.fillAmount = Mathf.Clamp01(hp);
+                t = Mathf.Clamp01(hp);
             else
-                img.fillAmount = Mathf.Clamp01(hp / 150f);
+                t = Mathf.Clamp01(hp / 150f);
+
+            img.fillAmount = t;
         }
 
         private void HideBracket()

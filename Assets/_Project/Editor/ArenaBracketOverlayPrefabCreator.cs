@@ -44,7 +44,7 @@ public static class ArenaBracketOverlayPrefabCreator
         vl.childForceExpandWidth = true;
         vl.childForceExpandHeight = false;
 
-        var title = MakeTmp(root.transform, "Title", "Турнир Match3", 28, FontStyles.Bold);
+        var title = MakeTmp(root.transform, "Title", "Турнир Кузнеца", 28, FontStyles.Bold);
         title.gameObject.AddComponent<LayoutElement>().preferredHeight = 44f;
 
         var cd = MakeTmp(root.transform, "ArenaCd", "-", 36, FontStyles.Bold);
@@ -138,8 +138,11 @@ public static class ArenaBracketOverlayPrefabCreator
         var go = new GameObject(name, typeof(RectTransform));
         go.transform.SetParent(parent, false);
 
+        var ws = BuiltinWhiteSprite();
+
         var bg = go.AddComponent<Image>();
         bg.color = new Color(0.15f, 0.15f, 0.18f, 1f);
+        bg.sprite = ws;
 
         var rt = go.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(140f, 22f);
@@ -148,6 +151,7 @@ public static class ArenaBracketOverlayPrefabCreator
         fill.transform.SetParent(go.transform, false);
         var fillImg = fill.AddComponent<Image>();
         fillImg.color = new Color(0.28f, 0.82f, 0.38f, 1f);
+        fillImg.sprite = ws;
         fillImg.type = Image.Type.Filled;
         fillImg.fillMethod = Image.FillMethod.Horizontal;
         fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -162,6 +166,18 @@ public static class ArenaBracketOverlayPrefabCreator
         var le = go.AddComponent<LayoutElement>();
         le.preferredWidth = 140f;
         le.preferredHeight = 26f;
+    }
+
+    private static Sprite BuiltinWhiteSprite()
+    {
+        var t = Texture2D.whiteTexture;
+        return Sprite.Create(
+            t,
+            new Rect(0, 0, t.width, t.height),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect);
     }
 
     private static void SetRect(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 pivot, Vector2 size, Vector2 anchoredPos)

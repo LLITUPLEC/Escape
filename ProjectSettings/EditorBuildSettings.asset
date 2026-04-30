@@ -23,9 +23,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/WorkshopScene.unity
     guid: 29712c2dbf22cf44cbd1bcbd6c01f2d2
-  - enabled: 0
-    path: Assets/_Project/Scenes/Lighting2D_Test.unity
-    guid: 54ef30e9e66343e4a981fcb6b11da819
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

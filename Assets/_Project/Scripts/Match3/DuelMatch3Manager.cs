@@ -1645,8 +1645,8 @@ namespace Project.Match3
             }
             else if (state.OpCode == M3Op.PlayerLeft)
             {
-                MainThreadDispatcher.Enqueue(() =>
-                { if (!_gameEnded) { _gameEnded = true; ShowGameOver(won: true); } });
+                // Сервер уже шлёт OP_GAME_OVER с winner и (для финала турнира) наградами.
+                // Мгновенный ShowGameOver здесь гонится с тем же сообщением → пустые строки награды.
             }
             else if (state.OpCode == M3Op.ActionReject)
             {

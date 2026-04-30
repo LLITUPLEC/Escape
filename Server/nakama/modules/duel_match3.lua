@@ -5563,6 +5563,28 @@ local function match_join(context, dispatcher, tick, state, presences)
   return state
 end
 
+--- Краткий GAME_OVER после сдачи/разрыва: дополняем метой арены и призом финала (как при обычном OP_GAME_OVER),
+--- чтобы клиент показал золото/руду и заголовок «Победа в турнире!» без дублирующего OP_PLAYER_LEFT/UI.
+local function augment_arena_game_over_payload(state, payload)
+  if payload == nil or state == nil then return end
+  if state.arena_mirror ~= nil then
+    payload.arenaTournamentId = state.arena_mirror.tournament_id or ""
+    payload.arenaRound = state.arena_mirror.round or ""
+    payload.arenaBetTier = state.arena_mirror.bet_tier or ""
+  end
+  local ar = string.lower(tostring(payload.arenaRound or ""))
+  if ar ~= "final" then return end
+  if state.arena_mirror ~= nil and type(arena_final_prize_gold_ore) == "function" then
+    local bt = string.lower(tostring(state.arena_mirror.bet_tier or payload.arenaBetTier or "green"))
+    local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
+    local rg, ro = arena_final_prize_gold_ore(ak, bt)
+    payload.rewardXp = tonumber(payload.rewardXp or 0) or 0
+    payload.rewardMatter = tonumber(payload.rewardMatter or 0) or 0
+    payload.rewardGold = tonumber(rg) or 0
+    payload.rewardOre = tonumber(ro) or 0
+  end
+end
+
 local function match_leave(context, dispatcher, tick, state, presences)
   local left_duelist_uid = nil
   if state.players_sorted and state.started and not state.ended and state.mode ~= "pve" then
@@ -5611,7 +5633,9 @@ local function match_leave(context, dispatcher, tick, state, presences)
         if not ok_achi then
           nk.logger_error("achievement_flush_match_finish failed (match_leave): " .. tostring(err_achi))
         end
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+        local game_over_payload = { winnerUserId = winner }
+        augment_arena_game_over_payload(state, game_over_payload)
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
       end
       return nil
     end
@@ -5682,7 +5706,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if not ok_achi then
           nk.logger_error("achievement_flush_match_finish failed (reconnect_timeout): " .. tostring(err_achi))
         end
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+        local game_over_payload = { winnerUserId = winner }
+        augment_arena_game_over_payload(state, game_over_payload)
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
       end
       return nil
     end
@@ -5733,7 +5759,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if not ok_achi then
           nk.logger_error("achievement_flush_match_finish failed (player_left): " .. tostring(err_achi))
         end
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode({ winnerUserId = winner }), nil, nil)
+        local game_over_payload = { winnerUserId = winner }
+        augment_arena_game_over_payload(state, game_over_payload)
+        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
       end
       return nil
     end
