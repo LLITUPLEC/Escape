@@ -61,6 +61,8 @@ local ACH_STAT_SHIELD = "uses.shield"
 local ACH_STAT_DNN = "dnn.double_line5_same_turn"
 local ACH_STAT_WIN1 = "dnn.win_at_one_hp"
 local ACH_STAT_BLACKSMITH = "slaughter.tournament_smith_final"
+local ACH_STAT_ORE_TOURN = "slaughter.tournament_ore_final"
+local ACH_STAT_GOLD_TOURN = "slaughter.tournament_gold_final"
 local ACH_STAT_DUEL_TRI = "slaughter.duel_tri_win"
 local ACH_STAT_PETARD_FINISH = "slaughter.duel_petard_finish"
 
@@ -120,6 +122,8 @@ local ACH_EVAL_CHAINS = {
   { id = "obs.fury", key = ACH_STAT_FURY, th = { 10, 50, 250, 500 } },
   { id = "obs.shield", key = ACH_STAT_SHIELD, th = { 10, 50, 250, 500 } },
   { id = "sl.blacksmith", key = ACH_STAT_BLACKSMITH, th = { 5, 25, 100, 500 } },
+  { id = "sl.ore_tournament", key = ACH_STAT_ORE_TOURN, th = { 5, 25, 100, 500 } },
+  { id = "sl.gold_tournament", key = ACH_STAT_GOLD_TOURN, th = { 5, 25, 100, 500 } },
   { id = "sl.duel", key = ACH_STAT_DUEL_TRI, th = { 5, 25, 100, 500 } },
   { id = "sl.petard_finish", key = ACH_STAT_PETARD_FINISH, th = { 5, 50, 100, 500 } },
   { id = "dnn.double_line", key = ACH_STAT_DNN, th = { 1 } },
@@ -175,6 +179,18 @@ local function apply_wallet_grant(user_id, chain_id, step_idx)
     local chain = tostring(chain_id or "")
     local step = tonumber(step_idx) or 0
     if chain == "sl.blacksmith" then
+      local gmap = { 1000, 5000, 15000, 0 }
+      local ga = tonumber(gmap[step + 1]) or 0
+      if ga > 0 then
+        progress.gold = math.max(0, tonumber(progress.gold) or 0) + ga
+      end
+    elseif chain == "sl.ore_tournament" then
+      local omap = { 1000, 5000, 15000, 0 }
+      local oa = tonumber(omap[step + 1]) or 0
+      if oa > 0 then
+        progress.ore = math.max(0, tonumber(progress.ore) or 0) + oa
+      end
+    elseif chain == "sl.gold_tournament" then
       local gmap = { 1000, 5000, 15000, 0 }
       local ga = tonumber(gmap[step + 1]) or 0
       if ga > 0 then
@@ -313,7 +329,14 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
     -- «Бойня»: дуэль/турнир против людей и ботов арены; без solo PvE (шахта, mode == "pve").
     if am ~= nil then
       if tostring(am.round or "") == "final" then
-        e[ACH_STAT_BLACKSMITH] = (e[ACH_STAT_BLACKSMITH] or 0) + 1
+        local ak = string.lower(tostring(am.kind or "smith"))
+        if ak == "ore" then
+          e[ACH_STAT_ORE_TOURN] = (e[ACH_STAT_ORE_TOURN] or 0) + 1
+        elseif ak == "gold" then
+          e[ACH_STAT_GOLD_TOURN] = (e[ACH_STAT_GOLD_TOURN] or 0) + 1
+        else
+          e[ACH_STAT_BLACKSMITH] = (e[ACH_STAT_BLACKSMITH] or 0) + 1
+        end
       end
       e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
     elseif state.mode ~= "pve" then

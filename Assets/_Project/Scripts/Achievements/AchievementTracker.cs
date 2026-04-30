@@ -234,6 +234,16 @@ namespace Project.Achievements
             AddStat(AchievementStatKeys.TournamentSmithWinFinal);
         }
 
+        public static void NotifyOreTournamentFinalWin()
+        {
+            AddStat(AchievementStatKeys.TournamentOreWinFinal);
+        }
+
+        public static void NotifyGoldTournamentFinalWin()
+        {
+            AddStat(AchievementStatKeys.TournamentGoldWinFinal);
+        }
+
         public static void NotifyTriMatchDuelWin()
         {
             AddStat(AchievementStatKeys.DuelTriWin);

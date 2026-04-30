@@ -52,6 +52,8 @@ namespace Project.Achievements
         public const string UsesShield = "uses.shield";
 
         public const string TournamentSmithWinFinal = "slaughter.tournament_smith_final";
+        public const string TournamentOreWinFinal = "slaughter.tournament_ore_final";
+        public const string TournamentGoldWinFinal = "slaughter.tournament_gold_final";
         public const string DuelTriWin = "slaughter.duel_tri_win";
         public const string DuelPetardFinisher = "slaughter.duel_petard_finish";
 
@@ -190,6 +192,42 @@ namespace Project.Achievements
                         "Выиграть турнир кузнеца 25 раз",
                         "Выиграть турнир кузнеца 100 раз",
                         "Выиграть турнир кузнеца 500 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +1000 золота",
+                        "Награда: +5000 золота",
+                        "Награда: +15000 золота",
+                        "Награда: +5% к здоровью от носимой экипировки",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.ore_tournament", AchievementStatKeys.TournamentOreWinFinal,
+                    new[] { 5, 25, 100, 500 },
+                    new[]
+                    {
+                        "Выиграть турнир руды 5 раз",
+                        "Выиграть турнир руды 25 раз",
+                        "Выиграть турнир руды 100 раз",
+                        "Выиграть турнир руды 500 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +1000 руды",
+                        "Награда: +5000 руды",
+                        "Награда: +15000 руды",
+                        "Награда: +5% к здоровью от носимой экипировки",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.gold_tournament", AchievementStatKeys.TournamentGoldWinFinal,
+                    new[] { 5, 25, 100, 500 },
+                    new[]
+                    {
+                        "Выиграть турнир золота 5 раз",
+                        "Выиграть турнир золота 25 раз",
+                        "Выиграть турнир золота 100 раз",
+                        "Выиграть турнир золота 500 раз",
                     },
                     new[]
                     {

@@ -30,6 +30,8 @@ namespace Project.Achievements
             Accumulate("obs.fury", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("obs.shield", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.blacksmith", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+            Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+            Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
@@ -64,6 +66,8 @@ namespace Project.Achievements
             Accumulate("obs.fury", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("obs.shield", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.blacksmith", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+            Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+            Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
             Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
@@ -130,6 +134,8 @@ namespace Project.Achievements
                     flatArmor += step switch { 0 => 5, 1 => 10, 2 => 15, _ => 20 };
                     break;
                 case "sl.blacksmith":
+                case "sl.ore_tournament":
+                case "sl.gold_tournament":
                     if (step == 3) equipHpPct += 0.05f;
                     break;
                 case "sl.duel":

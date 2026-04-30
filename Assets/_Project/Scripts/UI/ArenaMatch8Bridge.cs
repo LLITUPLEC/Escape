@@ -25,9 +25,17 @@ namespace Project.UI
         private const string RpcArenaPoll = "duel_arena_queue_poll";
         private const string BracketPrefabResourcesPath = "UI/ArenaBracketOverlay";
 
+        [Header("Buttons (by GameObject name)")]
         [SerializeField] private string match3ArenaButtonName = "match3Arena";
+        [SerializeField] private string match3ArenaOreButtonName = "match3Arena_Ore";
+        [SerializeField] private string match3ArenaGoldButtonName = "match3Arena_Gold";
         [SerializeField] private string queueTextObjectName = "queue";
         [SerializeField] private string duelMatch3SceneName = "DuelMatch3";
+
+        [Header("Queue lock UI (optional names; hides while in queue)")]
+        [SerializeField] private string modePanelObjectName = "ModePanel";
+        [SerializeField] private string backButtonObjectName = "BackButton";
+        [SerializeField] private string match3StatsCardObjectName = "Match3StatsCard";
 
         [Header("Icons (опционально, из инспектора)")]
         [SerializeField] private Sprite iconGreenIngot;
@@ -36,10 +44,24 @@ namespace Project.UI
         [SerializeField] private Sprite iconOre;
         [SerializeField] private Sprite iconGold;
 
+        private const string ArenaKindSmith = "smith";
+        private const string ArenaKindOre = "ore";
+        private const string ArenaKindGold = "gold";
+
         private Button _arenaButton;
+        private Button _arenaOreButton;
+        private Button _arenaGoldButton;
         private TMP_Text _queueTmp;
+        private Button _leaveQueueButton;
+        private GameObject _modePanelGo;
+        private GameObject _backButtonGo;
+        private GameObject _statsCardGo;
+        private bool _queueUiLocked;
 
         private GameObject _modalRoot;
+        private Transform _modalPanel;
+        private TMP_Text _modalTitle;
+        private Transform _modalCloseButtonTr;
         private GameObject _bracketRoot;
         private Transform _rowsRoot;
         private TMP_Text _cdText;
@@ -51,6 +73,7 @@ namespace Project.UI
 
         private Coroutine _pollRoutine;
         private bool _busyJoin;
+        private string _selectedArenaKind = ArenaKindSmith;
 
         private string _sceneArmMidGuard;
         private float _suppressFightReloadUntil;
@@ -72,6 +95,7 @@ namespace Project.UI
         {
             public string bet_tier;
             public int session_epoch;
+            public string arena_kind;
         }
 
         [Serializable]
@@ -82,6 +106,7 @@ namespace Project.UI
             public int queue_max;
             public bool in_queue;
             public string queue_bet_tier;
+            public string queue_kind;
             public ArenaTournamentState tournament;
             public string err;
         }
@@ -116,6 +141,7 @@ namespace Project.UI
             public string phase;
             public string next_round;
             public string bet_tier;
+            public string kind;
             public int countdown_left;
             public string join_match_id;
             public bool join_opponent_is_bot;
@@ -150,11 +176,24 @@ namespace Project.UI
             NakamaBootstrap.EnsureExists();
             _arenaButton = FindComponentByGameObjectName<Button>(match3ArenaButtonName);
             if (_arenaButton != null)
-                _arenaButton.onClick.AddListener(OpenBetModal);
+                _arenaButton.onClick.AddListener(() => OpenBetModal(ArenaKindSmith));
+
+            _arenaOreButton = FindComponentByGameObjectName<Button>(match3ArenaOreButtonName);
+            if (_arenaOreButton != null)
+                _arenaOreButton.onClick.AddListener(() => OpenBetModal(ArenaKindOre));
+
+            _arenaGoldButton = FindComponentByGameObjectName<Button>(match3ArenaGoldButtonName);
+            if (_arenaGoldButton != null)
+                _arenaGoldButton.onClick.AddListener(() => OpenBetModal(ArenaKindGold));
 
             var q = FindComponentByGameObjectName<TMP_Text>(queueTextObjectName);
             if (q != null)
                 _queueTmp = q;
+
+            _modePanelGo = FindByName(modePanelObjectName);
+            _backButtonGo = FindByName(backButtonObjectName);
+            _statsCardGo = FindByName(match3StatsCardObjectName);
+            EnsureLeaveQueueButtonBuilt();
 
             EnsureBetModalBuilt();
             EnsureBracketBuilt();
@@ -200,7 +239,8 @@ namespace Project.UI
                 return;
             try
             {
-                var payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + "}";
+                var payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
+                              ",\"arena_kind\":\"" + (_selectedArenaKind ?? ArenaKindSmith) + "\"}";
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaPoll, payload);
                 var raw = rpc?.Payload ?? "{}";
                 var model = JsonUtility.FromJson<ArenaPollResponse>(raw);
@@ -282,10 +322,31 @@ namespace Project.UI
             if (_queueTmp == null)
                 return;
 
+            if (m != null && m.in_queue && !string.IsNullOrWhiteSpace(m.queue_kind))
+                _selectedArenaKind = m.queue_kind.Trim().ToLowerInvariant();
+
             var show = m.in_queue || (m.queue_count > 0);
             _queueTmp.gameObject.SetActive(show);
             if (show)
                 _queueTmp.text = $"{Mathf.Clamp(m.queue_count, 0, m.queue_max > 0 ? m.queue_max : 8)}/{(m.queue_max > 0 ? m.queue_max : 8)}";
+
+            ApplyQueueLockState(m.in_queue);
+        }
+
+        private void ApplyQueueLockState(bool inQueue)
+        {
+            if (_queueUiLocked == inQueue)
+            {
+                if (_leaveQueueButton != null)
+                    _leaveQueueButton.gameObject.SetActive(inQueue);
+                return;
+            }
+
+            _queueUiLocked = inQueue;
+            if (_modePanelGo != null) _modePanelGo.SetActive(!inQueue);
+            if (_backButtonGo != null) _backButtonGo.SetActive(!inQueue);
+            if (_statsCardGo != null) _statsCardGo.SetActive(!inQueue);
+            if (_leaveQueueButton != null) _leaveQueueButton.gameObject.SetActive(inQueue);
         }
 
         private void TryArmFightScene(ArenaTournamentState t)
@@ -353,10 +414,12 @@ namespace Project.UI
             return null;
         }
 
-        private void OpenBetModal()
+        private void OpenBetModal(string kind)
         {
             if (_busyJoin || _modalRoot == null)
                 return;
+            _selectedArenaKind = string.IsNullOrWhiteSpace(kind) ? ArenaKindSmith : kind.Trim().ToLowerInvariant();
+            RebuildBetModalRowsForKind(_selectedArenaKind);
             _modalRoot.SetActive(true);
         }
 
@@ -381,6 +444,11 @@ namespace Project.UI
             await QueueJoinAsync("purple");
         }
 
+        public async void OnPickBetFixed()
+        {
+            await QueueJoinAsync("fixed");
+        }
+
         private async Task QueueJoinAsync(string tier)
         {
             if (_busyJoin || !NakamaBootstrap.Instance.IsReady)
@@ -393,6 +461,7 @@ namespace Project.UI
                 {
                     bet_tier = tier,
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                    arena_kind = _selectedArenaKind ?? ArenaKindSmith,
                 });
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaJoin, payload);
                 var raw = rpc?.Payload ?? "{}";
@@ -418,6 +487,10 @@ namespace Project.UI
                     Debug.LogWarning("[Arena8] join failed: " + err);
                     if (string.Equals(resp?.err, "not_enough_ingots", StringComparison.Ordinal))
                         ShowToast("Недостаточно слитков для ставки", 2.6f);
+                    else if (string.Equals(resp?.err, "not_enough_ore", StringComparison.Ordinal))
+                        ShowToast("Недостаточно руды для ставки", 2.6f);
+                    else if (string.Equals(resp?.err, "not_enough_gold", StringComparison.Ordinal))
+                        ShowToast("Недостаточно золота для ставки", 2.6f);
                     else if (string.Equals(resp?.err, "bet_tier_mismatch", StringComparison.Ordinal))
                         ShowToast("Очередь занята другой ставкой", 2.6f);
                 }
@@ -439,13 +512,105 @@ namespace Project.UI
                 return;
             try
             {
-                var payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + "}";
-                await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaLeave, payload);
+                var payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
+                              ",\"arena_kind\":\"" + (_selectedArenaKind ?? ArenaKindSmith) + "\"}";
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaLeave, payload);
+                var raw = rpc?.Payload ?? "{}";
+                var resp = JsonUtility.FromJson<ArenaLeaveResponse>(raw);
+                if (resp != null && resp.ok)
+                {
+                    MainThreadDispatcher.Enqueue(() =>
+                    {
+                        if (_queueTmp != null)
+                            _queueTmp.gameObject.SetActive(false);
+                        ApplyQueueLockState(false);
+                    });
+                    _ = PollOnceFireAndForget();
+                }
+                else
+                {
+                    Debug.LogWarning("[Arena8] leave failed: " + (resp?.err ?? raw));
+                    ShowToast("Не удалось выйти из очереди", 2.2f);
+                    _ = PollOnceFireAndForget();
+                }
             }
             catch (Exception e)
             {
                 Debug.LogWarning("[Arena8] leave: " + e.Message);
             }
+        }
+
+        private void EnsureLeaveQueueButtonBuilt()
+        {
+            if (_leaveQueueButton != null || _queueTmp == null)
+                return;
+
+            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            if (canvas == null)
+                return;
+            var canvasRt = canvas.transform as RectTransform;
+
+            var parent = _queueTmp.transform.parent != null ? _queueTmp.transform.parent : canvas.transform;
+            var go = new GameObject("ArenaLeaveQueueButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+
+            var rt = go.GetComponent<RectTransform>();
+            // Fixed anchors so it can't stretch to full screen (queue text may have stretch anchors).
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+
+            // Position near the queue counter (convert world->canvas local).
+            var qrt = _queueTmp.transform as RectTransform;
+            if (canvasRt != null && qrt != null)
+            {
+                var screen = RectTransformUtility.WorldToScreenPoint(null, qrt.position);
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, screen, null, out var local))
+                    rt.anchoredPosition = local + new Vector2(0f, -44f);
+                else
+                    rt.anchoredPosition = new Vector2(0f, -220f);
+            }
+            else rt.anchoredPosition = new Vector2(0f, -220f);
+            rt.sizeDelta = new Vector2(260f, 54f);
+
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.2f, 0.35f, 0.55f, 0.95f);
+
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(LeaveQueueClicked);
+
+            var txtGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtGo.transform.SetParent(go.transform, false);
+            var tmp = txtGo.GetComponent<TextMeshProUGUI>();
+            tmp.text = "Выйти из очереди";
+            tmp.fontSize = 22;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = Color.white;
+            var trt = txtGo.GetComponent<RectTransform>();
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero;
+            trt.offsetMax = Vector2.zero;
+
+            _leaveQueueButton = btn;
+            _leaveQueueButton.gameObject.SetActive(false);
+        }
+
+        private static GameObject FindByName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+            var go = GameObject.Find(name);
+            if (go != null) return go;
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var t in all)
+            {
+                if (t != null && string.Equals(t.gameObject.name, name, StringComparison.Ordinal))
+                    return t.gameObject;
+            }
+            return null;
         }
 
         private void EnsureBetModalBuilt()
@@ -494,20 +659,132 @@ namespace Project.UI
             vl.childForceExpandHeight = false;
             vl.childForceExpandWidth = true;
 
+            _modalPanel = panel.transform;
             var titleGo = CreateTmp(panel.transform, "Ставка турнира и награда при победе", 26, FontStyles.Bold);
             titleGo.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 44f);
-
-            MakeBetRow(panel.transform, "green", "50 зелёных слитков", "300 руды · 300 золота", iconGreenIngot);
-            MakeBetRow(panel.transform, "blue", "50 синих слитков", "600 руды · 600 золота", iconBlueIngot);
-            MakeBetRow(panel.transform, "purple", "50 фиолетовых слитков", "1200 руды · 1200 золота", iconPurpleIngot);
+            _modalTitle = titleGo.GetComponent<TMP_Text>();
 
             var closeBtn = CreateButton(panel.transform, "Закрыть", () =>
             {
                 if (_modalRoot != null)
                     _modalRoot.SetActive(false);
             });
+            _modalCloseButtonTr = closeBtn != null ? closeBtn.transform : null;
 
             _modalRoot.SetActive(false);
+            RebuildBetModalRowsForKind(_selectedArenaKind);
+        }
+
+        private void RebuildBetModalRowsForKind(string kind)
+        {
+            if (_modalPanel == null)
+                return;
+
+            // Remove all bet rows from previous modal state (order-independent).
+            for (var i = _modalPanel.childCount - 1; i >= 0; i--)
+            {
+                var ch = _modalPanel.GetChild(i);
+                if (ch == null) continue;
+                if (ch == _modalCloseButtonTr) continue;
+                if (ch == _modalTitle?.transform) continue;
+                if (ch.name.StartsWith("Row_", StringComparison.Ordinal)) Destroy(ch.gameObject);
+            }
+
+            var k = string.IsNullOrWhiteSpace(kind) ? ArenaKindSmith : kind.Trim().ToLowerInvariant();
+            if (_modalTitle != null)
+                _modalTitle.text = k == ArenaKindSmith
+                    ? "Ставка турнира и награда при победе"
+                    : (k == ArenaKindOre ? "Турнир руды: ставка и награда при победе" : "Турнир золота: ставка и награда при победе");
+
+            if (k == ArenaKindOre)
+            {
+                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_top");
+                MakeFixedBetRow(_modalPanel, "500 руды", "2500 руды", iconOre);
+                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_bottom");
+            }
+            else if (k == ArenaKindGold)
+            {
+                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_top");
+                MakeFixedBetRow(_modalPanel, "600 золота", "3000 золота", iconGold);
+                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_bottom");
+            }
+            else
+            {
+                MakeBetRow(_modalPanel, "green", "50 зелёных слитков", "300 руды · 300 золота", iconGreenIngot);
+                MakeBetRow(_modalPanel, "blue", "50 синих слитков", "600 руды · 600 золота", iconBlueIngot);
+                MakeBetRow(_modalPanel, "purple", "50 фиолетовых слитков", "1200 руды · 1200 золота", iconPurpleIngot);
+            }
+        }
+
+        private void MakeFlexibleSpacerRow(Transform parent, string name)
+        {
+            if (parent == null) return;
+            var sp = new GameObject(string.IsNullOrWhiteSpace(name) ? "Row_spacer" : name);
+            sp.transform.SetParent(parent, false);
+            if (_modalCloseButtonTr != null)
+                sp.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
+            var le = sp.AddComponent<LayoutElement>();
+            le.flexibleHeight = 1f;
+            le.minHeight = 0f;
+            le.preferredHeight = 0f;
+        }
+
+        private void MakeFixedBetRow(Transform parent, string cost, string prize, Sprite icon)
+        {
+            var row = new GameObject("Row_fixed");
+            row.transform.SetParent(parent, false);
+            if (_modalCloseButtonTr != null)
+                row.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
+            var rowRt = row.AddComponent<RectTransform>();
+            rowRt.sizeDelta = new Vector2(0f, 150f);
+            var rowLe = row.AddComponent<LayoutElement>();
+            rowLe.minHeight = 150f;
+            rowLe.preferredHeight = 150f;
+            rowLe.flexibleHeight = 0f;
+
+            var rowHl = row.AddComponent<HorizontalLayoutGroup>();
+            rowHl.spacing = 10f;
+            rowHl.childAlignment = TextAnchor.MiddleLeft;
+            rowHl.childForceExpandWidth = true;
+            rowHl.padding = new RectOffset(8, 8, 8, 8);
+
+            var rowImg = row.AddComponent<Image>();
+            rowImg.color = new Color(0.12f, 0.28f, 0.52f, 0.55f);
+
+            if (icon != null)
+            {
+                var ico = new GameObject("ResIcon");
+                ico.transform.SetParent(row.transform, false);
+                var img = ico.AddComponent<Image>();
+                img.sprite = icon;
+                var irt = ico.GetComponent<RectTransform>();
+                irt.sizeDelta = new Vector2(48f, 48f);
+                var le = ico.AddComponent<LayoutElement>();
+                le.preferredWidth = 52f;
+                le.preferredHeight = 52f;
+            }
+
+            var leftCol = new GameObject("CostCol");
+            leftCol.transform.SetParent(row.transform, false);
+            var vl = leftCol.AddComponent<VerticalLayoutGroup>();
+            vl.spacing = 4f;
+            vl.childAlignment = TextAnchor.MiddleLeft;
+            var costTxt = CreateTmp(leftCol.transform, cost, 22, FontStyles.Normal);
+            costTxt.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 58f);
+
+            var prizeGo = new GameObject("PrizeCol");
+            prizeGo.transform.SetParent(row.transform, false);
+            var prizeHl = prizeGo.AddComponent<HorizontalLayoutGroup>();
+            prizeHl.spacing = 8f;
+            prizeHl.childAlignment = TextAnchor.MiddleRight;
+
+            if (icon != null)
+                CreateIconImage(prizeGo.transform, icon);
+            CreateTmp(prizeGo.transform, prize, 22, FontStyles.Bold);
+
+            var btn = row.AddComponent<Button>();
+            btn.targetGraphic = rowImg;
+            btn.onClick.AddListener(OnPickBetFixed);
         }
 
         private void EnsureToastBuilt()
@@ -584,6 +861,8 @@ namespace Project.UI
         {
             var row = new GameObject("Row_" + tier);
             row.transform.SetParent(parent, false);
+            if (_modalCloseButtonTr != null)
+                row.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
             var rowRt = row.AddComponent<RectTransform>();
             rowRt.sizeDelta = new Vector2(0f, 96f);
 

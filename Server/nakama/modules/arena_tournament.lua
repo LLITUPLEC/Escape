@@ -13,6 +13,7 @@ return function(deps)
   local ensure_sheet_inventory_counts = deps.ensure_sheet_inventory_counts
   local inventory_remove_def_total = deps.inventory_remove_def_total
   local inventory_try_add = deps.inventory_try_add
+  local stats_inc_arena_tournament_played = deps.stats_inc_arena_tournament_played
 
 --- ═══════════════════════════════════════════════════════════════════════════
 --- Арена: турнир на 8 участников (очередь + сетка + интеграция с duel_match3).
@@ -22,6 +23,21 @@ return function(deps)
 local ARENA_QUEUE_MAX = 8
 local ARENA_COUNTDOWN_SEC = 20
 local ARENA_QUEUE_BET_INGOTS = 50
+local ARENA_ORE_BET = 500
+local ARENA_ORE_PRIZE = 2500
+local ARENA_GOLD_BET = 600
+local ARENA_GOLD_PRIZE = 3000
+
+local ARENA_KIND_SMITH = "smith" -- match3Arena (слитки)
+local ARENA_KIND_ORE = "ore"     -- match3Arena_Ore
+local ARENA_KIND_GOLD = "gold"   -- match3Arena_Gold
+
+local function normalize_kind(k)
+  local s = string.lower(tostring(k or ""))
+  if s == ARENA_KIND_ORE then return ARENA_KIND_ORE end
+  if s == ARENA_KIND_GOLD then return ARENA_KIND_GOLD end
+  return ARENA_KIND_SMITH
+end
 
 -- Persisted state (RPC and match loops can run in different Lua contexts).
 local STORAGE_COLL_TOURN = "arena_tournament"
@@ -31,14 +47,26 @@ local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
 local TOURNAMENT_TTL_SEC = 15 * 60
 
 local arena_runtime = {
-  queue = {},
-  queue_bet_tier = "",
-  next_bot_at = 0,
+  kinds = {
+    [ARENA_KIND_SMITH] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
+    [ARENA_KIND_ORE] = { queue = {}, queue_bet_tier = "fixed", next_bot_at = 0, allow_bot_fill = true },
+    [ARENA_KIND_GOLD] = { queue = {}, queue_bet_tier = "fixed", next_bot_at = 0, allow_bot_fill = true },
+  },
   tournaments = {},
+  -- user_tid[user_id] = { tid = "...", kind = "smith|ore|gold" }
   user_tid = {},
-  allow_bot_fill = true,
   last_tourn_storage_sweep = 0,
 }
+
+local function kind_state(kind)
+  local k = normalize_kind(kind)
+  local ks = arena_runtime.kinds[k]
+  if ks == nil then
+    ks = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true }
+    arena_runtime.kinds[k] = ks
+  end
+  return ks, k
+end
 
 local function storage_read_one(user_id, collection, key)
   local ok, rows = pcall(function()
@@ -134,7 +162,12 @@ local function arena_save_user_tid(user_id, tid)
   if tid == nil or tid == "" then
     storage_delete_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
   else
-    storage_write_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY, { tid = tid })
+    local kind = nil
+    if type(tid) == "table" then
+      kind = normalize_kind(tid.kind)
+      tid = tid.tid
+    end
+    storage_write_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY, { tid = tid, kind = kind })
   end
 end
 
@@ -143,11 +176,12 @@ local function arena_load_user_tid(user_id)
   -- Always refresh from storage: user_tid is modified by match context on elimination.
   local v = storage_read_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
   if v ~= nil and v.tid ~= nil and v.tid ~= "" then
-    arena_runtime.user_tid[user_id] = v.tid
-    return v.tid
+    local kind = normalize_kind(v.kind)
+    arena_runtime.user_tid[user_id] = { tid = v.tid, kind = kind }
+    return v.tid, kind
   end
   arena_runtime.user_tid[user_id] = nil
-  return nil
+  return nil, nil
 end
 
 local ARENA_BOT_DISPLAY_NAMES = {
@@ -269,18 +303,25 @@ local function mirror_commit(state)
 end
 
 --- Награды финала турнира (золото/руда) — та же шкала, что в arena_grant_final_progress и в OP_GAME_OVER.
-local function final_prize_for_bet_tier(bet_tier)
+local function final_prize_for_kind_and_bet(kind, bet_tier)
+  local k = normalize_kind(kind)
+  if k == ARENA_KIND_ORE then
+    return 0, ARENA_ORE_PRIZE
+  end
+  if k == ARENA_KIND_GOLD then
+    return ARENA_GOLD_PRIZE, 0
+  end
   local ore_g, gold_g = arena_final_prize_ore_gold(bet_tier)
   return tonumber(gold_g) or 0, tonumber(ore_g) or 0
 end
 
-local function arena_grant_final_progress(user_id, bet_tier)
-  local ore_g, gold_g = arena_final_prize_ore_gold(bet_tier)
+local function arena_grant_final_progress(user_id, kind, bet_tier)
+  local g, o = final_prize_for_kind_and_bet(kind, bet_tier)
   local max_retries = 5
   for attempt = 1, max_retries do
     local progress, version = read_pve_progress(user_id)
-    progress.ore = math.max(0, (tonumber(progress.ore) or 0) + ore_g)
-    progress.gold = math.max(0, (tonumber(progress.gold) or 0) + gold_g)
+    progress.ore = math.max(0, (tonumber(progress.ore) or 0) + (tonumber(o) or 0))
+    progress.gold = math.max(0, (tonumber(progress.gold) or 0) + (tonumber(g) or 0))
     local ok, err = pcall(function()
       write_pve_progress(user_id, progress, version)
     end)
@@ -406,6 +447,7 @@ local function arena_spawn_round_if_pending(T, rk)
           round = rk,
           slot_index = i,
           bet_tier = T.bet_tier,
+          kind = T.kind,
         },
       })
       if mid ~= nil and mid ~= "" then
@@ -425,6 +467,7 @@ local function arena_spawn_round_if_pending(T, rk)
           round = rk,
           slot_index = i,
           bet_tier = T.bet_tier,
+          kind = T.kind,
         },
       })
       if mid ~= nil and mid ~= "" then
@@ -494,7 +537,7 @@ arena_on_pair_completed = function(T, rk)
     end
     local w = pr.winner_uid
     if w ~= nil and w ~= "" and not arena_uid_is_bot(T, w) then
-      arena_grant_final_progress(w, T.bet_tier)
+      arena_grant_final_progress(w, T.kind, T.bet_tier)
     end
     T.phase = "done"
     T.done_at = os.time()
@@ -601,11 +644,13 @@ local function arena_tick_countdowns()
   end
 end
 
-local function arena_start_tournament_from_entries(entries)
+local function arena_start_tournament_from_entries(kind, entries)
+  local k = normalize_kind(kind)
   local tid = nk.uuid_v4()
   local bet = entries[1] ~= nil and entries[1].bet_tier or "green"
   local T = {
     id = tid,
+    kind = k,
     bet_tier = bet,
     phase = "countdown",
     countdown_until = os.time() + ARENA_COUNTDOWN_SEC,
@@ -621,8 +666,11 @@ local function arena_start_tournament_from_entries(entries)
   for _, p in ipairs(entries) do
     T.parts[p.uid] = { display = p.display, bot = p.bot == true }
     if p.bot ~= true then
-      arena_runtime.user_tid[p.uid] = tid
-      arena_save_user_tid(p.uid, tid)
+      arena_runtime.user_tid[p.uid] = { tid = tid, kind = k }
+      arena_save_user_tid(p.uid, { tid = tid, kind = k })
+      if type(stats_inc_arena_tournament_played) == "function" then
+        pcall(stats_inc_arena_tournament_played, p.uid, k)
+      end
     end
   end
   local slots = {}
@@ -634,8 +682,9 @@ local function arena_start_tournament_from_entries(entries)
   arena_save_tournament(T)
 end
 
-local function arena_try_pop_queue_full()
-  local q = arena_runtime.queue
+local function arena_try_pop_queue_full(kind)
+  local ks, k = kind_state(kind)
+  local q = ks.queue
   if #q < ARENA_QUEUE_MAX then
     return
   end
@@ -646,44 +695,45 @@ local function arena_try_pop_queue_full()
   for _ = 1, ARENA_QUEUE_MAX do
     table.remove(q, 1)
   end
-  arena_runtime.queue_bet_tier = ""
-  arena_runtime.next_bot_at = 0
-  arena_start_tournament_from_entries(batch)
+  ks.queue_bet_tier = (k == ARENA_KIND_SMITH) and "" or "fixed"
+  ks.next_bot_at = 0
+  arena_start_tournament_from_entries(k, batch)
 end
 
-local function arena_maybe_fill_bot()
-  if arena_runtime.allow_bot_fill ~= true then
+local function arena_maybe_fill_bot(kind)
+  local ks, k = kind_state(kind)
+  if ks.allow_bot_fill ~= true then
     return
   end
-  local q = arena_runtime.queue
+  local q = ks.queue
   if #q >= ARENA_QUEUE_MAX or #q == 0 then
     return
   end
   local now = os.time()
-  if arena_runtime.next_bot_at <= 0 then
-    arena_runtime.next_bot_at = now + math.random(5, 8)
+  if ks.next_bot_at <= 0 then
+    ks.next_bot_at = now + math.random(5, 8)
     return
   end
-  if now < arena_runtime.next_bot_at then
+  if now < ks.next_bot_at then
     return
   end
-  arena_runtime.next_bot_at = now + math.random(5, 8)
+  ks.next_bot_at = now + math.random(5, 8)
   q[#q + 1] = {
     uid = arena_make_bot_uid(),
     display = arena_random_bot_display(),
     bot = true,
-    bet_tier = arena_runtime.queue_bet_tier,
+    bet_tier = ks.queue_bet_tier,
   }
-  arena_try_pop_queue_full()
+  arena_try_pop_queue_full(k)
 end
 
 local function arena_json_for_user(user_id)
   arena_tick_countdowns()
-  arena_maybe_fill_bot()
-  local tid = arena_load_user_tid(user_id)
+  local tid, kind = arena_load_user_tid(user_id)
   if tid == nil then
     return nil
   end
+  arena_maybe_fill_bot(kind)
   local T = arena_load_tournament(tid)
   if T == nil then
     arena_clear_human_tid(user_id)
@@ -758,6 +808,7 @@ local function arena_json_for_user(user_id)
     eliminated = false,
     phase = T.phase,
     bet_tier = T.bet_tier,
+    kind = T.kind,
     countdown_left = countdown_left,
     next_round = T.next_round,
     join_match_id = join_mid,
@@ -782,28 +833,74 @@ local function duel_arena_queue_join(ctx, payload)
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
     end
+    local kind = normalize_kind(p.arena_kind)
+    local ks, k = kind_state(kind)
     local bet = string.lower(tostring(p.bet_tier or "green"))
-    if bet ~= "green" and bet ~= "blue" and bet ~= "purple" then
-      bet = "green"
+    if k == ARENA_KIND_SMITH then
+      if bet ~= "green" and bet ~= "blue" and bet ~= "purple" then
+        bet = "green"
+      end
+    else
+      bet = "fixed"
     end
-    for _, qe in ipairs(arena_runtime.queue) do
-      if qe.bot ~= true and qe.uid == user_id then
-        return nk.json_encode({ ok = false, err = "already_in_queue" })
+    -- Disallow being in queue of another arena kind too (single active arena entry per user).
+    for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
+      local kst = arena_runtime.kinds[kk]
+      if kst ~= nil then
+        for _, qe in ipairs(kst.queue) do
+          if qe.bot ~= true and qe.uid == user_id then
+            return nk.json_encode({ ok = false, err = "already_in_queue" })
+          end
+        end
       end
     end
     if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "already_in_tournament" })
     end
-    if arena_runtime.queue_bet_tier ~= "" and arena_runtime.queue_bet_tier ~= bet then
-      return nk.json_encode({ ok = false, err = "bet_tier_mismatch" })
+    if k == ARENA_KIND_SMITH then
+      if ks.queue_bet_tier ~= "" and ks.queue_bet_tier ~= bet then
+        return nk.json_encode({ ok = false, err = "bet_tier_mismatch" })
+      end
     end
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    local ingot_def = arena_bet_to_ingot_def(bet)
-    if inventory_remove_def_total(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS) ~= true then
-      return nk.json_encode({ ok = false, err = "not_enough_ingots", ingot_def = ingot_def })
+    local ingot_def = ""
+    if k == ARENA_KIND_SMITH then
+      local sheet = read_character_sheet(user_id)
+      ensure_sheet_inventory_counts(sheet)
+      ingot_def = arena_bet_to_ingot_def(bet)
+      if inventory_remove_def_total(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS) ~= true then
+        return nk.json_encode({ ok = false, err = "not_enough_ingots", ingot_def = ingot_def })
+      end
+      write_character_sheet(user_id, sheet)
+    else
+      local max_retries = 5
+      for attempt = 1, max_retries do
+        local progress, version = read_pve_progress(user_id)
+        local ore = tonumber(progress.ore) or 0
+        local gold = tonumber(progress.gold) or 0
+        if k == ARENA_KIND_ORE then
+          if ore < ARENA_ORE_BET then
+            return nk.json_encode({ ok = false, err = "not_enough_ore" })
+          end
+          progress.ore = math.max(0, ore - ARENA_ORE_BET)
+        else
+          if gold < ARENA_GOLD_BET then
+            return nk.json_encode({ ok = false, err = "not_enough_gold" })
+          end
+          progress.gold = math.max(0, gold - ARENA_GOLD_BET)
+        end
+        local okw, erw = pcall(function()
+          write_pve_progress(user_id, progress, version)
+        end)
+        if okw then
+          break
+        end
+        local err_text = tostring(erw)
+        if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+          nk.logger_error("arena join spend progress failed: " .. err_text)
+          return nk.json_encode({ ok = false, err = "server_error" })
+        end
+      end
     end
-    write_character_sheet(user_id, sheet)
 
     local disp = "Игрок"
     local ok_acc, acc = pcall(function()
@@ -816,30 +913,31 @@ local function duel_arena_queue_join(ctx, payload)
       disp = "Игрок"
     end
 
-    if arena_runtime.queue_bet_tier == "" then
-      arena_runtime.queue_bet_tier = bet
+    if k == ARENA_KIND_SMITH and ks.queue_bet_tier == "" then
+      ks.queue_bet_tier = bet
     end
-    arena_runtime.queue[#arena_runtime.queue + 1] = {
+    ks.queue[#ks.queue + 1] = {
       uid = user_id,
       display = disp,
       bot = false,
       bet_tier = bet,
     }
-    if arena_runtime.next_bot_at <= 0 then
-      arena_runtime.next_bot_at = os.time() + math.random(5, 8)
+    if ks.next_bot_at <= 0 then
+      ks.next_bot_at = os.time() + math.random(5, 8)
     end
-    arena_maybe_fill_bot()
-    arena_try_pop_queue_full()
+    arena_maybe_fill_bot(k)
+    arena_try_pop_queue_full(k)
 
     -- После попа очередь может быть пуста — клиенту нужно различать «0 в очереди, но вы уже в турнире».
     local in_tournament = arena_load_user_tid(user_id) ~= nil
 
     return nk.json_encode({
       ok = true,
-      queue_count = #arena_runtime.queue,
+      queue_count = #ks.queue,
       queue_max = ARENA_QUEUE_MAX,
       bet_tier = bet,
       in_tournament = in_tournament,
+      arena_kind = k,
     })
   end)
   if not ok then
@@ -862,29 +960,73 @@ local function duel_arena_queue_leave(ctx, payload)
     if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "in_tournament" })
     end
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local kind = normalize_kind(p.arena_kind)
+    local ks, k = kind_state(kind)
     local removed_bet = ""
-    local q = arena_runtime.queue
-    for i = 1, #q do
-      local e = q[i]
-      if e.bot ~= true and e.uid == user_id then
-        removed_bet = e.bet_tier or arena_runtime.queue_bet_tier
-        table.remove(q, i)
-        break
+    local removed_kind = ""
+    local function try_remove_from(kk)
+      local kst = arena_runtime.kinds[kk]
+      if kst == nil then return false end
+      local q = kst.queue
+      for i = 1, #q do
+        local e = q[i]
+        if e.bot ~= true and e.uid == user_id then
+          removed_bet = e.bet_tier or kst.queue_bet_tier
+          removed_kind = kk
+          table.remove(q, i)
+          return true
+        end
+      end
+      return false
+    end
+    -- Prefer requested kind but allow leaving regardless of what UI selected.
+    if not try_remove_from(k) then
+      for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
+        if try_remove_from(kk) then break end
       end
     end
     if removed_bet == "" then
       return nk.json_encode({ ok = false, err = "not_in_queue" })
     end
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    local ingot_def = arena_bet_to_ingot_def(removed_bet)
-    inventory_try_add(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS)
-    write_character_sheet(user_id, sheet)
-    if #q == 0 then
-      arena_runtime.queue_bet_tier = ""
-      arena_runtime.next_bot_at = 0
+    local rk = removed_kind ~= "" and removed_kind or k
+    local rks, _ = kind_state(rk)
+    if rk == ARENA_KIND_SMITH then
+      local sheet = read_character_sheet(user_id)
+      ensure_sheet_inventory_counts(sheet)
+      local ingot_def = arena_bet_to_ingot_def(removed_bet)
+      inventory_try_add(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS)
+      write_character_sheet(user_id, sheet)
+    else
+      local max_retries = 5
+      for attempt = 1, max_retries do
+        local progress, version = read_pve_progress(user_id)
+        if rk == ARENA_KIND_ORE then
+          progress.ore = math.max(0, (tonumber(progress.ore) or 0) + ARENA_ORE_BET)
+        else
+          progress.gold = math.max(0, (tonumber(progress.gold) or 0) + ARENA_GOLD_BET)
+        end
+        local okw, erw = pcall(function()
+          write_pve_progress(user_id, progress, version)
+        end)
+        if okw then
+          break
+        end
+        local err_text = tostring(erw)
+        if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+          nk.logger_error("arena leave refund progress failed: " .. err_text)
+          return nk.json_encode({ ok = false, err = "server_error" })
+        end
+      end
     end
-    return nk.json_encode({ ok = true, queue_count = #q, queue_max = ARENA_QUEUE_MAX })
+    if #rks.queue == 0 then
+      rks.queue_bet_tier = (rk == ARENA_KIND_SMITH) and "" or "fixed"
+      rks.next_bot_at = 0
+    end
+    return nk.json_encode({ ok = true, queue_count = #rks.queue, queue_max = ARENA_QUEUE_MAX })
   end)
   if not ok then
     nk.logger_error("duel_arena_queue_leave: " .. tostring(result))
@@ -904,7 +1046,11 @@ local function duel_arena_queue_poll(ctx, payload)
       return nk.json_encode({ ok = false, err = err_epoch })
     end
     arena_tick_countdowns()
-    arena_maybe_fill_bot()
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local requested_kind = normalize_kind(p.arena_kind)
 
     local tnow = os.time()
     if tnow - (arena_runtime.last_tourn_storage_sweep or 0) >= 60 then
@@ -913,25 +1059,48 @@ local function duel_arena_queue_poll(ctx, payload)
     end
 
     local in_queue = false
-    local bet = arena_runtime.queue_bet_tier
-    for _, qe in ipairs(arena_runtime.queue) do
-      if qe.bot ~= true and qe.uid == user_id then
-        in_queue = true
-        bet = qe.bet_tier or bet
-        break
+    local queue_kind = ""
+    local queue_bet = ""
+    local queue_count = 0
+    local queue_max = ARENA_QUEUE_MAX
+    -- If user is in any queue, report that queue kind/count.
+    for _, k in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
+      local ks = arena_runtime.kinds[k]
+      if ks ~= nil then
+        for _, qe in ipairs(ks.queue) do
+          if qe.bot ~= true and qe.uid == user_id then
+            in_queue = true
+            queue_kind = k
+            queue_bet = qe.bet_tier or ks.queue_bet_tier
+            queue_count = #ks.queue
+            break
+          end
+        end
       end
+      if in_queue then break end
+    end
+    if not in_queue then
+      local ks, k = kind_state(requested_kind)
+      queue_kind = k
+      queue_bet = ks.queue_bet_tier
+      queue_count = #ks.queue
     end
 
     local tournament = arena_json_for_user(user_id)
     if tournament == nil then
       tournament = { active = false, id = "" }
     end
+
+    -- Keep bots flowing for a requested queue kind too (helps empty UI reflect "filling").
+    arena_maybe_fill_bot(queue_kind ~= "" and queue_kind or requested_kind)
+
     return nk.json_encode({
       ok = true,
-      queue_count = #arena_runtime.queue,
-      queue_max = ARENA_QUEUE_MAX,
+      queue_count = queue_count,
+      queue_max = queue_max,
       in_queue = in_queue,
-      queue_bet_tier = arena_runtime.queue_bet_tier,
+      queue_bet_tier = queue_bet,
+      queue_kind = queue_kind,
       tournament = tournament,
     })
   end)
@@ -944,7 +1113,7 @@ end
   return {
     mirror_commit = mirror_commit,
     on_match_finished = on_match_finished,
-    final_prize_for_bet_tier = final_prize_for_bet_tier,
+    final_prize_for_kind_and_bet = final_prize_for_kind_and_bet,
     duel_arena_queue_join = duel_arena_queue_join,
     duel_arena_queue_leave = duel_arena_queue_leave,
     duel_arena_queue_poll = duel_arena_queue_poll,

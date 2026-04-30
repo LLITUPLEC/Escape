@@ -123,9 +123,9 @@ local MINE_BARRIER_REQUIREMENTS = {
   [7] = { ore = 5320 },
   [8] = { ore = 7700 },
   [9] = { ore = 10500, gold = 14000 },
-  [10] = { ore = 14000 },
-  [11] = { ore = 18200 },
-  [12] = { ore = 23800, matter = 700, gold = 35000 },
+  [10] = { ore = 14000, gold = 17000 },
+  [11] = { ore = 18200, gold = 22000 },
+  [12] = { ore = 23800, matter = 300, gold = 35000 },
 }
 
 -- Стоимость боя / «Прогнать» (duel_match3_pve_mine_cost.lua).
@@ -1204,7 +1204,8 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
         and state.arena_mirror ~= nil
         and type(arena_final_prize_gold_ore) == "function" then
       local bt = string.lower(tostring(state.arena_mirror.bet_tier or game_over_payload.arenaBetTier or "green"))
-      local rg, ro = arena_final_prize_gold_ore(bt)
+      local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
+      local rg, ro = arena_final_prize_gold_ore(ak, bt)
       game_over_payload.rewardGold = tonumber(rg) or 0
       game_over_payload.rewardOre = tonumber(ro) or 0
     end
@@ -3438,6 +3439,62 @@ local function read_match3_stats(user_id)
   return stats, version
 end
 
+local function stats_inc_arena_tournament_played(user_id, arena_kind)
+  if user_id == nil or user_id == "" then
+    return false
+  end
+  local k = string.lower(tostring(arena_kind or "smith"))
+  if k ~= "smith" and k ~= "ore" and k ~= "gold" then
+    k = "smith"
+  end
+  local max_retries = 5
+  for attempt = 1, max_retries do
+    local val, version = Ach.storage_read_match3_summary_val(user_id)
+    if type(val) ~= "table" then
+      val = {}
+    end
+    if type(val.summary) ~= "table" then
+      val.summary = {}
+    end
+    if type(val.summary.arena_tournaments) ~= "table" then
+      val.summary.arena_tournaments = {}
+    end
+    if type(val.summary.arena_tournaments[k]) ~= "table" then
+      val.summary.arena_tournaments[k] = {}
+    end
+    local bag = val.summary.arena_tournaments[k]
+    bag.played = (tonumber(bag.played) or 0) + 1
+    bag.updated_at = os.time()
+    val.summary.arena_tournaments[k] = bag
+    val.updated_at = os.time()
+
+    local write_obj = {
+      collection = CFG.STATS_COLLECTION,
+      key = CFG.STATS_KEY,
+      user_id = user_id,
+      value = val,
+      permission_read = 1,
+      permission_write = 0,
+    }
+    if version ~= nil and version ~= "" then
+      write_obj.version = version
+    end
+
+    local write_ok, write_err = pcall(function()
+      nk.storage_write({ write_obj })
+    end)
+    if write_ok then
+      return true
+    end
+    local err_text = tostring(write_err)
+    if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+      nk.logger_error("stats_inc_arena_tournament_played: " .. err_text)
+      return false
+    end
+  end
+  return false
+end
+
 local function duel_match3_stats_get(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -4352,10 +4409,11 @@ local Arena = arena_factory({
   ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
+  stats_inc_arena_tournament_played = stats_inc_arena_tournament_played,
 })
 arena_mirror_commit = Arena.mirror_commit
 arena_on_match_finished = Arena.on_match_finished
-arena_final_prize_gold_ore = Arena.final_prize_for_bet_tier
+arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
 
 
 function parse_floor_from_bot_id(bot_id)
