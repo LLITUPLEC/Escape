@@ -2134,10 +2134,7 @@ namespace Project.Match3
                     SwitchActiveUser();
                     TickEndOfTurnForActive();
                 }
-                else
-                {
-                    TickEndOfTurnForActive();
-                }
+                // Доп. ход (5+): как на сервере — активный игрок прежний, баффы/КД этого хода не «дотикаются» здесь.
             }
 
             msg.extraTurn = extraTurn;
@@ -2242,7 +2239,7 @@ namespace Project.Match3
 
                 if (req.actionType == 6)
                 {
-                    ApplyFury(actorStats);
+                    ApplyFury(actorStats, board);
                     keepTurn = true;
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
                     return true;
@@ -2625,8 +2622,7 @@ namespace Project.Match3
         {
             if (_myPanel != null)
             {
-                var furySkulls = _myStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
-                var dmg = Mathf.Max(0, _myStats.baseDamage) + furySkulls;
+                var dmg = Mathf.Max(0, _myStats.baseDamage) + (_myStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _myStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats);
                 var crit = Mathf.Max(0f, _myStats.baseCrit) + (_myStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
                 _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
@@ -2635,8 +2631,7 @@ namespace Project.Match3
 
             if (_opPanel != null)
             {
-                var furySkulls = _opStats.furyTurnsRemaining > 0 ? CountSkulls(_board) : 0;
-                var dmg = Mathf.Max(0, _opStats.baseDamage) + furySkulls;
+                var dmg = Mathf.Max(0, _opStats.baseDamage) + (_opStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _opStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats);
                 var crit = Mathf.Max(0f, _opStats.baseCrit) + (_opStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
                 _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
@@ -2716,12 +2711,12 @@ namespace Project.Match3
             RecalcDerivedBuffs(actor);
         }
 
-        private static void ApplyFury(PlayerStats actor)
+        private static void ApplyFury(PlayerStats actor, Match3BoardLogic board)
         {
             if (actor == null) return;
-            // Fury is a 1-turn buff that applies during the turn of activation.
+            // Бонус к урону и криту держится до конца хода актёра (включая доп. ход за 5+); число бомб фиксируется при активации.
             actor.furyTurnsRemaining = 1;
-            actor.furyDamageBonus = 0;
+            actor.furyDamageBonus = board != null ? CountSkulls(board) : 0;
             RecalcDerivedBuffs(actor);
         }
 
@@ -2733,7 +2728,7 @@ namespace Project.Match3
             {
                 dmg += Mathf.Max(0, attacker.baseDamage);
                 if (attacker.furyTurnsRemaining > 0)
-                    dmg += CountSkulls(board);
+                    dmg += Mathf.Max(0, attacker.furyDamageBonus);
                 var p = Mathf.Clamp01(attacker.baseCrit + (attacker.furyTurnsRemaining > 0 ? furyCritChance : 0f));
                 if (p > 0f && UnityEngine.Random.value < p)
                 {

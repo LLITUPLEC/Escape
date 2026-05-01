@@ -363,6 +363,7 @@ local function new_stats()
     shield_t2 = 0,
     shield_t3 = 0,
     fury_active = false,
+    fury_bomb_bonus = 0,
     max_hp = CFG.MAX_HP
   }
 end
@@ -411,9 +412,9 @@ local function roll_outgoing_damage(state, board, attacker, base_damage)
     dmg = dmg + math.max(0, tonumber(attacker.base_damage) or 0)
   end
 
-  -- Fury: add skulls as bonus damage.
+  -- Fury: число бомб фиксируется в момент применения способности на весь ход (вкл. доп. ходы 5+).
   if attacker ~= nil and attacker.fury_active == true then
-    dmg = dmg + count_skulls(board)
+    dmg = dmg + math.max(0, tonumber(attacker.fury_bomb_bonus) or 0)
   end
 
   -- Crit chance: base crit (PVE) + fury crit (existing mechanic).
@@ -463,6 +464,7 @@ local function tick_buffs_end_turn(st)
   if (st.shield_t2 or 0) > 0 then st.shield_t2 = st.shield_t2 - 1 end
   if (st.shield_t3 or 0) > 0 then st.shield_t3 = st.shield_t3 - 1 end
   st.fury_active = false
+  st.fury_bomb_bonus = 0
 end
 
 local function current_affix_id(state)
@@ -1028,7 +1030,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     aShieldT2 = a.shield_t2 or 0,
     aShieldT3 = a.shield_t3 or 0,
     aFuryTurns = a.fury_active == true and 1 or 0,
-    aFuryBonus = 0,
+    aFuryBonus = (a.fury_active == true) and math.max(0, tonumber(a.fury_bomb_bonus) or 0) or 0,
     bHp = b.hp,
     bMana = b.mana,
     bCrossCd = b.cross_cd,
@@ -1045,7 +1047,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bShieldT2 = b.shield_t2 or 0,
     bShieldT3 = b.shield_t3 or 0,
     bFuryTurns = b.fury_active == true and 1 or 0,
-    bFuryBonus = 0,
+    bFuryBonus = (b.fury_active == true) and math.max(0, tonumber(b.fury_bomb_bonus) or 0) or 0,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     serverNowUnixMs = server_now_unix_ms,
@@ -1424,7 +1426,9 @@ local function resolve_action(state, action, actor_id, opponent_id)
     local fy = client_to_server_y(action.fromY)
     local ty = client_to_server_y(action.toY)
     local ok, matches = try_swap(state.board, action.fromX, fy, action.toX, ty)
-    if not ok then return false, "invalid_swap", false, false, anim_steps end
+    if not ok then
+      return false, "invalid_swap", false, false, anim_steps
+    end
     initial_matches = matches or {}
   elseif action.actionType == 4 then
     if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1) then crit_triggered = true end
@@ -1437,7 +1441,9 @@ local function resolve_action(state, action, actor_id, opponent_id)
     state.last_crit = false
     return true, nil, false, true, anim_steps
   elseif action.actionType == 6 then
-    state.stats[actor_id].fury_active = true
+    local fus = state.stats[actor_id]
+    fus.fury_active = true
+    fus.fury_bomb_bonus = count_skulls(state.board)
     keep_turn = true
     state.last_crit = false
     return true, nil, false, true, anim_steps
@@ -5000,6 +5006,7 @@ local function copy_stats(src)
     shield_t2 = src.shield_t2 or 0,
     shield_t3 = src.shield_t3 or 0,
     fury_active = src.fury_active == true,
+    fury_bomb_bonus = math.max(0, tonumber(src.fury_bomb_bonus) or 0),
     max_hp = src.max_hp or CFG.MAX_HP,
     initial_hp = src.initial_hp or src.max_hp or CFG.MAX_HP,
     base_damage = src.base_damage or 0,
@@ -5027,6 +5034,7 @@ local function spend_ability_for_sim(state, stats, action_type)
     stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
     stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN
     stats.fury_active = true
+    -- fury_bomb_bonus выставляет resolve_action по board симуляции
   end
 end
 
