@@ -169,11 +169,11 @@ namespace Project.UI
             [4] = new BarrierRequirement { ore = 1120 },
             [5] = new BarrierRequirement { ore = 2100, gold = 2800 },
             [6] = new BarrierRequirement { ore = 3500 },
-            [7] = new BarrierRequirement { ore = 5320 },
+            [7] = new BarrierRequirement { ore = 5320, gold = 6500 },
             [8] = new BarrierRequirement { ore = 7700 },
             [9] = new BarrierRequirement { ore = 10500, gold = 14000 },
-            [10] = new BarrierRequirement { ore = 14000 },
-            [11] = new BarrierRequirement { ore = 18200 },
+            [10] = new BarrierRequirement { ore = 14000, gold = 17000 },
+            [11] = new BarrierRequirement { ore = 18200, gold = 22000 },
             [12] = new BarrierRequirement { ore = 23800, matter = 700, gold = 35000 },
         };
 

@@ -249,6 +249,9 @@ namespace Project.Match3
         private Match3GameHUD       _hud;
         private Match3SearchingPanel  _searchingPanel;
         private Match3GameOverPanel   _gameOverPanel;
+        /// <summary>Корень Canvas матча — для оверлея подтверждения выхода.</summary>
+        private Transform _matchCanvasRoot;
+        private GameObject _quitConfirmRoot;
         private RectTransform _gameOverRewardRowsRoot;
         private RectTransform _gameOverRewardLineRoot;
         private int _gameOverRewardSlotsInLine;
@@ -3390,7 +3393,71 @@ namespace Project.Match3
             var btn = quitTr.GetComponent<Button>();
             if (btn == null) return;
             btn.onClick.RemoveAllListeners();
-            btn.onClick.AddListener(QuitToMenu);
+            _matchCanvasRoot = canvasRoot;
+            EnsureQuitConfirmDialog(canvasRoot);
+            btn.onClick.AddListener(ShowQuitConfirmDialog);
+        }
+
+        private void EnsureQuitConfirmDialog(Transform canvasRoot)
+        {
+            if (_quitConfirmRoot != null || canvasRoot == null) return;
+
+            var overlayGo = new GameObject("QuitConfirmOverlay");
+            var overlayRt = overlayGo.AddComponent<RectTransform>();
+            overlayRt.SetParent(canvasRoot, false);
+            overlayRt.anchorMin = Vector2.zero;
+            overlayRt.anchorMax = Vector2.one;
+            overlayRt.offsetMin = overlayRt.offsetMax = Vector2.zero;
+
+            var backdrop = MakeImg(overlayGo.transform, "Backdrop",
+                new Color(0f, 0f, 0f, 0.62f), V2(0f, 0f), V2(1f, 1f));
+            var bdImg = backdrop.GetComponent<Image>();
+            var bdBtn = backdrop.gameObject.AddComponent<Button>();
+            bdBtn.targetGraphic = bdImg;
+            bdBtn.onClick.AddListener(HideQuitConfirmDialog);
+
+            var card = MakePanel(overlayGo.transform, "Card",
+                new Color(0.12f, 0.12f, 0.18f, 0.97f), V2(0.28f, 0.30f), V2(0.72f, 0.70f));
+            var cardOutline = card.gameObject.GetComponent<Outline>();
+            if (cardOutline == null) cardOutline = card.gameObject.AddComponent<Outline>();
+            cardOutline.effectColor = new Color(0.85f, 0.85f, 0.95f, 0.45f);
+            cardOutline.effectDistance = new Vector2(2f, -2f);
+
+            var msg = MakeTxt(card, "Message", "Точно выйти \n из боя?", 22, Color.white,
+                V2(0.06f, 0.40f), V2(0.94f, 0.90f));
+            msg.alignment = TextAlignmentOptions.Center;
+
+            var yesBtn = MakeButton(card, "BtnYes", "Да",
+                new Color(0.42f, 0.12f, 0.12f), Color.white, V2(0.08f, 0.08f), V2(0.48f, 0.32f));
+            yesBtn.onClick.AddListener(OnQuitConfirmYesClicked);
+
+            var stayBtn = MakeButton(card, "BtnStay", "Остаться",
+                new Color(0.18f, 0.22f, 0.32f), Color.white, V2(0.52f, 0.08f), V2(0.92f, 0.32f));
+            stayBtn.onClick.AddListener(HideQuitConfirmDialog);
+
+            overlayGo.SetActive(false);
+            _quitConfirmRoot = overlayGo;
+        }
+
+        private void ShowQuitConfirmDialog()
+        {
+            if (_matchCanvasRoot != null)
+                EnsureQuitConfirmDialog(_matchCanvasRoot);
+            if (_quitConfirmRoot == null) return;
+            _quitConfirmRoot.SetActive(true);
+            _quitConfirmRoot.transform.SetAsLastSibling();
+        }
+
+        private void HideQuitConfirmDialog()
+        {
+            if (_quitConfirmRoot != null)
+                _quitConfirmRoot.SetActive(false);
+        }
+
+        private void OnQuitConfirmYesClicked()
+        {
+            HideQuitConfirmDialog();
+            QuitToMenu();
         }
 
         private void ReturnFromGameOver()
