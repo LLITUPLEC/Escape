@@ -215,6 +215,7 @@ namespace Project.Match3
         private bool _isArenaTournamentMatch;
         private string _arenaGameOverRound = string.Empty;
         private string _arenaGameOverBetTier = string.Empty;
+        private string _arenaGameOverKind = string.Empty;
         private bool _pendingPetardFinisherForAchievement;
         /// <summary>Счётчик сегментов линий 5+ за один локальный ход (swap / крест / квадрат).</summary>
         private int _fivePlusLinesThisAction;
@@ -231,6 +232,8 @@ namespace Project.Match3
         private string _activePveAffix = string.Empty;
         /// <summary>Локальная симуляция: суммарный «плоский» урон за один resolve (бомбы + урон способности), один DealDamage в конце — как на сервере.</summary>
         private int _localActionOutgoingFlat;
+        /// <summary>Локально: капсулы за ход (крест/каскады) — одно лечение в конце resolve.</summary>
+        private int _localPendingAnkhCount;
 
         // Input
         private int          _selX = -1, _selY = -1;
@@ -1375,10 +1378,18 @@ namespace Project.Match3
                 return;
             }
 
-            // Турнир «Кузница»: отдельный ключ — только финал матчбука.
+            // Финал турнира арены: ключ по виду турнира (сервер шлёт arenaKind).
             if (_isArenaTournamentMatch &&
                 string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
-                AchievementTracker.NotifyBlacksmithTournamentFinalWin();
+            {
+                var k = (_arenaGameOverKind ?? string.Empty).Trim().ToLowerInvariant();
+                if (k == "ore")
+                    AchievementTracker.NotifyOreTournamentFinalWin();
+                else if (k == "gold")
+                    AchievementTracker.NotifyGoldTournamentFinalWin();
+                else
+                    AchievementTracker.NotifyBlacksmithTournamentFinalWin();
+            }
 
             // Solo PvE (шахта / выбор бота): не считаем ключи slaughter.duel_tri_win / duel_petard_finish.
             // Арена турнир и живая дуэль matchmaking против игрока — считаются.
@@ -1427,7 +1438,8 @@ namespace Project.Match3
         private void TryReportAchievementsFromBoardSync(M3BoardSyncMsg msg, int prevMyHp, int prevOpHp)
         {
             if (msg == null || string.IsNullOrEmpty(_myUserId)) return;
-            if (!string.Equals(msg.activeUserId, _myUserId, StringComparison.Ordinal)) return;
+            var actedAs = string.IsNullOrEmpty(msg.actionActorUserId) ? msg.activeUserId : msg.actionActorUserId;
+            if (!string.Equals(actedAs, _myUserId, StringComparison.Ordinal)) return;
             if (_gameEnded) return;
 
             if (msg.actionType >= 2 && msg.actionType <= 6)
@@ -1614,6 +1626,7 @@ namespace Project.Match3
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
                     _arenaGameOverRound = msg.arenaRound ?? string.Empty;
                     _arenaGameOverBetTier = msg.arenaBetTier ?? string.Empty;
+                    _arenaGameOverKind = msg.arenaKind ?? string.Empty;
                     // If server included final prize for UI, reuse existing reward UI.
                     if (_isArenaTournamentMatch && _pendingGameOverWon && string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
                     {
@@ -1755,6 +1768,8 @@ namespace Project.Match3
                             ArenaMatch8Bridge.BlockArenaJoinMatchId(_match.Id);
                     }
                     catch { /* ignore */ }
+                    if (_pendingGameOverWon)
+                        Match3LaunchContext.RequestArenaMenuAwaitBracketOverlay();
                     ReturnFromGameOver();
                     return;
                 }
@@ -2121,6 +2136,7 @@ namespace Project.Match3
             {
                 var winnerUserId = actorStats.hp > 0 ? actorId : OpponentOf(actorId);
                 _gameEnded = true;
+                msg.actionActorUserId = actorId;
                 msg.activeUserId = winnerUserId;
                 FillSyncStats(msg);
                 StampLocalBoardSyncTurnDeadline(msg, false, req);
@@ -2141,6 +2157,7 @@ namespace Project.Match3
             }
 
             msg.extraTurn = extraTurn;
+            msg.actionActorUserId = actorId;
             msg.activeUserId = GetActiveUserId();
             msg.board = simBoard.ToArray();
             FillSyncStats(msg);
@@ -2200,6 +2217,7 @@ namespace Project.Match3
             keepTurn = false;
             msg.animSteps = new List<M3AnimStep>();
             _fivePlusLinesThisAction = 0;
+            _localPendingAnkhCount = 0;
 
             if (req.actionType == 1)
             {
@@ -2216,6 +2234,7 @@ namespace Project.Match3
 
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
+                ApplyPendingLocalAnkhHeal(actorStats);
                 NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
@@ -2255,6 +2274,7 @@ namespace Project.Match3
                 msg.animSteps.Add(new M3AnimStep { phase = 1, board = board.ToArray() });
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
+                ApplyPendingLocalAnkhHeal(actorStats);
                 NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
@@ -2289,8 +2309,6 @@ namespace Project.Match3
 
         private bool ApplyMatchEffects(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, List<MatchResult> matches, bool extraTurn)
         {
-            var healedAnyCrossThisTurn = false;
-            var pendingHeal = 0;
             foreach (var match in matches)
             {
                 if (match.count >= 5)
@@ -2308,16 +2326,11 @@ namespace Project.Match3
                 }
                 else if (match.type == PieceType.Ankh)
                 {
-                    pendingHeal += AnkhHeal * match.count;
-                    healedAnyCrossThisTurn = true;
+                    _localPendingAnkhCount += match.count;
+                    if (HasAffix("mana_vampire") && oppStats != null)
+                        oppStats.mana = Mathf.Min(MaxMana, oppStats.mana + GetManaByGemType(PieceType.GemYellow) * match.count);
                 }
             }
-
-            if (healedAnyCrossThisTurn)
-                pendingHeal += GetTotalHealBonus(actorStats);
-
-            if (pendingHeal > 0)
-                actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
 
             return extraTurn;
         }
@@ -2325,8 +2338,6 @@ namespace Project.Match3
         private void ApplyAbilityRewards(Match3BoardLogic board, int actionType, int cx, int cy, PlayerStats actorStats, PlayerStats oppStats)
         {
             var skulls = 0;
-            var healedAnyCrossThisTurn = false;
-            var pendingHeal = 0;
             var cells = CollectAbilityCells(actionType, cx, cy);
             foreach (var (x, y) in cells)
             {
@@ -2335,19 +2346,33 @@ namespace Project.Match3
                     actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(type));
                 else if (type == PieceType.Ankh)
                 {
-                    pendingHeal += AnkhHeal;
-                    healedAnyCrossThisTurn = true;
+                    _localPendingAnkhCount++;
+                    if (HasAffix("mana_vampire") && oppStats != null)
+                        oppStats.mana = Mathf.Min(MaxMana, oppStats.mana + GetManaByGemType(PieceType.GemYellow));
                 }
                 else if (type == PieceType.Skull)
                     skulls++;
             }
 
-            if (healedAnyCrossThisTurn)
-                pendingHeal += GetTotalHealBonus(actorStats);
-            if (pendingHeal > 0)
-                actorStats.hp = Mathf.Min(EffectiveMaxHp(actorStats), actorStats.hp + pendingHeal);
-
             _localActionOutgoingFlat += AbilityBaseDamage + SkullDamage * skulls;
+        }
+
+        private bool UseFullHealBonusForLocalSim() => _isSoloBotMode || _pvpProQueue;
+
+        private static int GetHealFlatBonusForTurn(PlayerStats s, bool fullHealBonus)
+        {
+            if (s == null) return 0;
+            var shield = GetShieldHealBonus(s);
+            if (!fullHealBonus) return shield;
+            return Mathf.Max(0, s.baseHeal) + shield;
+        }
+
+        private void ApplyPendingLocalAnkhHeal(PlayerStats actor)
+        {
+            if (actor == null || _localPendingAnkhCount <= 0) return;
+            var add = AnkhHeal * _localPendingAnkhCount + GetHealFlatBonusForTurn(actor, UseFullHealBonusForLocalSim());
+            actor.hp = Mathf.Min(EffectiveMaxHp(actor), actor.hp + add);
+            _localPendingAnkhCount = 0;
         }
 
         private void FlushLocalOutgoingDamage(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats)
@@ -3208,6 +3233,7 @@ namespace Project.Match3
         {
             if (_isLeavingToMenu) return;
             _isLeavingToMenu = true;
+            Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
             var shouldRecordLoss = !_resultRecorded && !_gameEnded && _hasInitialBoardSync && !string.IsNullOrEmpty(_opUserId);
             _gameEnded = true;
             try

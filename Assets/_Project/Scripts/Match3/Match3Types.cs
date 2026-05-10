@@ -78,7 +78,10 @@ namespace Project.Match3
         public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
 
         public bool extraTurn;      // active player gets another turn
-        public string activeUserId; // who just acted
+        /// <summary>Кому принадлежит текущий ход после применения этого синка.</summary>
+        public string activeUserId;
+        /// <summary>Кто совершил действие в этом синке (swap/способность). Пусто, если синк без действия.</summary>
+        public string actionActorUserId;
 
         /// <summary>Unix time in milliseconds when the current turn must end (server clock + remaining tick budget).</summary>
         public long turnEndsAtUnixMs;
@@ -127,6 +130,8 @@ namespace Project.Match3
         public string arenaTournamentId;
         public string arenaRound;   // "qf" | "sf" | "final"
         public string arenaBetTier; // "green" | "blue" | "purple"
+        /// <summary>Сервер: smith | ore | gold — для достижений и UI.</summary>
+        public string arenaKind;
     }
 
     /// <summary>Сервер (duel_match3): соперник временно потерял связь; матч продолжается до истечения grace.</summary>

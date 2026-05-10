@@ -22,6 +22,9 @@ namespace Project.Match3
         private static string _arenaOpponentDisplayHint;
         private static bool _arenaJoinOpponentIsBot;
 
+        /// <summary>После автовыхода из боя 1/4–1/2: арена показывает блокер до первого poll с активной сеткой.</summary>
+        private static bool _arenaMenuAwaitBracketOverlay;
+
         public static Match3LaunchMode ConsumeMode()
         {
             var mode = _nextMode;
@@ -104,5 +107,11 @@ namespace Project.Match3
             _arenaOpponentDisplayHint = null;
             _arenaJoinOpponentIsBot = false;
         }
+
+        public static void RequestArenaMenuAwaitBracketOverlay() => _arenaMenuAwaitBracketOverlay = true;
+
+        public static bool ArenaMenuAwaitBracketOverlay => _arenaMenuAwaitBracketOverlay;
+
+        public static void ClearArenaMenuAwaitBracketOverlay() => _arenaMenuAwaitBracketOverlay = false;
     }
 }

@@ -85,6 +85,10 @@ namespace Project.UI
         private static string _lastPrevSceneNameForArenaUi;
         private string _lastBracketSignature = string.Empty;
 
+        /// <summary>Блокировка кликов по меню арены до прихода актуальной сетки после победы в 1/4 или 1/2.</summary>
+        private GameObject _arenaReturnBlockerRoot;
+        private Coroutine _arenaReturnBlockerRoutine;
+
         /// <summary>JoinMatch недоступен (матч уже удалён) — не грузить DuelMatch8 повторно с тем же id.</summary>
         private static readonly HashSet<string> BlockedArenaJoinMatchIds = new();
 
@@ -213,6 +217,23 @@ namespace Project.UI
             if (_lastPrevSceneNameForArenaUi == duelMatch3SceneName)
                 _suppressFightReloadUntil = Time.realtimeSinceStartup + 8f;
 
+            if (Match3LaunchContext.ArenaMenuAwaitBracketOverlay)
+            {
+                EnsureArenaReturnBlocker();
+                if (_arenaReturnBlockerRoot != null)
+                {
+                    _arenaReturnBlockerRoot.SetActive(true);
+                    _arenaReturnBlockerRoot.transform.SetAsLastSibling();
+                }
+                if (_arenaReturnBlockerRoutine != null)
+                {
+                    StopCoroutine(_arenaReturnBlockerRoutine);
+                    _arenaReturnBlockerRoutine = null;
+                }
+                _arenaReturnBlockerRoutine = StartCoroutine(ArenaReturnBlockerTimeoutRoutine());
+                _ = PollOnceFireAndForget();
+            }
+
             if (_pollRoutine != null)
                 StopCoroutine(_pollRoutine);
             _pollRoutine = StartCoroutine(PollLoop());
@@ -220,6 +241,11 @@ namespace Project.UI
 
         private void OnDisable()
         {
+            if (_arenaReturnBlockerRoutine != null)
+            {
+                StopCoroutine(_arenaReturnBlockerRoutine);
+                _arenaReturnBlockerRoutine = null;
+            }
             if (_pollRoutine != null)
             {
                 StopCoroutine(_pollRoutine);
@@ -235,6 +261,70 @@ namespace Project.UI
                 _ = PollOnceFireAndForget();
                 yield return wait;
             }
+        }
+
+        private void EnsureArenaReturnBlocker()
+        {
+            if (_arenaReturnBlockerRoot != null)
+                return;
+            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            if (canvas == null)
+                return;
+            var go = new GameObject("ArenaReturnBracketBlocker", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            go.transform.SetParent(canvas.transform, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.03f, 0.05f, 0.09f, 0.74f);
+            img.raycastTarget = true;
+            var grp = go.GetComponent<CanvasGroup>();
+            grp.interactable = true;
+            grp.blocksRaycasts = true;
+            grp.alpha = 1f;
+
+            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var lblRt = labelGo.GetComponent<RectTransform>();
+            lblRt.SetParent(go.transform, false);
+            lblRt.anchorMin = new Vector2(0.06f, 0.42f);
+            lblRt.anchorMax = new Vector2(0.94f, 0.58f);
+            lblRt.offsetMin = lblRt.offsetMax = Vector2.zero;
+            var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+            tmp.text = "Загрузка турнирной сетки…";
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 22f;
+            tmp.color = new Color(0.92f, 0.94f, 1f, 1f);
+            if (TMP_Settings.defaultFontAsset != null)
+                tmp.font = TMP_Settings.defaultFontAsset;
+
+            go.SetActive(false);
+            _arenaReturnBlockerRoot = go;
+        }
+
+        private void ReleaseArenaReturnBlockerAfterBracketShown()
+        {
+            if (!Match3LaunchContext.ArenaMenuAwaitBracketOverlay)
+                return;
+            Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
+            if (_arenaReturnBlockerRoutine != null)
+            {
+                StopCoroutine(_arenaReturnBlockerRoutine);
+                _arenaReturnBlockerRoutine = null;
+            }
+            if (_arenaReturnBlockerRoot != null)
+                _arenaReturnBlockerRoot.SetActive(false);
+            if (_bracketRoot != null && _bracketRoot.activeInHierarchy)
+                _bracketRoot.transform.SetAsLastSibling();
+        }
+
+        private IEnumerator ArenaReturnBlockerTimeoutRoutine()
+        {
+            yield return new WaitForSecondsRealtime(10f);
+            Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
+            if (_arenaReturnBlockerRoot != null)
+                _arenaReturnBlockerRoot.SetActive(false);
+            _arenaReturnBlockerRoutine = null;
         }
 
         private async Task PollOnceFireAndForget()
@@ -281,6 +371,7 @@ namespace Project.UI
                 else
                     RefreshBracketInPlace(m.tournament);
 
+                ReleaseArenaReturnBlockerAfterBracketShown();
                 TryArmFightScene(m.tournament);
             }
             else

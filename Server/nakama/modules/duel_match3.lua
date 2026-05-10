@@ -120,7 +120,7 @@ local MINE_BARRIER_REQUIREMENTS = {
   [4] = { ore = 1120 },
   [5] = { ore = 2100, gold = 2800 },
   [6] = { ore = 3500 },
-  [7] = { ore = 5320 },
+  [7] = { ore = 5320, gold = 6500  },
   [8] = { ore = 7700 },
   [9] = { ore = 10500, gold = 14000 },
   [10] = { ore = 14000, gold = 17000 },
@@ -389,9 +389,14 @@ local function get_armor(st)
   return math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_ARMOR_PER_STACK
 end
 
-local function get_heal_bonus(st)
-  local base = tonumber(st and st.base_heal) or 0
-  return math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_HEAL_PER_STACK
+--- Один раз за ход при лечении от капсул: PvE и PvP Pro — база+экип+щит; классический PvP/арена — только бонус от щита.
+local function get_turn_heal_flat_bonus(state, st)
+  if st == nil then return 0 end
+  local shield = get_shield_stacks(st) * CFG.SHIELD_HEAL_PER_STACK
+  if state.mode == "pve" or state.pvp_pro == true then
+    return math.max(0, tonumber(st.base_heal) or 0) + shield
+  end
+  return shield
 end
 
 local function count_skulls(board)
@@ -894,9 +899,6 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   local sim = state._sim_metrics
   local affix = current_affix_id(state)
 
-  local healed = false
-  local pending_heal = 0
-
   -- find_matches() возвращает линии по горизонтали/вертикали.
   -- В L/T-формах один и тот же камень попадает в две линии (пересечение),
   -- и прежняя логика считала его дважды (мана/урон/хил). Считаем эффекты по уникальным клеткам.
@@ -957,22 +959,16 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     end
   end
 
-  -- Ankhs (5)
+  -- Ankhs (5): суммируем за весь resolve_action, одно лечение в конце хода (не по каждому каскаду).
   do
     local c = cnt(5)
     if c > 0 then
-      healed = true
-      pending_heal = pending_heal + CFG.ANKH_HEAL * c
+      state._action_ankh_count = (state._action_ankh_count or 0) + c
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2) * c
         opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
       end
     end
-  end
-
-  if healed then
-    pending_heal = pending_heal + get_heal_bonus(actor)
-    actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
   end
 
   return extra_turn
@@ -984,7 +980,7 @@ local function other_player_id(state, uid)
   return state.players_sorted[1]
 end
 
-local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser, tick)
+local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser, tick, sync_action_actor_uid)
   local a_id = state.players_sorted[1]
   local b_id = state.players_sorted[2]
   local a = state.stats[a_id]
@@ -1050,6 +1046,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bFuryBonus = (b.fury_active == true) and math.max(0, tonumber(b.fury_bomb_bonus) or 0) or 0,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
+    actionActorUserId = sync_action_actor_uid or "",
     serverNowUnixMs = server_now_unix_ms,
     turnEndsAtUnixMs = turn_ends_at_unix_ms,
     actionType = action and action.actionType or 0,
@@ -1070,13 +1067,15 @@ local arena_mirror_commit
 local arena_on_match_finished
 local arena_final_prize_gold_ore
 
-local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
+local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
   if action == nil then
     state.last_crit = false
   end
 
   arena_mirror_commit(state)
+
+  local uid_for_sync = sync_action_actor_uid or ""
 
   local allowed_presences = {}
   local other_presences = {}
@@ -1092,14 +1091,14 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
 
   -- If we don't have any permission map (edge cases), fallback to "send to all".
   if state.cheat_rows_allowed == nil then
-    local msg = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
+    local msg = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick, uid_for_sync)
     dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), nil, nil)
     state._sync_popup = nil
     return
   end
 
-  local msg_allowed = make_sync_msg(state, action, extra_turn, anim_steps, state.cheat_rows or {}, tick)
-  local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick)
+  local msg_allowed = make_sync_msg(state, action, extra_turn, anim_steps, state.cheat_rows or {}, tick, uid_for_sync)
+  local msg_other = make_sync_msg(state, action, extra_turn, anim_steps, {}, tick, uid_for_sync)
 
   if #allowed_presences > 0 then
     dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg_allowed), allowed_presences, nil)
@@ -1120,6 +1119,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   local opponent = other_player_id(state, actor)
   local prev_active_user_id = state.active_user_id
   local action_type = action and tonumber(action.actionType) or 0
+  local sync_action_actor_uid = (action ~= nil and actor ~= nil) and actor or nil
 
   if actor ~= nil and action ~= nil then
     local ask = Ach.map_action_to_stat(action.actionType)
@@ -1139,7 +1139,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then
     local winner = state.stats[actor].hp > 0 and actor or opponent
     state.ended = true
-    broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
+    broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
 
     local game_over_payload = { winnerUserId = winner }
     -- Arena tournament meta for client UX (no history bracket, show modal on final win / any loss).
@@ -1147,6 +1147,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.arenaTournamentId = state.arena_mirror.tournament_id or ""
       game_over_payload.arenaRound = state.arena_mirror.round or ""
       game_over_payload.arenaBetTier = state.arena_mirror.bet_tier or ""
+      game_over_payload.arenaKind = string.lower(tostring(state.arena_mirror.kind or "smith"))
     end
     if state.mode == "pve" and winner == state.owner_user_id then
       if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
@@ -1310,7 +1311,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       ensure_active_board_has_valid_swaps(state)
     end
   end
-  broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick)
+  broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
 end
 
 local function clone_step(board, phase)
@@ -1361,8 +1362,6 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local cells = collect_ability_cells(action_type, cx, cy)
   local skulls = 0
   local monster_rage_bombs = 0
-  local healed = false
-  local pending_heal = 0
 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
@@ -1374,8 +1373,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
         elseif t == 3 then sim.green = sim.green + 1 end
       end
     elseif t == 5 then
-      healed = true
-      pending_heal = pending_heal + CFG.ANKH_HEAL
+      state._action_ankh_count = (state._action_ankh_count or 0) + 1
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2)
         opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
@@ -1392,11 +1390,6 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
     end
   end
 
-  if healed then
-    pending_heal = pending_heal + get_heal_bonus(actor)
-    actor.hp = math.min(actor.max_hp or CFG.MAX_HP, (actor.hp or CFG.MAX_HP) + pending_heal)
-  end
-
   -- Урон от способности + бомбы в зоне — в общий пул на ход; один deal_damage в конце resolve_action.
   state._action_damage_flat = (state._action_damage_flat or 0) + CFG.ABILITY_BASE_DAMAGE + CFG.SKULL_DAMAGE * skulls
   if affix == "monster_rage" and actor_id == state.bot_user_id and monster_rage_bombs > 0 then
@@ -1408,6 +1401,7 @@ end
 local function resolve_action(state, action, actor_id, opponent_id)
   state.last_crit = false
   state._action_damage_flat = 0
+  state._action_ankh_count = 0
   state._monster_rage_bombs_action = 0
   state._sync_popup = nil
   local initial_matches = {}
@@ -1489,6 +1483,19 @@ local function resolve_action(state, action, actor_id, opponent_id)
   local did_shuffle = ensure_active_board_has_valid_swaps(state)
   if did_shuffle then
     state._sync_popup = "Нет доступных ходов.\nПеремешиваем поле"
+  end
+
+  -- Одно лечение за ход от всех капсул (матчи + каскады + зона креста/квадрата): анкх-значения + бонус один раз.
+  do
+    local ac = tonumber(state._action_ankh_count) or 0
+    state._action_ankh_count = 0
+    if ac > 0 then
+      local act = state.stats[actor_id]
+      if act ~= nil then
+        local add = CFG.ANKH_HEAL * ac + get_turn_heal_flat_bonus(state, act)
+        act.hp = math.min(act.max_hp or CFG.MAX_HP, (act.hp or CFG.MAX_HP) + add)
+      end
+    end
   end
 
   -- Один расчёт урона за ход: сумма бомб (все каскады) + урон способности (если был); base_damage персонажа и крит — в roll_outgoing_damage.
@@ -5371,7 +5378,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
           cheat = state.cheat_rows or {}
         end
-        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
         dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
         return state
       end
@@ -5389,7 +5396,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
           cheat = state.cheat_rows or {}
         end
-        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
         dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
         return state
       end
@@ -5445,7 +5452,7 @@ local function match_join(context, dispatcher, tick, state, presences)
           state.bot_turn_pending = false
           state.bot_turn_ready_tick = 0
         end
-        broadcast_sync(dispatcher, state, nil, false, nil, tick)
+        broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
         return state
       end
 
@@ -5527,7 +5534,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
       end
-      broadcast_sync(dispatcher, state, nil, false, nil, tick)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
     end
     return state
   end
@@ -5565,7 +5572,7 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.turn_deadline_paused = true
     state.turn_pause_started_tick = tick
     state.turn_deadline_tick = tick
-    broadcast_sync(dispatcher, state, nil, false, nil, tick)
+    broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
   end
 
   return state
@@ -5579,6 +5586,7 @@ local function augment_arena_game_over_payload(state, payload)
     payload.arenaTournamentId = state.arena_mirror.tournament_id or ""
     payload.arenaRound = state.arena_mirror.round or ""
     payload.arenaBetTier = state.arena_mirror.bet_tier or ""
+    payload.arenaKind = string.lower(tostring(state.arena_mirror.kind or "smith"))
   end
   local ar = string.lower(tostring(payload.arenaRound or ""))
   if ar ~= "final" then return end
@@ -5745,7 +5753,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
             state.bot_turn_ready_tick = tick + think
             state.bot_long_think_next = false
           end
-          broadcast_sync(dispatcher, state, nil, false, nil, tick)
+          broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
         end
       end
     end
@@ -5780,7 +5788,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[m.sender.user_id] == true then
           cheat = state.cheat_rows or {}
         end
-        local msg = make_sync_msg(state, nil, false, nil, cheat, tick)
+        local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
         dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { m.sender }, nil)
       end
     end
@@ -5842,7 +5850,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       state.bot_long_think_next = true
       state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
     end
-    broadcast_sync(dispatcher, state, nil, false, nil, tick)
+    broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
   end
 
   -- Сначала таймаут хода (человек не успел), затем ход бота — чтобы бот мог сходить в том же тике.
@@ -5876,7 +5884,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           state.bot_turn_ready_tick = 0
         end
       end
-      broadcast_sync(dispatcher, state, nil, false, nil, tick)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
     end
   end
 
@@ -5902,7 +5910,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       end
       state.bot_turn_pending = false
       state.bot_turn_ready_tick = 0
-      broadcast_sync(dispatcher, state, nil, false, nil, tick)
+      broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
     else
       local actor_stats = state.stats[actor_id]
       if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
@@ -5934,7 +5942,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         end
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
-        broadcast_sync(dispatcher, state, nil, false, nil, tick)
+        broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
       end
     end
   end
