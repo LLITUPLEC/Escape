@@ -11,6 +11,9 @@ end
 local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
 local Metrics = runtime_lua_require("modules.duel_match3_metrics", "duel_match3_metrics")
 local Ach = runtime_lua_require("modules.duel_match3_achievements", "duel_match3_achievements")
+local build_session_guard = runtime_lua_require("modules.duel_match3_session_guard", "duel_match3_session_guard")
+local Guard = build_session_guard({ nk = nk, CFG = CFG })
+local Pvp
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -23,84 +26,8 @@ local Ach = runtime_lua_require("modules.duel_match3_achievements", "duel_match3
 --
 -- We keep stats extensible by returning a string-keyed map in RPC.
 -- For now the game uses: hp, damage, armor, crit_chance (0..1).
+-- clamp_int / character_stats_base_for_level — в duel_match3_config.lua.
 -- ─────────────────────────────────────────────────────────────────────────────
-local function clamp_int(v, lo, hi)
-  local n = tonumber(v) or 0
-  n = math.floor(n)
-  if lo ~= nil and n < lo then n = lo end
-  if hi ~= nil and n > hi then n = hi end
-  return n
-end
-
-local function character_stats_base_for_level(level)
-  local lvl = clamp_int(level, 1, CFG.PVE_MAX_LEVEL)
-  local bonus_levels = math.max(0, lvl - 1)
-
-  -- Базовые параметры на 1-м уровне, рост — согласно solo.md.
-  local hp = 150 + bonus_levels * 30
-  -- В бою есть базовый урон черепа (SKULL_DAMAGE), поэтому level-бонус идёт отдельной прибавкой.
-  local damage = bonus_levels
-  local armor = bonus_levels
-  -- Крит: 0.5% на 1-м уровне, +0.5% за уровень → на 12-м = 6% (eqip_stats §3.2 / фаза 0).
-  local crit = 0.005 + bonus_levels * 0.005
-  local healing = bonus_levels
-
-  return {
-    hp = hp,
-    damage = damage,
-    armor = armor,
-    crit_chance = crit,
-    healing = healing,
-  }
-end
-
-local function guard_read_metadata_epoch(user_id)
-  if user_id == nil or user_id == "" then
-    return 0
-  end
-  local ok, account = pcall(function()
-    return nk.account_get_id(user_id)
-  end)
-  if not ok or account == nil or account.user == nil or account.user.metadata == nil then
-    return 0
-  end
-  local v = account.user.metadata[CFG.SESSION_EPOCH_ACCOUNT_META]
-  if v == nil then
-    return 0
-  end
-  return tonumber(v) or 0
-end
-
-local function guard_parse_client_epoch_from_payload(payload)
-  if payload == nil or payload == "" then
-    return nil
-  end
-  local ok, p = pcall(nk.json_decode, payload)
-  if not ok or type(p) ~= "table" then
-    return nil
-  end
-  if p.session_epoch == nil then
-    return nil
-  end
-  return tonumber(p.session_epoch)
-end
-
-local function guard_assert_client_epoch_matches(user_id, payload)
-  local server_e = guard_read_metadata_epoch(user_id)
-  local client_e = guard_parse_client_epoch_from_payload(payload)
-  if client_e == nil then
-    return false, "session_epoch_required"
-  end
-  if client_e ~= server_e then
-    return false, "session_stale"
-  end
-  return true, nil
-end
-
-local function guard_is_epoch_stale_for_match(user_id, match_snapshot_epoch)
-  local snap = tonumber(match_snapshot_epoch) or 0
-  return guard_read_metadata_epoch(user_id) > snap
-end
 
 local award_pve_victory
 local award_pve_defeat
@@ -110,23 +37,8 @@ function is_boss_floor(floor)
 end
 
 function mine_bot_id_for_floor(floor)
-  return "mine_" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
+  return "mine_" .. tostring(CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
-
---- Базовые значения из solo.md × ~1,4 (руда/золото/материя); ключи в барьерах не используются.
-local MINE_BARRIER_REQUIREMENTS = {
-  [2] = { ore = 140 },
-  [3] = { ore = 490 },
-  [4] = { ore = 1120 },
-  [5] = { ore = 2100, gold = 2800 },
-  [6] = { ore = 3500 },
-  [7] = { ore = 5320, gold = 6500  },
-  [8] = { ore = 7700 },
-  [9] = { ore = 10500, gold = 14000 },
-  [10] = { ore = 14000, gold = 17000 },
-  [11] = { ore = 18200, gold = 22000 },
-  [12] = { ore = 23800, matter = 300, gold = 35000 },
-}
 
 -- Стоимость боя / «Прогнать» (duel_match3_pve_mine_cost.lua).
 local function pve_energy_max_for_user(user_id)
@@ -139,13 +51,13 @@ end
 
 local build_pve_mine_cost = runtime_lua_require("modules.duel_match3_pve_mine_cost", "duel_match3_pve_mine_cost")
 local PveMineCost = build_pve_mine_cost({
-  clamp_int = clamp_int,
+  clamp_int = CFG.clamp_int,
   pve_energy_max_for_user = pve_energy_max_for_user,
   empty_key_items = empty_key_items,
 })
 
 function build_floor_bot_entry(floor)
-  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
   local boss = is_boss_floor(f)
   local hp = 80 + f * 20
   local damage = 3 + f
@@ -340,7 +252,7 @@ function mine_reward_multiplier(diff)
 end
 
 function make_floor_state_key(diff, floor)
-  return normalize_mine_difficulty(diff) .. ":" .. tostring(clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
+  return normalize_mine_difficulty(diff) .. ":" .. tostring(CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL))
 end
 
 local function truthy_match_param(v)
@@ -983,6 +895,7 @@ end
 local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser, tick, sync_action_actor_uid)
   local a_id = state.players_sorted[1]
   local b_id = state.players_sorted[2]
+  Pvp.cache_player_levels(state)
   local a = state.stats[a_id]
   local b = state.stats[b_id]
 
@@ -1027,6 +940,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     aShieldT3 = a.shield_t3 or 0,
     aFuryTurns = a.fury_active == true and 1 or 0,
     aFuryBonus = (a.fury_active == true) and math.max(0, tonumber(a.fury_bomb_bonus) or 0) or 0,
+    aLevel = (state.player_levels and state.player_levels[a_id]) or 1,
     bHp = b.hp,
     bMana = b.mana,
     bCrossCd = b.cross_cd,
@@ -1044,6 +958,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bShieldT3 = b.shield_t3 or 0,
     bFuryTurns = b.fury_active == true and 1 or 0,
     bFuryBonus = (b.fury_active == true) and math.max(0, tonumber(b.fury_bomb_bonus) or 0) or 0,
+    bLevel = (state.player_levels and state.player_levels[b_id]) or 1,
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     actionActorUserId = sync_action_actor_uid or "",
@@ -1200,6 +1115,8 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardOre = 0
       game_over_payload.rewardMatter = 0
       game_over_payload.newLevel = state.last_reward.level or 1
+    elseif state.mode ~= "pve" and winner ~= nil then
+      Pvp.apply_game_over_rewards(state, winner, game_over_payload)
     end
 
     -- Arena финал: награда в UI совпадает с arena_grant_final_progress (та же функция, что в Arena).
@@ -1850,7 +1767,7 @@ local function normalize_stored_item_def(def)
   if type(def) ~= "table" then return nil end
   local kind = tostring(def.kind or "")
   if kind == "" then kind = "equipment" end
-  local tier = clamp_int(tonumber(def.tier) or 1, 1, 3)
+  local tier = CFG.clamp_int(tonumber(def.tier) or 1, 1, 3)
   local quality = tostring(def.quality or "normal")
   if quality == "" then quality = "normal" end
   local recipe_slot = tostring(def.recipe_slot or def.recipe_target_slot or "")
@@ -2000,7 +1917,7 @@ local _bots_merged_at_by_diff = {}
 
 local function normalize_stored_bot(id_key, def)
   if type(def) ~= "table" then return nil end
-  local floor = clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, CFG.PVE_MAX_LEVEL)
+  local floor = CFG.clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, CFG.PVE_MAX_LEVEL)
   local fallback = build_floor_bot_entry(floor)
   local bid = mine_bot_id_for_floor(floor)
   local name = tostring(def.name or fallback.name or "")
@@ -2261,7 +2178,7 @@ local function equipment_full_set_stat_multiplier(sheet)
     if d == nil or not item_def_is_equipment(d) then
       return 1.0
     end
-    local t = clamp_int(tonumber(d.tier) or 1, 1, 99)
+    local t = CFG.clamp_int(tonumber(d.tier) or 1, 1, 99)
     local q = tostring(d.quality or "normal")
     if first_tier == nil then
       first_tier, first_q = t, q
@@ -2391,7 +2308,7 @@ local function build_resource_payload(progress, user_id)
   -- Итог по ключам для HUD: раньше в progress.keys писалось отдельно и не синхронизировалось с key_items.
   local keys_total = miner_key + dark_key
   return {
-    energy = clamp_int(progress.energy, 0, energy_max),
+    energy = CFG.clamp_int(progress.energy, 0, energy_max),
     energy_max = energy_max,
     ore = math.max(0, tonumber(progress.ore) or 0),
     gold = math.max(0, tonumber(progress.gold) or 0),
@@ -2449,8 +2366,8 @@ end
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
-  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
-  local base_stats = character_stats_base_for_level(level)
+  local level = CFG.clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
+  local base_stats = CFG.character_stats_base_for_level(level)
   local bonus = sum_equipment_bonuses(sheet)
   local stats = merge_stats_with_equipment(base_stats, bonus)
   local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
@@ -2525,7 +2442,7 @@ local function workshop_legend_fodder_matches(def, slot_name, legend_tier)
   if def == nil or not item_def_is_equipment(def) or not item_def_is_legendary_quality(def) then
     return false
   end
-  if clamp_int(tonumber(def.tier) or 0, 1, 3) ~= legend_tier then return false end
+  if CFG.clamp_int(tonumber(def.tier) or 0, 1, 3) ~= legend_tier then return false end
   if tostring(def.slot or "") ~= slot_name then return false end
   return true
 end
@@ -2581,7 +2498,7 @@ end
 local function workshop_fodder_matches_tier_slot_quality(def, slot_name, tier, quality_str)
   if def == nil or not item_def_is_equipment(def) then return false end
   if tostring(def.slot or "") ~= slot_name then return false end
-  if clamp_int(tonumber(def.tier) or 0, 1, 3) ~= tier then return false end
+  if CFG.clamp_int(tonumber(def.tier) or 0, 1, 3) ~= tier then return false end
   return tostring(def.quality or "") == quality_str
 end
 
@@ -2739,7 +2656,7 @@ end
 
 --- §4.4: шанс выпадения слитка с обычного монстра (босс 4/8/12 — 100%).
 local function ingot_drop_chance_non_boss(floor)
-  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
   local r = f % 4
   if r == 1 then return 0.25 end
   if r == 2 then return 0.5 end
@@ -2753,7 +2670,7 @@ end
 local MINE_RECIPE_DROP_FLOORS = { 1, 2, 3, 5, 6, 7, 9, 11 }
 
 local function mine_recipe_drop_chance_for_floor(floor)
-  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
   for i = 1, #MINE_RECIPE_DROP_FLOORS do
     if MINE_RECIPE_DROP_FLOORS[i] == f then
       return (50 - 5 * (i - 1)) / 100
@@ -2788,7 +2705,7 @@ local function mine_recipe_item_id_for_floor_index(floor, color, mine_tier)
   if c ~= "green" and c ~= "blue" and c ~= "purple" then
     c = "green"
   end
-  local t = clamp_int(tonumber(mine_tier) or 1, 1, 3)
+  local t = CFG.clamp_int(tonumber(mine_tier) or 1, 1, 3)
   local slot = MINE_RECIPE_FLOOR_SLOT_ORDER[idx]
   return "recipe_drop_t" .. tostring(t) .. "_" .. c .. "_" .. slot
 end
@@ -2979,9 +2896,9 @@ end
 
 function normalize_mine_unlocked(raw, default_floor)
   local out = {
-    easy = clamp_int(raw and raw.easy or default_floor, 1, CFG.PVE_MAX_LEVEL),
-    medium = clamp_int(raw and raw.medium or 0, 0, CFG.PVE_MAX_LEVEL),
-    hard = clamp_int(raw and raw.hard or 0, 0, CFG.PVE_MAX_LEVEL),
+    easy = CFG.clamp_int(raw and raw.easy or default_floor, 1, CFG.PVE_MAX_LEVEL),
+    medium = CFG.clamp_int(raw and raw.medium or 0, 0, CFG.PVE_MAX_LEVEL),
+    hard = CFG.clamp_int(raw and raw.hard or 0, 0, CFG.PVE_MAX_LEVEL),
   }
   return out
 end
@@ -3003,14 +2920,14 @@ local function read_pve_progress(user_id)
 
   -- Регенерация по времени только до min(storage_max, PVE_ENERGY_REGEN_CAP); «скупленная» энергия не капается выше 100.
   local function apply_energy_regen(progress, storage_max, now)
-    local cap = clamp_int(storage_max, 0, nil)
+    local cap = CFG.clamp_int(storage_max, 0, nil)
     if cap <= 0 then
       progress.energy = 0
       progress.energy_updated_at = now
       return
     end
     local regen_top = math.min(cap, math.max(0, tonumber(CFG.PVE_ENERGY_REGEN_CAP) or 100))
-    local energy = clamp_int(progress.energy, 0, cap)
+    local energy = CFG.clamp_int(progress.energy, 0, cap)
     local updated_at = math.floor(tonumber(progress.energy_updated_at) or now)
     if updated_at <= 0 then updated_at = now end
     if updated_at > now then updated_at = now end
@@ -3088,12 +3005,12 @@ local function read_pve_progress(user_id)
     key_items = type(val.key_items) == "table" and val.key_items or empty_key_items(),
     -- Backward compatibility: old rows had no energy field.
     -- If missing, start from full energy instead of 0.
-    energy = clamp_int(initial_energy, 0, energy_max),
+    energy = CFG.clamp_int(initial_energy, 0, energy_max),
     energy_updated_at = math.floor(tonumber(val.energy_updated_at) or now),
     mine = type(val.mine) == "table" and val.mine or {},
   }
   progress.mine.current_difficulty = normalize_mine_difficulty(progress.mine.current_difficulty)
-  progress.mine.selected_floor = clamp_int(progress.mine.selected_floor or 1, 1, CFG.PVE_MAX_LEVEL)
+  progress.mine.selected_floor = CFG.clamp_int(progress.mine.selected_floor or 1, 1, CFG.PVE_MAX_LEVEL)
   progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
   if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
   progress.key_items.miner_key = math.max(0, tonumber(progress.key_items.miner_key) or 0)
@@ -3108,10 +3025,10 @@ local function apply_pvp_pro_stats_from_sheet(actor, user_id)
   if actor == nil or user_id == nil or user_id == "" then return end
   ensure_character_sheet_initialized(user_id)
   local progress, _ = read_pve_progress(user_id)
-  local level = clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
+  local level = CFG.clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
   local sheet = read_character_sheet(user_id)
   ensure_sheet_inventory_counts(sheet)
-  local base = character_stats_base_for_level(level)
+  local base = CFG.character_stats_base_for_level(level)
   local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
   actor.max_hp = math.max(1, math.floor(tonumber(merged.hp) or CFG.MAX_HP))
   actor.hp = actor.max_hp
@@ -3157,7 +3074,7 @@ local function write_pve_progress(user_id, progress, version)
 end
 
 function random_affix_for_floor(floor)
-  local f = clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
   local i = math.random(1, #CFG.MINE_AFFIX_POOL)
   return CFG.MINE_AFFIX_POOL[i] or ""
 end
@@ -3177,7 +3094,7 @@ end
 
 award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   local snap = tonumber(match_epoch_snapshot) or 0
-  if guard_is_epoch_stale_for_match(user_id, snap) then
+  if Guard.is_epoch_stale_for_match(user_id, snap) then
     nk.logger_info("award_pve_victory skipped: session_stale")
     local progress = read_pve_progress(user_id)
     return {
@@ -3198,7 +3115,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
 
   local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
   local bot = get_bot_profile(bot_id, diff)
-  local floor = clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
+  local floor = CFG.clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
   local stat_mul = mine_stat_multiplier(diff)
   local reward_mul = mine_reward_multiplier(diff)
   local is_boss = bot.is_boss == true or is_boss_floor(floor)
@@ -3385,7 +3302,7 @@ end
 award_pve_defeat = function(user_id, match_epoch_snapshot)
   local snap = tonumber(match_epoch_snapshot) or 0
   local defeat_xp = aura_apply_to_pve_reward_xp(10, get_active_server_aura())
-  if guard_is_epoch_stale_for_match(user_id, snap) then
+  if Guard.is_epoch_stale_for_match(user_id, snap) then
     local progress = read_pve_progress(user_id)
     return {
       reward_xp = 0,
@@ -3441,6 +3358,20 @@ award_pve_defeat = function(user_id, match_epoch_snapshot)
     matter = 0,
   }
 end
+
+local build_pvp = runtime_lua_require("modules.duel_match3_pvp", "duel_match3_pvp")
+Pvp = build_pvp({
+  nk = nk,
+  CFG = CFG,
+  clamp_int = CFG.clamp_int,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  current_level_from_xp = current_level_from_xp,
+  get_bot_profile = get_bot_profile,
+  normalize_mine_difficulty = normalize_mine_difficulty,
+  award_pve_defeat = award_pve_defeat,
+  other_player_id = other_player_id,
+})
 
 local function read_match3_stats(user_id)
   local val, version = Ach.storage_read_match3_summary_val(user_id)
@@ -3549,7 +3480,7 @@ local function duel_match3_stats_record(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -3670,7 +3601,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
     local unlocked_floor = get_unlocked_floor(progress, current_diff)
     local mine_floors = {}
     for _, b in ipairs(bots) do
-      local floor = clamp_int(b.floor or 1, 1, CFG.PVE_MAX_LEVEL)
+      local floor = CFG.clamp_int(b.floor or 1, 1, CFG.PVE_MAX_LEVEL)
       local state_key = make_floor_state_key(current_diff, floor)
       local fs = progress.mine and progress.mine.floor_states and progress.mine.floor_states[state_key] or nil
       local left = floor_respawn_left_seconds(progress, current_diff, floor)
@@ -3690,7 +3621,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
       level_xp = CFG.LEVEL_XP,
       max_level = CFG.PVE_MAX_LEVEL,
       mine_difficulty = current_diff,
-      barrier_requirements = MINE_BARRIER_REQUIREMENTS,
+      barrier_requirements = CFG.MINE_BARRIER_REQUIREMENTS,
       mine_floors = mine_floors,
       bots = bots,
     })
@@ -3710,7 +3641,7 @@ local function duel_character_item_move(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -3847,7 +3778,7 @@ local function duel_character_recipe_learn(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -3920,7 +3851,7 @@ local function duel_workshop_craft_start(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -3976,7 +3907,7 @@ local function duel_workshop_craft_start(ctx, payload)
       return nk.json_encode({ ok = false, err = "recipe_not_learned" })
     end
 
-    local tier = clamp_int(tonumber(out_def.tier) or 1, 1, 3)
+    local tier = CFG.clamp_int(tonumber(out_def.tier) or 1, 1, 3)
     local quality = tostring(out_def.quality or "normal")
     if quality ~= "normal" and quality ~= "rare" and quality ~= "epic" and quality ~= "legendary" then
       return nk.json_encode({ ok = false, err = "unsupported_craft_quality" })
@@ -4109,7 +4040,7 @@ local function duel_workshop_craft_claim(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4187,7 +4118,7 @@ local function duel_player_resources_spend(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4198,7 +4129,7 @@ local function duel_player_resources_spend(ctx, payload)
     end
 
     local resource = tostring(p.resource or "")
-    local amount = clamp_int(p.amount, 0, nil)
+    local amount = CFG.clamp_int(p.amount, 0, nil)
     local reason = tostring(p.reason or "")
     if resource ~= "energy" then
       return nk.json_encode({ ok = false, err = "unsupported_resource" })
@@ -4212,7 +4143,7 @@ local function duel_player_resources_spend(ctx, payload)
       local now = os.time()
       local progress, version = read_pve_progress(user_id)
       local energy_max = pve_energy_max_for_user(user_id)
-      local available = clamp_int(progress.energy, 0, energy_max)
+      local available = CFG.clamp_int(progress.energy, 0, energy_max)
       if available < amount then
         local resources = build_resource_payload(progress, user_id)
         resources.ok = false
@@ -4260,7 +4191,7 @@ local function duel_pve_energy_buy(ctx, payload)
     if user_id == nil or user_id == "" then
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4280,7 +4211,7 @@ local function duel_pve_energy_buy(ctx, payload)
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)
       local energy_max = pve_energy_max_for_user(user_id)
-      local e = clamp_int(progress.energy, 0, energy_max)
+      local e = CFG.clamp_int(progress.energy, 0, energy_max)
       if e >= energy_max then
         return nk.json_encode({ ok = false, err = "energy_full" })
       end
@@ -4307,7 +4238,7 @@ local function duel_pve_energy_buy(ctx, payload)
         progress.gold = g - gold_cost
         progress.energy = e + add
       end
-      progress.energy = clamp_int(progress.energy, 0, energy_max)
+      progress.energy = CFG.clamp_int(progress.energy, 0, energy_max)
       progress.energy_updated_at = os.time()
       local write_ok, write_err = pcall(function()
         write_pve_progress(user_id, progress, version)
@@ -4337,7 +4268,7 @@ local function duel_workshop_craft_rush(ctx, payload)
     if user_id == nil or user_id == "" then
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4413,8 +4344,8 @@ local arena_factory = runtime_lua_require("modules.arena_tournament", "arena_tou
 local Arena = arena_factory({
   try_match_create = try_match_create,
   make_bot_user_id = make_bot_user_id,
-  guard_read_metadata_epoch = guard_read_metadata_epoch,
-  guard_assert_client_epoch_matches = guard_assert_client_epoch_matches,
+  guard_read_metadata_epoch = Guard.read_metadata_epoch,
+  guard_assert_client_epoch_matches = Guard.assert_client_epoch_matches,
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
   read_character_sheet = read_character_sheet,
@@ -4432,14 +4363,14 @@ arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
 function parse_floor_from_bot_id(bot_id)
   local sid = tostring(bot_id or "")
   local n = string.match(sid, "mine_(%d+)")
-  return clamp_int(n, 1, CFG.PVE_MAX_LEVEL)
+  return CFG.clamp_int(n, 1, CFG.PVE_MAX_LEVEL)
 end
 
 function get_unlocked_floor(progress, diff)
   local d = normalize_mine_difficulty(diff)
   local mine = progress.mine or {}
   local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
-  return clamp_int(unlocked[d] or 1, 0, CFG.PVE_MAX_LEVEL)
+  return CFG.clamp_int(unlocked[d] or 1, 0, CFG.PVE_MAX_LEVEL)
 end
 
 function floor_respawn_left_seconds(progress, diff, floor)
@@ -4459,12 +4390,12 @@ local function duel_match3_pve_create(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
 
-    local owner_epoch = guard_read_metadata_epoch(user_id)
+    local owner_epoch = Guard.read_metadata_epoch(user_id)
 
     local p = {}
     if payload ~= nil and payload ~= "" then
@@ -4473,13 +4404,13 @@ local function duel_match3_pve_create(ctx, payload)
 
     local requested_bot_id = tostring(p.bot_id or mine_bot_id_for_floor(1))
     local requested_diff = normalize_mine_difficulty(p.difficulty)
-    local requested_floor = clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
+    local requested_floor = CFG.clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
     local fallback_bot = get_bot_profile(mine_bot_id_for_floor(requested_floor), requested_diff)
     local bot = get_bot_profile(requested_bot_id, requested_diff)
     if bot == nil or bot.id == nil or bot.id == "" then
       bot = fallback_bot
     end
-    local floor = clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
+    local floor = CFG.clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
     local diff = requested_diff
     local bot_user_id = make_bot_user_id(bot.id)
     local max_retries = 5
@@ -4596,7 +4527,7 @@ local function duel_mine_summon(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4606,7 +4537,7 @@ local function duel_mine_summon(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
 
-    local requested_floor = clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
+    local requested_floor = CFG.clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local max_retries = 5
 
@@ -4652,7 +4583,7 @@ local function duel_mine_summon(ctx, payload)
       end
 
       local energy_max = pve_energy_max_for_user(user_id)
-      local available_energy = clamp_int(progress.energy, 0, energy_max)
+      local available_energy = CFG.clamp_int(progress.energy, 0, energy_max)
       if available_energy < CFG.MINE_SUMMON_ENERGY_COST then
         return nk.json_encode({
           ok = false,
@@ -4723,7 +4654,7 @@ function duel_mine_affix_reroll(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4733,7 +4664,7 @@ function duel_mine_affix_reroll(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
 
-    local requested_floor = clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
+    local requested_floor = CFG.clamp_int(p.floor, 1, CFG.PVE_MAX_LEVEL)
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local max_retries = 5
     local bid = mine_bot_id_for_floor(requested_floor)
@@ -4825,7 +4756,7 @@ function duel_mine_barrier_unlock(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
     if not ok_epoch then
       return nk.json_encode({ ok = false, err = err_epoch })
     end
@@ -4834,9 +4765,9 @@ function duel_mine_barrier_unlock(ctx, payload)
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
     end
-    local target_floor = clamp_int(p.floor, 2, CFG.PVE_MAX_LEVEL)
+    local target_floor = CFG.clamp_int(p.floor, 2, CFG.PVE_MAX_LEVEL)
     local diff = normalize_mine_difficulty(p.difficulty)
-    local req = MINE_BARRIER_REQUIREMENTS[target_floor]
+    local req = CFG.MINE_BARRIER_REQUIREMENTS[target_floor]
     if req == nil then
       return nk.json_encode({ ok = false, err = "bad_floor" })
     end
@@ -5333,6 +5264,7 @@ local function match_init(context, params)
     arena_pvp_style = truthy_match_param(params and params.arena_pvp_style),
     reconnect_grace_for_user_id = nil,
     reconnect_deadline_tick = nil,
+    player_levels = {},
   }
 
   return state, CFG.TICK_RATE, "mode=duel_match3"
@@ -5468,7 +5400,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[player_id] = new_stats()
       state.stats[state.bot_user_id] = new_stats()
       local player_level = math.max(1, math.min(CFG.PVE_MAX_LEVEL, tonumber(state.owner_level) or 1))
-      local base = character_stats_base_for_level(player_level)
+      local base = CFG.character_stats_base_for_level(player_level)
       local sheet = read_character_sheet(player_id)
       local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
       state.stats[player_id].max_hp = tonumber(merged.hp) or CFG.MAX_HP
@@ -5807,7 +5739,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         and state.owner_user_id ~= nil
         and state.owner_user_id ~= ""
         and m.sender.user_id == state.owner_user_id
-        and guard_is_epoch_stale_for_match(m.sender.user_id, state.owner_session_epoch)
+        and Guard.is_epoch_stale_for_match(m.sender.user_id, state.owner_session_epoch)
       if stale_pve then
         send_reject(dispatcher, m.sender, "session_stale")
       else
@@ -5999,7 +5931,7 @@ Ach.configure({
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
   ensure_character_sheet_initialized = ensure_character_sheet_initialized,
-  guard_assert_client_epoch_matches = guard_assert_client_epoch_matches,
+  guard_assert_client_epoch_matches = Guard.assert_client_epoch_matches,
 })
 
 nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")

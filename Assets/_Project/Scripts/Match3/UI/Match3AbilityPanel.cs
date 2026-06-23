@@ -18,6 +18,7 @@ namespace Project.Match3
         private static readonly Color AbilityDimmedIcon = new Color(0.42f, 0.42f, 0.42f, 1f);
         //private static readonly Color AbilityCostTextColor = new Color(34f / 255f, 88f / 255f, 207f / 255f, 1f);
         private static readonly Color AbilityCostTextColor = new Color(0f, 0f, 0f, 0.98f);
+        private const float AbilityCostFontSize = 40f;
         private static readonly Color CooldownCenterTextColor = new Color(1f, 86f / 255f, 0f, 1f);
 
         [Header("Petard ability")]
@@ -191,6 +192,8 @@ namespace Project.Match3
             if (tmp != null)
             {
                 tmp.text = cost > 0 ? cost.ToString() : string.Empty;
+                tmp.fontSize = AbilityCostFontSize;
+                tmp.enableAutoSizing = false;
                 tmp.color = AbilityCostTextColor;
             }
         }

@@ -4777,7 +4777,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 1920, y: 1080}
+  m_ReferenceResolution: {x: 1080, y: 1920}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
@@ -7125,6 +7125,7 @@ MonoBehaviour:
   monsterCatalog: {fileID: 11400000, guid: 55457cccd3eccbe4dbc43f14f7b9dc60, type: 2}
   monsterFrameCatalog: {fileID: 11400000, guid: 6d2d62c7f08184247be656153908c09e, type: 2}
   affixCatalog: {fileID: 11400000, guid: 0cb93842da3f91b4ebb3067fb38bcbc6, type: 2}
+  itemCatalog: {fileID: 11400000, guid: 1e007d3c1d27cfc4d894d77c6cb422e6, type: 2}
   keyIconSprite: {fileID: 21300000, guid: 5c83f46b42544794c990efbf04434d67, type: 3}
   oreIconSprite: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
   goldIconSprite: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}

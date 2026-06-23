@@ -1,7 +1,6 @@
 -- Константы для duel_match3.lua: require("modules.duel_match3_config") или require("duel_match3_config")
 -- в зависимости от runtime.path (см. комментарий в duel_match3.lua).
-return {
-  SIZE = 6,
+local CFG = {  SIZE = 6,
   HEIGHT = 8,
   ACTIVE_Y_MIN = 2,
   ACTIVE_ROWS = 6,
@@ -121,6 +120,20 @@ return {
     "bare_current",
     "scree",
   },
+  --- Базовые значения барьеров шахты (solo.md × ~1,4).
+  MINE_BARRIER_REQUIREMENTS = {
+    [2] = { ore = 140 },
+    [3] = { ore = 490 },
+    [4] = { ore = 1120 },
+    [5] = { ore = 2100, gold = 2800 },
+    [6] = { ore = 3500 },
+    [7] = { ore = 5320, gold = 6500 },
+    [8] = { ore = 7700 },
+    [9] = { ore = 10500, gold = 14000 },
+    [10] = { ore = 14000, gold = 17000 },
+    [11] = { ore = 18200, gold = 22000 },
+    [12] = { ore = 23800, matter = 300, gold = 35000 },
+  },
   SESSION_EPOCH_ACCOUNT_META = "session_epoch",
   --- Зелёный normal T1: синхронно с gen_item_catalog.js (упор на накопление ресурсов).
   -- Fallback без craft_* в каталоге: как зелёный шлем T1 (этаж рецепта 1); по слотам см. duel_match3_item_catalog.
@@ -129,4 +142,34 @@ return {
   WORKSHOP_T3_NORMAL_COST = { ore = 350, gold = 300, ingot_def = "ingot_green", ingot_n = 4 },
   --- Длительность крафта (секунды); тиры 2–3 не используются в экипе, оставлены для совместимости.
   WORKSHOP_CRAFT_DURATION_SEC_BY_TIER = { [1] = 60 * 60, [2] = 120 * 60, [3] = 240 * 60 },
+  --- Награда за победу в обычном PvP (не арена-турнир, не PvE).
+  PVP_WIN_XP = 50,
+  PVP_WIN_GOLD = 75,
 }
+
+function CFG.clamp_int(v, lo, hi)
+  local n = tonumber(v) or 0
+  n = math.floor(n)
+  if lo ~= nil and n < lo then n = lo end
+  if hi ~= nil and n > hi then n = hi end
+  return n
+end
+
+function CFG.character_stats_base_for_level(level)
+  local lvl = CFG.clamp_int(level, 1, CFG.PVE_MAX_LEVEL)
+  local bonus_levels = math.max(0, lvl - 1)
+  local hp = 150 + bonus_levels * 30
+  local damage = bonus_levels
+  local armor = bonus_levels
+  local crit = 0.005 + bonus_levels * 0.005
+  local healing = bonus_levels
+  return {
+    hp = hp,
+    damage = damage,
+    armor = armor,
+    crit_chance = crit,
+    healing = healing,
+  }
+end
+
+return CFG

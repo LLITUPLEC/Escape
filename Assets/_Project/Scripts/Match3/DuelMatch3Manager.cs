@@ -146,6 +146,7 @@ namespace Project.Match3
         private const int   PetardAbilityCost = 30;
         private const int   ShieldAbilityCost = 40;
         private const int   FuryAbilityCost   = 30;
+        private const float AbilityCostFontSize = 40f;
         private const int   CrossCooldownTurns = 2;
         private const int   SquareCooldownTurns = 2;
         private const int   PetardCooldownTurns = 1;
@@ -270,6 +271,8 @@ namespace Project.Match3
         private List<PveBotInfo> _pveBots = new();
         private int _selectedPveBotIndex;
         private int _activePveBotFloor = 1;
+        private int _myProgressionLevel = -1;
+        private int _opProgressionLevel = -1;
         private PveProgressInfo _pveProgress;
         private const float CheatRowsHoldSeconds = 3f;
 
@@ -292,6 +295,7 @@ namespace Project.Match3
 
             EnsureCamera();
             BuildUI();
+            _ = LoadMyProgressionLevelAsync(_cts.Token);
             EnsureAudioSource();
             TryAutoAssignSfxInEditor();
             _searchingPanel?.Show(_isSoloBotMode
@@ -729,6 +733,7 @@ namespace Project.Match3
 
             _pveBots = new List<PveBotInfo>(model.bots);
             _pveProgress = model.progression ?? new PveProgressInfo();
+            _myProgressionLevel = Mathf.Max(1, _pveProgress.level);
             _selectedPveBotIndex = Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1);
             ct.ThrowIfCancellationRequested();
         }
@@ -1619,8 +1624,31 @@ namespace Project.Match3
                         _lastRewardTesseract = rtess;
                         _pveProgress.xp += rxp;
                         _pveProgress.gold += rgold;
-                        if (msg.newLevel > 0) _pveProgress.level = msg.newLevel;
+                        if (msg.newLevel > 0)
+                        {
+                            _pveProgress.level = msg.newLevel;
+                            _myProgressionLevel = msg.newLevel;
+                        }
                         _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
+                    }
+                    else if (!_isSoloBotMode &&
+                             string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal))
+                    {
+                        var rxp = Mathf.Max(0, msg.rewardXp);
+                        var rgold = Mathf.Max(0, msg.rewardGold);
+                        _lastRewardXp = rxp;
+                        _lastRewardGold = rgold;
+                        _lastRewardOre = 0;
+                        _lastRewardMatter = 0;
+                        _lastRewardIngots = 0;
+                        _lastRewardKeyAmount = 0;
+                        _lastRewardKeyId = string.Empty;
+                        _lastRewardBlueprint = string.Empty;
+                        _lastRewardRecipeItemId = string.Empty;
+                        _lastRewardTesseract = 0;
+                        if (msg.newLevel > 0)
+                            _myProgressionLevel = msg.newLevel;
+                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, 0, 0, 0, "", 0, "", "", 0);
                     }
                     _pendingGameOver = true;
                     _pendingGameOverWon = msg.winnerUserId == _myUserId;
@@ -1897,6 +1925,11 @@ namespace Project.Match3
             _myStats.shieldT3 = amA ? msg.aShieldT3 : msg.bShieldT3;
             _myStats.furyTurnsRemaining = amA ? msg.aFuryTurns : msg.bFuryTurns;
             _myStats.furyDamageBonus    = amA ? msg.aFuryBonus : msg.bFuryBonus;
+            if (msg.aLevel > 0 || msg.bLevel > 0)
+            {
+                _myProgressionLevel = Mathf.Max(1, amA ? msg.aLevel : msg.bLevel);
+                _opProgressionLevel = Mathf.Max(1, amA ? msg.bLevel : msg.aLevel);
+            }
             _opStats.hp             = amA ? msg.bHp       : msg.aHp;
             _opStats.mana           = amA ? msg.bMana      : msg.aMana;
             _opStats.crossCooldown  = amA ? msg.bCrossCd  : msg.aCrossCd;
@@ -2635,14 +2668,62 @@ namespace Project.Match3
         private void RefreshAvatarLevelUI()
         {
             if (_myPanel != null)
-            {
-                var lv = _pveProgress != null ? Mathf.Max(1, _pveProgress.level) : -1;
-                _myPanel.UpdateAvatarLevel(lv);
-            }
+                _myPanel.UpdateAvatarLevel(ResolveMyAvatarLevel());
             if (_opPanel != null)
+                _opPanel.UpdateAvatarLevel(ResolveOpAvatarLevel());
+        }
+
+        private int ResolveMyAvatarLevel()
+        {
+            if (_myProgressionLevel > 0) return _myProgressionLevel;
+            if (_pveProgress != null && _pveProgress.level > 0) return Mathf.Max(1, _pveProgress.level);
+            var fromStats = EstimateCharacterLevelFromStats(_myStats);
+            return fromStats > 0 ? fromStats : -1;
+        }
+
+        private int ResolveOpAvatarLevel()
+        {
+            if (_opProgressionLevel > 0) return _opProgressionLevel;
+            if (_isSoloBotMode) return Mathf.Max(1, _activePveBotFloor);
+            var fromStats = EstimateCharacterLevelFromStats(_opStats);
+            return fromStats > 0 ? fromStats : -1;
+        }
+
+        private static int EstimateCharacterLevelFromStats(PlayerStats stats)
+        {
+            if (stats == null) return -1;
+            if (stats.maxHp > 150)
             {
-                var lv = _isSoloBotMode ? _activePveBotFloor : -1;
-                _opPanel.UpdateAvatarLevel(lv);
+                var bonusLevels = (stats.maxHp - 150) / 30;
+                if (bonusLevels >= 0) return bonusLevels + 1;
+            }
+            if (stats.baseDamage > 0) return stats.baseDamage + 1;
+            if (stats.maxHp >= 150) return 1;
+            return -1;
+        }
+
+        private async Task LoadMyProgressionLevelAsync(CancellationToken ct)
+        {
+            try
+            {
+                if (_pveProgress != null && _pveProgress.level > 0)
+                {
+                    _myProgressionLevel = Mathf.Max(1, _pveProgress.level);
+                    MainThreadDispatcher.Enqueue(RefreshAvatarLevelUI);
+                    return;
+                }
+
+                var profile = await CharacterProfileService.GetAsync(ct).ConfigureAwait(false);
+                if (profile != null && profile.ok && profile.progression != null)
+                {
+                    _myProgressionLevel = Mathf.Max(1, profile.progression.level);
+                    MainThreadDispatcher.Enqueue(RefreshAvatarLevelUI);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Match3] Не удалось загрузить уровень игрока: " + e.Message);
             }
         }
 
@@ -2963,37 +3044,36 @@ namespace Project.Match3
                 _abilityPanel.petardButton = MakeButton(panelRt, "PetardBtn", string.Empty, Color.white, Color.white, AMin(0), AMax(0));
                 _abilityPanel.petardCooldownText = MakeTxt(_abilityPanel.petardButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
                 _abilityPanel.petardCooldownText.gameObject.SetActive(false);
+                ReanchorButton(_abilityPanel.petardButton, AMin(0), AMax(0));
             }
             if (_abilityPanel.crossButton == null)
             {
                 _abilityPanel.crossButton = MakeButton(panelRt, "CrossBtn", string.Empty, Color.white, Color.white, AMin(1), AMax(1));
                 _abilityPanel.crossCooldownText = MakeTxt(_abilityPanel.crossButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
                 _abilityPanel.crossCooldownText.gameObject.SetActive(false);
+                ReanchorButton(_abilityPanel.crossButton, AMin(1), AMax(1));
             }
             if (_abilityPanel.squareButton == null)
             {
                 _abilityPanel.squareButton = MakeButton(panelRt, "SquareBtn", string.Empty, Color.white, Color.white, AMin(2), AMax(2));
                 _abilityPanel.squareCooldownText = MakeTxt(_abilityPanel.squareButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
                 _abilityPanel.squareCooldownText.gameObject.SetActive(false);
+                ReanchorButton(_abilityPanel.squareButton, AMin(2), AMax(2));
             }
             if (_abilityPanel.shieldButton == null)
             {
                 _abilityPanel.shieldButton = MakeButton(panelRt, "ShieldBtn", string.Empty, Color.white, Color.white, AMin(3), AMax(3));
                 _abilityPanel.shieldCooldownText = MakeTxt(_abilityPanel.shieldButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
                 _abilityPanel.shieldCooldownText.gameObject.SetActive(false);
+                ReanchorButton(_abilityPanel.shieldButton, AMin(3), AMax(3));
             }
             if (_abilityPanel.furyButton == null)
             {
                 _abilityPanel.furyButton = MakeButton(panelRt, "FuryBtn", string.Empty, Color.white, Color.white, AMin(4), AMax(4));
                 _abilityPanel.furyCooldownText = MakeTxt(_abilityPanel.furyButton.transform, "Cd", string.Empty, 11, new Color(0.9f, 0.85f, 0.5f), V2(0f, 0f), V2(0f, 0f));
                 _abilityPanel.furyCooldownText.gameObject.SetActive(false);
+                ReanchorButton(_abilityPanel.furyButton, AMin(4), AMax(4));
             }
-
-            ReanchorButton(_abilityPanel.petardButton, AMin(0), AMax(0));
-            ReanchorButton(_abilityPanel.crossButton,  AMin(1), AMax(1));
-            ReanchorButton(_abilityPanel.squareButton, AMin(2), AMax(2));
-            ReanchorButton(_abilityPanel.shieldButton, AMin(3), AMax(3));
-            ReanchorButton(_abilityPanel.furyButton,   AMin(4), AMax(4));
         }
 
         private static void ReanchorButton(Button button, Vector2 aMin, Vector2 aMax)
@@ -3203,10 +3283,11 @@ namespace Project.Match3
                 rt.anchorMax = new Vector2(1f, 0f);
                 rt.pivot = new Vector2(1f, 0f);
                 rt.anchoredPosition = new Vector2(-3f, 0f);
-                rt.sizeDelta = new Vector2(48f, 24f);
+                rt.sizeDelta = new Vector2(80f, 48f);
                 tmp = go.AddComponent<TextMeshProUGUI>();
                 tmp.font = DefaultFont;
-                tmp.fontSize = 15;
+                tmp.fontSize = AbilityCostFontSize;
+                tmp.enableAutoSizing = false;
                 tmp.fontStyle = FontStyles.Bold;
                 tmp.alignment = TextAlignmentOptions.BottomRight;
                 tmp.color = new Color(0f, 0f, 0f, 0.98f);
@@ -3223,6 +3304,8 @@ namespace Project.Match3
                 var rt = tr as RectTransform;
                 if (rt != null)
                     rt.anchoredPosition = new Vector2(-3f, 0f);
+                tmp.fontSize = AbilityCostFontSize;
+                tmp.enableAutoSizing = false;
                 tmp.color = new Color(34f / 255f, 88f / 255f, 207f / 255f, 1f);
                 ApplyTmpDropShadowMaterial(tmp);
                 tr.SetAsLastSibling();
@@ -3305,16 +3388,61 @@ namespace Project.Match3
                 return;
             }
 
-            var staleCanvas = transform.Find("Canvas");
-            if (staleCanvas != null)
-                Destroy(staleCanvas.gameObject);
+            // Сцена уже содержит Canvas — не пересобираем UI, сохраняем расстановку из редактора.
+            if (transform.Find("Canvas") != null)
+            {
+                Debug.LogError(
+                    "[DuelMatch3] Canvas в сцене найден, но не все UI-компоненты привязаны. " +
+                    "Проверьте наличие Match3PlayerPanel (×2), Match3AbilityPanel, Match3BoardView, " +
+                    "Match3GameHUD, Match3SearchingPanel и Match3GameOverPanel под Canvas.");
+                return;
+            }
 
             BuildUiRuntimeProcedural();
         }
 
+        private static Transform FindDescendant(Transform root, string childName)
+        {
+            if (root == null || string.IsNullOrEmpty(childName)) return null;
+            if (string.Equals(root.name, childName, StringComparison.Ordinal))
+                return root;
+
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var found = FindDescendant(root.GetChild(i), childName);
+                if (found != null) return found;
+            }
+
+            return null;
+        }
+
+        private static void ResolvePlayerPanelsFromCanvas(
+            Transform canvasTr, ref Match3PlayerPanel myPanel, ref Match3PlayerPanel opPanel)
+        {
+            var all = canvasTr.GetComponentsInChildren<Match3PlayerPanel>(true);
+            if (all == null || all.Length == 0) return;
+
+            if (all.Length == 1)
+            {
+                if (myPanel == null) myPanel = all[0];
+                else if (opPanel == null && !ReferenceEquals(all[0], myPanel)) opPanel = all[0];
+                return;
+            }
+
+            Array.Sort(all, (a, b) =>
+            {
+                var ax = ((RectTransform)a.transform).position.x;
+                var bx = ((RectTransform)b.transform).position.x;
+                return ax.CompareTo(bx);
+            });
+
+            if (myPanel == null) myPanel = all[0];
+            if (opPanel == null) opPanel = all[all.Length - 1];
+        }
+
         /// <summary>
-        /// Binds references when the scene already contains Canvas with LeftCol / BoardCol / RightCol
-        /// (e.g. built via Tools → Match3 → Собрать UI в сцене DuelMatch3).
+        /// Binds references when the scene already contains Canvas with match-3 UI prefabs
+        /// (layout may differ from the default LeftCol / BoardCol / RightCol under Canvas root).
         /// </summary>
         private bool TryBindPrebuiltSceneCanvas(out Transform root)
         {
@@ -3325,16 +3453,26 @@ namespace Project.Match3
             var canvas = canvasTr.GetComponent<Canvas>();
             if (canvas == null) return false;
 
-            var leftCol = canvasTr.Find("LeftCol");
-            var boardCol = canvasTr.Find("BoardCol");
-            var rightCol = canvasTr.Find("RightCol");
-            if (leftCol == null || boardCol == null || rightCol == null) return false;
+            var leftCol = FindDescendant(canvasTr, "LeftCol");
+            var boardCol = FindDescendant(canvasTr, "BoardCol");
+            var rightCol = FindDescendant(canvasTr, "RightCol");
 
-            _myPanel = leftCol.GetComponentInChildren<Match3PlayerPanel>(true);
-            _abilityPanel = leftCol.GetComponentInChildren<Match3AbilityPanel>(true);
-            _hud = ResolveMatch3GameHudFromBoardCol(boardCol);
-            _boardView = boardCol.GetComponentInChildren<Match3BoardView>(true);
-            _opPanel = rightCol.GetComponentInChildren<Match3PlayerPanel>(true);
+            _myPanel = leftCol != null
+                ? leftCol.GetComponentInChildren<Match3PlayerPanel>(true)
+                : null;
+            _opPanel = rightCol != null
+                ? rightCol.GetComponentInChildren<Match3PlayerPanel>(true)
+                : null;
+            if (_myPanel == null || _opPanel == null)
+                ResolvePlayerPanelsFromCanvas(canvasTr, ref _myPanel, ref _opPanel);
+
+            _abilityPanel = canvasTr.GetComponentInChildren<Match3AbilityPanel>(true);
+            _boardView = canvasTr.GetComponentInChildren<Match3BoardView>(true);
+
+            _hud = boardCol != null ? ResolveMatch3GameHudFromBoardCol(boardCol) : null;
+            if (_hud == null)
+                _hud = canvasTr.GetComponentInChildren<Match3GameHUD>(true);
+
             _searchingPanel = canvasTr.GetComponentInChildren<Match3SearchingPanel>(true);
             _gameOverPanel = canvasTr.GetComponentInChildren<Match3GameOverPanel>(true);
 
@@ -3343,27 +3481,52 @@ namespace Project.Match3
                 return false;
 
             root = canvasTr;
-            ApplyCanvasRuntimeSettings(canvasTr.gameObject);
+            EnsureCanvasComponents(canvasTr.gameObject);
             EnsureEventSystemForUi();
             return true;
         }
 
-        private static void ApplyCanvasRuntimeSettings(GameObject canvasGo)
+        /// <summary>
+        /// Adds missing UI components without overriding Canvas / CanvasScaler values set in the scene.
+        /// </summary>
+        private static void EnsureCanvasComponents(GameObject canvasGo)
         {
             var canvas = canvasGo.GetComponent<Canvas>();
-            // ScreenSpaceCamera: world VFX (particles) stay visible above UI.
-            canvas.renderMode = RenderMode.ScreenSpaceCamera;
-            canvas.worldCamera = Camera.main;
-            canvas.planeDistance = 10f;
+            if (canvas.renderMode == RenderMode.ScreenSpaceCamera)
+            {
+                if (canvas.worldCamera == null)
+                    canvas.worldCamera = Camera.main;
+                if (canvas.planeDistance <= 0f)
+                    canvas.planeDistance = 10f;
+            }
+
+            if (canvasGo.GetComponent<CanvasScaler>() == null)
+            {
+                var scaler = canvasGo.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            if (canvasGo.GetComponent<GraphicRaycaster>() == null)
+                canvasGo.AddComponent<GraphicRaycaster>();
+        }
+
+        /// <summary>
+        /// Defaults when the whole Canvas is created at runtime (no prebuilt scene hierarchy).
+        /// </summary>
+        private static void ApplyProceduralCanvasDefaults(GameObject canvasGo)
+        {
+            var canvas = canvasGo.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             if (scaler == null) scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280, 720);
+            scaler.referenceResolution = new Vector2(1080, 1920);
             scaler.matchWidthOrHeight = 0.5f;
 
-            if (canvasGo.GetComponent<GraphicRaycaster>() == null)
-                canvasGo.AddComponent<GraphicRaycaster>();
+            EnsureCanvasComponents(canvasGo);
         }
 
         private void EnsureEventSystemForUi()
@@ -3414,7 +3577,7 @@ namespace Project.Match3
 
         private void WireQuitButton(Transform canvasRoot)
         {
-            var quitTr = canvasRoot.Find("QuitBtn");
+            var quitTr = FindDescendant(canvasRoot, "QuitBtn");
             if (quitTr == null) return;
             var btn = quitTr.GetComponent<Button>();
             if (btn == null) return;
@@ -3532,6 +3695,8 @@ namespace Project.Match3
                     BuildPveSelector(root);
                 ShowPveSelector(false);
             }
+
+            RefreshAvatarLevelUI();
         }
 
         private void BuildUiRuntimeProcedural()
@@ -3540,7 +3705,7 @@ namespace Project.Match3
             cvGo.transform.SetParent(transform);
             cvGo.AddComponent<Canvas>();
             EnsureCamera();
-            ApplyCanvasRuntimeSettings(cvGo);
+            ApplyProceduralCanvasDefaults(cvGo);
 
             EnsureEventSystemForUi();
 

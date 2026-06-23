@@ -68,6 +68,7 @@ namespace Project.Match3
         public float aBaseCrit; // 0..1
         public int aBaseHeal;
         public int aShieldT1, aShieldT2, aShieldT3, aFuryTurns, aFuryBonus;
+        public int aLevel;
 
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
@@ -76,6 +77,7 @@ namespace Project.Match3
         public float bBaseCrit; // 0..1
         public int bBaseHeal;
         public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
+        public int bLevel;
 
         public bool extraTurn;      // active player gets another turn
         /// <summary>Кому принадлежит текущий ход после применения этого синка.</summary>

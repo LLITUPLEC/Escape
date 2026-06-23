@@ -157,6 +157,8 @@ namespace Project.Match3
 
         public void UpdateAvatarLevel(int level)
         {
+            if (avatarLevelText == null)
+                ResolveReferences();
             if (avatarLevelText == null) return;
             avatarLevelText.text = level < 0 ? "—" : Mathf.Max(1, level).ToString();
         }

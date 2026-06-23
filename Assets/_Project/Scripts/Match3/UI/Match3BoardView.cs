@@ -18,6 +18,8 @@ namespace Project.Match3
     /// </summary>
     public sealed class Match3BoardView : UIBehaviour
     {
+        private const float InactiveOverlayAlpha = 0.84f;
+
         [Header("Container with GridLayoutGroup")]
         [SerializeField] public Transform cellContainer;
         [Header("Piece Atlas (optional)")]
@@ -832,10 +834,16 @@ namespace Project.Match3
                 var go = new GameObject("InactiveOverlay");
                 var rt = go.AddComponent<RectTransform>();
                 _inactiveOverlay = go.AddComponent<Image>();
-                _inactiveOverlay.color = new Color(0f, 0f, 0f, 0.42f);
                 _inactiveOverlay.raycastTarget = false;
                 go.SetActive(false);
             }
+
+            var overlayColor = _inactiveOverlay.color;
+            overlayColor.r = 0f;
+            overlayColor.g = 0f;
+            overlayColor.b = 0f;
+            overlayColor.a = InactiveOverlayAlpha;
+            _inactiveOverlay.color = overlayColor;
 
             ApplyInactiveOverlayLayout();
         }
