@@ -1,0 +1,28 @@
+
+1 URP assets included in build
+- Mobile_RPAsset - Assets/Settings/Mobile_RPAsset.asset
+	 - Mobile_Renderer - Assets/Settings/Mobile_Renderer.asset - UnityEngine.Rendering.Universal.UniversalRendererData
+	 - Auto_2D_Renderer_Mobile_RPAsset - Assets/Settings/Auto_2D_Renderer_Mobile_RPAsset.asset - UnityEngine.Rendering.Universal.Renderer2DData
+
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()
+
+Importer(NativeFormatImporter) generated inconsistent result for asset(guid:2e498d1c8094910479dc3e1b768306a4) "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset"
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()
+
+ This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()
+
+Assets\_Project\Scripts\UI\UiRectFillCanvasArea.cs(42,13): error CS0103: The name 'UnscheduleEditorApply' does not exist in the current context
+
+Error building Player because scripts had compiler errors
+
+Importer(NativeFormatImporter) generated inconsistent result for asset(guid:2e498d1c8094910479dc3e1b768306a4) "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset"
+UnityEditor.AssetDatabase:ImportAsset (string)
+TMPro.TMP_EditorResourceManager:DoPostRenderUpdates () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Editor/TMP/TMP_EditorResourceManager.cs:263)
+TMPro.TMP_EditorResourceManager:OnEndOfFrame (UnityEngine.Rendering.ScriptableRenderContext,System.Collections.Generic.List`1<UnityEngine.Camera>) (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Editor/TMP/TMP_EditorResourceManager.cs:108)
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()
+
+
+Build completed with a result of 'Failed' in 12 seconds (12317 ms) [25.06.2026 0:13:32 -> 25.06.2026 0:13:45, 12s]
+2 errors
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()

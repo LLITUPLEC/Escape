@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace Project.UI
 {
     /// <summary>
-    /// «+» у энергии в HeaderResources: модалка с двумя вариантами и подтверждением, RPC <see cref="PlayerResourcesService.BuyEnergyAsync"/>.</summary>
+    /// Клик по иконке энергии (или устаревшей «+») в HeaderResources: модалка с двумя вариантами и подтверждением, RPC <see cref="PlayerResourcesService.BuyEnergyAsync"/>.</summary>
     public sealed class EnergyHeaderPurchaseController
     {
         private const int MatterCost = 1;
@@ -51,59 +51,48 @@ namespace Project.UI
             _sceneCt = sceneCt;
         }
 
-        public void EnsurePlusOnEnergyRow(Transform headerResourcesRoot)
+        public void EnsurePlusOnEnergyRow(Transform searchRoot)
         {
-            if (headerResourcesRoot == null) return;
-            var energyTr = FindChildByName(headerResourcesRoot, "Energy");
+            if (searchRoot == null) return;
+            var energyTr = FindChildByName(searchRoot, "Energy");
             if (energyTr == null) return;
             if (_openModalAction == null)
                 _openModalAction = ShowChoiceModal;
 
             var existingPlus = energyTr.Find("EnergyBuyPlus");
-            Button btn;
             if (existingPlus != null)
             {
-                btn = existingPlus.GetComponent<Button>() ?? existingPlus.GetComponentInChildren<Button>(true);
-                if (btn == null) return;
-                if (btn.targetGraphic == null)
-                {
-                    var g = btn.GetComponent<Graphic>() ?? btn.GetComponentInChildren<Graphic>(true);
-                    if (g != null)
-                        btn.targetGraphic = g;
-                }
-                if (btn.targetGraphic is Image targetImg)
-                    targetImg.raycastTarget = true;
-                foreach (var t in btn.GetComponentsInChildren<Text>(true))
-                    t.raycastTarget = false;
-                foreach (var t in btn.GetComponentsInChildren<TMP_Text>(true))
-                    t.raycastTarget = false;
-            }
-            else
-            {
-                var plusGo = new GameObject("EnergyBuyPlus", typeof(RectTransform), typeof(Image), typeof(Button));
-                var prt = plusGo.GetComponent<RectTransform>();
-                prt.SetParent(energyTr, false);
-                prt.anchorMin = new Vector2(0.88f, 0.1f);
-                prt.anchorMax = new Vector2(1f, 0.55f);
-                prt.offsetMin = Vector2.zero;
-                prt.offsetMax = Vector2.zero;
-                plusGo.GetComponent<Image>().color = new Color(0.2f, 0.6f, 0.3f, 0.9f);
-                btn = plusGo.GetComponent<Button>();
-                var label = new GameObject("T", typeof(Text)).GetComponent<Text>();
-                var lt = label.rectTransform;
-                lt.SetParent(plusGo.transform, false);
-                lt.anchorMin = Vector2.zero;
-                lt.anchorMax = Vector2.one;
-                lt.offsetMin = Vector2.zero;
-                lt.offsetMax = Vector2.zero;
-                label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                label.alignment = TextAnchor.MiddleCenter;
-                label.text = "+";
-                label.color = Color.white;
-                label.fontSize = 18;
-                label.raycastTarget = false;
+                var plusBtn = existingPlus.GetComponent<Button>() ?? existingPlus.GetComponentInChildren<Button>(true);
+                if (plusBtn != null)
+                    WirePurchaseButton(plusBtn);
+                return;
             }
 
+            var iconTr = energyTr.Find("Icon") ?? FindChildByName(energyTr, "Icon");
+            if (iconTr == null) return;
+            var iconImg = iconTr.GetComponent<Image>() ?? iconTr.gameObject.AddComponent<Image>();
+            iconImg.raycastTarget = true;
+            var iconBtn = iconTr.GetComponent<Button>() ?? iconTr.gameObject.AddComponent<Button>();
+            if (iconBtn.targetGraphic == null)
+                iconBtn.targetGraphic = iconImg;
+            WirePurchaseButton(iconBtn);
+        }
+
+        private void WirePurchaseButton(Button btn)
+        {
+            if (btn == null) return;
+            if (btn.targetGraphic == null)
+            {
+                var g = btn.GetComponent<Graphic>() ?? btn.GetComponentInChildren<Graphic>(true);
+                if (g != null)
+                    btn.targetGraphic = g;
+            }
+            if (btn.targetGraphic is Image targetImg)
+                targetImg.raycastTarget = true;
+            foreach (var t in btn.GetComponentsInChildren<Text>(true))
+                t.raycastTarget = false;
+            foreach (var t in btn.GetComponentsInChildren<TMP_Text>(true))
+                t.raycastTarget = false;
             btn.onClick.RemoveListener(_openModalAction);
             btn.onClick.AddListener(_openModalAction);
         }

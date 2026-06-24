@@ -84,6 +84,7 @@ namespace Project.UI
         private static readonly Color BarrierDismissLabelColor = new Color(224f / 255f, 204f / 255f, 137f / 255f, 1f);
         /// <summary>Цвет фона кнопки монстра (#29781B).</summary>
         private static readonly Color MonsterButtonFrameColor = new Color(0x29 / 255f, 0x78 / 255f, 0x1B / 255f, 1f);
+        private const float MonsterButtonInset = 40f;
 
         private readonly Dictionary<int, FloorRowRefs> _rows = new();
         private readonly Dictionary<int, Button> _liftButtons = new();
@@ -514,10 +515,7 @@ namespace Project.UI
             var go = new GameObject("MonsterButton", typeof(RectTransform), typeof(Image), typeof(Button));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(rowRoot, false);
-            rt.anchorMin = new Vector2(0.36f, 0.15f);
-            rt.anchorMax = new Vector2(0.64f, 0.85f);
-            rt.offsetMin = new Vector2(0f, -20f);
-            rt.offsetMax = Vector2.zero;
+            ApplyMonsterButtonLayout(rt);
             go.GetComponent<Image>().color = MonsterButtonFrameColor;
             var btn = go.GetComponent<Button>();
 
@@ -539,19 +537,30 @@ namespace Project.UI
             return btn;
         }
 
+        private static void ApplyMonsterButtonLayout(RectTransform rt)
+        {
+            if (rt == null)
+                return;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(MonsterButtonInset, MonsterButtonInset);
+            rt.offsetMax = new Vector2(-MonsterButtonInset, -MonsterButtonInset);
+        }
+
         private static void ApplyMonsterButtonChrome(Button btn)
         {
             if (btn == null)
                 return;
-            var rt = btn.GetComponent<RectTransform>();
-            if (rt != null)
-                rt.offsetMin = new Vector2(rt.offsetMin.x, -20f);
+            ApplyMonsterButtonLayout(btn.GetComponent<RectTransform>());
             var img = btn.GetComponent<Image>();
             if (img != null)
                 img.color = MonsterButtonFrameColor;
             var label = FindTextByName(btn.transform, "Label");
             if (label != null)
                 label.text = string.Empty;
+            var icon = FindImageByName(btn.transform, "Icon");
+            if (icon != null)
+                ApplyMonsterIconLayout(icon.GetComponent<RectTransform>());
         }
 
         private void EnsureCooldownClusterForFloor(FloorRowRefs refs, int floor)
@@ -947,9 +956,9 @@ namespace Project.UI
 
             var frame = refs.monsterButton.GetComponent<Image>();
             var icon = FindImageByName(refs.monsterButton.transform, "Icon");
-            if (icon == null) icon = EnsureIconImage(refs.monsterButton.transform, floor);
+            if (icon == null) icon = EnsureIconImage(refs.monsterButton.transform);
             else
-                ApplyMonsterIconLayout(icon.GetComponent<RectTransform>(), floor);
+                ApplyMonsterIconLayout(icon.GetComponent<RectTransform>());
 
             var def = ResolveMonsterDefinition(bot);
             if (icon != null)
@@ -2387,14 +2396,12 @@ namespace Project.UI
             return null;
         }
 
-        private static Image EnsureIconImage(Transform buttonRoot, int floor)
+        private static Image EnsureIconImage(Transform buttonRoot)
         {
             var go = new GameObject("Icon", typeof(RectTransform), typeof(Image));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(buttonRoot, false);
-            rt.anchorMin = new Vector2(0.14f, 0.14f);
-            rt.anchorMax = new Vector2(0.86f, 0.86f);
-            ApplyMonsterIconLayout(rt, floor);
+            ApplyMonsterIconLayout(rt);
             var img = go.GetComponent<Image>();
             img.preserveAspect = true;
             img.raycastTarget = false;
@@ -2402,24 +2409,14 @@ namespace Project.UI
             return img;
         }
 
-        /// <summary>
-        /// Смещения иконки: обычные этажи — Bottom -30; этажи 4, 8, 12 — Bottom -50 и Top -100 (Inspector Top = -offsetMax.y).
-        /// </summary>
-        private static void ApplyMonsterIconLayout(RectTransform rt, int floor)
+        private static void ApplyMonsterIconLayout(RectTransform rt)
         {
             if (rt == null)
                 return;
-            var bossFloor = floor == 4 || floor == 8 || floor == 12;
-            if (bossFloor)
-            {
-                rt.offsetMin = new Vector2(0f, -50f);
-                rt.offsetMax = new Vector2(0f, 100f);
-            }
-            else
-            {
-                rt.offsetMin = new Vector2(0f, -30f);
-                rt.offsetMax = Vector2.zero;
-            }
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         private void CacheModalFooterDefaultsIfNeeded()

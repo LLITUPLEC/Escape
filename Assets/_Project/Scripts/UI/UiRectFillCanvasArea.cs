@@ -39,7 +39,9 @@ namespace Project.UI
         private void OnDisable()
         {
             _tracker.Clear();
+#if UNITY_EDITOR
             UnscheduleEditorApply();
+#endif
             _applyScheduled = false;
         }
 

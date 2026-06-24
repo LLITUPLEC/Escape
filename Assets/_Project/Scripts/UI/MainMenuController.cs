@@ -792,7 +792,7 @@ namespace Project.UI
                 }
             }
 
-            BindHeaderResource(_energyBinding, _headerResourcesRoot);
+            BindHeaderResource(_energyBinding, ResolveMainMenuHudLayoutRoot() ?? _headerResourcesRoot);
             BindHeaderResource(_oreBinding, _headerResourcesRoot);
             BindHeaderResource(_goldBinding, _headerResourcesRoot);
             BindHeaderResource(_ingotsBinding, _headerResourcesRoot);
@@ -802,8 +802,15 @@ namespace Project.UI
 
         private void TryInstallEnergyHeaderPurchase()
         {
-            if (_energyHeaderPurchase != null || _headerResourcesRoot == null) return;
+            if (_energyHeaderPurchase != null) return;
+
+            var searchRoot = ResolveMainMenuHudLayoutRoot() ?? _headerResourcesRoot;
+            if (searchRoot == null) return;
+
+            if (!_energyBinding.IsBound)
+                BindHeaderResource(_energyBinding, searchRoot);
             if (!_energyBinding.IsBound) return;
+
             EnsureHeaderHudIconsForEnergyPurchase();
             var canvas = GetComponentInParent<Canvas>();
             if (canvas == null) return;
@@ -814,14 +821,15 @@ namespace Project.UI
                 _hudGoldSprite,
                 async ct => { await RefreshHeaderResourcesAsync(ct).ConfigureAwait(true); },
                 _onlineCts != null ? _onlineCts.Token : CancellationToken.None);
-            _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
+            _energyHeaderPurchase.EnsurePlusOnEnergyRow(searchRoot);
         }
 
         private void EnsureHeaderHudIconsForEnergyPurchase()
         {
+            var energySearchRoot = ResolveMainMenuHudLayoutRoot() ?? _headerResourcesRoot;
             if (_hudEnergySprite == null)
                 _hudEnergySprite = energyBuyDialogEnergyIcon
-                    ?? TryGetHeaderResourceIconSprite(_headerResourcesRoot, "Energy")
+                    ?? TryGetHeaderResourceIconSprite(energySearchRoot, "Energy")
                     ?? LoadHudSprite(HudEnergyIconAssetPath);
             if (_hudMatterSprite == null)
                 _hudMatterSprite = energyBuyDialogMatterIcon
