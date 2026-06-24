@@ -14,13 +14,14 @@ namespace Project.Match3.Editor
         {
             var root = new GameObject("CheatRowsOverlayCells", typeof(RectTransform));
             var containerRt = root.GetComponent<RectTransform>();
-            containerRt.anchorMin = new Vector2(0.5f, 0.5f);
-            containerRt.anchorMax = new Vector2(0.5f, 0.5f);
-            containerRt.pivot = new Vector2(0.5f, 0.5f);
-            containerRt.anchoredPosition = new Vector2(-12.5f, 301f);
+            containerRt.anchorMin = new Vector2(0f, 1f);
+            containerRt.anchorMax = new Vector2(1f, 1f);
+            containerRt.pivot = new Vector2(0.5f, 1f);
+            containerRt.anchoredPosition = new Vector2(0f, 320f);
+            containerRt.sizeDelta = Vector2.zero;
 
             var glg = root.AddComponent<GridLayoutGroup>();
-            glg.cellSize = new Vector2(74, 74);
+            glg.cellSize = new Vector2(160, 160);
             glg.spacing = new Vector2(-1, -1);
             glg.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             glg.constraintCount = 6;

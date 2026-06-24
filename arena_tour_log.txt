@@ -1,0 +1,99 @@
+{
+  "id": "77e350b5-30ee-462f-a6a3-5aa81abcf5d3",
+  "qf": [
+    {
+      "hp_a": 150,
+      "hp_b": 150,
+      "bot_a": true,
+      "bot_b": true,
+      "uid_a": "zz-bot-arena_2bb53ba3-5243-4361-82ce-3979efbef4fe",
+      "uid_b": "zz-bot-arena_ed75aa7b-aa6e-4afd-bb8a-5cab7a527ebe",
+      "status": "done",
+      "match_id": "",
+      "display_a": "Осколок",
+      "display_b": "Морозко",
+      "winner_uid": "zz-bot-arena_ed75aa7b-aa6e-4afd-bb8a-5cab7a527ebe"
+    },
+    {
+      "hp_a": 150,
+      "hp_b": 150,
+      "bot_a": true,
+      "bot_b": true,
+      "uid_a": "zz-bot-arena_4125aad4-e627-48b8-b252-461cc58528bb",
+      "uid_b": "zz-bot-arena_505c63a9-fdd2-4621-a386-cb7edf98f569",
+      "status": "done",
+      "match_id": "",
+      "display_a": "Жнец",
+      "display_b": "Шутиха",
+      "winner_uid": "zz-bot-arena_505c63a9-fdd2-4621-a386-cb7edf98f569"
+    },
+    {
+      "hp_a": 150,
+      "hp_b": 150,
+      "bot_a": true,
+      "bot_b": true,
+      "uid_a": "zz-bot-arena_edc9f46c-5397-45dc-9555-426248d13cf5",
+      "uid_b": "zz-bot-arena_b9a68935-1e00-4dbe-a6db-b411f6bbf462",
+      "status": "done",
+      "match_id": "",
+      "display_a": "Фестер",
+      "display_b": "Кремнебород",
+      "winner_uid": "zz-bot-arena_edc9f46c-5397-45dc-9555-426248d13cf5"
+    },
+    {
+      "hp_a": 98,
+      "hp_b": 0,
+      "bot_a": true,
+      "bot_b": false,
+      "uid_a": "zz-bot-arena_74936ac2-8879-4ef6-a214-d5df48fa609e",
+      "uid_b": "329ca540-dd5a-498a-81de-36426568aa85",
+      "status": "fighting",
+      "match_id": "237f1cf7-999e-4819-bde9-8ac91ac07d75.nakama1",
+      "display_a": "Шипогрыз",
+      "display_b": "Player_V3lgPLDci5",
+      "winner_uid": ""
+    }
+  ],
+  "sf": {},
+  "kind": "ore",
+  "final": {},
+  "parts": {
+    "329ca540-dd5a-498a-81de-36426568aa85": {
+      "bot": false,
+      "display": "Player_V3lgPLDci5"
+    },
+    "zz-bot-arena_2bb53ba3-5243-4361-82ce-3979efbef4fe": {
+      "bot": true,
+      "display": "Осколок"
+    },
+    "zz-bot-arena_4125aad4-e627-48b8-b252-461cc58528bb": {
+      "bot": true,
+      "display": "Жнец"
+    },
+    "zz-bot-arena_505c63a9-fdd2-4621-a386-cb7edf98f569": {
+      "bot": true,
+      "display": "Шутиха"
+    },
+    "zz-bot-arena_74936ac2-8879-4ef6-a214-d5df48fa609e": {
+      "bot": true,
+      "display": "Шипогрыз"
+    },
+    "zz-bot-arena_b9a68935-1e00-4dbe-a6db-b411f6bbf462": {
+      "bot": true,
+      "display": "Кремнебород"
+    },
+    "zz-bot-arena_ed75aa7b-aa6e-4afd-bb8a-5cab7a527ebe": {
+      "bot": true,
+      "display": "Морозко"
+    },
+    "zz-bot-arena_edc9f46c-5397-45dc-9555-426248d13cf5": {
+      "bot": true,
+      "display": "Фестер"
+    }
+  },
+  "phase": "qf",
+  "bet_tier": "fixed",
+  "created_at": 1782291376,
+  "eliminated": {},
+  "countdown_until": 1782291396
+}

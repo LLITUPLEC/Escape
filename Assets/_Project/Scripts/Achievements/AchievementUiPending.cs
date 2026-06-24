@@ -43,14 +43,36 @@ namespace Project.Achievements
             var total = 0;
             foreach (var chain in AchievementCatalog.Chains)
             {
-                if (chain?.Thresholds == null)
+                total += CountEligibleClaimStepsInChain(chain);
+            }
+
+            return total;
+        }
+
+        public static int CountEligibleClaimSteps(AchievementTab tab)
+        {
+            AchievementProgressStorage.EnsureLoaded();
+            var total = 0;
+            foreach (var chain in AchievementCatalog.Chains)
+            {
+                if (chain == null || chain.Tab != tab)
                     continue;
-                var n = chain.Thresholds.Length;
-                for (var i = 0; i < n; i++)
-                {
-                    if (AchievementRewardClaim.CanClaimStep(chain, i))
-                        total++;
-                }
+                total += CountEligibleClaimStepsInChain(chain);
+            }
+
+            return total;
+        }
+
+        private static int CountEligibleClaimStepsInChain(AchievementChainDefinition chain)
+        {
+            if (chain?.Thresholds == null)
+                return 0;
+            var total = 0;
+            var n = chain.Thresholds.Length;
+            for (var i = 0; i < n; i++)
+            {
+                if (AchievementRewardClaim.CanClaimStep(chain, i))
+                    total++;
             }
 
             return total;

@@ -54,14 +54,11 @@ namespace Project.Character.UI
 
             if (stats != null)
             {
-                stats.anchorMin = new Vector2(0f, 0.66f);
-                stats.anchorMax = new Vector2(1f, 0.78f);
-                stats.offsetMin = new Vector2(12f, 2f);
-                stats.offsetMax = new Vector2(-12f, -2f);
+                ApplyItemStatsTextLayout(stats);
                 var t = stats.GetComponent<Text>();
                 if (t != null)
                 {
-                    t.fontSize = Mathf.Max(t.fontSize, 18);
+                    t.fontSize = 33;
                     t.lineSpacing = 1.05f;
                 }
             }
@@ -190,8 +187,9 @@ namespace Project.Character.UI
                 new Vector2(0f, 0.79f), new Vector2(1f, 1f), new Vector2(12f, 4f), new Vector2(-12f, -8f));
 
             var itemStatsText = CreateUiText("ItemStatsText", pr,
-                "Характеристики предмета появятся после выбора рецепта.", 18, TextAnchor.UpperLeft,
-                new Vector2(0f, 0.66f), new Vector2(1f, 0.78f), new Vector2(12f, 2f), new Vector2(-12f, -2f));
+                "Характеристики предмета появятся после выбора рецепта.", 33, TextAnchor.UpperLeft,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(12f, -175f), new Vector2(-12f, -90f));
+            ApplyItemStatsTextLayout(itemStatsText.rectTransform);
 
             var scrollGo = new GameObject("RecipeScroll", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             var sr = scrollGo.GetComponent<RectTransform>();
@@ -266,9 +264,21 @@ namespace Project.Character.UI
             var existing = panel.Find("ItemStatsText") as RectTransform;
             if (existing != null) return existing;
             var t = CreateUiText("ItemStatsText", panel,
-                "Характеристики предмета появятся после выбора рецепта.", 18, TextAnchor.UpperLeft,
-                new Vector2(0f, 0.66f), new Vector2(1f, 0.78f), new Vector2(12f, 2f), new Vector2(-12f, -2f));
+                "Характеристики предмета появятся после выбора рецепта.", 33, TextAnchor.UpperLeft,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(12f, -175f), new Vector2(-12f, -90f));
+            ApplyItemStatsTextLayout(t.rectTransform);
             return t.rectTransform;
+        }
+
+        /// <summary>Якорь top-stretch: растяжение по ширине, полоса под заголовком рецепта.</summary>
+        public static void ApplyItemStatsTextLayout(RectTransform stats)
+        {
+            if (stats == null) return;
+            stats.anchorMin = new Vector2(0f, 1f);
+            stats.anchorMax = new Vector2(1f, 1f);
+            stats.pivot = new Vector2(0.5f, 1f);
+            stats.offsetMin = new Vector2(12f, -175f);
+            stats.offsetMax = new Vector2(-12f, -90f);
         }
 
         private static Text CreateUiText(string name, Transform parent, string msg, int size, TextAnchor align,

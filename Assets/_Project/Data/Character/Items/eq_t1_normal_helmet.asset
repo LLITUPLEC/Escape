@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: eq_t1_normal_helmet
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_normal_helmet
-  displayName: eq_t1_normal_helmet
+  displayName: "\u041A\u0430\u0441\u043A\u0430 \u0448\u0430\u0445\u0442\u0451\u0440\u0430"
   kind: 0
   maxStack: 1
   tier: 1
@@ -25,7 +25,7 @@ MonoBehaviour:
   craftIngotDef: ingot_green
   craftIngotN: 4
   craftTesseractN: 0
-  icon: {fileID: 21300000, guid: 16f254a384ea49e48a2d27a5eaf7a988, type: 3}
+  icon: {fileID: 21300000, guid: 44e5f7051e134e24d955a6993b65aaf2, type: 3}
   equippable: 1
   slot: 0
   modifiers: []

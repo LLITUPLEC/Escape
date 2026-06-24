@@ -56,6 +56,16 @@ namespace Project.Achievements
         private Coroutine _pendingBadgeIdleCo;
         private BottomButtonAchievementBadgeConfig _openButtonBadgeConfig;
 
+        private TabRewardBadgeRefs _tabBadgeObsession;
+        private TabRewardBadgeRefs _tabBadgeSlaughter;
+        private TabRewardBadgeRefs _tabBadgeDnn;
+
+        private struct TabRewardBadgeRefs
+        {
+            public GameObject Root;
+            public TMP_Text CountLabel;
+        }
+
         internal TMP_FontAsset AchievementUiFontReference => achievementUiFont;
 
         private void Awake()
@@ -94,7 +104,7 @@ namespace Project.Achievements
         {
             TryBindOpenButton();
             EnsurePendingClaimBadge();
-            RefreshPendingClaimBadge();
+            RefreshClaimBadges();
             StopPendingBadgeIdle();
             _pendingBadgeIdleCo = StartCoroutine(PendingClaimBadgeIdleLoop());
             AchievementLifecycle.OnDataChanged += OnAchievementLifecycleChanged;
@@ -119,7 +129,7 @@ namespace Project.Achievements
         private void OnAchievementLifecycleChanged()
         {
             RefreshGrid(_currentTab);
-            RefreshPendingClaimBadge();
+            RefreshClaimBadges();
         }
 
         private void ResolveRefsBestEffort()
@@ -187,6 +197,10 @@ namespace Project.Achievements
                 if (rowHost != null)
                     chainRowPrefab = rowHost.GetComponent<AchievementChainRowView>();
             }
+
+            ResolveTabRewardBadge(tabObsession, ref _tabBadgeObsession);
+            ResolveTabRewardBadge(tabSlaughter, ref _tabBadgeSlaughter);
+            ResolveTabRewardBadge(tabDnn, ref _tabBadgeDnn);
         }
 
         private void WireTabs()
@@ -291,7 +305,7 @@ namespace Project.Achievements
         {
             await AchievementRewardClaim.TryClaimStepAsync(chainId, stepIndex, CancellationToken.None);
             RefreshGrid(_currentTab);
-            RefreshPendingClaimBadge();
+            RefreshClaimBadges();
         }
 
         private void TryBindOpenButton()
@@ -307,7 +321,7 @@ namespace Project.Achievements
             _openButton.onClick.AddListener(TogglePanel);
             _wiredOpenButton = true;
             EnsurePendingClaimBadge();
-            RefreshPendingClaimBadge();
+            RefreshClaimBadges();
         }
 
         private void EnsurePendingClaimBadge()
@@ -392,17 +406,67 @@ namespace Project.Achievements
             AchievementsTmpMaterialRepair.RepairHierarchy(labelGo.transform, fo);
             _pendingBadgeText = tmp;
 
+            RefreshClaimBadges();
+        }
+
+        private static void ResolveTabRewardBadge(Toggle tab, ref TabRewardBadgeRefs refs)
+        {
+            if (tab == null)
+                return;
+            var rootTr = tab.transform.Find("has_revard");
+            if (rootTr == null)
+                return;
+            refs.Root = rootTr.gameObject;
+            var countTr = rootTr.Find("count_rev");
+            refs.CountLabel = countTr != null ? countTr.GetComponent<TMP_Text>() : null;
+        }
+
+        private void RefreshClaimBadges()
+        {
             RefreshPendingClaimBadge();
+            RefreshTabRewardBadges();
         }
 
         private void RefreshPendingClaimBadge()
         {
             EnsurePendingClaimBadge();
-            var n = AchievementUiPending.CountEligibleClaimSteps();
-            if (_pendingBadgeText != null)
-                _pendingBadgeText.text = n > 99 ? "99+" : n.ToString();
-            if (_pendingBadgeCanvasGroup != null)
-                _pendingBadgeCanvasGroup.alpha = n > 0 ? 1f : 0f;
+            ApplyClaimCountBadge(
+                AchievementUiPending.CountEligibleClaimSteps(),
+                null,
+                _pendingBadgeText,
+                _pendingBadgeCanvasGroup);
+        }
+
+        private void RefreshTabRewardBadges()
+        {
+            ResolveTabRewardBadge(tabObsession, ref _tabBadgeObsession);
+            ResolveTabRewardBadge(tabSlaughter, ref _tabBadgeSlaughter);
+            ResolveTabRewardBadge(tabDnn, ref _tabBadgeDnn);
+
+            ApplyTabRewardBadge(AchievementTab.Obsession, _tabBadgeObsession);
+            ApplyTabRewardBadge(AchievementTab.Slaughter, _tabBadgeSlaughter);
+            ApplyTabRewardBadge(AchievementTab.Dnn, _tabBadgeDnn);
+        }
+
+        private static void ApplyTabRewardBadge(AchievementTab tab, TabRewardBadgeRefs refs)
+        {
+            var n = AchievementUiPending.CountEligibleClaimSteps(tab);
+            ApplyClaimCountBadge(n, refs.Root, refs.CountLabel, null);
+        }
+
+        private static void ApplyClaimCountBadge(
+            int count,
+            GameObject activeRoot,
+            TMP_Text countLabel,
+            CanvasGroup alphaGroup)
+        {
+            var label = count > 99 ? "99+" : count.ToString();
+            if (countLabel != null)
+                countLabel.text = label;
+            if (activeRoot != null)
+                activeRoot.SetActive(count > 0);
+            if (alphaGroup != null)
+                alphaGroup.alpha = count > 0 ? 1f : 0f;
         }
 
         private void StopPendingBadgeIdle()
@@ -425,7 +489,7 @@ namespace Project.Achievements
             while (isActiveAndEnabled)
             {
                 TryBindOpenButton();
-                RefreshPendingClaimBadge();
+                RefreshClaimBadges();
                 var n = AchievementUiPending.CountEligibleClaimSteps();
                 if (n <= 0)
                 {
@@ -497,6 +561,7 @@ namespace Project.Achievements
 
         private void Show()
         {
+            RefreshClaimBadges();
             if (rootCanvasGroup != null)
             {
                 rootCanvasGroup.blocksRaycasts = true;

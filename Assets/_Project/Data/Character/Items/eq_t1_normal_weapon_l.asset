@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: eq_t1_normal_weapon_l
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_normal_weapon_l
-  displayName: "\u0417\u0430\u0442\u043E\u0447\u043A\u0430"
+  displayName: "\u041E\u0431\u0440\u0435\u0437\u043E\u043A \u0442\u0440\u0443\u0431\u044B"
   kind: 0
   maxStack: 1
   tier: 1
@@ -25,7 +25,7 @@ MonoBehaviour:
   craftIngotDef: ingot_green
   craftIngotN: 17
   craftTesseractN: 0
-  icon: {fileID: 21300000, guid: f6c9f56bbb6ef6549bc532bb5320cfaa, type: 3}
+  icon: {fileID: 21300000, guid: 480446deee34b7e46b0338c18322c297, type: 3}
   equippable: 1
   slot: 6
   modifiers: []

@@ -1,0 +1,61 @@
+{
+  "id": "22b3b4b2-fea5-4ca9-b277-bd92cff52f9d",
+  "qf": {},
+  "sf": {},
+  "kind": "ore",
+  "final": [
+    {
+      "hp_a": 0,
+      "hp_b": 70,
+      "bot_a": true,
+      "bot_b": false,
+      "uid_a": "zz-bot-arena_3cb0c9a6-eabb-4b83-ba41-7a5476cc1ae6",
+      "uid_b": "329ca540-dd5a-498a-81de-36426568aa85",
+      "status": "done",
+      "match_id": "",
+      "display_a": "Осколок",
+      "display_b": "Player_V3lgPLDci5",
+      "winner_uid": "329ca540-dd5a-498a-81de-36426568aa85"
+    }
+  ],
+  "parts": {
+    "329ca540-dd5a-498a-81de-36426568aa85": {
+      "bot": false,
+      "display": "Player_V3lgPLDci5"
+    },
+    "zz-bot-arena_085ae950-bbdd-42c7-a9a7-0eb987306c3b": {
+      "bot": true,
+      "display": "Фестер"
+    },
+    "zz-bot-arena_20654de3-faf8-4612-9d54-aefd80272deb": {
+      "bot": true,
+      "display": "Шутиха"
+    },
+    "zz-bot-arena_2e341bc9-c17c-4067-abbd-5bf335d63b56": {
+      "bot": true,
+      "display": "Жнец"
+    },
+    "zz-bot-arena_2f23366d-aa36-4631-9830-22009af2fbaf": {
+      "bot": true,
+      "display": "Морозко"
+    },
+    "zz-bot-arena_3cb0c9a6-eabb-4b83-ba41-7a5476cc1ae6": {
+      "bot": true,
+      "display": "Осколок"
+    },
+    "zz-bot-arena_4fd9a567-ce1f-4681-b6b3-4de25fe0f09e": {
+      "bot": true,
+      "display": "Шутиха"
+    },
+    "zz-bot-arena_6c59f61c-68fb-4f20-abce-4d4dadabe3f3": {
+      "bot": true,
+      "display": "Пепельный"
+    }
+  },
+  "phase": "done",
+  "done_at": 1782292797,
+  "bet_tier": "fixed",
+  "created_at": 1782292381,
+  "eliminated": {},
+  "countdown_until": 1782292699
+}

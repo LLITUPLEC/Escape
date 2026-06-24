@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: eq_t1_normal_chest
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_normal_chest
-  displayName: eq_t1_normal_chest
+  displayName: "\u0412\u0430\u0442\u043D\u0438\u043A \u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u044B\u0439"
   kind: 0
   maxStack: 1
   tier: 1
@@ -25,7 +25,7 @@ MonoBehaviour:
   craftIngotDef: ingot_green
   craftIngotN: 10
   craftTesseractN: 0
-  icon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  icon: {fileID: 21300000, guid: f1e308c00b0be1649b585981af6b0bde, type: 3}
   equippable: 1
   slot: 2
   modifiers: []

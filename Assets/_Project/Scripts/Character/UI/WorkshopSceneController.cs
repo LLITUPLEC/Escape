@@ -54,6 +54,7 @@ namespace Project.Character.UI
 
         private Image[] _slotIcons;
         private Text[] _slotTimers;
+        private Outline[] _slotSelectionOutlines;
 
         private void Awake()
         {
@@ -139,6 +140,11 @@ namespace Project.Character.UI
             _createButton = r.createButton;
             _claimButton = r.claimButton;
             _rushButton = r.rushButton;
+            if (_itemStatsText != null)
+            {
+                WorkshopRecipePanelSetup.ApplyItemStatsTextLayout(_itemStatsText.rectTransform);
+                _itemStatsText.fontSize = 33;
+            }
             if (_rushButton == null)
                 _rushButton = WorkshopRecipePanelSetup.EnsureRushButton(workshopBackground);
         }
@@ -301,6 +307,7 @@ namespace Project.Character.UI
             if (craftSlotsRoot == null) return;
             _slotIcons = new Image[8];
             _slotTimers = new Text[8];
+            _slotSelectionOutlines = new Outline[8];
 
             for (var i = 0; i < 8; i++)
             {
@@ -378,6 +385,16 @@ namespace Project.Character.UI
                 var btn = slot.GetComponent<Button>();
                 if (btn == null) btn = slot.gameObject.AddComponent<Button>();
                 btn.targetGraphic = img;
+
+                var outline = slot.GetComponent<Outline>();
+                if (outline == null)
+                    outline = slot.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.98f, 0.82f, 0.22f, 1f);
+                outline.effectDistance = new Vector2(4f, -4f);
+                outline.useGraphicAlpha = true;
+                outline.enabled = false;
+                _slotSelectionOutlines[i] = outline;
+
                 var idx = i;
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => OnSlotClicked(idx));
@@ -430,6 +447,8 @@ namespace Project.Character.UI
             UpdateSlotTimersAndIcons();
             if (_selectedSlot >= 0) RebuildRecipeList();
             UpdateDetailPanel();
+            UpdateSlotSelectionVisual();
+            UpdateItemStatsVisibility();
         }
 
         private void OnSlotClicked(int slotIndex)
@@ -440,6 +459,8 @@ namespace Project.Character.UI
                 _recipeHeader.text = "Слот: " + SlotRu[slotIndex];
             RebuildRecipeList();
             UpdateDetailPanel();
+            UpdateSlotSelectionVisual();
+            UpdateItemStatsVisibility();
         }
 
         private enum WorkshopSlotState { Empty, Busy, Ready }
@@ -548,7 +569,45 @@ namespace Project.Character.UI
             }
 
             if (_recipeRows.Count == 0 && _recipeHeader != null)
-                _recipeHeader.text = SlotRu[_selectedSlot] + ": нет изученных рецептов для этого слота (изучите рецепт в сундуке — id должен совпадать с craft_recipe_id в каталоге).";
+                _recipeHeader.text = SlotRu[_selectedSlot] + ": нет изученных рецептов для этого слота";
+
+            UpdateItemStatsVisibility();
+        }
+
+        private bool SlotHasLearnedRecipes(int slotIndex)
+        {
+            if (itemCatalog == null || _profile == null || !_profile.ok || slotIndex < 0)
+                return false;
+
+            foreach (var def in itemCatalog.EnumerateDefinitions())
+            {
+                if (def == null || def.Kind != ItemKind.Equipment) continue;
+                if ((int)def.Slot != slotIndex) continue;
+                if (string.IsNullOrEmpty(def.CraftRecipeId)) continue;
+                if (!IsRecipeLearnedForCraft(def.CraftRecipeId)) continue;
+                if (def.Tier < 1 || def.Tier > 3) continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void UpdateItemStatsVisibility()
+        {
+            if (_itemStatsText == null) return;
+            var show = _selectedSlot >= 0 && SlotHasLearnedRecipes(_selectedSlot);
+            _itemStatsText.gameObject.SetActive(show);
+        }
+
+        private void UpdateSlotSelectionVisual()
+        {
+            if (_slotSelectionOutlines == null) return;
+            for (var i = 0; i < _slotSelectionOutlines.Length; i++)
+            {
+                var outline = _slotSelectionOutlines[i];
+                if (outline != null)
+                    outline.enabled = i == _selectedSlot;
+            }
         }
 
         private void UpdateDetailPanel()
@@ -645,6 +704,8 @@ namespace Project.Character.UI
         private void UpdateItemStatsPreview(ItemDefinition def)
         {
             if (_itemStatsText == null) return;
+            UpdateItemStatsVisibility();
+            if (!_itemStatsText.gameObject.activeSelf) return;
             if (def == null)
             {
                 _itemStatsText.text = "Выберите рецепт — здесь будут характеристики создаваемого предмета.";

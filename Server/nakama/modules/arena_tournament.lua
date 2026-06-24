@@ -44,7 +44,6 @@ local STORAGE_COLL_TOURN = "arena_tournament"
 local STORAGE_COLL_USER_TID = "arena_user_tid"
 local STORAGE_USER_TID_KEY = "tid"
 local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
-local TOURNAMENT_TTL_SEC = 15 * 60
 
 local arena_runtime = {
   kinds = {
@@ -120,7 +119,7 @@ local function arena_load_tournament(tid)
   -- Always refresh from storage: RPC and match loops can update in different Lua contexts.
   local v = storage_read_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(tid))
   if v ~= nil then
-    if v.phase == "done" and tonumber(v.done_at) ~= nil and os.time() > tonumber(v.done_at) + TOURNAMENT_TTL_SEC then
+    if v.phase == "done" then
       arena_delete_tournament(tid)
       return nil
     end
@@ -132,7 +131,6 @@ end
 
 --- Удаление по TTL работало только при следующем read по tid; без обхода коллекции записи «done» копились.
 local function arena_sweep_expired_done_storage()
-  local now = os.time()
   local cursor = ""
   while true do
     local ok, objects, next_cursor = pcall(function()
@@ -146,50 +144,7 @@ local function arena_sweep_expired_done_storage()
     for _, row in ipairs(objects) do
       local v = row.value
       if v ~= nil and v.phase == "done" then
-        local da = tonumber(v.done_at)
-        if da ~= nil and now > da + TOURNAMENT_TTL_SEC then
-          arena_delete_tournament(row.key)
-        end
-      end
-    end
-    if next_cursor == nil or next_cursor == "" then break end
-    cursor = next_cursor
-  end
-end
-
-local function arena_clear_all_human_tids_from_tournament(T)
-  if T == nil or type(T.parts) ~= "table" then
-    return
-  end
-  for uid, meta in pairs(T.parts) do
-    if meta ~= nil and meta.bot ~= true then
-      arena_clear_human_tid(uid)
-    end
-  end
-end
-
---- Удаляем «мертвые» турниры: нет ни одного активного (не eliminated) реального игрока.
---- Также удаляем турниры, где вообще не было людей (только боты).
-local function arena_sweep_dead_tournaments_storage()
-  local cursor = ""
-  while true do
-    local ok, objects, next_cursor = pcall(function()
-      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
-    end)
-    if not ok then
-      nk.logger_error("arena storage_list failed: " .. tostring(objects))
-      break
-    end
-    if objects == nil then break end
-    for _, row in ipairs(objects) do
-      local v = row.value
-      if v ~= nil and v.phase ~= "done" then
-        local has_any_humans = arena_tournament_has_any_humans(v)
-        local remaining_humans = arena_tournament_count_remaining_humans(v)
-        if (not has_any_humans) or remaining_humans <= 0 then
-          arena_clear_all_human_tids_from_tournament(v)
-          arena_delete_tournament(row.key)
-        end
+        arena_delete_tournament(row.key)
       end
     end
     if next_cursor == nil or next_cursor == "" then break end
@@ -295,22 +250,52 @@ local function arena_uid_is_bot(T, uid)
   return p == nil or p.bot == true
 end
 
-local function arena_tournament_has_any_humans(T)
+local function arena_clear_human_tid(user_id)
+  arena_runtime.user_tid[user_id] = nil
+  arena_save_user_tid(user_id, nil)
+end
+
+--- Синхронизирует eliminated с сеткой: hp=0 у человека ⇒ выбыл (если on_match_finished не дошёл).
+local function arena_reconcile_eliminated_from_bracket(T)
   if T == nil or type(T.parts) ~= "table" then
-    return false
+    return
   end
-  for _, meta in pairs(T.parts) do
-    if meta ~= nil and meta.bot ~= true then
-      return true
+  if type(T.eliminated) ~= "table" then
+    T.eliminated = {}
+  end
+  for _, rk in ipairs({ "qf", "sf", "final" }) do
+    local plist = T[rk]
+    if type(plist) ~= "table" then
+      goto next_round
     end
+    for i = 1, #plist do
+      local pr = plist[i]
+      local function mark_out(uid, hp_key, opp_uid)
+        if uid == nil or uid == "" then return end
+        if T.parts[uid] == nil or T.parts[uid].bot == true then return end
+        if (tonumber(pr[hp_key]) or 0) > 0 then return end
+        T.eliminated[uid] = true
+        arena_clear_human_tid(uid)
+        if pr.status ~= "done" then
+          pr.status = "done"
+          if pr.winner_uid == nil or pr.winner_uid == "" then
+            pr.winner_uid = opp_uid or ""
+          end
+          pr.match_id = ""
+        end
+      end
+      mark_out(pr.uid_a, "hp_a", pr.uid_b)
+      mark_out(pr.uid_b, "hp_b", pr.uid_a)
+    end
+    ::next_round::
   end
-  return false
 end
 
 local function arena_tournament_count_remaining_humans(T)
   if T == nil or type(T.parts) ~= "table" then
     return 0
   end
+  arena_reconcile_eliminated_from_bracket(T)
   local eliminated = (type(T.eliminated) == "table") and T.eliminated or {}
   local n = 0
   for uid, meta in pairs(T.parts) do
@@ -319,6 +304,63 @@ local function arena_tournament_count_remaining_humans(T)
     end
   end
   return n
+end
+
+local function arena_clear_all_human_tids_from_tournament(T)
+  if T == nil or type(T.parts) ~= "table" then
+    return
+  end
+  for uid, meta in pairs(T.parts) do
+    if meta ~= nil and meta.bot ~= true then
+      arena_clear_human_tid(uid)
+    end
+  end
+end
+
+--- Нет активных людей — не держим запись в storage (боты доигрывают сами себе не нужны).
+local function arena_abort_if_no_humans(T)
+  if T == nil or T.id == nil or T.id == "" then
+    return true
+  end
+  if arena_tournament_count_remaining_humans(T) > 0 then
+    return false
+  end
+  arena_clear_all_human_tids_from_tournament(T)
+  arena_delete_tournament(T.id)
+  return true
+end
+
+local function arena_persist_or_abort_if_no_humans(T)
+  if T == nil or T.id == nil or T.id == "" then return end
+  if arena_tournament_count_remaining_humans(T) <= 0 then
+    arena_abort_if_no_humans(T)
+    return
+  end
+  arena_save_tournament(T)
+end
+
+--- Удаляем «мертвые» турниры: нет ни одного активного реального игрока.
+local function arena_sweep_dead_tournaments_storage()
+  local cursor = ""
+  while true do
+    local ok, objects, next_cursor = pcall(function()
+      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
+    end)
+    if not ok then
+      nk.logger_error("arena storage_list failed: " .. tostring(objects))
+      break
+    end
+    if objects == nil then break end
+    for _, row in ipairs(objects) do
+      local v = row.value
+      if v ~= nil and v.phase ~= "done" then
+        arena_reconcile_eliminated_from_bracket(v)
+        arena_abort_if_no_humans(v)
+      end
+    end
+    if next_cursor == nil or next_cursor == "" then break end
+    cursor = next_cursor
+  end
 end
 
 local function mirror_commit(state)
@@ -365,7 +407,7 @@ local function mirror_commit(state)
     pr.hp_a = hpa
     pr.hp_b = hpb
   end
-  arena_save_tournament(T)
+  arena_persist_or_abort_if_no_humans(T)
 end
 
 --- Награды финала турнира (золото/руда) — та же шкала, что в arena_grant_final_progress и в OP_GAME_OVER.
@@ -401,11 +443,6 @@ local function arena_grant_final_progress(user_id, kind, bet_tier)
     end
   end
   return false
-end
-
-local function arena_clear_human_tid(user_id)
-  arena_runtime.user_tid[user_id] = nil
-  arena_save_user_tid(user_id, nil)
 end
 
 local function arena_pair_row_from_slots(a, b)
@@ -563,6 +600,9 @@ arena_on_pair_completed = function(T, rk)
   if not arena_all_pairs_done(T, rk) then
     return
   end
+  if arena_abort_if_no_humans(T) then
+    return
+  end
   if rk == "qf" then
     local winners = arena_collect_winners(T, "qf")
     if #winners ~= 4 then
@@ -612,7 +652,7 @@ arena_on_pair_completed = function(T, rk)
         arena_clear_human_tid(uid)
       end
     end
-    arena_save_tournament(T)
+    arena_delete_tournament(T.id)
   end
 end
 
@@ -688,13 +728,17 @@ local function on_match_finished(state, winner_uid)
     arena_clear_human_tid(loser_uid)
   end
   arena_on_pair_completed(T, rk)
-  arena_save_tournament(T)
+  arena_persist_or_abort_if_no_humans(T)
 end
 
 local function arena_tick_countdowns()
   local now = os.time()
-  for _, T in pairs(arena_runtime.tournaments) do
-    if T.phase == "countdown" and tonumber(T.countdown_until) ~= nil and now >= tonumber(T.countdown_until) then
+  for tid, T in pairs(arena_runtime.tournaments) do
+    if T == nil then
+      -- skip
+    elseif arena_abort_if_no_humans(T) then
+      -- skip
+    elseif T.phase == "countdown" and tonumber(T.countdown_until) ~= nil and now >= tonumber(T.countdown_until) then
       if T.next_round ~= nil and T.next_round ~= "" then
         local rk_next = T.next_round
         T.next_round = nil
@@ -1148,11 +1192,9 @@ local function duel_arena_queue_poll(ctx, payload)
     local requested_kind = normalize_kind(p.arena_kind)
 
     local tnow = os.time()
-    if tnow - (arena_runtime.last_tourn_storage_sweep or 0) >= 60 then
-      arena_runtime.last_tourn_storage_sweep = tnow
-      arena_sweep_expired_done_storage()
-      arena_sweep_dead_tournaments_storage()
-    end
+    arena_runtime.last_tourn_storage_sweep = tnow
+    arena_sweep_expired_done_storage()
+    arena_sweep_dead_tournaments_storage()
 
     local in_queue = false
     local queue_kind = ""

@@ -27,9 +27,9 @@ namespace Project.Match3
         [SerializeField] private Color ghostBgColorTint = new Color(0.35f, 0.80f, 0.20f, 100f / 255f);
 
         [Header("Layout Overrides")]
-        [Tooltip("Force CheatRowsOverlayCells anchoredPosition.")]
-        [SerializeField] private bool forceContainerAnchoredPosition = true;
-        [SerializeField] private Vector2 forcedContainerAnchoredPosition = new Vector2(-12.5f, 301f);
+        [Tooltip("Force CheatRowsOverlayCells anchoredPosition (ignored when container uses top-stretch anchors).")]
+        [SerializeField] private bool forceContainerAnchoredPosition = false;
+        [SerializeField] private Vector2 forcedContainerAnchoredPosition = new Vector2(0f, 320f);
 
         [Header("Ability Highlight")]
         [SerializeField] private Color abilitySelColor = new Color(1f, 0.95f, 0.25f, 0.05f);
@@ -111,6 +111,12 @@ namespace Project.Match3
 
             // Unity "fake null" safety: treat destroyed references as null.
             Transform containerTr = cellContainer;
+            if (!containerTr && baseBoardView.cellContainer?.parent != null)
+            {
+                containerTr = baseBoardView.cellContainer.parent.Find("CheatRowsOverlayCells");
+                if (containerTr)
+                    cellContainer = containerTr;
+            }
             if (!containerTr)
             {
                 if (cellContainerPrefab != null)
@@ -147,14 +153,19 @@ namespace Project.Match3
             _overlayContainerRt = containerTr as RectTransform;
             if (_overlayContainerRt == null)
                 _overlayContainerRt = containerTr.gameObject.AddComponent<RectTransform>();
-            _overlayContainerRt.anchorMin = new Vector2(0.5f, 0.5f);
-            _overlayContainerRt.anchorMax = new Vector2(0.5f, 0.5f);
-            _overlayContainerRt.pivot = new Vector2(0.5f, 0.5f);
-            _overlayContainerRt.sizeDelta = new Vector2(overlayW, overlayH);
-            if (forceContainerAnchoredPosition)
-                _overlayContainerRt.anchoredPosition = forcedContainerAnchoredPosition;
-            else
-                _overlayContainerRt.anchoredPosition = new Vector2(baseAnchorX, overlayCenterY);
+
+            bool useSceneTopStretch = UsesTopStretchLayout(_overlayContainerRt);
+            if (!useSceneTopStretch)
+            {
+                _overlayContainerRt.anchorMin = new Vector2(0.5f, 0.5f);
+                _overlayContainerRt.anchorMax = new Vector2(0.5f, 0.5f);
+                _overlayContainerRt.pivot = new Vector2(0.5f, 0.5f);
+                _overlayContainerRt.sizeDelta = new Vector2(overlayW, overlayH);
+                if (forceContainerAnchoredPosition)
+                    _overlayContainerRt.anchoredPosition = forcedContainerAnchoredPosition;
+                else
+                    _overlayContainerRt.anchoredPosition = new Vector2(baseAnchorX, overlayCenterY);
+            }
 
             var overlayGlg = containerTr.GetComponent<GridLayoutGroup>();
             if (overlayGlg == null) overlayGlg = containerTr.gameObject.AddComponent<GridLayoutGroup>();
@@ -376,6 +387,15 @@ namespace Project.Match3
                 uniq.Add((x, yGhost));
             }
             return uniq;
+        }
+
+        private static bool UsesTopStretchLayout(RectTransform rt)
+        {
+            if (rt == null) return false;
+            return Mathf.Approximately(rt.anchorMin.x, 0f)
+                && Mathf.Approximately(rt.anchorMax.x, 1f)
+                && Mathf.Approximately(rt.anchorMin.y, 1f)
+                && Mathf.Approximately(rt.anchorMax.y, 1f);
         }
 
         private static Rect UvRectOf(PieceType t) => t switch
