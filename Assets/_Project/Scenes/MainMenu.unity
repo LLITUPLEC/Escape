@@ -692,7 +692,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 300001201, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -20
+      value: -30
       objectReference: {fileID: 0}
     - target: {fileID: 300001201, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -1431,12 +1431,24 @@ PrefabInstance:
       value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 290
+      value: 295
       objectReference: {fileID: 0}
     - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -108
+      value: -120
       objectReference: {fileID: 0}
     - target: {fileID: 2012554177504605332, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_ConstrainProportionsScale
@@ -1775,6 +1787,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: -8146066175550552701, guid: c34364bd766fa28498ab817f24929186, type: 2}
     - target: {fileID: 3106451857005414617, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_HorizontalAlignment
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3106451857005414617, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_hasFontAssetChanged
       value: 0
       objectReference: {fileID: 0}
@@ -1928,7 +1944,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3557982295343178800, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_fontSize
-      value: 38.45
+      value: 37.4
       objectReference: {fileID: 0}
     - target: {fileID: 3557982295343178800, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_fontStyle
@@ -2799,6 +2815,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5419902644366406404, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 450
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419902644366406404, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_LocalScale.x
       value: 1.25
       objectReference: {fileID: 0}
@@ -2812,11 +2832,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5419902644366406404, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 20
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 5419902644366406404, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -20
+      value: -30
       objectReference: {fileID: 0}
     - target: {fileID: 5419902644366406404, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_ConstrainProportionsScale
@@ -2825,6 +2845,10 @@ PrefabInstance:
     - target: {fileID: 5419902644366406405, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419902644366406406, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
+      propertyPath: m_Type
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5451359121445075428, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_IsActive
@@ -3932,7 +3956,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_Pivot.x
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_Pivot.y
@@ -3940,7 +3964,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchorMax.y
@@ -3956,19 +3980,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 873
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: 39.73
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 24
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379116, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -20
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9123456789012379122, guid: 2d75de8ebf644b13b9754d2a5ad21168, type: 3}
       propertyPath: m_AnchorMax.y
@@ -4937,13 +4961,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GridLayoutGroup
   m_Padding:
     m_Left: 0
-    m_Right: 0
+    m_Right: -15
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 5
+  m_ChildAlignment: 4
   m_StartCorner: 0
   m_StartAxis: 0
-  m_CellSize: {x: 75, y: 50}
+  m_CellSize: {x: 78.26, y: 50}
   m_Spacing: {x: 0, y: 0}
   m_Constraint: 0
   m_ConstraintCount: 2

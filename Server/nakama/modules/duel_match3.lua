@@ -11,6 +11,8 @@ end
 local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
 local Metrics = runtime_lua_require("modules.duel_match3_metrics", "duel_match3_metrics")
 local Ach = runtime_lua_require("modules.duel_match3_achievements", "duel_match3_achievements")
+local AchCat = runtime_lua_require("modules.duel_match3_achievement_catalog", "duel_match3_achievement_catalog")
+local CharStats = runtime_lua_require("modules.duel_match3_character_stats", "duel_match3_character_stats")
 local build_session_guard = runtime_lua_require("modules.duel_match3_session_guard", "duel_match3_session_guard")
 local Guard = build_session_guard({ nk = nk, CFG = CFG })
 local Pvp
@@ -2366,10 +2368,7 @@ end
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
-  local level = CFG.clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
-  local base_stats = CFG.character_stats_base_for_level(level)
-  local bonus = sum_equipment_bonuses(sheet)
-  local stats = merge_stats_with_equipment(base_stats, bonus)
+  local stats = CharStats.compute_character_display_stats(user_id)
   local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
   local wo, we = workshop_payload_arrays(sheet)
   local function payload_with_progression(prog_payload)
@@ -3020,23 +3019,9 @@ local function read_pve_progress(user_id)
   return progress, row.version
 end
 
---- §4.6 / §14 фаза 5: статы как в PvE (уровень + экип), без mine_stat_multiplier.
+--- §4.6 / §14 фаза 5: статы как в PvE (уровень + экип + достижения), без mine_stat_multiplier и без ауры.
 local function apply_pvp_pro_stats_from_sheet(actor, user_id)
-  if actor == nil or user_id == nil or user_id == "" then return end
-  ensure_character_sheet_initialized(user_id)
-  local progress, _ = read_pve_progress(user_id)
-  local level = CFG.clamp_int(progress.level or 1, 1, CFG.PVE_MAX_LEVEL)
-  local sheet = read_character_sheet(user_id)
-  ensure_sheet_inventory_counts(sheet)
-  local base = CFG.character_stats_base_for_level(level)
-  local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
-  actor.max_hp = math.max(1, math.floor(tonumber(merged.hp) or CFG.MAX_HP))
-  actor.hp = actor.max_hp
-  actor.initial_hp = actor.max_hp
-  actor.base_damage = math.max(0, math.floor(tonumber(merged.damage) or 0))
-  actor.base_armor = math.max(0, math.floor(tonumber(merged.armor) or 0))
-  actor.base_crit = math.max(0, tonumber(merged.crit_chance) or 0)
-  actor.base_heal = math.max(0, math.floor(tonumber(merged.healing) or 0))
+  CharStats.apply_player_combat_stats_from_sheet(actor, user_id, nil)
 end
 
 local function write_pve_progress(user_id, progress, version)
@@ -3250,6 +3235,9 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         write_character_sheet(user_id, sheet)
       else
         nk.logger_warn("award_pve_victory: не удалось положить лут в инвентарь (сундук полон?)")
+      end
+      if tostring(bot_id or "") == "mine_2" then
+        Ach.merge_persistent_stats(user_id, { ["pve.kill.mine_2"] = 1 })
       end
       return {
         reward_xp = reward_xp,
@@ -5399,19 +5387,9 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.players_sorted = { player_id, state.bot_user_id }
       state.stats[player_id] = new_stats()
       state.stats[state.bot_user_id] = new_stats()
-      local player_level = math.max(1, math.min(CFG.PVE_MAX_LEVEL, tonumber(state.owner_level) or 1))
-      local base = CFG.character_stats_base_for_level(player_level)
-      local sheet = read_character_sheet(player_id)
-      local merged = merge_stats_with_equipment(base, sum_equipment_bonuses(sheet))
-      state.stats[player_id].max_hp = tonumber(merged.hp) or CFG.MAX_HP
-      state.stats[player_id].hp = state.stats[player_id].max_hp
-      state.stats[player_id].initial_hp = state.stats[player_id].max_hp
-      state.stats[player_id].base_damage = tonumber(merged.damage) or 0
-      state.stats[player_id].base_armor = tonumber(merged.armor) or 0
-      state.stats[player_id].base_crit = tonumber(merged.crit_chance) or 0
-      state.stats[player_id].base_heal = tonumber(merged.healing) or 0
-
-      aura_apply_to_pve_player_stats(state.stats[player_id], get_active_server_aura())
+      CharStats.apply_player_combat_stats_from_sheet(state.stats[player_id], player_id, {
+        aura = get_active_server_aura(),
+      })
 
       local pve_run = state.pve_run or {}
       local stat_mul = tonumber(pve_run.stat_mul) or 1.0
@@ -5926,18 +5904,37 @@ local function duel_match3_item_catalog_get(ctx, payload)
   return result
 end
 
+CharStats.configure({
+  CFG = CFG,
+  storage_read_match3_summary_val = Ach.storage_read_match3_summary_val,
+  ensure_character_sheet_initialized = ensure_character_sheet_initialized,
+  read_pve_progress = read_pve_progress,
+  read_character_sheet = read_character_sheet,
+  ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
+  sum_equipment_bonuses = sum_equipment_bonuses,
+  merge_stats_with_equipment = merge_stats_with_equipment,
+  is_human = Ach.is_human,
+  aura_apply_to_pve_player_stats = aura_apply_to_pve_player_stats,
+})
+
 Ach.configure({
   decode_storage_value = decode_storage_value,
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
   ensure_character_sheet_initialized = ensure_character_sheet_initialized,
   guard_assert_client_epoch_matches = Guard.assert_client_epoch_matches,
+  compute_character_display_stats = CharStats.compute_character_display_stats,
+})
+
+AchCat.configure({
+  decode_storage_value = decode_storage_value,
 })
 
 nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
 nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
 nk.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
 nk.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
+nk.register_rpc(AchCat.rpc_achievement_catalog_get, "duel_match3_achievement_catalog_get")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")

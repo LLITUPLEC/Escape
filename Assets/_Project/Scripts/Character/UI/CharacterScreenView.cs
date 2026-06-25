@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Project.Achievements;
 using Project.Character;
 using TMPro;
 using UnityEngine;
@@ -89,10 +88,7 @@ namespace Project.Character.UI
             if (profile == null || !profile.ok) return;
             ClearProfileLoadError();
             if (profile.stats != null)
-            {
-                AchievementCombatBonuses.ApplyToCharacterStats(profile.stats);
                 SetStats(profile.stats.hp, profile.stats.damage, profile.stats.armor, profile.stats.healing, profile.stats.crit_chance);
-            }
             BindEquipmentAndInventory(profile.equipment_def_ids, profile.inventory_def_ids, profile.inventory_counts, catalog);
         }
 

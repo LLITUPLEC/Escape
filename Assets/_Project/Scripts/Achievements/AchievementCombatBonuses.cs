@@ -5,87 +5,55 @@ using Project.Character;
 namespace Project.Achievements
 {
     /// <summary>
-    /// Пассивные бонусы из полученных (claimed) шагов достижений для боевых статов матча.
-    /// Проценты «от экипировки» здесь применяются как доля от уже синхронизированных с сервера базовых статов
-    /// (аппроксимация без разбора вклада только предметов).
+    /// Пассивные бонусы из claimed шагов достижений.
+    /// Авторитетный расчёт — на сервере (duel_match3_combat_bonuses.lua).
+    /// Клиентский метод оставлен для офлайн-превью; в бою и на экране персонажа статы приходят с сервера.
+    /// Проценты умножают сумму «уровень + экипировка»; плоские — прибавляются после. Крит — только плоско.
     /// </summary>
     public static class AchievementCombatBonuses
     {
         public static void ApplyToCharacterStats(StatsMap s)
         {
             if (s == null) return;
+            ApplyBonusesToStatsMap(s);
+        }
+
+        private static void ApplyBonusesToStatsMap(StatsMap s)
+        {
             AchievementProgressStorage.EnsureLoaded();
 
             var flatHp = 0;
             var flatDmg = 0;
             var flatArmor = 0;
             var flatCrit = 0f;
-            var equipHpPct = 0f;
-            var equipDmgPct = 0f;
-            var equipArmorPct = 0f;
+            var hpPct = 0f;
+            var dmgPct = 0f;
+            var armorPct = 0f;
+            var healPct = 0f;
 
-            Accumulate("obs.cross", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.square", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.petard", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.fury", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.shield", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.blacksmith", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("dnn.win_1hp", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+            Accumulate("obs.cross", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.square", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.petard", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.fury", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.shield", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.blacksmith", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("dnn.win_1hp", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
 
-            var baseHp = Mathf.Max(1, s.hp);
-            var baseDmg = Mathf.Max(0, s.damage);
-            var baseArmor = Mathf.Max(0, s.armor);
-
-            s.hp = baseHp + flatHp + Mathf.RoundToInt(baseHp * equipHpPct);
-            s.damage = baseDmg + flatDmg + Mathf.RoundToInt(baseDmg * equipDmgPct);
-            s.armor = baseArmor + flatArmor + Mathf.RoundToInt(baseArmor * equipArmorPct);
+            s.hp = ScaleAndAdd(Mathf.Max(1, s.hp), hpPct, flatHp);
+            s.damage = ScaleAndAdd(Mathf.Max(0, s.damage), dmgPct, flatDmg);
+            s.armor = ScaleAndAdd(Mathf.Max(0, s.armor), armorPct, flatArmor);
+            s.healing = ScaleAndAdd(Mathf.Max(0, s.healing), healPct, 0);
             s.crit_chance = Mathf.Clamp01(s.crit_chance + flatCrit);
         }
 
-        public static void ApplyToMyStats(PlayerStats s)
+        private static int ScaleAndAdd(int value, float pct, int flat)
         {
-            if (s == null) return;
-            AchievementProgressStorage.EnsureLoaded();
-
-            var flatHp = 0;
-            var flatDmg = 0;
-            var flatArmor = 0;
-            var flatCrit = 0f;
-            var equipHpPct = 0f;
-            var equipDmgPct = 0f;
-            var equipArmorPct = 0f;
-
-            Accumulate("obs.cross", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.square", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.petard", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.fury", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("obs.shield", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.blacksmith", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-            Accumulate("dnn.win_1hp", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
-
-            var srvDmg = Mathf.Max(0, s.baseDamage);
-            var srvArmor = Mathf.Max(0, s.baseArmor);
-            var srvMaxHp = s.maxHp > 0 ? s.maxHp : 150;
-
-            s.baseDamage = srvDmg + flatDmg + Mathf.RoundToInt(srvDmg * equipDmgPct);
-            s.baseArmor = srvArmor + flatArmor + Mathf.RoundToInt(srvArmor * equipArmorPct);
-            s.baseCrit = Mathf.Clamp01(s.baseCrit + flatCrit);
-
-            var hpFlatBonus = flatHp + Mathf.RoundToInt(srvMaxHp * equipHpPct);
-            var newMax = Mathf.Max(1, srvMaxHp + hpFlatBonus);
-            var deltaMax = newMax - srvMaxHp;
-            s.maxHp = newMax;
-            s.hp = Mathf.Min(newMax, Mathf.Max(0, s.hp + Mathf.Max(0, deltaMax)));
+            return Mathf.RoundToInt(value * (1f + pct)) + flat;
         }
 
         private static void Accumulate(
@@ -95,15 +63,16 @@ namespace Project.Achievements
             ref int flatDmg,
             ref int flatArmor,
             ref float flatCrit,
-            ref float equipHpPct,
-            ref float equipDmgPct,
-            ref float equipArmorPct)
+            ref float hpPct,
+            ref float dmgPct,
+            ref float armorPct,
+            ref float healPct)
         {
             for (var i = 0; i < stepCount; i++)
             {
                 if (!AchievementProgressStorage.IsStepClaimed(chainId, i))
                     continue;
-                AddStep(chainId, i, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref equipHpPct, ref equipDmgPct, ref equipArmorPct);
+                AddStep(chainId, i, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
             }
         }
 
@@ -114,9 +83,10 @@ namespace Project.Achievements
             ref int flatDmg,
             ref int flatArmor,
             ref float flatCrit,
-            ref float equipHpPct,
-            ref float equipDmgPct,
-            ref float equipArmorPct)
+            ref float hpPct,
+            ref float dmgPct,
+            ref float armorPct,
+            ref float healPct)
         {
             switch (chainId)
             {
@@ -136,19 +106,19 @@ namespace Project.Achievements
                 case "sl.blacksmith":
                 case "sl.ore_tournament":
                 case "sl.gold_tournament":
-                    if (step == 3) equipHpPct += 0.05f;
+                    if (step == 3) hpPct += 0.05f;
                     break;
                 case "sl.duel":
-                    if (step == 3) equipDmgPct += 0.05f;
+                    if (step == 3) dmgPct += 0.05f;
                     break;
                 case "sl.petard_finish":
                     if (step == 3) flatCrit += 0.01f;
                     break;
                 case "dnn.double_line":
-                    equipDmgPct += 0.01f;
+                    dmgPct += 0.01f;
                     break;
                 case "dnn.win_1hp":
-                    equipArmorPct += 0.05f;
+                    armorPct += 0.05f;
                     break;
             }
         }

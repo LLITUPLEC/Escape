@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Project.Achievements;
 using Project.Character;
 using Project.Nakama;
 using TMPro;
@@ -56,6 +57,7 @@ namespace Project.Character.UI
             if (dragController == null) dragController = gameObject.AddComponent<CharacterSheetDragController>();
             dragController.SlotClicked += HandleSlotClicked;
             dragController.ProfileUpdated += HandleProfileUpdated;
+            AchievementLifecycle.OnCombatStatsUpdated += HandleCombatStatsUpdated;
             _parentCanvas = GetComponentInParent<Canvas>(true);
 
             _cts = new CancellationTokenSource();
@@ -92,6 +94,7 @@ namespace Project.Character.UI
                 dragController.SlotClicked -= HandleSlotClicked;
                 dragController.ProfileUpdated -= HandleProfileUpdated;
             }
+            AchievementLifecycle.OnCombatStatsUpdated -= HandleCombatStatsUpdated;
 
             _cts?.Cancel();
             _cts?.Dispose();
@@ -181,7 +184,24 @@ namespace Project.Character.UI
         private void HandleProfileUpdated(CharacterGetRpcResponse response)
         {
             _lastProfile = response;
+            if (view != null && response != null && response.ok)
+                view.ApplyCharacterResponse(response, itemCatalog);
             if (_infoModal != null && _infoModal.gameObject.activeSelf) UpdateInfoModal();
+        }
+
+        private void HandleCombatStatsUpdated(StatsMap stats)
+        {
+            if (!_visible || view == null || stats == null) return;
+            view.SetStats(stats.hp, stats.damage, stats.armor, stats.healing, stats.crit_chance);
+            if (_lastProfile != null)
+            {
+                if (_lastProfile.stats == null) _lastProfile.stats = new StatsMap();
+                _lastProfile.stats.hp = stats.hp;
+                _lastProfile.stats.damage = stats.damage;
+                _lastProfile.stats.armor = stats.armor;
+                _lastProfile.stats.healing = stats.healing;
+                _lastProfile.stats.crit_chance = stats.crit_chance;
+            }
         }
 
         private bool TryResolveItem(CharacterDragSlotHandle handle, out ItemDefinition itemDef)

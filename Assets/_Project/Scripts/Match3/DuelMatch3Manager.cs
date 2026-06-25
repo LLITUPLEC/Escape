@@ -1425,7 +1425,9 @@ namespace Project.Match3
                 if (NakamaBootstrap.Instance?.Client == null || NakamaBootstrap.Instance.Session == null)
                     return;
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts != null ? _cts.Token : CancellationToken.None);
-                var rpc = JsonUtility.ToJson(new SessionEpochRpcPayload { session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
+                var sessionEpoch = await MainThreadDispatcher.RunAsync(NakamaBootstrap.GetLocalSessionEpoch)
+                    .ConfigureAwait(false);
+                var rpc = JsonUtility.ToJson(new SessionEpochRpcPayload { session_epoch = sessionEpoch });
                 var result =
                     await NakamaBootstrap.Instance.Client.RpcAsync(
                         NakamaBootstrap.Instance.Session, RpcMatch3AchievementSync, rpc);
@@ -1950,10 +1952,7 @@ namespace Project.Match3
             RecalcDerivedBuffs(_myStats);
             RecalcDerivedBuffs(_opStats);
 
-            // PvP classic и арена-турниры: всегда базовые статы 150/0 (сервер уже присылает),
-            // поэтому бонусы достижений/экипировки НЕ применяем. В PvE и PvP(Pro) — применяем.
-            if (_isSoloBotMode || _pvpProQueue)
-                AchievementCombatBonuses.ApplyToMyStats(_myStats);
+            // Боевые статы (уровень + экип + достижения + аура PvE) приходят с сервера в baseDamage/maxHp и т.д.
 
             _boardView?.RefreshAll(_board);
             if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))

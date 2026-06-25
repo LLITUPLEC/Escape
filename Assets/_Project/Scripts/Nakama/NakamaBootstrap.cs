@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Achievements;
 using Project.UI;
 using Project.Utils;
 using UnityEngine;
@@ -126,6 +127,7 @@ namespace Project.Nakama
             try
             {
                 await EnsureConnectedAsync(_cts.Token);
+                _ = AchievementCatalogService.RefreshOnLoginAsync(_cts.Token);
                 if (keepOnlineHeartbeat)
                     _ = OnlineHeartbeatLoopAsync(_cts.Token);
             }
@@ -306,6 +308,7 @@ namespace Project.Nakama
 
             Socket = CreateAndWireSocket();
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+            _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
         /// <summary>Сброс только локально сохранённой сессии по e-mail. В консоли Nakama привязка почты к user_id не удаляется.</summary>
@@ -343,6 +346,7 @@ namespace Project.Nakama
             Socket = CreateAndWireSocket();
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+            _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
         private ISocket CreateAndWireSocket()

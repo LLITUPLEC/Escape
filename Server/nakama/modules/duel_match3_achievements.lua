@@ -11,6 +11,7 @@ local function runtime_lua_require_nested(name_nested, name_root)
 end
 
 local CFG = runtime_lua_require_nested("modules.duel_match3_config", "duel_match3_config")
+local AchCat = runtime_lua_require_nested("modules.duel_match3_achievement_catalog", "duel_match3_achievement_catalog")
 
 local M = {}
 
@@ -65,6 +66,9 @@ local ACH_STAT_ORE_TOURN = "slaughter.tournament_ore_final"
 local ACH_STAT_GOLD_TOURN = "slaughter.tournament_gold_final"
 local ACH_STAT_DUEL_TRI = "slaughter.duel_tri_win"
 local ACH_STAT_PETARD_FINISH = "slaughter.duel_petard_finish"
+local ACH_STAT_PETARD_PVP_FINISH = "slaughter.finish_petard_pvp"
+local ACH_STAT_FINAL_LOSS = "slaughter.tournament_final_loss"
+local ACH_STAT_PVE_KILL_MINE_2 = "pve.kill.mine_2"
 
 function M.is_human(uid)
   if uid == nil or uid == "" then return false end
@@ -115,21 +119,6 @@ function M.snapshot_hp_was_exactly_one(state)
   end
 end
 
-local ACH_EVAL_CHAINS = {
-  { id = "obs.cross", key = ACH_STAT_CROSS, th = { 10, 50, 250, 500 } },
-  { id = "obs.square", key = ACH_STAT_SQUARE, th = { 10, 50, 250, 500 } },
-  { id = "obs.petard", key = ACH_STAT_PETARD, th = { 10, 50, 250, 500 } },
-  { id = "obs.fury", key = ACH_STAT_FURY, th = { 10, 50, 250, 500 } },
-  { id = "obs.shield", key = ACH_STAT_SHIELD, th = { 10, 50, 250, 500 } },
-  { id = "sl.blacksmith", key = ACH_STAT_BLACKSMITH, th = { 5, 25, 100, 500 } },
-  { id = "sl.ore_tournament", key = ACH_STAT_ORE_TOURN, th = { 5, 25, 100, 500 } },
-  { id = "sl.gold_tournament", key = ACH_STAT_GOLD_TOURN, th = { 5, 25, 100, 500 } },
-  { id = "sl.duel", key = ACH_STAT_DUEL_TRI, th = { 5, 25, 100, 500 } },
-  { id = "sl.petard_finish", key = ACH_STAT_PETARD_FINISH, th = { 5, 50, 100, 500 } },
-  { id = "dnn.double_line", key = ACH_STAT_DNN, th = { 1 } },
-  { id = "dnn.win_1hp", key = ACH_STAT_WIN1, th = { 1 } },
-}
-
 local function claim_has(claimed_arr, tok)
   if claimed_arr == nil then return false end
   for _, c in ipairs(claimed_arr) do
@@ -145,70 +134,15 @@ local function claim_append(claimed_arr, tok)
   return out
 end
 
-local function chain_def_by_id(chain_id)
-  local cid = tostring(chain_id or "")
-  for _, ch in ipairs(ACH_EVAL_CHAINS) do
-    if tostring(ch.id) == cid then
-      return ch
-    end
-  end
-  return nil
-end
-
-local function chain_cumulative_need(thlist, step_ix)
-  if type(thlist) ~= "table" then return nil end
-  local ix = tonumber(step_ix)
-  if ix == nil then return nil end
-  ix = math.floor(ix)
-  if ix < 0 then return nil end
-  local sum = 0
-  for i = 0, ix do
-    local v = tonumber(thlist[i + 1])
-    if v == nil then return nil end
-    sum = sum + math.max(0, v)
-  end
-  return sum
-end
-
 local function apply_wallet_grant(user_id, chain_id, step_idx)
   if user_id == nil or user_id == "" then return end
+  local rewards = AchCat.step_rewards(chain_id, step_idx)
+  if type(rewards) ~= "table" or #rewards == 0 then return end
   local max_retries = 5
   for attempt = 1, max_retries do
     ensure_sheet(user_id)
     local progress, ver = read_pv(user_id)
-    local chain = tostring(chain_id or "")
-    local step = tonumber(step_idx) or 0
-    if chain == "sl.blacksmith" then
-      local gmap = { 1000, 5000, 15000, 0 }
-      local ga = tonumber(gmap[step + 1]) or 0
-      if ga > 0 then
-        progress.gold = math.max(0, tonumber(progress.gold) or 0) + ga
-      end
-    elseif chain == "sl.ore_tournament" then
-      local omap = { 1000, 5000, 15000, 0 }
-      local oa = tonumber(omap[step + 1]) or 0
-      if oa > 0 then
-        progress.ore = math.max(0, tonumber(progress.ore) or 0) + oa
-      end
-    elseif chain == "sl.gold_tournament" then
-      local gmap = { 1000, 5000, 15000, 0 }
-      local ga = tonumber(gmap[step + 1]) or 0
-      if ga > 0 then
-        progress.gold = math.max(0, tonumber(progress.gold) or 0) + ga
-      end
-    elseif chain == "sl.duel" then
-      local omap = { 1000, 5000, 10000, 0 }
-      local oa = tonumber(omap[step + 1]) or 0
-      if oa > 0 then
-        progress.ore = math.max(0, tonumber(progress.ore) or 0) + oa
-      end
-    elseif chain == "sl.petard_finish" then
-      local mmap = { 5, 50, 100, 500 }
-      local ma = tonumber(mmap[step + 1]) or 0
-      if ma > 0 then
-        progress.matter = math.max(0, tonumber(progress.matter) or 0) + ma
-      end
-    else
+    if not AchCat.apply_wallet_rewards(rewards, progress) then
       return
     end
     local okw, erw = pcall(function()
@@ -219,7 +153,7 @@ local function apply_wallet_grant(user_id, chain_id, step_idx)
     end
     local err_text = tostring(erw)
     if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-      nk.logger_warn("achievement wallet grant failed: " .. chain .. " step " .. tostring(step))
+      nk.logger_warn("achievement wallet grant failed: " .. tostring(chain_id) .. " step " .. tostring(step_idx))
       return
     end
   end
@@ -310,6 +244,32 @@ local function persistent_merge_increment(user_id, delta_map)
   return false
 end
 
+function M.merge_persistent_stats(user_id, delta_map)
+  return persistent_merge_increment(user_id, delta_map)
+end
+
+local function chain_def_by_id(chain_id)
+  return AchCat.chain_by_id(chain_id)
+end
+
+local function chain_cumulative_need(chain, step_ix)
+  return AchCat.cumulative_need(chain, step_ix)
+end
+
+local function is_achievement_pvp_context(state)
+  if state == nil then
+    return false
+  end
+  if state.mode ~= "pve" then
+    return true
+  end
+  -- Турнир арены (в т.ч. бот в 1/4): технически mode=pve, но это PvP-контекст.
+  if state.arena_mirror ~= nil then
+    return true
+  end
+  return false
+end
+
 function M.flush_match_finish(state, winner, actor, opponent, action_type)
   if winner == nil or winner == "" then
     return
@@ -344,15 +304,30 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
     end
 
     local at_n = tonumber(action_type) or 0
-    if state.mode ~= "pve" and actor ~= nil and opponent ~= nil and uid == actor and uid == winner and at_n == 4 then
+    if is_achievement_pvp_context(state) and actor ~= nil and opponent ~= nil and uid == actor and uid == winner and at_n == 4 then
       local oh = tonumber(state.stats[opponent] and state.stats[opponent].hp) or 0
       if oh <= 0 then
         e[ACH_STAT_PETARD_FINISH] = (e[ACH_STAT_PETARD_FINISH] or 0) + 1
+        e[ACH_STAT_PETARD_PVP_FINISH] = (e[ACH_STAT_PETARD_PVP_FINISH] or 0) + 1
       end
     end
 
     if state._ach_hp_was_exactly_one ~= nil and state._ach_hp_was_exactly_one[uid] == true then
       e[ACH_STAT_WIN1] = (e[ACH_STAT_WIN1] or 0) + 1
+    end
+    return e
+  end
+
+  local function extra_for_loser(uid)
+    local e = {}
+    if uid == winner then
+      return e
+    end
+    if not M.is_human(uid) then
+      return e
+    end
+    if am ~= nil and tostring(am.round or "") == "final" then
+      e[ACH_STAT_FINAL_LOSS] = (e[ACH_STAT_FINAL_LOSS] or 0) + 1
     end
     return e
   end
@@ -392,12 +367,38 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
       for k, v in pairs(ex) do
         merge_into(k, v)
       end
+      for k, v in pairs(extra_for_loser(uid)) do
+        merge_into(k, v)
+      end
 
       if next(deltas) ~= nil then
         persistent_merge_increment(uid, deltas)
       end
     end
   end
+end
+
+local function stats_payload_for_client(user_id)
+  local fn = deps.compute_character_display_stats
+  if type(fn) ~= "function" then return nil end
+  local stats = fn(user_id)
+  if stats == nil then return nil end
+  return {
+    hp = math.max(1, math.floor(tonumber(stats.hp) or 0)),
+    damage = math.max(0, math.floor(tonumber(stats.damage) or 0)),
+    armor = math.max(0, math.floor(tonumber(stats.armor) or 0)),
+    healing = math.max(0, math.floor(tonumber(stats.healing) or 0)),
+    crit_chance = math.max(0, math.min(1, tonumber(stats.crit_chance) or 0)),
+  }
+end
+
+local function progression_wallet_payload(progress)
+  if type(progress) ~= "table" then return nil end
+  return {
+    gold = math.max(0, math.floor(tonumber(progress.gold) or 0)),
+    ore = math.max(0, math.floor(tonumber(progress.ore) or 0)),
+    matter = math.max(0, math.floor(tonumber(progress.matter) or 0)),
+  }
 end
 
 function M.flatten_stats_for_client(ast)
@@ -484,12 +485,11 @@ function M.rpc_achievement_claim_step(ctx, payload)
       return nk.json_encode({ ok = false, err = "unknown_chain" })
     end
 
-    local thlist = def.th or {}
-    local need = chain_cumulative_need(thlist, step_ix)
+    local need = chain_cumulative_need(def, step_ix)
     if need == nil then
       return nk.json_encode({ ok = false, err = "bad_step" })
     end
-    local key = def.key
+    local key = def.counter_key
 
     local max_retries = 6
     for attempt = 1, max_retries do
@@ -540,7 +540,18 @@ function M.rpc_achievement_claim_step(ctx, payload)
 
       if write_ok then
         apply_wallet_grant(user_id, chain_id, step_ix)
-        return nk.json_encode({ ok = true, token = tok, chain_id = chain_id, step_index = step_ix })
+        local progress_after, _ = read_pv(user_id)
+        local stats_payload = stats_payload_for_client(user_id)
+        local wallet_payload = progression_wallet_payload(progress_after)
+        local out = {
+          ok = true,
+          token = tok,
+          chain_id = chain_id,
+          step_index = step_ix,
+        }
+        if stats_payload ~= nil then out.stats = stats_payload end
+        if wallet_payload ~= nil then out.progression = wallet_payload end
+        return nk.json_encode(out)
       end
 
       local err_text = tostring(write_err)

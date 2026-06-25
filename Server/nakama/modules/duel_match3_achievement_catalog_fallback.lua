@@ -1,0 +1,230 @@
+local nk = require("nakama")
+
+local M = {}
+
+local JSON = [=[{
+  "schema_version": 1,
+  "updated_at": 1740000000,
+  "categories": [
+    { "id": "obsession", "label_ru": "Одержимость", "sort": 0 },
+    { "id": "slaughter", "label_ru": "Бойня", "sort": 1 },
+    { "id": "dnn", "label_ru": "ДНН", "sort": 2 }
+  ],
+  "chains": [
+    {
+      "id": "obs.cross",
+      "category": "obsession",
+      "title_ru": "Крест",
+      "counter_key": "uses.cross",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "ability_used", "action_type": 2 },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Использовать «Крест» 10 раз", "reward_text_ru": "Награда: +10 к здоровью", "rewards": [{ "type": "hp_flat", "value": 10 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Крест» 50 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Крест» 250 раз", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 300, "description_ru": "Использовать «Крест» 300 раз", "reward_text_ru": "Награда: +70 к здоровью", "rewards": [{ "type": "hp_flat", "value": 70 }] }
+      ]
+    },
+    {
+      "id": "obs.square",
+      "category": "obsession",
+      "title_ru": "Квадрат",
+      "counter_key": "uses.square",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "ability_used", "action_type": 3 },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Использовать «Квадрат» 10 раз", "reward_text_ru": "Награда: +10 к здоровью", "rewards": [{ "type": "hp_flat", "value": 10 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Квадрат» 50 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Квадрат» 250 раз", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Квадрат» 500 раз", "reward_text_ru": "Награда: +70 к здоровью", "rewards": [{ "type": "hp_flat", "value": 70 }] }
+      ]
+    },
+    {
+      "id": "obs.petard",
+      "category": "obsession",
+      "title_ru": "Петарда",
+      "counter_key": "uses.petard",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "ability_used", "action_type": 4 },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Использовать «Петарду» 10 раз", "reward_text_ru": "Награда: +5 к урону", "rewards": [{ "type": "damage_flat", "value": 5 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Петарду» 50 раз", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Петарду» 250 раз", "reward_text_ru": "Награда: +15 к урону", "rewards": [{ "type": "damage_flat", "value": 15 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Петарду» 500 раз", "reward_text_ru": "Награда: +20 к урону", "rewards": [{ "type": "damage_flat", "value": 20 }] }
+      ]
+    },
+    {
+      "id": "obs.fury",
+      "category": "obsession",
+      "title_ru": "Ярость",
+      "counter_key": "uses.fury",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "ability_used", "action_type": 6 },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Использовать «Ярость» 10 раз", "reward_text_ru": "Награда: +0.5% к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.005 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Ярость» 50 раз", "reward_text_ru": "Награда: +0.5% к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.005 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Ярость» 250 раз", "reward_text_ru": "Награда: +0.5% к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.005 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Ярость» 500 раз", "reward_text_ru": "Награда: +0.5% к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.005 }] }
+      ]
+    },
+    {
+      "id": "obs.shield",
+      "category": "obsession",
+      "title_ru": "Щит",
+      "counter_key": "uses.shield",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "ability_used", "action_type": 5 },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Использовать «Щит» 10 раз", "reward_text_ru": "Награда: +5 к броне", "rewards": [{ "type": "armor_flat", "value": 5 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Щит» 50 раз", "reward_text_ru": "Награда: +10 к броне", "rewards": [{ "type": "armor_flat", "value": 10 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Щит» 250 раз", "reward_text_ru": "Награда: +15 к броне", "rewards": [{ "type": "armor_flat", "value": 15 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Щит» 500 раз", "reward_text_ru": "Награда: +20 к броне", "rewards": [{ "type": "armor_flat", "value": 20 }] }
+      ]
+    },
+    {
+      "id": "sl.blacksmith",
+      "category": "slaughter",
+      "title_ru": "Турнир кузнеца",
+      "counter_key": "slaughter.tournament_smith_final",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "arena_final_win", "tournament_kind": "smith" },
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир кузнеца 5 раз", "reward_text_ru": "Награда: +1000 золота", "rewards": [{ "type": "gold", "value": 1000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир кузнеца 25 раз", "reward_text_ru": "Награда: +5000 золота", "rewards": [{ "type": "gold", "value": 5000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир кузнеца 100 раз", "reward_text_ru": "Награда: +15000 золота", "rewards": [{ "type": "gold", "value": 15000 }] },
+        { "threshold_delta": 500, "description_ru": "Выиграть турнир кузнеца 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.ore_tournament",
+      "category": "slaughter",
+      "title_ru": "Турнир руды",
+      "counter_key": "slaughter.tournament_ore_final",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "arena_final_win", "tournament_kind": "ore" },
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир руды 5 раз", "reward_text_ru": "Награда: +1000 руды", "rewards": [{ "type": "ore", "value": 1000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир руды 25 раз", "reward_text_ru": "Награда: +5000 руды", "rewards": [{ "type": "ore", "value": 5000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир руды 100 раз", "reward_text_ru": "Награда: +15000 руды", "rewards": [{ "type": "ore", "value": 15000 }] },
+        { "threshold_delta": 500, "description_ru": "Выиграть турнир руды 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.gold_tournament",
+      "category": "slaughter",
+      "title_ru": "Турнир золота",
+      "counter_key": "slaughter.tournament_gold_final",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "arena_final_win", "tournament_kind": "gold" },
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир золота 5 раз", "reward_text_ru": "Награда: +1000 золота", "rewards": [{ "type": "gold", "value": 1000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир золота 25 раз", "reward_text_ru": "Награда: +5000 золота", "rewards": [{ "type": "gold", "value": 5000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир золота 100 раз", "reward_text_ru": "Награда: +15000 золота", "rewards": [{ "type": "gold", "value": 15000 }] },
+        { "threshold_delta": 500, "description_ru": "Выиграть турнир золота 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.duel",
+      "category": "slaughter",
+      "title_ru": "Дуэли",
+      "counter_key": "slaughter.duel_tri_win",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "pvp_duel_win" },
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Выиграть дуэль (Три-в-ряд) 5 раз", "reward_text_ru": "Награда: +1000 руды", "rewards": [{ "type": "ore", "value": 1000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть дуэль (Три-в-ряд) 25 раз", "reward_text_ru": "Награда: +5000 руды", "rewards": [{ "type": "ore", "value": 5000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть дуэль (Три-в-ряд) 100 раз", "reward_text_ru": "Награда: +10000 руды", "rewards": [{ "type": "ore", "value": 10000 }] },
+        { "threshold_delta": 500, "description_ru": "Выиграть дуэль (Три-в-ряд) 500 раз", "reward_text_ru": "Награда: +5% к урону", "rewards": [{ "type": "damage_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.petard_finish",
+      "category": "slaughter",
+      "title_ru": "Финиш петардой",
+      "counter_key": "slaughter.duel_petard_finish",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "pvp_win_finish", "finish_action_type": 4 },
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Победить в дуэли (Три-в-ряд) финишём «Петардой» 5 раз", "reward_text_ru": "Награда: +5 материи", "rewards": [{ "type": "matter", "value": 5 }] },
+        { "threshold_delta": 50, "description_ru": "Победить в дуэли финишём «Петардой» 50 раз", "reward_text_ru": "Награда: +50 материи", "rewards": [{ "type": "matter", "value": 50 }] },
+        { "threshold_delta": 100, "description_ru": "Победить в дуэли финишём «Петардой» 100 раз", "reward_text_ru": "Награда: +100 материи", "rewards": [{ "type": "matter", "value": 100 }] },
+        { "threshold_delta": 500, "description_ru": "Победить в дуэли финишём «Петардой» 500 раз", "reward_text_ru": "Награда: +500 материи и +1% шансу крита", "rewards": [{ "type": "matter", "value": 500 }, { "type": "crit_flat", "value": 0.01 }] }
+      ]
+    },
+    {
+      "id": "dnn.double_line",
+      "category": "dnn",
+      "title_ru": "Две линии 5+",
+      "counter_key": "dnn.double_line5_same_turn",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "dnn_double_five_plus_same_turn" },
+      "steps": [
+        { "threshold_delta": 1, "description_ru": "За один ход собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] }
+      ]
+    },
+    {
+      "id": "dnn.win_1hp",
+      "category": "dnn",
+      "title_ru": "Победа с 1 HP",
+      "counter_key": "dnn.win_at_one_hp",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "win_after_hp_was_one" },
+      "steps": [
+        { "threshold_delta": 1, "description_ru": "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли", "reward_text_ru": "Награда: +5% к броне", "rewards": [{ "type": "armor_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "obs.firework_lover",
+      "category": "obsession",
+      "title_ru": "Любитель фейерверка",
+      "counter_key": "slaughter.finish_petard_pvp",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "pvp_win_finish", "finish_action_type": 4, "exclude_modes": ["pve"] },
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
+        { "threshold_delta": 50, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +25 к урону", "rewards": [{ "type": "damage_flat", "value": 25 }] },
+        { "threshold_delta": 500, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +100 к урону", "rewards": [{ "type": "damage_flat", "value": 100 }] },
+        { "threshold_delta": 2000, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +250 к урону", "rewards": [{ "type": "damage_flat", "value": 250 }] }
+      ]
+    },
+    {
+      "id": "obs.nail_rusty",
+      "category": "obsession",
+      "title_ru": "Пригвоздить",
+      "counter_key": "pve.kill.mine_2",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "pve_bot_kill", "bot_id": "mine_2" },
+      "steps": [
+        { "threshold_delta": 25, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 100, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +150 к здоровью", "rewards": [{ "type": "hp_flat", "value": 150 }] },
+        { "threshold_delta": 250, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +500 к здоровью", "rewards": [{ "type": "hp_flat", "value": 500 }] },
+        { "threshold_delta": 500, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +750 к здоровью", "rewards": [{ "type": "hp_flat", "value": 750 }] },
+        { "threshold_delta": 1000, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +1250 к здоровью", "rewards": [{ "type": "hp_flat", "value": 1250 }] }
+      ]
+    },
+    {
+      "id": "sl.lucky_loser",
+      "category": "slaughter",
+      "title_ru": "Фартовый",
+      "counter_key": "slaughter.tournament_final_loss",
+      "threshold_mode": "cumulative_delta",
+      "event": { "primitive": "arena_final_result", "won": false },
+      "steps": [
+        { "threshold_delta": 1, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +5 материи", "rewards": [{ "type": "matter", "value": 5 }] },
+        { "threshold_delta": 10, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +10 материи", "rewards": [{ "type": "matter", "value": 10 }] },
+        { "threshold_delta": 25, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +50 материи", "rewards": [{ "type": "matter", "value": 50 }] },
+        { "threshold_delta": 100, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +200 материи", "rewards": [{ "type": "matter", "value": 200 }] }
+      ]
+    }
+  ]
+}
+]=]
+
+function M.get()
+  local ok, t = pcall(nk.json_decode, JSON)
+  if ok and type(t) == "table" then return t end
+  nk.logger_warn("achievement_catalog fallback json_decode failed")
+  return { schema_version = 1, categories = {}, chains = {} }
+end
+
+return M

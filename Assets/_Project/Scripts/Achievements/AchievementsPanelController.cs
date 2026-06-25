@@ -108,6 +108,7 @@ namespace Project.Achievements
             StopPendingBadgeIdle();
             _pendingBadgeIdleCo = StartCoroutine(PendingClaimBadgeIdleLoop());
             AchievementLifecycle.OnDataChanged += OnAchievementLifecycleChanged;
+            _ = AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
         }
 
         private void OnDisable()
@@ -559,8 +560,10 @@ namespace Project.Achievements
                 Show();
         }
 
-        private void Show()
+        private async void Show()
         {
+            await AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
+            RefreshGrid(_currentTab);
             RefreshClaimBadges();
             if (rootCanvasGroup != null)
             {

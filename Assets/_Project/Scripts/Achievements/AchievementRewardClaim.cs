@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Character;
 using Project.Nakama;
 using UnityEngine;
 
@@ -55,6 +56,10 @@ namespace Project.Achievements
                     {
                         AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
                         AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
+                        if (resp.stats != null)
+                            AchievementLifecycle.NotifyCombatStatsUpdated(resp.stats);
+                        else
+                            await RefreshCombatStatsFromCharacterGetAsync(ct).ConfigureAwait(false);
                         RaiseClaimed(def, stepIndex);
                         return true;
                     }
@@ -90,6 +95,20 @@ namespace Project.Achievements
             AchievementLifecycle.NotifyDataChanged();
         }
 
+        private static async Task RefreshCombatStatsFromCharacterGetAsync(CancellationToken ct)
+        {
+            try
+            {
+                var profile = await CharacterProfileService.GetAsync(ct).ConfigureAwait(false);
+                if (profile != null && profile.ok && profile.stats != null)
+                    AchievementLifecycle.NotifyCombatStatsUpdated(profile.stats);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Achievements] refresh stats after claim: " + ex.Message);
+            }
+        }
+
         [Serializable]
         private sealed class ClaimStepRpcPayload
         {
@@ -105,6 +124,7 @@ namespace Project.Achievements
             public string err;
             public string chain_id;
             public int step_index;
+            public StatsMap stats;
         }
     }
 }

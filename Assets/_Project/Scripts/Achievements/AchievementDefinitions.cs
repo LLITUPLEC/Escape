@@ -64,15 +64,20 @@ namespace Project.Achievements
     public static class AchievementCatalog
     {
         private static AchievementChainDefinition[] _chains;
+        private static bool _fromServer;
 
-        public static AchievementChainDefinition[] Chains
+        /// <summary>Каталог подтянут с сервера (или из локального кэша RPC).</summary>
+        public static bool IsFromServer => _fromServer;
+
+        public static AchievementChainDefinition[] Chains => _chains ?? Build();
+
+        /// <summary>Подменить список цепочек данными с duel_match3_achievement_catalog_get.</summary>
+        public static void ApplyFromServer(AchievementChainDefinition[] chains)
         {
-            get
-            {
-                if (_chains == null)
-                    _chains = Build();
-                return _chains;
-            }
+            if (chains == null || chains.Length == 0)
+                return;
+            _chains = chains;
+            _fromServer = true;
         }
 
         public static AchievementChainDefinition FindChain(string chainId)
@@ -95,13 +100,13 @@ namespace Project.Achievements
             return new[]
             {
                 Chain(AchievementTab.Obsession, "obs.cross", AchievementStatKeys.UsesCross,
-                    new[] { 10, 50, 250, 500 },
+                    new[] { 10, 50, 250, 300 },
                     new[]
                     {
                         "Использовать «Крест» 10 раз",
                         "Использовать «Крест» 50 раз",
                         "Использовать «Крест» 250 раз",
-                        "Использовать «Крест» 500 раз",
+                        "Использовать «Крест» 300 раз",
                     },
                     new[]
                     {
@@ -319,6 +324,43 @@ namespace Project.Achievements
                 RewardTexts = rewards,
                 TierAccentColors = colors,
             };
+        }
+
+        internal static AchievementTab TabFromCategoryId(string category)
+        {
+            if (string.Equals(category, "slaughter", StringComparison.OrdinalIgnoreCase))
+                return AchievementTab.Slaughter;
+            if (string.Equals(category, "dnn", StringComparison.OrdinalIgnoreCase))
+                return AchievementTab.Dnn;
+            return AchievementTab.Obsession;
+        }
+
+        internal static Color[] TierAccentColorsForStepCount(int stepCount)
+        {
+            var n = Mathf.Max(1, stepCount);
+            var palette = new[] { G, Lb, Db, P };
+            var colors = new Color[n];
+            for (var i = 0; i < n; i++)
+                colors[i] = palette[Mathf.Min(i, palette.Length - 1)];
+            return colors;
+        }
+
+        internal static AchievementChainDefinition ChainFromServer(
+            string id,
+            string category,
+            string counterKey,
+            int[] thresholdDeltas,
+            string[] descriptions,
+            string[] rewardTexts)
+        {
+            return Chain(
+                TabFromCategoryId(category),
+                id,
+                counterKey,
+                thresholdDeltas,
+                descriptions,
+                rewardTexts,
+                TierAccentColorsForStepCount(thresholdDeltas?.Length ?? 0));
         }
     }
 }

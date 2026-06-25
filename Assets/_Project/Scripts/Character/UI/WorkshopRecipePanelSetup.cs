@@ -102,7 +102,60 @@ namespace Project.Character.UI
                 if (le != null) le.minHeight = Mathf.Max(le.minHeight, 44f);
                 var lab = b.Find("Label")?.GetComponent<Text>();
                 if (lab != null) lab.fontSize = Mathf.Max(lab.fontSize, 22);
+                if (btnName == "CreateButton")
+                    EnsureCreateButtonStatusUi(b.GetComponent<Button>(), out _, out _);
             }
+        }
+
+        /// <summary>Добавляет иконку ✓/✗ слева на кнопке «Создать» и сдвигает подпись.</summary>
+        public static void EnsureCreateButtonStatusUi(Button createButton, out Text label, out Text statusIcon)
+        {
+            label = null;
+            statusIcon = null;
+            if (createButton == null) return;
+
+            var btnRt = createButton.GetComponent<RectTransform>();
+            label = createButton.transform.Find("Label")?.GetComponent<Text>();
+            if (label != null)
+            {
+                label.supportRichText = true;
+                var labelRt = label.rectTransform;
+                labelRt.anchorMin = new Vector2(0f, 0f);
+                labelRt.anchorMax = new Vector2(1f, 1f);
+                labelRt.offsetMin = new Vector2(40f, 2f);
+                labelRt.offsetMax = new Vector2(-6f, -2f);
+                label.alignment = TextAnchor.MiddleCenter;
+                label.fontSize = Mathf.Max(label.fontSize, 20);
+                label.verticalOverflow = VerticalWrapMode.Overflow;
+            }
+
+            var statusTr = createButton.transform.Find("StatusIcon") as RectTransform;
+            if (statusTr == null)
+            {
+                var statusGo = new GameObject("StatusIcon", typeof(RectTransform), typeof(Text));
+                statusTr = statusGo.GetComponent<RectTransform>();
+                statusTr.SetParent(btnRt, false);
+                statusTr.SetAsFirstSibling();
+            }
+
+            statusIcon = statusTr.GetComponent<Text>();
+            statusIcon.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            statusIcon.fontSize = 28;
+            statusIcon.alignment = TextAnchor.MiddleCenter;
+            statusIcon.horizontalOverflow = HorizontalWrapMode.Overflow;
+            statusIcon.verticalOverflow = VerticalWrapMode.Overflow;
+            statusIcon.raycastTarget = false;
+            statusIcon.gameObject.SetActive(false);
+
+            statusTr.anchorMin = new Vector2(0f, 0.5f);
+            statusTr.anchorMax = new Vector2(0f, 0.5f);
+            statusTr.pivot = new Vector2(0f, 0.5f);
+            statusTr.sizeDelta = new Vector2(36f, 36f);
+            statusTr.anchoredPosition = new Vector2(8f, 0f);
+
+            var le = createButton.GetComponent<LayoutElement>();
+            if (le != null)
+                le.minHeight = Mathf.Max(le.minHeight, 52f);
         }
 
         public static bool TryBindExisting(RectTransform workshopBackground, out Refs refs)
@@ -253,6 +306,7 @@ namespace Project.Character.UI
             rowH.childForceExpandWidth = true;
 
             var createButton = CreateUiButton(br, "CreateButton", "Создать");
+            EnsureCreateButtonStatusUi(createButton, out _, out _);
             var claimButton = CreateUiButton(br, "ClaimButton", "Забрать в сундук");
             var rushButton = CreateUiButton(br, "RushButton", "Ускорить 20м (500з)");
             claimButton.gameObject.SetActive(false);

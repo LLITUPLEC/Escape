@@ -48,9 +48,20 @@ namespace Project.Character.UI
         private Text _itemStatsText;
         private Text _detailText;
         private Button _createButton;
+        private Text _createButtonLabel;
+        private Text _createButtonStatusIcon;
         private Button _claimButton;
         private Button _rushButton;
         private readonly List<GameObject> _recipeRows = new();
+
+        private const float WorkshopSlotSquareSize = 200f;
+        private const float WorkshopColumnWidth = 220f;
+        private const float WorkshopWeaponsRowWidth = 440f;
+        private const float WorkshopWeaponsRowHeight = 220f;
+        private const float WorkshopCharacterPlaceholderSize = 400f;
+        private static readonly Color WorkshopShortfallColor = new Color(204f / 255f, 0.2f, 0.2f, 1f);
+        private static readonly Color WorkshopCanCraftColor = new Color(0.35f, 0.92f, 0.4f, 1f);
+        private static readonly Color WorkshopCannotCraftColor = new Color(0.92f, 0.28f, 0.24f, 1f);
 
         private Image[] _slotIcons;
         private Text[] _slotTimers;
@@ -140,6 +151,7 @@ namespace Project.Character.UI
             _createButton = r.createButton;
             _claimButton = r.claimButton;
             _rushButton = r.rushButton;
+            WorkshopRecipePanelSetup.EnsureCreateButtonStatusUi(_createButton, out _createButtonLabel, out _createButtonStatusIcon);
             if (_itemStatsText != null)
             {
                 WorkshopRecipePanelSetup.ApplyItemStatsTextLayout(_itemStatsText.rectTransform);
@@ -221,8 +233,11 @@ namespace Project.Character.UI
 
             const string layoutName = "EquipmentWorkshopLayout";
             RectTransform layoutRt;
-            if (root.Find(layoutName) != null)
-                layoutRt = root.Find(layoutName) as RectTransform;
+            var existing = root.Find(layoutName) as RectTransform;
+            if (existing != null)
+            {
+                layoutRt = existing;
+            }
             else
             {
                 var layoutGo = new GameObject(layoutName, typeof(RectTransform));
@@ -234,17 +249,13 @@ namespace Project.Character.UI
                 layoutRt.offsetMax = new Vector2(-6f, -6f);
 
                 var center = new GameObject("CharacterPlaceholder", typeof(RectTransform), typeof(Image));
-                var crt = center.GetComponent<RectTransform>();
-                crt.SetParent(layoutRt, false);
-                crt.anchorMin = new Vector2(0.24f, 0.34f);
-                crt.anchorMax = new Vector2(0.76f, 0.98f);
-                crt.offsetMin = crt.offsetMax = Vector2.zero;
+                center.GetComponent<RectTransform>().SetParent(layoutRt, false);
                 center.GetComponent<Image>().color = new Color(0.12f, 0.12f, 0.15f, 0.55f);
                 CreateUiText("Ph", center.transform, "?", 52, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-                var left = CreateWorkshopColumn(layoutRt, "LeftColumn", new Vector2(0.02f, 0.34f), new Vector2(0.22f, 0.98f));
-                var right = CreateWorkshopColumn(layoutRt, "RightColumn", new Vector2(0.78f, 0.34f), new Vector2(0.98f, 0.98f));
-                var bottom = CreateWorkshopWeaponsRow(layoutRt, "WeaponsRow", new Vector2(0.08f, 0.02f), new Vector2(0.92f, 0.30f));
+                CreateWorkshopColumn(layoutRt, "LeftColumn");
+                CreateWorkshopColumn(layoutRt, "RightColumn");
+                CreateWorkshopWeaponsRow(layoutRt, "WeaponsRow");
 
                 void MoveUnder(string slotName, Transform parent)
                 {
@@ -253,6 +264,9 @@ namespace Project.Character.UI
                     s.SetParent(parent, false);
                 }
 
+                var left = layoutRt.Find("LeftColumn");
+                var right = layoutRt.Find("RightColumn");
+                var bottom = layoutRt.Find("WeaponsRow");
                 MoveUnder("Slot_0", left);
                 MoveUnder("Slot_1", left);
                 MoveUnder("Slot_2", left);
@@ -262,44 +276,139 @@ namespace Project.Character.UI
                 MoveUnder("Slot_6", bottom);
                 MoveUnder("Slot_7", bottom);
             }
+
+            ApplyEquipmentWorkshopLayoutSettings(layoutRt);
         }
 
-        private static RectTransform CreateWorkshopColumn(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        private void ApplyEquipmentWorkshopLayoutSettings(RectTransform layoutRt)
+        {
+            if (layoutRt == null) return;
+
+            ApplyTopCenterRect(layoutRt.Find("CharacterPlaceholder") as RectTransform, WorkshopCharacterPlaceholderSize, WorkshopCharacterPlaceholderSize);
+
+            ApplyStretchLeftRect(layoutRt.Find("LeftColumn") as RectTransform, WorkshopColumnWidth);
+            ApplyStretchRightRect(layoutRt.Find("RightColumn") as RectTransform, WorkshopColumnWidth);
+            ApplyBottomCenterRect(layoutRt.Find("WeaponsRow") as RectTransform, WorkshopWeaponsRowWidth, WorkshopWeaponsRowHeight);
+
+            ConfigureWorkshopColumnLayout(layoutRt.Find("LeftColumn"));
+            ConfigureWorkshopColumnLayout(layoutRt.Find("RightColumn"));
+            ConfigureWorkshopWeaponsRowLayout(layoutRt.Find("WeaponsRow"));
+        }
+
+        private static void ApplyTopCenterRect(RectTransform rt, float width, float height)
+        {
+            if (rt == null) return;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.sizeDelta = new Vector2(width, height);
+            rt.anchoredPosition = Vector2.zero;
+            rt.offsetMin = new Vector2(-width * 0.5f, -height);
+            rt.offsetMax = new Vector2(width * 0.5f, 0f);
+        }
+
+        private static void ApplyStretchLeftRect(RectTransform rt, float width)
+        {
+            if (rt == null) return;
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = new Vector2(width, 0f);
+        }
+
+        private static void ApplyStretchRightRect(RectTransform rt, float width)
+        {
+            if (rt == null) return;
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.offsetMin = new Vector2(-width, 0f);
+            rt.offsetMax = Vector2.zero;
+        }
+
+        private static void ApplyBottomCenterRect(RectTransform rt, float width, float height)
+        {
+            if (rt == null) return;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.sizeDelta = new Vector2(width, height);
+            rt.anchoredPosition = Vector2.zero;
+            rt.offsetMin = new Vector2(-width * 0.5f, 0f);
+            rt.offsetMax = new Vector2(width * 0.5f, height);
+        }
+
+        private static RectTransform CreateWorkshopColumn(RectTransform parent, string name)
         {
             var go = new GameObject(name, typeof(RectTransform));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
-            rt.anchorMin = anchorMin;
-            rt.anchorMax = anchorMax;
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
-            var v = go.AddComponent<VerticalLayoutGroup>();
-            v.padding = new RectOffset(2, 2, 6, 6);
-            v.spacing = 8f;
+            go.AddComponent<VerticalLayoutGroup>();
+            return rt;
+        }
+
+        private static RectTransform CreateWorkshopWeaponsRow(RectTransform parent, string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            go.AddComponent<HorizontalLayoutGroup>();
+            return rt;
+        }
+
+        private static void ConfigureWorkshopColumnLayout(Transform column)
+        {
+            if (column == null) return;
+            var v = column.GetComponent<VerticalLayoutGroup>();
+            if (v == null) v = column.gameObject.AddComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(0, 0, 0, 0);
+            v.spacing = 0f;
             v.childAlignment = TextAnchor.UpperCenter;
             v.childControlHeight = true;
             v.childControlWidth = true;
-            v.childForceExpandHeight = false;
-            v.childForceExpandWidth = false;
-            return rt;
+            v.childForceExpandHeight = true;
+            v.childForceExpandWidth = true;
         }
 
-        private static RectTransform CreateWorkshopWeaponsRow(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        private static void ConfigureWorkshopWeaponsRowLayout(Transform row)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = anchorMin;
-            rt.anchorMax = anchorMax;
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
-            var h = go.AddComponent<HorizontalLayoutGroup>();
-            h.padding = new RectOffset(6, 6, 4, 6);
-            h.spacing = 12f;
+            if (row == null) return;
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            if (h == null) h = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(0, 0, 0, 0);
+            h.spacing = 0f;
             h.childAlignment = TextAnchor.MiddleCenter;
             h.childControlHeight = true;
             h.childControlWidth = true;
-            h.childForceExpandHeight = false;
-            h.childForceExpandWidth = false;
-            return rt;
+            h.childForceExpandHeight = true;
+            h.childForceExpandWidth = true;
+        }
+
+        private static void ApplyWorkshopSlotLayout(RectTransform slotRt)
+        {
+            if (slotRt == null) return;
+            var le = slotRt.GetComponent<LayoutElement>();
+            if (le == null) le = slotRt.gameObject.AddComponent<LayoutElement>();
+            le.minWidth = le.preferredWidth = WorkshopSlotSquareSize;
+            le.minHeight = le.preferredHeight = WorkshopSlotSquareSize;
+            le.flexibleWidth = 1f;
+            le.flexibleHeight = 1f;
+
+            var aspect = slotRt.GetComponent<AspectRatioFitter>();
+            if (aspect == null) aspect = slotRt.gameObject.AddComponent<AspectRatioFitter>();
+            aspect.aspectMode = AspectRatioFitter.AspectMode.WidthControlsHeight;
+            aspect.aspectRatio = 1f;
+        }
+
+        private static void ApplyWorkshopSlotIconLayout(RectTransform iconRt)
+        {
+            if (iconRt == null) return;
+            iconRt.anchorMin = Vector2.zero;
+            iconRt.anchorMax = Vector2.one;
+            iconRt.pivot = new Vector2(0.5f, 0.5f);
+            iconRt.offsetMin = new Vector2(20f, 20f);
+            iconRt.offsetMax = new Vector2(-20f, -20f);
         }
 
         private void WireCraftSlots()
@@ -317,13 +426,7 @@ namespace Project.Character.UI
                 if (slot == null) continue;
 
                 if (applyEquipmentStyleCraftLayout)
-                {
-                    var le = slot.GetComponent<LayoutElement>();
-                    if (le == null) le = slot.gameObject.AddComponent<LayoutElement>();
-                    const float sz = 104f;
-                    le.minWidth = le.preferredWidth = sz;
-                    le.minHeight = le.preferredHeight = sz;
-                }
+                    ApplyWorkshopSlotLayout(slot as RectTransform);
 
                 var labelTr = slot.Find("SlotLabel");
                 var label = labelTr != null ? labelTr.GetComponent<Text>() : null;
@@ -333,7 +436,7 @@ namespace Project.Character.UI
                     if (overrideSlotLabelStyle)
                     {
                         label.fontSize = 18;
-                        label.alignment = TextAnchor.LowerCenter;
+                        label.alignment = TextAnchor.UpperCenter;
                     }
                 }
 
@@ -344,14 +447,16 @@ namespace Project.Character.UI
                     var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
                     var irt = iconGo.GetComponent<RectTransform>();
                     irt.SetParent(slot, false);
-                    irt.anchorMin = new Vector2(0.15f, 0.28f);
-                    irt.anchorMax = new Vector2(0.85f, 0.72f);
-                    irt.offsetMin = Vector2.zero;
-                    irt.offsetMax = Vector2.zero;
                     iconImg = iconGo.GetComponent<Image>();
                     iconImg.color = new Color(1f, 1f, 1f, 0.15f);
                 }
-                else iconImg = iconTr.GetComponent<Image>();
+                else
+                {
+                    iconImg = iconTr.GetComponent<Image>();
+                }
+
+                if (applyEquipmentStyleCraftLayout)
+                    ApplyWorkshopSlotIconLayout(iconTr != null ? iconTr as RectTransform : iconImg.rectTransform);
 
                 _slotIcons[i] = iconImg;
 
@@ -617,6 +722,7 @@ namespace Project.Character.UI
             {
                 _detailText.text = "";
                 UpdateItemStatsPreview(null);
+                UpdateCreateButtonVisual(false, null, false, null);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_claimButton != null) _claimButton.gameObject.SetActive(false);
                 return;
@@ -629,6 +735,7 @@ namespace Project.Character.UI
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
                 _detailText.text = "Готово: " + (def != null ? def.DisplayName : oid) + " — нажмите слот или «Забрать».";
                 UpdateItemStatsPreview(def);
+                UpdateCreateButtonVisual(false, null, false, null);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_rushButton != null) _rushButton.gameObject.SetActive(false);
                 if (_claimButton != null)
@@ -646,6 +753,7 @@ namespace Project.Character.UI
                 var craftTitle = (def != null && !string.IsNullOrEmpty(def.DisplayName)) ? def.DisplayName : (def != null ? def.ItemId : oid);
                 _detailText.text = "Идёт крафт: " + craftTitle;
                 UpdateItemStatsPreview(def);
+                UpdateCreateButtonVisual(false, null, false, null);
                 if (_createButton != null) _createButton.interactable = false;
                 if (_claimButton != null) _claimButton.gameObject.SetActive(false);
                 if (_rushButton != null)
@@ -663,6 +771,7 @@ namespace Project.Character.UI
             {
                 _detailText.text = "Выберите рецепт в списке.";
                 UpdateItemStatsPreview(null);
+                UpdateCreateButtonVisual(false, null, false, null);
                 if (_createButton != null) _createButton.interactable = false;
                 return;
             }
@@ -697,8 +806,102 @@ namespace Project.Character.UI
             sb.Append(okRes ? "\nУсловий достаточно." : "\nНе хватает ресурсов или поглощаемого предмета.");
             _detailText.text = sb.ToString();
             UpdateItemStatsPreview(od);
+            var recipeLearned = IsRecipeLearnedForCraft(od != null ? od.CraftRecipeId : "");
+            var canCraft = okRes && recipeLearned;
+            UpdateCreateButtonVisual(canCraft, od, true, BuildCraftShortfallLines(od, ore, gold, ing, tess, needOre, needGold, needIngotN, ingotId, needTess, fodderOk, resOk));
             if (_createButton != null)
-                _createButton.interactable = okRes && IsRecipeLearnedForCraft(od != null ? od.CraftRecipeId : "");
+                _createButton.interactable = canCraft;
+        }
+
+        private void UpdateCreateButtonVisual(bool canCraft, ItemDefinition od, bool recipeSelected, string shortfallText)
+        {
+            if (_createButton == null) return;
+            WorkshopRecipePanelSetup.EnsureCreateButtonStatusUi(_createButton, out _createButtonLabel, out _createButtonStatusIcon);
+
+            var showStatus = recipeSelected && od != null;
+            if (_createButtonStatusIcon != null)
+            {
+                _createButtonStatusIcon.gameObject.SetActive(showStatus);
+                if (showStatus)
+                {
+                    _createButtonStatusIcon.text = canCraft ? "✓" : "✗";
+                    _createButtonStatusIcon.color = canCraft ? WorkshopCanCraftColor : WorkshopCannotCraftColor;
+                }
+            }
+
+            if (_createButtonLabel == null) return;
+            if (!showStatus)
+            {
+                _createButtonLabel.text = "Создать";
+                _createButtonLabel.color = new Color(0.94f, 0.92f, 0.86f);
+                return;
+            }
+
+            if (canCraft)
+            {
+                _createButtonLabel.text = "Создать";
+                _createButtonLabel.color = new Color(0.94f, 0.92f, 0.86f);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(shortfallText))
+            {
+                _createButtonLabel.text = "Создать";
+                _createButtonLabel.color = new Color(0.94f, 0.92f, 0.86f);
+                return;
+            }
+
+            var shortfallHex = ColorUtility.ToHtmlStringRGB(WorkshopShortfallColor);
+            _createButtonLabel.supportRichText = true;
+            _createButtonLabel.text = $"Создать\n<color=#{shortfallHex}>{shortfallText}</color>";
+            _createButtonLabel.color = new Color(0.94f, 0.92f, 0.86f);
+        }
+
+        private string BuildCraftShortfallLines(
+            ItemDefinition od,
+            long ore, long gold, int ing, int tess,
+            int needOre, int needGold, int needIngotN, string ingotId, int needTess,
+            bool fodderOk, bool resOk)
+        {
+            if (od == null) return "";
+            var parts = new List<string>();
+            if (!resOk)
+            {
+                if (ore < needOre) parts.Add($"руда {ore}/{needOre}");
+                if (gold < needGold) parts.Add($"золото {gold}/{needGold}");
+                if (needIngotN > 0 && !string.IsNullOrEmpty(ingotId) && ing < needIngotN)
+                    parts.Add($"{IngotShortRu(ingotId)} {ing}/{needIngotN}");
+                if (needTess > 0 && tess < needTess)
+                    parts.Add($"тесс. {tess}/{needTess}");
+            }
+
+            if (!fodderOk)
+                parts.Add(FodderShortRu(od));
+
+            return parts.Count == 0 ? "" : string.Join(", ", parts);
+        }
+
+        private static string IngotShortRu(string ingotId) => ingotId switch
+        {
+            "ingot_green" => "слиток зел.",
+            "ingot_blue" => "слиток син.",
+            "ingot_purple" => "слиток фиол.",
+            _ => ingotId
+        };
+
+        private string FodderShortRu(ItemDefinition od)
+        {
+            if (od == null) return "нет поглощаемого предмета";
+            var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
+            return od.Quality switch
+            {
+                ItemQualityTier.Normal when t == 2 => "нужна легенда T1",
+                ItemQualityTier.Normal when t == 3 => "нужна легенда T2",
+                ItemQualityTier.Rare => $"нужен обычный T{t}",
+                ItemQualityTier.Epic => $"нужен редкий T{t}",
+                ItemQualityTier.Legendary => $"нужен эпик T{t}",
+                _ => "нет поглощаемого предмета"
+            };
         }
 
         private void UpdateItemStatsPreview(ItemDefinition def)
