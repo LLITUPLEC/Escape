@@ -376,6 +376,19 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
       end
     end
   end
+
+  local ok_lb, err_lb = pcall(function()
+    local ok, LB = pcall(require, "modules.duel_leaderboard_scores")
+    if not ok or LB == nil then
+      LB = require("duel_leaderboard_scores")
+    end
+    if type(LB.flush_match_wins) == "function" then
+      LB.flush_match_wins(state, winner)
+    end
+  end)
+  if not ok_lb then
+    nk.logger_error("leaderboard_flush_match_wins failed: " .. tostring(err_lb))
+  end
 end
 
 local function stats_payload_for_client(user_id)

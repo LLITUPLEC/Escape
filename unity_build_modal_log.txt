@@ -1,147 +1,44 @@
-[Licensing::Module] Trying to connect to existing licensing client channel...
-[Licensing::IpcConnector] Successfully connected to the License Client on channel: "LicenseClient-evteev"
-[Licensing::Client] Error: Code 10 while verifying Licensing Client signature (process Id: 10220, path: "C:/Program Files/Unity Hub/UnityLicensingClient_V1/Unity.Licensing.Client.exe")
-[Licensing::Module] Error: LicensingClient has failed validation; ignoring
-[Licensing::Client] Handshaking with LicensingClient:
-  Version:                 1.17.4+4293ba1
-  Session Id:              a31c7094b0fd42b684dd8f16c3b5fe5b
-  Correlation Id:          f84a2c6f7d9c91d562c930b07bfd4f4c
-  External correlation Id: 9186995555929029911
-  Machine Id:              v6E3/GVAku6LL4AUf2vhaFkFlZE=
-[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-evteev" (connect: 0.00s, validation: 0.01s, handshake: 0.03s)
-[Licensing::IpcConnector] Successfully connected to the License Notification on channel: "LicenseClient-evteev-notifications"
-Entitlement-based licensing initiated
-[Licensing::Module] Error: Access token is unavailable; failed to update
-[Licensing::Client] Successfully updated license
-Built from '2020.3/release' branch; Version is '2020.3.49f1 (18249dd5551b) revision 1582237'; Using compiler version '192528614'; Build Type 'Release'
-OS: 'Windows 10  (10.0.19045) 64bit Professional' Language: 'ru' Physical Memory: 16265 MB
-[Licensing::Client] Successfully resolved entitlements
-[Licensing::Module] Serial number assigned to: "10171563936145-UnityPersXXXX"
-BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1, IsPro: 0
-[Package Manager] Server::Start -- Port 56264 was selected
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-COMMAND LINE ARGUMENTS:
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\Unity.exe
--batchmode
--quit
--projectPath
-c:\Users\evteev\Desktop\Develope\CURSOR\unity_nakama\Escape
--executeMethod
-Project.UI.Editor.MonsterModalPrefabBuilder.CreatePrefab
--logFile
-c:\Users\evteev\Desktop\Develope\CURSOR\unity_nakama\Escape\unity_build_modal_log.txt
-Successfully changed project path to: c:\Users\evteev\Desktop\Develope\CURSOR\unity_nakama\Escape
-C:/Users/evteev/Desktop/Develope/CURSOR/unity_nakama/Escape
-It looks like another Unity instance is running with this project open.
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-Multiple Unity instances cannot open the same project.
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-Project: C:/Users/evteev/Desktop/Develope/CURSOR/unity_nakama/Escape
-Fatal Error! It looks like another Unity instance is running with this project open.
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-Multiple Unity instances cannot open the same project.
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-Project: C:/Users/evteev/Desktop/Develope/CURSOR/unity_nakama/Escape
-Crash!!!
-SymInit: Symbol-SearchPath: 'C:/Program Files/Unity/Hub/Editor/2020.3.49f1/Editor/Data/Mono;.;C:\Users\evteev\Desktop\Develope\CURSOR\unity_nakama\Escape;C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor;C:\Windows;C:\Windows\system32;', symOptions: 534, UserName: 'evteev'
-OS-Version: 10.0.0
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\Unity.exe:Unity.exe (00007FF743170000), size: 84131840 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2020.3.49.9373
-C:\Windows\SYSTEM32\ntdll.dll:ntdll.dll (00007FFD3B910000), size: 2064384 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\KERNEL32.DLL:KERNEL32.DLL (00007FFD3AF20000), size: 774144 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\KERNELBASE.dll:KERNELBASE.dll (00007FFD39100000), size: 3104768 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\CRYPT32.dll:CRYPT32.dll (00007FFD397D0000), size: 1429504 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\ucrtbase.dll:ucrtbase.dll (00007FFD39530000), size: 1048576 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\USER32.dll:USER32.dll (00007FFD3B1B0000), size: 1695744 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\win32u.dll:win32u.dll (00007FFD397A0000), size: 139264 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\GDI32.dll:GDI32.dll (00007FFD39D40000), size: 180224 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\gdi32full.dll:gdi32full.dll (00007FFD38FE0000), size: 1155072 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3758
-C:\Windows\System32\msvcp_win.dll:msvcp_win.dll (00007FFD39400000), size: 643072 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\ADVAPI32.dll:ADVAPI32.dll (00007FFD3B780000), size: 733184 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\msvcrt.dll:msvcrt.dll (00007FFD3B3B0000), size: 647168 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 7.0.19041.3636
-C:\Windows\System32\sechost.dll:sechost.dll (00007FFD3B0B0000), size: 651264 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\RPCRT4.dll:RPCRT4.dll (00007FFD3B650000), size: 1204224 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3758
-C:\Windows\System32\bcrypt.dll:bcrypt.dll (00007FFD38FB0000), size: 159744 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\SHELL32.dll:SHELL32.dll (00007FFD39D70000), size: 7622656 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\SHLWAPI.dll:SHLWAPI.dll (00007FFD3B150000), size: 348160 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\ole32.dll:ole32.dll (00007FFD3A820000), size: 1224704 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\combase.dll:combase.dll (00007FFD3A4C0000), size: 3489792 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\IMM32.dll:IMM32.dll (00007FFD3AED0000), size: 196608 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\SETUPAPI.dll:SETUPAPI.dll (00007FFD3AA40000), size: 4644864 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\cfgmgr32.dll:cfgmgr32.dll (00007FFD396A0000), size: 319488 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\WS2_32.dll:WS2_32.dll (00007FFD3A9D0000), size: 438272 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\OLEAUT32.dll:OLEAUT32.dll (00007FFD3AFE0000), size: 839680 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\WINTRUST.dll:WINTRUST.dll (00007FFD39630000), size: 421888 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\umbraoptimizer64.dll:umbraoptimizer64.dll (00007FFD0A910000), size: 1306624 (result: 0), SymType: '-deferred-', PDB: ''
-C:\Windows\System32\WLDAP32.dll:WLDAP32.dll (00007FFD3B350000), size: 352256 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\Normaliz.dll:Normaliz.dll (00007FFD3AEC0000), size: 32768 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\optix.6.0.0.dll:optix.6.0.0.dll (00007FFD0DB90000), size: 208896 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 6.0.0.0
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\OpenImageDenoise.dll:OpenImageDenoise.dll (00007FFCEFD60000), size: 43806720 (result: 0), SymType: '-deferred-', PDB: ''
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\libfbxsdk.dll:libfbxsdk.dll (00007FFCEF3C0000), size: 10067968 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2020.3.3.0
-C:\Windows\SYSTEM32\OPENGL32.dll:OPENGL32.dll (00007FFCC11F0000), size: 1200128 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\GLU32.dll:GLU32.dll (00007FFD08650000), size: 180224 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\IPHLPAPI.DLL:IPHLPAPI.DLL (00007FFD38360000), size: 241664 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\WINHTTP.dll:WINHTTP.dll (00007FFD33CD0000), size: 1089536 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\WINMM.dll:WINMM.dll (00007FFD303D0000), size: 159744 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\HID.DLL:HID.DLL (00007FFD37640000), size: 53248 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\ispc_texcomp.dll:ispc_texcomp.dll (00007FFD010A0000), size: 1609728 (result: 0), SymType: '-deferred-', PDB: ''
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\WinPixEventRuntime.dll:WinPixEventRuntime.dll (00007FFD351F0000), size: 45056 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 1.0.1812.6001
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\FreeImage.dll:FreeImage.dll (0000000180000000), size: 6582272 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 3.18.0.0
-C:\Windows\SYSTEM32\VERSION.dll:VERSION.dll (00007FFD33BE0000), size: 40960 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\WSOCK32.dll:WSOCK32.dll (00007FFD18680000), size: 36864 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.1
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\RadeonImageFilters.dll:RadeonImageFilters.dll (00007FFCFCA70000), size: 2535424 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 1.5.1.0
-C:\Windows\SYSTEM32\VCRUNTIME140.dll:VCRUNTIME140.dll (00007FFD1CC20000), size: 122880 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 14.44.35211.0
-C:\Windows\SYSTEM32\MSVCP140.dll:MSVCP140.dll (00007FFD1A8D0000), size: 561152 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 14.44.35211.0
-C:\Windows\SYSTEM32\VCRUNTIME140_1.dll:VCRUNTIME140_1.dll (00007FFD1A960000), size: 49152 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 14.44.35211.0
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\SketchUpAPI.dll:SketchUpAPI.dll (00007FFCEEB20000), size: 8990720 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 23.0.0.0
-C:\Windows\SYSTEM32\Secur32.dll:Secur32.dll (00007FFD30710000), size: 49152 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\tbb.dll:tbb.dll (00007FFD0DB20000), size: 413696 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2017.0.2016.1004
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\SketchUpCommonPreferences.dll:SketchUpCommonPreferences.dll (00007FFD0A220000), size: 499712 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 23.0.0.0
-C:\Windows\SYSTEM32\SSPICLI.DLL:SSPICLI.DLL (00007FFD38E90000), size: 204800 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\MSVCR120.dll:MSVCR120.dll (00007FFD06B90000), size: 978944 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 12.0.40664.0
-C:\Windows\SYSTEM32\MSVCP120.dll:MSVCP120.dll (00007FFD0A170000), size: 679936 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 12.0.40664.0
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\OpenRL.dll:OpenRL.dll (0000025F29AA0000), size: 12779520 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 1.5.0.2907
-C:\Windows\SYSTEM32\MSVCR100.dll:MSVCR100.dll (0000000056360000), size: 860160 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.40219.1
-C:\Windows\SYSTEM32\MSVCP100.dll:MSVCP100.dll (0000000056440000), size: 622592 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.40219.1
-C:\Windows\SYSTEM32\MSWSOCK.DLL:MSWSOCK.DLL (00007FFD38670000), size: 434176 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\embree.dll:embree.dll (00007FFCED3D0000), size: 16711680 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2.14.0.0
-C:\Program Files\Unity\Hub\Editor\2020.3.49f1\Editor\OpenRL_pthread.dll:OpenRL_pthread.dll (0000025F2A6F0000), size: 61440 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2.9.0.0
-C:\Windows\SYSTEM32\MSASN1.dll:MSASN1.dll (00007FFD38B70000), size: 73728 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\kernel.appcore.dll:kernel.appcore.dll (00007FFD36CA0000), size: 73728 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3758
-C:\Windows\System32\bcryptPrimitives.dll:bcryptPrimitives.dll (00007FFD394A0000), size: 532480 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\system32\uxtheme.dll:uxtheme.dll (00007FFD367D0000), size: 647168 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\shcore.dll:shcore.dll (00007FFD3B500000), size: 708608 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\windows.storage.dll:windows.storage.dll (00007FFD36EA0000), size: 7974912 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3758
-C:\Windows\SYSTEM32\Wldp.dll:Wldp.dll (00007FFD38990000), size: 184320 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\profapi.dll:profapi.dll (00007FFD38EE0000), size: 151552 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\CRYPTSP.dll:CRYPTSP.dll (00007FFD388D0000), size: 98304 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\system32\rsaenh.dll:rsaenh.dll (00007FFD37FA0000), size: 212992 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\CRYPTBASE.dll:CRYPTBASE.dll (00007FFD388C0000), size: 49152 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\imagehlp.dll:imagehlp.dll (00007FFD3AF00000), size: 118784 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\gpapi.dll:gpapi.dll (00007FFD37A80000), size: 143360 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3930
-C:\Windows\System32\cryptnet.dll:cryptnet.dll (00007FFD32A70000), size: 200704 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\WINNSI.DLL:WINNSI.DLL (00007FFD34120000), size: 45056 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\NSI.dll:NSI.dll (00007FFD3AEB0000), size: 32768 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\clbcatq.dll:clbcatq.dll (00007FFD3B450000), size: 692224 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 2001.12.10941.16384
-C:\Windows\System32\netprofm.dll:netprofm.dll (00007FFD348B0000), size: 258048 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\System32\npmproxy.dll:npmproxy.dll (00007FFD164F0000), size: 65536 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\system32\apphelp.dll:apphelp.dll (00007FFD36510000), size: 589824 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
-C:\Windows\SYSTEM32\dbghelp.dll:dbghelp.dll (00007FFD2EBF0000), size: 1982464 (result: 0), SymType: '-deferred-', PDB: '', fileVersion: 10.0.19041.3636
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-========== OUTPUTTING STACK TRACE ==================
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-0x00007FFD3912CF19 (KERNELBASE) RaiseException
-0x00007FF744885614 (Unity) EditorMonoConsole::LogToConsoleImplementation
-0x00007FF7448867EC (Unity) EditorMonoConsole::LogToConsoleImplementation
-0x00007FF745894C77 (Unity) DebugStringToFilePostprocessedStacktrace
-0x00007FF745894198 (Unity) DebugStringToFile
-0x00007FF7449900D2 (Unity) HandleProjectAlreadyOpenInAnotherInstance
-0x00007FF744993358 (Unity) Application::InitializeProject
-0x00007FF744E19A52 (Unity) WinMain
-0x00007FF74655773E (Unity) __scrt_common_main_seh
-0x00007FFD3AF37344 (KERNEL32) BaseThreadInitThunk
-0x00007FFD3B9626B1 (ntdll) RtlUserThreadStart
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)
 
-========== END OF STACKTRACE ===========
-
-A crash has been intercepted by the crash handler. For call stack and other details, see the latest crash report generated in:
- * C:/Users/evteev/AppData/Local/Temp/Unity/Editor/Crashes
+NullReferenceException: Object reference not set to an instance of an object
+TMPro.TMP_SubMeshUI.UpdateMaterial () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:693)
+TMPro.TMP_SubMeshUI.SetMaterialDirty () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/TMP/TMP_SubMeshUI.cs:607)
+UnityEngine.UI.MaskableGraphic.OnValidate () (at ./Library/PackageCache/com.unity.ugui@bb329a87fcdc/Runtime/UGUI/UI/Core/MaskableGraphic.cs:202)

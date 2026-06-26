@@ -31,6 +31,9 @@ namespace Project.Achievements
 
             RemoveBrokenSubMeshes(root);
 
+            if (!Application.isPlaying)
+                return;
+
             foreach (var tmp in root.GetComponentsInChildren<TextMeshProUGUI>(true))
                 tmp.ForceMeshUpdate(true);
 

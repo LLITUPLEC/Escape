@@ -5,6 +5,8 @@
 1. Скопируйте файлы модулей в каталог **modules** вашего Nakama (часто `data/modules/` в Docker-образе):
    - `duel_keypad.lua` (RPC для PIN дверей),
    - `duel_online.lua` (онлайн-статус),
+   - `duel_leaderboard.lua` (таблица лидеров: RPC `duel_leaderboard_get`),
+   - `duel_leaderboard_scores.lua` (запись побед в Nakama Leaderboards, подключается из `duel_match3.lua`),
    - `duel_session.lua` (single-session по e-mail: эпоха сессии + уведомление при входе с другого устройства),
    - `duel_match3.lua` (server-authoritative Match3; проверка `session_epoch` для мутаций встроена в этот файл, отдельный `require` не нужен),
    - `duel_relay.lua` (authoritative relay fallback),
@@ -23,7 +25,6 @@
 - сервер валидирует ход/ману/cd/очередность,
 - сервер считает всё поле/каскады/урон,
 - сервер рассылает итоговое состояние (`op=10`) и game over (`op=11`).
-
 Для PVE (боты) доступны RPC:
 - `duel_match3_pve_catalog_get` — возвращает список этажей шахты (1..12), барьеры и текущую прогрессию.
 - `duel_match3_pve_create` с payload `{"bot_id":"mine_1","floor":1,"difficulty":"easy"}` — создаёт authoritative PVE-матч и возвращает `match_id`.
@@ -49,6 +50,39 @@
 Серверная статистика Match3 (по `ctx.user_id`) также доступна через RPC:
 - `duel_match3_stats_get` → `{ ok, played, wins, losses }`
 - `duel_match3_stats_record` с payload `{"won":true|false}` → инкрементирует сыграно/победы/поражения.
+
+Таблица лидеров (главное меню):
+- `duel_leaderboard_get` с payload `{"period":"week","type":"tournament","view_id":"tournament_ore"}`
+  - `period`: `day` | `week` | `month` | `all`
+  - `type`: `tournament` | `duel` | `mine`
+  - `view_id`: `tournament_ore` | `tournament_gold` | `tournament_smith` | `duel_skirmish` | `duel_arena` | `mine_floor_1` … `mine_floor_12`
+  - ответ: `{ ok, entries[], self_entry, rewards[] }`
+  - `score` — число побед за выбранный период (authoritative leaderboard, `operator=incr`)
+  - периоды по МСК: день (`00:00–23:59:59`), неделя (пн–вс), месяц (1-е — последнее число), `all` — за всё время
+  - `duel_skirmish` — PvP Pro (`match3ProButton`, `pvp_pro=true`)
+  - `duel_arena` — классическая 1v1 дуэль (`match3Button`)
+  - победы пишутся в `duel_match3_achievements.lua` → `duel_leaderboard_scores.lua`
+
+**Очистка тестовых лидербордов** (если dashboard не удаляет ID с `%` — Bad Request):
+
+1. **PowerShell (рекомендуется):** `Server/nakama/tools/purge_leaderboards.ps1`
+   - только битые: `.\purge_leaderboards.ps1 -ConsolePassword "..."` 
+   - все `lb_*`: `.\purge_leaderboards.ps1 -AllLb -BrokenOnly:$false -ConsolePassword "..."`
+   - Dashboard шлёт DELETE без URL-encoding `%`; скрипт кодирует ID (`%` → `%25`).
+
+2. **Console API вручную** (порт обычно `7351`):
+   ```text
+   DELETE /v2/console/leaderboard/lb_duel_skirmish_w_%25GW%25V
+   Authorization: Bearer <console token>
+   ```
+
+3. **RPC (временно):** положить `duel_leaderboard_admin_purge.lua` в modules, перезапустить Nakama, вызвать RPC `duel_leaderboard_admin_purge` с payload `{"mode":"broken"}` или `{"mode":"all_lb"}`, затем файл удалить.
+
+4. **PostgreSQL** (Docker): только если API недоступен — сначала записи, потом лидерборд:
+   ```sql
+   DELETE FROM leaderboard_record WHERE leaderboard_id LIKE '%\%GW\%V' ESCAPE '\';
+   DELETE FROM leaderboard WHERE id LIKE '%\%GW\%V' ESCAPE '\';
+   ```
 
 
 

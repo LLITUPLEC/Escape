@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -562,6 +563,7 @@ namespace Project.Achievements
 
         private async void Show()
         {
+            MainMenuHudLayering.BringPanelToFront(transform);
             await AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
             RefreshGrid(_currentTab);
             RefreshClaimBadges();

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ingot_purple
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: ingot_purple
-  displayName: ingot_purple
+  displayName: "\u0424\u0438\u043E\u043B\u0435\u0442\u043E\u0432\u044B\u0439 \u0441\u043B\u0438\u0442\u043E\u043A"
   kind: 1
   maxStack: 100
   tier: 1

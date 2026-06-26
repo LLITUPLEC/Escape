@@ -106,6 +106,7 @@ namespace Project.UI
             EnsureMatch3StatsToggleButton();
             EnsureMainMenuNavigationButtons();
             ApplySafeAreaClamp();
+            MainMenuHudLayering.NormalizeHudOverlayOrder(ResolveMainMenuHudLayoutRoot());
         }
 
 #if UNITY_EDITOR
@@ -127,6 +128,7 @@ namespace Project.UI
             EnsureMainMenuNavigationButtons();
             TryInstallEnergyHeaderPurchase();
             ApplySafeAreaClamp();
+            MainMenuHudLayering.NormalizeHudOverlayOrder(ResolveMainMenuHudLayoutRoot());
         }
 
         private void OnDisable()

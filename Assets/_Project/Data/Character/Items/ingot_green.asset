@@ -13,13 +13,18 @@ MonoBehaviour:
   m_Name: ingot_green
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: ingot_green
-  displayName: ingot_green
+  displayName: "\u0417\u0435\u043B\u0451\u043D\u044B\u0439 \u0441\u043B\u0438\u0442\u043E\u043A"
   kind: 1
   maxStack: 100
   tier: 1
   quality: 0
   recipeTargetSlot: 0
   craftRecipeId: 
+  craftOre: 0
+  craftGold: 0
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 0
   icon: {fileID: 21300000, guid: 3f9110e28a7a4c44d80ba02c2b0f0960, type: 3}
   equippable: 0
   slot: 0
