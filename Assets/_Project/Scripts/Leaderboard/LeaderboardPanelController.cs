@@ -303,6 +303,11 @@ namespace Project.Leaderboard
             cg.alpha = muted ? inactiveTabAlpha : 1f;
             cg.blocksRaycasts = true;
             cg.interactable = true;
+
+            var neon = t.GetComponent<UiNeonPulseOutline>();
+            if (neon == null)
+                neon = t.gameObject.AddComponent<UiNeonPulseOutline>();
+            neon.SetHighlight(!muted);
         }
 
         private void TryBindOpenButton()
