@@ -59,7 +59,9 @@ namespace Project.UI
         private const string RpcMineSummon = "duel_mine_summon";
         private const string RpcMineAffixReroll = "duel_mine_affix_reroll";
         private const string RpcMineBarrierUnlock = "duel_mine_barrier_unlock";
+        private const string RpcMineSetDifficulty = "duel_mine_set_difficulty";
         private const string MineCatalogCacheKey = "nakama.cache.mine_catalog_pve_v1";
+        private const string DifficultyTabsRootName = "DifficultyTabs";
         private const int SummonEnergyCost = 5;
         private const int SummonGoldCost = 50;
         private const float CountdownTickSeconds = 1f;
@@ -91,6 +93,15 @@ namespace Project.UI
         private readonly Dictionary<int, PveBotInfo> _botByFloor = new();
         private readonly Dictionary<int, MineFloorInfo> _mineByFloor = new();
         private string _difficulty = "easy";
+        private int _unlockedEasy = 1;
+        private int _unlockedMedium;
+        private int _unlockedHard;
+        private bool _setDifficultyInFlight;
+        private Transform _difficultyTabsRoot;
+        private readonly Dictionary<string, Button> _difficultyButtons = new();
+        private readonly Dictionary<string, UiNeonPulseOutline> _difficultyNeon = new();
+        private readonly Dictionary<string, CanvasGroup> _difficultyCanvasGroups = new();
+        private readonly Dictionary<string, Text> _difficultyLabels = new();
         private CancellationTokenSource _cts;
         private ScrollRect _cardsScroll;
 
@@ -175,7 +186,7 @@ namespace Project.UI
             [9] = new BarrierRequirement { ore = 10500, gold = 14000 },
             [10] = new BarrierRequirement { ore = 14000, gold = 17000 },
             [11] = new BarrierRequirement { ore = 18200, gold = 22000 },
-            [12] = new BarrierRequirement { ore = 23800, matter = 700, gold = 35000 },
+            [12] = new BarrierRequirement { ore = 23800, matter = 300, gold = 35000 },
         };
 
         /// <summary>Не-боссы: этажи 1,2,3,5,6,7,9,11 (10 без дропа — пересечение с босс-этажами). См. duel_match3.lua MINE_RECIPE_DROP_FLOORS.</summary>
@@ -295,6 +306,7 @@ namespace Project.UI
             CacheRows();
             EnsureModal();
             EnsureSummonConfirmDialog();
+            EnsureDifficultyTabs();
             EnsureHeaderResources();
             TryApplyCachedMineCatalogSnapshot();
         }
@@ -323,6 +335,7 @@ namespace Project.UI
             _summonInFlight = false;
             _rerollInFlight = false;
             _unlockInFlight = false;
+            _setDifficultyInFlight = false;
             _countdownAccumulator = 0f;
             _serverRefreshAccumulator = 0f;
             _resourcesRefreshAccumulator = 0f;
@@ -453,9 +466,48 @@ namespace Project.UI
                 _difficulty = model.progression != null && model.progression.mine != null ? model.progression.mine.current_difficulty : "easy";
             if (string.IsNullOrWhiteSpace(_difficulty))
                 _difficulty = "easy";
+            ApplyUnlockedFromCatalog(model);
 
             ApplyRows();
+            ApplyDifficultyTabVisuals();
             ApplyResourcesFallbackFromProgression();
+        }
+
+        private void ApplyUnlockedFromCatalog(MineCatalogResponse model)
+        {
+            if (model == null)
+                return;
+            if (model.mine_unlocked != null)
+            {
+                _unlockedEasy = Mathf.Max(1, model.mine_unlocked.easy);
+                _unlockedMedium = Mathf.Max(0, model.mine_unlocked.medium);
+                _unlockedHard = Mathf.Max(0, model.mine_unlocked.hard);
+                return;
+            }
+
+            ApplyUnlockedFromProgression(model.progression);
+        }
+
+        private void ApplyUnlockedFromProgression(ProgressionInfo progression)
+        {
+            _unlockedEasy = 1;
+            _unlockedMedium = 0;
+            _unlockedHard = 0;
+            var unlocked = progression != null && progression.mine != null ? progression.mine.unlocked : null;
+            if (unlocked == null)
+                return;
+            _unlockedEasy = Mathf.Max(1, unlocked.easy);
+            _unlockedMedium = Mathf.Max(0, unlocked.medium);
+            _unlockedHard = Mathf.Max(0, unlocked.hard);
+        }
+
+        private bool IsDifficultyUnlocked(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return _unlockedMedium >= 1;
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return _unlockedHard >= 1;
+            return true;
         }
 
         private void CacheRows()
@@ -1121,7 +1173,7 @@ namespace Project.UI
                 _modalTitle.text = $"Барьер этажа {floor}";
                 if (_modalBarrierInfo != null)
                     _modalBarrierInfo.text = BuildBarrierInfoText(floor, req);
-                PopulateBarrierRequirements(req);
+                PopulateBarrierRequirements(floor, req);
                 _modalCanUnlock = req != null;
                 _modalCanSummon = false;
                 ApplyModalFooterBarrierLayout(barrierMode: true);
@@ -1422,7 +1474,7 @@ namespace Project.UI
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(440f, 54f);
+            rt.sizeDelta = new Vector2(720f, 72f);
             var img = root.GetComponent<Image>();
             img.color = new Color(0.1f, 0.11f, 0.15f, 0.96f);
             img.raycastTarget = false;
@@ -1436,11 +1488,16 @@ namespace Project.UI
 
         private void ShowInsufficientResourcesToast()
         {
+            ShowMineToast("Недостаточно ресурсов");
+        }
+
+        private void ShowMineToast(string message)
+        {
             EnsureInsufficientResourcesToast();
             if (_insufficientResourcesToastRoot == null)
                 return;
             if (_insufficientResourcesToastText != null)
-                _insufficientResourcesToastText.text = "Недостаточно ресурсов";
+                _insufficientResourcesToastText.text = string.IsNullOrWhiteSpace(message) ? "—" : message;
             _insufficientResourcesToastRoot.transform.SetAsLastSibling();
             _insufficientResourcesToastRoot.SetActive(true);
             if (_insufficientResourcesToastRoutine != null)
@@ -1564,6 +1621,8 @@ namespace Project.UI
                     return $"Нужен уровень {response.required_level}.";
                 case "prev_floor_locked":
                     return "Сначала разбейте барьер на предыдущем этаже.";
+                case "prev_monster_not_defeated":
+                    return $"Сначала победите монстра на этаже {Mathf.Max(1, response.required_prev_floor)}.";
                 case "not_enough_ore":
                     return $"Не хватает руды: нужно {response.required}, есть {response.ore}.";
                 case "not_enough_gold":
@@ -1805,6 +1864,310 @@ namespace Project.UI
         }
 #endif
 
+        private void EnsureDifficultyTabs()
+        {
+            if (_difficultyTabsRoot != null)
+                return;
+
+            var existing = GameObject.Find(DifficultyTabsRootName);
+            if (existing != null)
+            {
+                _difficultyTabsRoot = existing.transform;
+                CacheDifficultyTabRefs(_difficultyTabsRoot);
+                if (_difficultyButtons.Count == 3)
+                {
+                    WireDifficultyTabButtons();
+                    ApplyDifficultyTabVisuals();
+                    return;
+                }
+            }
+
+            var bg = GameObject.Find("MineBackground");
+            var parent = bg != null ? bg.transform : FindFirstObjectByType<Canvas>()?.transform;
+            if (parent == null)
+                return;
+
+            ShrinkMineContentForDifficultyTabs();
+
+            var rootGo = new GameObject(DifficultyTabsRootName, typeof(RectTransform));
+            var rootRt = rootGo.GetComponent<RectTransform>();
+            rootRt.SetParent(parent, false);
+            rootRt.anchorMin = new Vector2(0.20f, 0.885f);
+            rootRt.anchorMax = new Vector2(0.96f, 0.945f);
+            rootRt.offsetMin = Vector2.zero;
+            rootRt.offsetMax = Vector2.zero;
+            var hl = rootGo.AddComponent<HorizontalLayoutGroup>();
+            hl.spacing = 10f;
+            hl.padding = new RectOffset(4, 4, 2, 2);
+            hl.childAlignment = TextAnchor.MiddleCenter;
+            hl.childControlHeight = true;
+            hl.childControlWidth = true;
+            hl.childForceExpandHeight = true;
+            hl.childForceExpandWidth = true;
+
+            CreateDifficultyTabButton(rootRt, "easy", "ЛЁГКАЯ");
+            CreateDifficultyTabButton(rootRt, "medium", "СРЕДНЯЯ");
+            CreateDifficultyTabButton(rootRt, "hard", "ТЯЖЁЛАЯ");
+
+            _difficultyTabsRoot = rootRt;
+            WireDifficultyTabButtons();
+            ApplyDifficultyTabVisuals();
+
+            var title = GameObject.Find("Title");
+            if (title != null)
+            {
+                var titleRt = title.GetComponent<RectTransform>();
+                if (titleRt != null)
+                {
+                    titleRt.anchorMin = new Vector2(0.34f, 0.945f);
+                    titleRt.anchorMax = new Vector2(0.80f, 0.985f);
+                }
+            }
+        }
+
+        private static void ShrinkMineContentForDifficultyTabs()
+        {
+            SetRectAnchorMaxY(GameObject.Find("CardsScrollView"), 0.875f);
+            SetRectAnchorMaxY(GameObject.Find("FloorLift"), 0.875f);
+        }
+
+        private static void SetRectAnchorMaxY(GameObject go, float maxY)
+        {
+            if (go == null)
+                return;
+            var rt = go.GetComponent<RectTransform>();
+            if (rt == null)
+                return;
+            var max = rt.anchorMax;
+            max.y = maxY;
+            rt.anchorMax = max;
+        }
+
+        private void CreateDifficultyTabButton(Transform parent, string difficultyId, string label)
+        {
+            var go = new GameObject("Diff_" + difficultyId, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(CanvasGroup));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.14f, 0.16f, 0.20f, 0.98f);
+            var le = go.GetComponent<LayoutElement>();
+            le.flexibleWidth = 1f;
+            le.minHeight = 40f;
+            le.preferredHeight = 44f;
+
+            var txt = CreateText(rt, "Label", label, 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            txt.color = Color.white;
+            txt.fontStyle = FontStyle.Bold;
+
+            var neon = go.AddComponent<UiNeonPulseOutline>();
+            neon.SetHighlight(false);
+
+            _difficultyButtons[difficultyId] = go.GetComponent<Button>();
+            _difficultyNeon[difficultyId] = neon;
+            _difficultyCanvasGroups[difficultyId] = go.GetComponent<CanvasGroup>();
+            _difficultyLabels[difficultyId] = txt;
+        }
+
+        private void CacheDifficultyTabRefs(Transform root)
+        {
+            _difficultyButtons.Clear();
+            _difficultyNeon.Clear();
+            _difficultyCanvasGroups.Clear();
+            _difficultyLabels.Clear();
+            if (root == null)
+                return;
+
+            CacheOneDifficultyTab(root, "easy");
+            CacheOneDifficultyTab(root, "medium");
+            CacheOneDifficultyTab(root, "hard");
+        }
+
+        private void CacheOneDifficultyTab(Transform root, string difficultyId)
+        {
+            var tr = root.Find("Diff_" + difficultyId);
+            if (tr == null)
+                return;
+            var btn = tr.GetComponent<Button>();
+            if (btn == null)
+                return;
+            _difficultyButtons[difficultyId] = btn;
+            var neon = tr.GetComponent<UiNeonPulseOutline>() ?? tr.gameObject.AddComponent<UiNeonPulseOutline>();
+            _difficultyNeon[difficultyId] = neon;
+            var cg = tr.GetComponent<CanvasGroup>() ?? tr.gameObject.AddComponent<CanvasGroup>();
+            _difficultyCanvasGroups[difficultyId] = cg;
+            _difficultyLabels[difficultyId] = FindTextByName(tr, "Label");
+        }
+
+        private void WireDifficultyTabButtons()
+        {
+            foreach (var kv in _difficultyButtons)
+            {
+                var diff = kv.Key;
+                var btn = kv.Value;
+                if (btn == null)
+                    continue;
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => OnDifficultyTabClicked(diff));
+            }
+        }
+
+        private void OnDifficultyTabClicked(string difficulty)
+        {
+            if (string.IsNullOrWhiteSpace(difficulty))
+                return;
+            if (string.Equals(difficulty, _difficulty, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (!IsDifficultyUnlocked(difficulty))
+            {
+                ShowMineToast(DescribeDifficultyLocked(difficulty));
+                return;
+            }
+
+            _ = SetDifficultyAsync(difficulty);
+        }
+
+        private static string DescribeDifficultyLocked(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return "Средняя шахта откроется после победы над боссом 12 этажа на Лёгкой.";
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return "Тяжёлая шахта откроется после победы над боссом 12 этажа на Средней.";
+            return "Сложность пока закрыта.";
+        }
+
+        private async Task SetDifficultyAsync(string difficulty)
+        {
+            if (_setDifficultyInFlight || _cts == null || _cts.IsCancellationRequested)
+                return;
+            if (NakamaBootstrap.Instance == null)
+                return;
+
+            _setDifficultyInFlight = true;
+            SetDifficultyButtonsInteractable(false);
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var request = new SetDifficultyRequest
+                {
+                    difficulty = difficulty,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch()
+                };
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcMineSetDifficulty, JsonUtility.ToJson(request), canceller: _cts.Token);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrWhiteSpace(payload))
+                    return;
+
+                var model = JsonUtility.FromJson<SetDifficultyResponse>(payload);
+                if (model == null)
+                    return;
+
+                if (!model.ok)
+                {
+                    if (string.Equals(model.err, "difficulty_locked", StringComparison.OrdinalIgnoreCase))
+                        ShowMineToast(DescribeDifficultyLocked(difficulty));
+                    else
+                        ShowMineToast("Не удалось сменить сложность шахты.");
+                    if (model.progression != null)
+                        ApplyUnlockedFromProgression(model.progression);
+                    ApplyDifficultyTabVisuals();
+                    return;
+                }
+
+                _difficulty = string.IsNullOrWhiteSpace(model.difficulty) ? difficulty : model.difficulty;
+                if (model.unlocked != null)
+                {
+                    _unlockedEasy = Mathf.Max(1, model.unlocked.easy);
+                    _unlockedMedium = Mathf.Max(0, model.unlocked.medium);
+                    _unlockedHard = Mathf.Max(0, model.unlocked.hard);
+                }
+                else if (model.progression != null)
+                {
+                    ApplyUnlockedFromProgression(model.progression);
+                }
+
+                if (model.progression != null)
+                    _progression = model.progression;
+
+                CloseMonsterModal();
+                await RefreshAsync(_cts.Token);
+                await RefreshResourcesAsync(_cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MineScene] SetDifficulty failed: " + e.Message);
+                ShowMineToast("Не удалось сменить сложность шахты.");
+            }
+            finally
+            {
+                _setDifficultyInFlight = false;
+                SetDifficultyButtonsInteractable(true);
+                ApplyDifficultyTabVisuals();
+            }
+        }
+
+        private void SetDifficultyButtonsInteractable(bool interactable)
+        {
+            foreach (var kv in _difficultyButtons)
+            {
+                if (kv.Value != null)
+                    kv.Value.interactable = interactable;
+            }
+        }
+
+        private void ApplyDifficultyTabVisuals()
+        {
+            if (_difficultyButtons.Count == 0)
+                return;
+
+            ApplyOneDifficultyTabVisual("easy", "ЛЁГКАЯ");
+            ApplyOneDifficultyTabVisual("medium", "СРЕДНЯЯ");
+            ApplyOneDifficultyTabVisual("hard", "ТЯЖЁЛАЯ");
+        }
+
+        private void ApplyOneDifficultyTabVisual(string difficultyId, string baseLabel)
+        {
+            var selected = string.Equals(_difficulty, difficultyId, StringComparison.OrdinalIgnoreCase);
+            var unlocked = IsDifficultyUnlocked(difficultyId);
+
+            if (_difficultyNeon.TryGetValue(difficultyId, out var neon) && neon != null)
+                neon.SetHighlight(selected);
+
+            if (_difficultyCanvasGroups.TryGetValue(difficultyId, out var cg) && cg != null)
+            {
+                cg.alpha = unlocked ? (selected ? 1f : 0.72f) : 0.38f;
+                cg.blocksRaycasts = true;
+                cg.interactable = true;
+            }
+
+            if (_difficultyLabels.TryGetValue(difficultyId, out var label) && label != null)
+            {
+                label.text = unlocked ? baseLabel : (baseLabel + " ·");
+                label.color = selected
+                    ? new Color(0.55f, 1f, 0.55f, 1f)
+                    : (unlocked ? Color.white : new Color(0.75f, 0.75f, 0.78f, 1f));
+            }
+
+            if (_difficultyButtons.TryGetValue(difficultyId, out var btn) && btn != null)
+            {
+                var img = btn.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = selected
+                        ? new Color(0.12f, 0.28f, 0.14f, 0.98f)
+                        : new Color(0.14f, 0.16f, 0.20f, 0.98f);
+                }
+            }
+        }
+
         private static Transform FindHeaderResourcesRoot()
         {
             var go = GameObject.Find("HeaderResources");
@@ -1901,20 +2264,50 @@ namespace Project.UI
             return (safe / 1000000f).ToString("0.#") + "M";
         }
 
+        private static int BarrierCostMultiplier(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return 3;
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return 5;
+            return 1;
+        }
+
         private BarrierRequirement GetBarrierRequirement(int floor)
         {
-            BarrierRequirements.TryGetValue(Mathf.Clamp(floor, 1, 12), out var req);
-            return req;
+            if (!BarrierRequirements.TryGetValue(Mathf.Clamp(floor, 1, 12), out var baseReq) || baseReq == null)
+                return null;
+
+            var mul = BarrierCostMultiplier(_difficulty);
+            return new BarrierRequirement
+            {
+                level = baseReq.level,
+                ore = baseReq.ore * mul,
+                gold = baseReq.gold * mul,
+                matter = baseReq.matter * mul,
+                key_id = baseReq.key_id,
+                key_amount = baseReq.key_amount,
+            };
+        }
+
+        private bool IsPrevMonsterDefeatedForBarrier(int barrierFloor)
+        {
+            if (barrierFloor <= 1)
+                return true;
+            return _mineByFloor.TryGetValue(barrierFloor - 1, out var prev) && prev != null && prev.wins > 0;
         }
 
         private string BuildBarrierInfoText(int floor, BarrierRequirement req)
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Этаж {floor} закрыт барьером.");
+            var mul = BarrierCostMultiplier(_difficulty);
+            if (mul > 1)
+                sb.AppendLine($"Стоимость ×{mul} для текущей сложности шахты.");
             return sb.ToString();
         }
 
-        private void PopulateBarrierRequirements(BarrierRequirement req)
+        private void PopulateBarrierRequirements(int floor, BarrierRequirement req)
         {
             if (_modalBarrierRequirementsRoot == null)
                 return;
@@ -1935,6 +2328,18 @@ namespace Project.UI
             }
 
             var hasAny = false;
+            if (floor > 1)
+            {
+                var prevOk = IsPrevMonsterDefeatedForBarrier(floor);
+                entries.Add(new RewardEntry
+                {
+                    icon = null,
+                    text = prevOk ? $"Победа на этаже {floor - 1}: да" : $"Победа на этаже {floor - 1}: нет",
+                    color = GetEnoughColor(prevOk),
+                });
+                hasAny = true;
+            }
+
             if (req.level > 0)
             {
                 var haveLevel = Mathf.Max(0, _progression != null ? _progression.level : 0);
@@ -2870,6 +3275,7 @@ namespace Project.UI
             public MineFloorInfo[] mine_floors;
             public ProgressionInfo progression;
             public string mine_difficulty;
+            public MineUnlockedInfo mine_unlocked;
             public string err;
         }
 
@@ -2952,6 +3358,7 @@ namespace Project.UI
             public string err;
             public int required;
             public int required_level;
+            public int required_prev_floor;
             public int ore;
             public int gold;
             public int matter;
@@ -2963,6 +3370,32 @@ namespace Project.UI
         private sealed class MineInfo
         {
             public string current_difficulty;
+            public MineUnlockedInfo unlocked;
+        }
+
+        [Serializable]
+        private sealed class MineUnlockedInfo
+        {
+            public int easy;
+            public int medium;
+            public int hard;
+        }
+
+        [Serializable]
+        private sealed class SetDifficultyRequest
+        {
+            public string difficulty;
+            public long session_epoch;
+        }
+
+        [Serializable]
+        private sealed class SetDifficultyResponse
+        {
+            public bool ok;
+            public string err;
+            public string difficulty;
+            public MineUnlockedInfo unlocked;
+            public ProgressionInfo progression;
         }
 
         [Serializable]
@@ -2974,6 +3407,7 @@ namespace Project.UI
             public int respawn_left_seconds;
             public string affix;
             public bool is_boss;
+            public int wins;
         }
 
         [Serializable]

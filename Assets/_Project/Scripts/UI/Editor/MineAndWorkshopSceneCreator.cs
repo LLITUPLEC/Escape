@@ -53,10 +53,24 @@ namespace Project.UI.Editor
             var bg = CreatePanel(root, "MineBackground", new Color(0.10f, 0.10f, 0.14f, 0.95f),
                 new Vector2(0f, 0f), new Vector2(1f, 1f));
             CreateText(bg, "Title", "Шахта", 44, Color.white, TextAnchor.MiddleCenter,
-                new Vector2(0.34f, 0.90f), new Vector2(0.80f, 0.98f));
+                new Vector2(0.34f, 0.945f), new Vector2(0.80f, 0.985f));
+
+            var difficultyTabs = CreatePanel(bg, "DifficultyTabs", new Color(0f, 0f, 0f, 0f),
+                new Vector2(0.20f, 0.885f), new Vector2(0.96f, 0.945f));
+            var diffHl = difficultyTabs.gameObject.AddComponent<HorizontalLayoutGroup>();
+            diffHl.spacing = 10f;
+            diffHl.padding = new RectOffset(4, 4, 2, 2);
+            diffHl.childAlignment = TextAnchor.MiddleCenter;
+            diffHl.childControlHeight = true;
+            diffHl.childControlWidth = true;
+            diffHl.childForceExpandHeight = true;
+            diffHl.childForceExpandWidth = true;
+            CreateDifficultyTab(difficultyTabs, "easy", "ЛЁГКАЯ");
+            CreateDifficultyTab(difficultyTabs, "medium", "СРЕДНЯЯ");
+            CreateDifficultyTab(difficultyTabs, "hard", "ТЯЖЁЛАЯ");
 
             var liftPanel = CreatePanel(bg, "FloorLift", new Color(0.06f, 0.06f, 0.09f, 0.95f),
-                new Vector2(0.03f, 0.12f), new Vector2(0.17f, 0.88f));
+                new Vector2(0.03f, 0.12f), new Vector2(0.17f, 0.875f));
             var liftLayout = liftPanel.gameObject.AddComponent<VerticalLayoutGroup>();
             liftLayout.padding = new RectOffset(8, 8, 8, 8);
             liftLayout.spacing = 6f;
@@ -67,7 +81,7 @@ namespace Project.UI.Editor
             liftLayout.childForceExpandWidth = true;
 
             var scrollRoot = CreatePanel(bg, "CardsScrollView", new Color(0.05f, 0.05f, 0.08f, 0.88f),
-                new Vector2(0.20f, 0.12f), new Vector2(0.96f, 0.88f));
+                new Vector2(0.20f, 0.12f), new Vector2(0.96f, 0.875f));
             var scrollRect = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scrollRect.horizontal = false;
             scrollRect.vertical = true;
@@ -324,6 +338,19 @@ namespace Project.UI.Editor
             CreateText(go.transform, "Label", label, 18, textColor, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
 
             return go.GetComponent<Button>();
+        }
+
+        private static void CreateDifficultyTab(Transform parent, string difficultyId, string label)
+        {
+            var go = new GameObject("Diff_" + difficultyId, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement), typeof(CanvasGroup));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<Image>().color = new Color(0.14f, 0.16f, 0.20f, 0.98f);
+            var le = go.GetComponent<LayoutElement>();
+            le.flexibleWidth = 1f;
+            le.minHeight = 40f;
+            le.preferredHeight = 44f;
+            CreateText(go.transform, "Label", label, 20, Color.white, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
+            go.AddComponent<UiNeonPulseOutline>();
         }
 
         private static void CreateSceneLoadButton(Transform parent, string name, string label, string sceneName, Color color, Vector2 aMin, Vector2 aMax)

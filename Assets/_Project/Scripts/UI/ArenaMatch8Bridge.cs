@@ -666,7 +666,8 @@ namespace Project.UI
 
         public async void OnPickBetFixed()
         {
-            await QueueJoinAsync("fixed");
+            // Legacy entry: базовая ставка турнира руды.
+            await QueueJoinAsync("500");
         }
 
         private async Task QueueJoinAsync(string tier)
@@ -854,7 +855,7 @@ namespace Project.UI
             var prect = panel.AddComponent<RectTransform>();
             prect.anchorMin = new Vector2(0.5f, 0.5f);
             prect.anchorMax = new Vector2(0.5f, 0.5f);
-            prect.sizeDelta = new Vector2(780f, 540f);
+            prect.sizeDelta = new Vector2(780f, 560f);
 
             var panelBg = panel.AddComponent<Image>();
             panelBg.color = new Color(0.08f, 0.12f, 0.2f, 0.96f);
@@ -905,15 +906,13 @@ namespace Project.UI
 
             if (k == ArenaKindOre)
             {
-                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_top");
-                MakeFixedBetRow(_modalPanel, "500 руды", "2500 руды", iconOre);
-                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_bottom");
+                MakeFixedBetRow(_modalPanel, "500", "500 руды", "2500 руды", iconOre);
+                MakeFixedBetRow(_modalPanel, "2000", "2000 руды", "10000 руды", iconOre);
             }
             else if (k == ArenaKindGold)
             {
-                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_top");
-                MakeFixedBetRow(_modalPanel, "600 золота", "3000 золота", iconGold);
-                MakeFlexibleSpacerRow(_modalPanel, "Row_spacer_bottom");
+                MakeFixedBetRow(_modalPanel, "600", "600 золота", "3000 золота", iconGold);
+                MakeFixedBetRow(_modalPanel, "2400", "2400 золота", "12000 золота", iconGold);
             }
             else
             {
@@ -936,9 +935,10 @@ namespace Project.UI
             le.preferredHeight = 0f;
         }
 
-        private void MakeFixedBetRow(Transform parent, string cost, string prize, Sprite icon)
+        private void MakeFixedBetRow(Transform parent, string betTier, string cost, string prize, Sprite icon)
         {
-            var row = new GameObject("Row_fixed");
+            var tier = string.IsNullOrWhiteSpace(betTier) ? "500" : betTier.Trim();
+            var row = new GameObject("Row_fixed_" + tier);
             row.transform.SetParent(parent, false);
             if (_modalCloseButtonTr != null)
                 row.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
@@ -991,7 +991,7 @@ namespace Project.UI
 
             var btn = row.AddComponent<Button>();
             btn.targetGraphic = rowImg;
-            btn.onClick.AddListener(OnPickBetFixed);
+            btn.onClick.AddListener(() => _ = QueueJoinAsync(tier));
         }
 
         private void EnsureToastBuilt()

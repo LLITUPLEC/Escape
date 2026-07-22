@@ -23,10 +23,19 @@ return function(deps)
 local ARENA_QUEUE_MAX = 8
 local ARENA_COUNTDOWN_SEC = 20
 local ARENA_QUEUE_BET_INGOTS = 50
-local ARENA_ORE_BET = 500
-local ARENA_ORE_PRIZE = 2500
-local ARENA_GOLD_BET = 600
-local ARENA_GOLD_PRIZE = 3000
+
+-- Турнир руды / золота: несколько ставок (очередь лочится на выбран bet_tier, как у кузнеца).
+-- Ключ "fixed" — legacy-совместимость со старым клиентом (мапится на базовую ставку).
+local ARENA_ORE_TIERS = {
+  ["500"] = { bet = 500, prize = 2500 },
+  ["fixed"] = { bet = 500, prize = 2500 },
+  ["2000"] = { bet = 2000, prize = 10000 },
+}
+local ARENA_GOLD_TIERS = {
+  ["600"] = { bet = 600, prize = 3000 },
+  ["fixed"] = { bet = 600, prize = 3000 },
+  ["2400"] = { bet = 2400, prize = 12000 },
+}
 
 local ARENA_KIND_SMITH = "smith" -- match3Arena (слитки)
 local ARENA_KIND_ORE = "ore"     -- match3Arena_Ore
@@ -39,6 +48,40 @@ local function normalize_kind(k)
   return ARENA_KIND_SMITH
 end
 
+local function normalize_resource_bet_tier(kind, bet)
+  local b = string.lower(tostring(bet or ""))
+  if kind == ARENA_KIND_ORE then
+    if ARENA_ORE_TIERS[b] == nil then
+      return "500"
+    end
+    if b == "fixed" then
+      return "500"
+    end
+    return b
+  end
+  if kind == ARENA_KIND_GOLD then
+    if ARENA_GOLD_TIERS[b] == nil then
+      return "600"
+    end
+    if b == "fixed" then
+      return "600"
+    end
+    return b
+  end
+  return b
+end
+
+local function resource_tier_cfg(kind, bet_tier)
+  local tier = normalize_resource_bet_tier(kind, bet_tier)
+  if kind == ARENA_KIND_ORE then
+    return ARENA_ORE_TIERS[tier] or ARENA_ORE_TIERS["500"], tier
+  end
+  if kind == ARENA_KIND_GOLD then
+    return ARENA_GOLD_TIERS[tier] or ARENA_GOLD_TIERS["600"], tier
+  end
+  return nil, tier
+end
+
 -- Persisted state (RPC and match loops can run in different Lua contexts).
 local STORAGE_COLL_TOURN = "arena_tournament"
 local STORAGE_COLL_USER_TID = "arena_user_tid"
@@ -48,8 +91,8 @@ local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
 local arena_runtime = {
   kinds = {
     [ARENA_KIND_SMITH] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
-    [ARENA_KIND_ORE] = { queue = {}, queue_bet_tier = "fixed", next_bot_at = 0, allow_bot_fill = true },
-    [ARENA_KIND_GOLD] = { queue = {}, queue_bet_tier = "fixed", next_bot_at = 0, allow_bot_fill = true },
+    [ARENA_KIND_ORE] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
+    [ARENA_KIND_GOLD] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
   },
   tournaments = {},
   -- user_tid[user_id] = { tid = "...", kind = "smith|ore|gold" }
@@ -413,11 +456,13 @@ end
 --- Награды финала турнира (золото/руда) — та же шкала, что в arena_grant_final_progress и в OP_GAME_OVER.
 local function final_prize_for_kind_and_bet(kind, bet_tier)
   local k = normalize_kind(kind)
-  if k == ARENA_KIND_ORE then
-    return 0, ARENA_ORE_PRIZE
-  end
-  if k == ARENA_KIND_GOLD then
-    return ARENA_GOLD_PRIZE, 0
+  if k == ARENA_KIND_ORE or k == ARENA_KIND_GOLD then
+    local cfg = resource_tier_cfg(k, bet_tier)
+    local prize = cfg ~= nil and (tonumber(cfg.prize) or 0) or 0
+    if k == ARENA_KIND_ORE then
+      return 0, prize
+    end
+    return prize, 0
   end
   local ore_g, gold_g = arena_final_prize_ore_gold(bet_tier)
   return tonumber(gold_g) or 0, tonumber(ore_g) or 0
@@ -819,7 +864,7 @@ local function arena_try_pop_queue_full(kind)
   for _ = 1, ARENA_QUEUE_MAX do
     table.remove(q, 1)
   end
-  ks.queue_bet_tier = (k == ARENA_KIND_SMITH) and "" or "fixed"
+  ks.queue_bet_tier = ""
   ks.next_bot_at = 0
   arena_start_tournament_from_entries(k, batch)
 end
@@ -844,7 +889,7 @@ local function arena_maybe_fill_bot(kind)
   end
   if not has_human then
     ks.queue = {}
-    ks.queue_bet_tier = (k == ARENA_KIND_SMITH) and "" or "fixed"
+    ks.queue_bet_tier = ""
     ks.next_bot_at = 0
     return
   end
@@ -980,7 +1025,11 @@ local function duel_arena_queue_join(ctx, payload)
         bet = "green"
       end
     else
-      bet = "fixed"
+      local cfg, normalized = resource_tier_cfg(k, bet)
+      if cfg == nil then
+        return nk.json_encode({ ok = false, err = "bad_bet_tier" })
+      end
+      bet = normalized
     end
     -- Disallow being in queue of another arena kind too (single active arena entry per user).
     for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
@@ -996,10 +1045,8 @@ local function duel_arena_queue_join(ctx, payload)
     if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "already_in_tournament" })
     end
-    if k == ARENA_KIND_SMITH then
-      if ks.queue_bet_tier ~= "" and ks.queue_bet_tier ~= bet then
-        return nk.json_encode({ ok = false, err = "bet_tier_mismatch" })
-      end
+    if ks.queue_bet_tier ~= "" and ks.queue_bet_tier ~= bet then
+      return nk.json_encode({ ok = false, err = "bet_tier_mismatch" })
     end
     local ingot_def = ""
     if k == ARENA_KIND_SMITH then
@@ -1011,21 +1058,26 @@ local function duel_arena_queue_join(ctx, payload)
       end
       write_character_sheet(user_id, sheet)
     else
+      local cfg = resource_tier_cfg(k, bet)
+      local need = cfg ~= nil and (tonumber(cfg.bet) or 0) or 0
+      if need <= 0 then
+        return nk.json_encode({ ok = false, err = "bad_bet_tier" })
+      end
       local max_retries = 5
       for attempt = 1, max_retries do
         local progress, version = read_pve_progress(user_id)
         local ore = tonumber(progress.ore) or 0
         local gold = tonumber(progress.gold) or 0
         if k == ARENA_KIND_ORE then
-          if ore < ARENA_ORE_BET then
-            return nk.json_encode({ ok = false, err = "not_enough_ore" })
+          if ore < need then
+            return nk.json_encode({ ok = false, err = "not_enough_ore", required = need, have = ore })
           end
-          progress.ore = math.max(0, ore - ARENA_ORE_BET)
+          progress.ore = math.max(0, ore - need)
         else
-          if gold < ARENA_GOLD_BET then
-            return nk.json_encode({ ok = false, err = "not_enough_gold" })
+          if gold < need then
+            return nk.json_encode({ ok = false, err = "not_enough_gold", required = need, have = gold })
           end
-          progress.gold = math.max(0, gold - ARENA_GOLD_BET)
+          progress.gold = math.max(0, gold - need)
         end
         local okw, erw = pcall(function()
           write_pve_progress(user_id, progress, version)
@@ -1052,7 +1104,7 @@ local function duel_arena_queue_join(ctx, payload)
       disp = "Игрок"
     end
 
-    if k == ARENA_KIND_SMITH and ks.queue_bet_tier == "" then
+    if ks.queue_bet_tier == "" then
       ks.queue_bet_tier = bet
     end
     ks.queue[#ks.queue + 1] = {
@@ -1140,29 +1192,33 @@ local function duel_arena_queue_leave(ctx, payload)
       inventory_try_add(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS)
       write_character_sheet(user_id, sheet)
     else
-      local max_retries = 5
-      for attempt = 1, max_retries do
-        local progress, version = read_pve_progress(user_id)
-        if rk == ARENA_KIND_ORE then
-          progress.ore = math.max(0, (tonumber(progress.ore) or 0) + ARENA_ORE_BET)
-        else
-          progress.gold = math.max(0, (tonumber(progress.gold) or 0) + ARENA_GOLD_BET)
-        end
-        local okw, erw = pcall(function()
-          write_pve_progress(user_id, progress, version)
-        end)
-        if okw then
-          break
-        end
-        local err_text = tostring(erw)
-        if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-          nk.logger_error("arena leave refund progress failed: " .. err_text)
-          return nk.json_encode({ ok = false, err = "server_error" })
+      local cfg = resource_tier_cfg(rk, removed_bet)
+      local refund = cfg ~= nil and (tonumber(cfg.bet) or 0) or 0
+      if refund > 0 then
+        local max_retries = 5
+        for attempt = 1, max_retries do
+          local progress, version = read_pve_progress(user_id)
+          if rk == ARENA_KIND_ORE then
+            progress.ore = math.max(0, (tonumber(progress.ore) or 0) + refund)
+          else
+            progress.gold = math.max(0, (tonumber(progress.gold) or 0) + refund)
+          end
+          local okw, erw = pcall(function()
+            write_pve_progress(user_id, progress, version)
+          end)
+          if okw then
+            break
+          end
+          local err_text = tostring(erw)
+          if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+            nk.logger_error("arena leave refund progress failed: " .. err_text)
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
         end
       end
     end
     if #rks.queue == 0 then
-      rks.queue_bet_tier = (rk == ARENA_KIND_SMITH) and "" or "fixed"
+      rks.queue_bet_tier = ""
       rks.next_bot_at = 0
     end
     return nk.json_encode({ ok = true, queue_count = #rks.queue, queue_max = ARENA_QUEUE_MAX })

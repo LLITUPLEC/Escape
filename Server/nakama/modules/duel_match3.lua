@@ -16,6 +16,8 @@ local CharStats = runtime_lua_require("modules.duel_match3_character_stats", "du
 local build_session_guard = runtime_lua_require("modules.duel_match3_session_guard", "duel_match3_session_guard")
 local Guard = build_session_guard({ nk = nk, CFG = CFG })
 local Pvp
+local MineBarriers
+local EconomyRpc
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -3587,6 +3589,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
     end)
 
     local unlocked_floor = get_unlocked_floor(progress, current_diff)
+    local unlocked_map = normalize_mine_unlocked(progress.mine and progress.mine.unlocked or nil, 1)
     local mine_floors = {}
     for _, b in ipairs(bots) do
       local floor = CFG.clamp_int(b.floor or 1, 1, CFG.PVE_MAX_LEVEL)
@@ -3600,6 +3603,7 @@ local function duel_match3_pve_catalog_get(ctx, payload)
         respawn_left_seconds = left,
         affix = fs and tostring(fs.last_affix or "") or random_affix_for_floor(floor),
         is_boss = b.is_boss == true,
+        wins = math.max(0, tonumber(fs and fs.wins or 0) or 0),
       }
     end
 
@@ -3609,7 +3613,9 @@ local function duel_match3_pve_catalog_get(ctx, payload)
       level_xp = CFG.LEVEL_XP,
       max_level = CFG.PVE_MAX_LEVEL,
       mine_difficulty = current_diff,
-      barrier_requirements = CFG.MINE_BARRIER_REQUIREMENTS,
+      mine_unlocked = unlocked_map,
+      barrier_cost_multiplier = MineBarriers.mine_barrier_cost_multiplier(current_diff),
+      barrier_requirements = MineBarriers.build_barrier_requirements_for_diff(current_diff),
       mine_floors = mine_floors,
       bots = bots,
     })
@@ -3617,700 +3623,6 @@ local function duel_match3_pve_catalog_get(ctx, payload)
 
   if not ok then
     nk.logger_error("duel_match3_pve_catalog_get: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_character_item_move(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local op = tostring(p.op or "")
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    local defs = get_merged_item_defs()
-
-    local function json_fail(err)
-      return nk.json_encode({ ok = false, err = err })
-    end
-
-    if op == "inv_to_equip" then
-      local inv_index = tonumber(p.inv_index)
-      local slot_index = tonumber(p.slot_index)
-      if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
-      inv_index = math.floor(inv_index)
-      slot_index = math.floor(slot_index)
-      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
-      if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
-      local i = inv_index + 1
-      local s = slot_index + 1
-      local item = sheet.inventory[i]
-      local cnt = tonumber(sheet.inventory_counts[i]) or 0
-      if item == nil or item == "" or cnt < 1 then return json_fail("empty_source") end
-      local def = defs[item]
-      if def == nil then return json_fail("unknown_item") end
-      if not item_def_is_equipment(def) then return json_fail("not_equipment") end
-      if def.slot ~= EQUIP_ORDER[s] then return json_fail("wrong_slot") end
-      local cur = sheet.equipment[s] or ""
-      sheet.inventory[i] = cur
-      if cur ~= nil and cur ~= "" then
-        sheet.inventory_counts[i] = 1
-      else
-        sheet.inventory_counts[i] = 0
-      end
-      sheet.equipment[s] = item
-    elseif op == "equip_to_inv" then
-      local slot_index = tonumber(p.slot_index)
-      local inv_index = tonumber(p.inv_index)
-      if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
-      inv_index = math.floor(inv_index)
-      slot_index = math.floor(slot_index)
-      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
-      if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
-      local i = inv_index + 1
-      local s = slot_index + 1
-      local item = sheet.equipment[s]
-      if item == nil or item == "" then return json_fail("empty_source") end
-      local cur_inv = sheet.inventory[i] or ""
-      if cur_inv == "" then
-        sheet.equipment[s] = ""
-        sheet.inventory[i] = item
-        sheet.inventory_counts[i] = 1
-      else
-        local def_inv = defs[cur_inv]
-        if def_inv == nil then return json_fail("unknown_item") end
-        if not item_def_is_equipment(def_inv) then return json_fail("cannot_swap") end
-        if def_inv.slot ~= EQUIP_ORDER[s] then return json_fail("cannot_swap") end
-        sheet.equipment[s] = cur_inv
-        sheet.inventory[i] = item
-        sheet.inventory_counts[i] = 1
-      end
-    elseif op == "inv_swap" then
-      local a = tonumber(p.inv_a)
-      local b = tonumber(p.inv_b)
-      if a == nil or b == nil then return json_fail("bad_indices") end
-      a = math.floor(a)
-      b = math.floor(b)
-      if a < 0 or a > 24 or b < 0 or b > 24 then return json_fail("bad_inv_index") end
-      if a ~= b then
-        local ia, ib = a + 1, b + 1
-        sheet.inventory[ia], sheet.inventory[ib] = sheet.inventory[ib], sheet.inventory[ia]
-        local ca = tonumber(sheet.inventory_counts[ia]) or 0
-        local cb = tonumber(sheet.inventory_counts[ib]) or 0
-        sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
-      end
-    elseif op == "equip_swap" then
-      local a = tonumber(p.slot_a)
-      local b = tonumber(p.slot_b)
-      if a == nil or b == nil then return json_fail("bad_indices") end
-      a = math.floor(a)
-      b = math.floor(b)
-      if a < 0 or a > 7 or b < 0 or b > 7 then return json_fail("bad_slot_index") end
-      if a ~= b then
-        local sa, sb = a + 1, b + 1
-        sheet.equipment[sa], sheet.equipment[sb] = sheet.equipment[sb], sheet.equipment[sa]
-      end
-    else
-      return json_fail("unknown_op")
-    end
-
-    write_character_sheet(user_id, sheet)
-
-    local progress = read_pve_progress(user_id)
-    return encode_character_ok_response(sheet, progress, user_id)
-  end)
-
-  if not ok then
-    nk.logger_error("duel_character_item_move: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_character_get(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local progress = read_pve_progress(user_id)
-    local sheet = read_character_sheet(user_id)
-    return encode_character_ok_response(sheet, progress, user_id)
-  end)
-
-  if not ok then
-    nk.logger_error("duel_character_get: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_character_recipe_learn(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local inv_index = tonumber(p.inv_index)
-    if inv_index == nil then
-      return nk.json_encode({ ok = false, err = "bad_indices" })
-    end
-    inv_index = math.floor(inv_index)
-    if inv_index < 0 or inv_index > 24 then
-      return nk.json_encode({ ok = false, err = "bad_inv_index" })
-    end
-
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    local defs = get_merged_item_defs()
-    local i = inv_index + 1
-    local item_id = sheet.inventory[i] or ""
-    local cnt = tonumber(sheet.inventory_counts[i]) or 0
-    if item_id == "" or cnt < 1 then
-      return nk.json_encode({ ok = false, err = "empty_source" })
-    end
-
-    local def = defs[item_id]
-    if def == nil then
-      return nk.json_encode({ ok = false, err = "unknown_item" })
-    end
-    if not item_def_is_recipe(def) then
-      return nk.json_encode({ ok = false, err = "not_recipe" })
-    end
-
-    local lr = sheet.learned_recipes or {}
-    for j = 1, #lr do
-      if lr[j] == item_id then
-        return nk.json_encode({ ok = false, err = "already_learned" })
-      end
-    end
-
-    cnt = cnt - 1
-    if cnt <= 0 then
-      sheet.inventory[i] = ""
-      sheet.inventory_counts[i] = 0
-    else
-      sheet.inventory_counts[i] = cnt
-    end
-
-    lr[#lr + 1] = item_id
-    sheet.learned_recipes = lr
-    write_character_sheet(user_id, sheet)
-
-    local progress = read_pve_progress(user_id)
-    return encode_character_ok_response(sheet, progress, user_id)
-  end)
-
-  if not ok then
-    nk.logger_error("duel_character_recipe_learn: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_workshop_craft_start(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local slot_index = tonumber(p.slot_index)
-    if slot_index == nil then
-      return nk.json_encode({ ok = false, err = "bad_slot_index" })
-    end
-    slot_index = math.floor(slot_index)
-    if slot_index < 0 or slot_index > 7 then
-      return nk.json_encode({ ok = false, err = "bad_slot_index" })
-    end
-
-    local output_def_id = tostring(p.output_def_id or "")
-    if output_def_id == "" then
-      return nk.json_encode({ ok = false, err = "bad_output" })
-    end
-
-    ensure_character_sheet_initialized(user_id)
-    local defs = get_merged_item_defs()
-    local out_def = defs[output_def_id]
-    if out_def == nil or not item_def_is_equipment(out_def) then
-      return nk.json_encode({ ok = false, err = "unknown_item" })
-    end
-
-    local expected_slot = EQUIP_ORDER[slot_index + 1]
-    if tostring(out_def.slot or "") ~= expected_slot then
-      return nk.json_encode({ ok = false, err = "wrong_workshop_slot" })
-    end
-
-    local craft_recipe_id = tostring(out_def.craft_recipe_id or "")
-    if craft_recipe_id == "" then
-      return nk.json_encode({ ok = false, err = "not_craftable" })
-    end
-
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    ensure_sheet_workshop(sheet)
-    local wslot = sheet.workshop_slots[slot_index + 1]
-    if wslot.output_def_id ~= nil and wslot.output_def_id ~= "" then
-      local wend = tonumber(wslot.ends_at) or 0
-      if wend > os.time() then
-        return nk.json_encode({ ok = false, err = "workshop_busy" })
-      end
-      return nk.json_encode({ ok = false, err = "claim_first" })
-    end
-
-    if not sheet_has_learned_for_craft(sheet, craft_recipe_id) then
-      return nk.json_encode({ ok = false, err = "recipe_not_learned" })
-    end
-
-    local tier = CFG.clamp_int(tonumber(out_def.tier) or 1, 1, 3)
-    local quality = tostring(out_def.quality or "normal")
-    if quality ~= "normal" and quality ~= "rare" and quality ~= "epic" and quality ~= "legendary" then
-      return nk.json_encode({ ok = false, err = "unsupported_craft_quality" })
-    end
-
-    local cost = workshop_craft_cost_from_def(out_def, tier, quality)
-    local ore_c = cost.ore
-    local gold_c = cost.gold
-    local ingot_def = cost.ingot_def
-    local ingot_n = cost.ingot_n
-    local tess_n = cost.tesseract_n
-
-    if quality == "normal" then
-      if tier == 2 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 1) then
-        return nk.json_encode({ ok = false, err = "missing_legend_fodder_t1" })
-      end
-      if tier == 3 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 2) then
-        return nk.json_encode({ ok = false, err = "missing_legend_fodder_t2" })
-      end
-    elseif quality == "rare" then
-      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "normal") then
-        return nk.json_encode({ ok = false, err = "missing_normal_fodder" })
-      end
-    elseif quality == "epic" then
-      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "rare") then
-        return nk.json_encode({ ok = false, err = "missing_rare_fodder" })
-      end
-    elseif quality == "legendary" then
-      if not workshop_has_quality_fodder(sheet, defs, slot_index, tier, "epic") then
-        return nk.json_encode({ ok = false, err = "missing_epic_fodder" })
-      end
-    end
-
-    if ingot_n > 0 and ingot_def == "" then
-      return nk.json_encode({ ok = false, err = "bad_craft_cost" })
-    end
-    if ingot_n > 0 and inventory_count_def(sheet, ingot_def) < ingot_n then
-      return nk.json_encode({ ok = false, err = "not_enough_ingots" })
-    end
-    if tess_n > 0 and inventory_count_def(sheet, "tesseract") < tess_n then
-      return nk.json_encode({ ok = false, err = "not_enough_tesseract" })
-    end
-
-    local dur_tbl = CFG.WORKSHOP_CRAFT_DURATION_SEC_BY_TIER
-    local dur = dur_tbl and dur_tbl[tier] or (60 * 60)
-
-    local max_retries = 5
-    for attempt = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      if (tonumber(progress.ore) or 0) < ore_c then
-        return nk.json_encode({ ok = false, err = "not_enough_ore" })
-      end
-      if (tonumber(progress.gold) or 0) < gold_c then
-        return nk.json_encode({ ok = false, err = "not_enough_gold" })
-      end
-
-      progress.ore = (tonumber(progress.ore) or 0) - ore_c
-      progress.gold = (tonumber(progress.gold) or 0) - gold_c
-
-      local w_ok, w_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if w_ok then
-        if ingot_n > 0 then
-          if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
-            nk.logger_error("workshop_craft_start: не удалось списать слитки")
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        end
-        if tess_n > 0 then
-          if not inventory_remove_def_total(sheet, "tesseract", tess_n) then
-            nk.logger_error("workshop_craft_start: не удалось списать тессеракты")
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        end
-        if quality == "normal" then
-          if tier == 2 then
-            if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 1) then
-              nk.logger_error("workshop_craft_start: не удалось поглотить легенду T1")
-              return nk.json_encode({ ok = false, err = "server_error" })
-            end
-          elseif tier == 3 then
-            if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 2) then
-              nk.logger_error("workshop_craft_start: не удалось поглотить легенду T2")
-              return nk.json_encode({ ok = false, err = "server_error" })
-            end
-          end
-        elseif quality == "rare" then
-          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "normal") then
-            nk.logger_error("workshop_craft_start: не удалось поглотить normal для rare")
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        elseif quality == "epic" then
-          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "rare") then
-            nk.logger_error("workshop_craft_start: не удалось поглотить rare для epic")
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        elseif quality == "legendary" then
-          if not workshop_consume_quality_fodder(sheet, defs, slot_index, tier, "epic") then
-            nk.logger_error("workshop_craft_start: не удалось поглотить epic для legendary")
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        end
-        wslot.output_def_id = output_def_id
-        wslot.ends_at = os.time() + dur
-        write_character_sheet(user_id, sheet)
-        return encode_character_ok_response(sheet, progress, user_id)
-      end
-
-      local err_text = tostring(w_err)
-      if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-        error(w_err)
-      end
-    end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_workshop_craft_start: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_workshop_craft_claim(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local slot_index = tonumber(p.slot_index)
-    if slot_index == nil then
-      return nk.json_encode({ ok = false, err = "bad_slot_index" })
-    end
-    slot_index = math.floor(slot_index)
-    if slot_index < 0 or slot_index > 7 then
-      return nk.json_encode({ ok = false, err = "bad_slot_index" })
-    end
-
-    ensure_character_sheet_initialized(user_id)
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    ensure_sheet_workshop(sheet)
-    local wslot = sheet.workshop_slots[slot_index + 1]
-    local oid = tostring(wslot.output_def_id or "")
-    if oid == "" then
-      return nk.json_encode({ ok = false, err = "empty_workshop_slot" })
-    end
-    local wend = tonumber(wslot.ends_at) or 0
-    if wend > os.time() then
-      return nk.json_encode({ ok = false, err = "craft_not_ready" })
-    end
-
-    if inventory_try_add(sheet, oid, 1) ~= true then
-      return nk.json_encode({ ok = false, err = "inventory_full" })
-    end
-
-    wslot.output_def_id = ""
-    wslot.ends_at = 0
-    write_character_sheet(user_id, sheet)
-
-    local progress = read_pve_progress(user_id)
-    return encode_character_ok_response(sheet, progress, user_id)
-  end)
-
-  if not ok then
-    nk.logger_error("duel_workshop_craft_claim: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_player_resources_get(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local progress = read_pve_progress(user_id)
-    local resources = build_resource_payload(progress, user_id)
-    resources.ok = true
-    return nk.json_encode(resources)
-  end)
-
-  if not ok then
-    nk.logger_error("duel_player_resources_get: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_player_resources_spend(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-
-    local resource = tostring(p.resource or "")
-    local amount = CFG.clamp_int(p.amount, 0, nil)
-    local reason = tostring(p.reason or "")
-    if resource ~= "energy" then
-      return nk.json_encode({ ok = false, err = "unsupported_resource" })
-    end
-    if amount <= 0 then
-      return nk.json_encode({ ok = false, err = "bad_amount" })
-    end
-
-    local max_retries = 5
-    for i = 1, max_retries do
-      local now = os.time()
-      local progress, version = read_pve_progress(user_id)
-      local energy_max = pve_energy_max_for_user(user_id)
-      local available = CFG.clamp_int(progress.energy, 0, energy_max)
-      if available < amount then
-        local resources = build_resource_payload(progress, user_id)
-        resources.ok = false
-        resources.err = "not_enough_energy"
-        resources.resource = resource
-        resources.reason = reason
-        resources.required = amount
-        return nk.json_encode(resources)
-      end
-
-      progress.energy = available - amount
-      progress.energy_updated_at = now
-
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then
-        local resources = build_resource_payload(progress, user_id)
-        resources.ok = true
-        resources.resource = resource
-        resources.reason = reason
-        resources.spent = amount
-        return nk.json_encode(resources)
-      end
-
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        error(write_err)
-      end
-    end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_player_resources_spend: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_pve_energy_buy(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local mode = tostring(p.mode or "")
-    if mode ~= "matter" and mode ~= "gold" then
-      return nk.json_encode({ ok = false, err = "bad_mode" })
-    end
-    local matter_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_COST) or 1))
-    local matter_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_GRANT) or 100))
-    local gold_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_COST) or 1000))
-    local gold_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_GRANT) or 100))
-    local max_retries = 5
-    for i = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      local energy_max = pve_energy_max_for_user(user_id)
-      local e = CFG.clamp_int(progress.energy, 0, energy_max)
-      if e >= energy_max then
-        return nk.json_encode({ ok = false, err = "energy_full" })
-      end
-      if mode == "matter" then
-        local m = math.max(0, tonumber(progress.matter) or 0)
-        if m < matter_cost then
-          return nk.json_encode({ ok = false, err = "not_enough_matter" })
-        end
-        local add = matter_grant
-        if e + add > energy_max then
-          return nk.json_encode({ ok = false, err = "energy_full" })
-        end
-        progress.matter = m - matter_cost
-        progress.energy = e + add
-      else
-        local g = math.max(0, tonumber(progress.gold) or 0)
-        if g < gold_cost then
-          return nk.json_encode({ ok = false, err = "not_enough_gold" })
-        end
-        local add = gold_grant
-        if e + add > energy_max then
-          return nk.json_encode({ ok = false, err = "energy_full" })
-        end
-        progress.gold = g - gold_cost
-        progress.energy = e + add
-      end
-      progress.energy = CFG.clamp_int(progress.energy, 0, energy_max)
-      progress.energy_updated_at = os.time()
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then
-        local resources = build_resource_payload(progress, user_id)
-        resources.ok = true
-        return nk.json_encode(resources)
-      end
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        error(write_err)
-      end
-    end
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-  if not ok then
-    nk.logger_error("duel_pve_energy_buy: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_workshop_craft_rush(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local slot_index = tonumber(p.slot_index)
-    if slot_index == nil or slot_index < 0 or slot_index > 7 then
-      return nk.json_encode({ ok = false, err = "bad_slot_index" })
-    end
-    slot_index = math.floor(slot_index)
-    local rush_gold = math.max(1, math.floor(tonumber(CFG.WORKSHOP_CRAFT_RUSH_GOLD) or 500))
-    local rush_sec = math.max(60, math.floor(tonumber(CFG.WORKSHOP_CRAFT_RUSH_SECONDS) or 1200))
-    ensure_character_sheet_initialized(user_id)
-    local max_retries = 5
-    for attempt = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      if (tonumber(progress.gold) or 0) < rush_gold then
-        return nk.json_encode({ ok = false, err = "not_enough_gold" })
-      end
-      local sheet = read_character_sheet(user_id)
-      ensure_sheet_inventory_counts(sheet)
-      ensure_sheet_workshop(sheet)
-      local wslot = sheet.workshop_slots[slot_index + 1]
-      if wslot == nil or tostring(wslot.output_def_id or "") == "" then
-        return nk.json_encode({ ok = false, err = "empty_workshop_slot" })
-      end
-      local wend = tonumber(wslot.ends_at) or 0
-      if wend <= os.time() then
-        return nk.json_encode({ ok = false, err = "craft_already_ready" })
-      end
-      progress.gold = (tonumber(progress.gold) or 0) - rush_gold
-      wend = wend - rush_sec
-      if wend < os.time() then
-        wend = os.time()
-      end
-      wslot.ends_at = wend
-      local w_ok, w_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if w_ok then
-        write_character_sheet(user_id, sheet)
-        return encode_character_ok_response(sheet, progress, user_id)
-      end
-      local err_text = tostring(w_err)
-      if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-        error(w_err)
-      end
-    end
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-  if not ok then
-    nk.logger_error("duel_workshop_craft_rush: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -4360,6 +3672,54 @@ function get_unlocked_floor(progress, diff)
   local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
   return CFG.clamp_int(unlocked[d] or 1, 0, CFG.PVE_MAX_LEVEL)
 end
+
+MineBarriers = runtime_lua_require("modules.duel_match3_mine_barriers", "duel_match3_mine_barriers")({
+  CFG = CFG,
+  Guard = Guard,
+  normalize_mine_difficulty = normalize_mine_difficulty,
+  normalize_mine_unlocked = normalize_mine_unlocked,
+  make_floor_state_key = make_floor_state_key,
+  get_unlocked_floor = get_unlocked_floor,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  build_progression_payload_auto = build_progression_payload_auto,
+  build_resource_payload = build_resource_payload,
+  random_affix_for_floor = random_affix_for_floor,
+  empty_key_items = empty_key_items,
+})
+
+EconomyRpc = runtime_lua_require("modules.duel_match3_economy_rpc", "duel_match3_economy_rpc")({
+  CFG = CFG,
+  Guard = Guard,
+  EQUIP_ORDER = EQUIP_ORDER,
+  read_character_sheet = read_character_sheet,
+  write_character_sheet = write_character_sheet,
+  ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
+  ensure_character_sheet_initialized = ensure_character_sheet_initialized,
+  ensure_sheet_workshop = ensure_sheet_workshop,
+  get_merged_item_defs = get_merged_item_defs,
+  item_def_is_equipment = item_def_is_equipment,
+  item_def_is_recipe = item_def_is_recipe,
+  item_max_stack = item_max_stack,
+  encode_character_ok_response = encode_character_ok_response,
+  sheet_has_learned = sheet_has_learned,
+  sheet_has_learned_for_craft = sheet_has_learned_for_craft,
+  workshop_craft_cost_from_def = workshop_craft_cost_from_def,
+  workshop_has_legendary_fodder = workshop_has_legendary_fodder,
+  workshop_consume_legendary_fodder = workshop_consume_legendary_fodder,
+  workshop_has_quality_fodder = workshop_has_quality_fodder,
+  workshop_consume_quality_fodder = workshop_consume_quality_fodder,
+  inventory_count_def = inventory_count_def,
+  inventory_try_add = inventory_try_add,
+  inventory_remove_def_total = inventory_remove_def_total,
+  inventory_can_fit = inventory_can_fit,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  build_resource_payload = build_resource_payload,
+  build_progression_payload_auto = build_progression_payload_auto,
+  pve_energy_max_for_user = pve_energy_max_for_user,
+  empty_key_items = empty_key_items,
+})
 
 function floor_respawn_left_seconds(progress, diff, floor)
   local mine = progress.mine or {}
@@ -4732,128 +4092,6 @@ function duel_mine_affix_reroll(ctx, payload)
 
   if not ok then
     nk.logger_error("duel_mine_affix_reroll: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-function duel_mine_barrier_unlock(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local target_floor = CFG.clamp_int(p.floor, 2, CFG.PVE_MAX_LEVEL)
-    local diff = normalize_mine_difficulty(p.difficulty)
-    local req = CFG.MINE_BARRIER_REQUIREMENTS[target_floor]
-    if req == nil then
-      return nk.json_encode({ ok = false, err = "bad_floor" })
-    end
-
-    local max_retries = 5
-    for i = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      progress.mine = progress.mine or {}
-      progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
-
-      local unlocked = get_unlocked_floor(progress, diff)
-      if unlocked >= target_floor then
-        return nk.json_encode({
-          ok = true,
-          floor = target_floor,
-          difficulty = diff,
-          progression = build_progression_payload_auto(progress, user_id),
-        })
-      end
-      if unlocked < (target_floor - 1) then
-        return nk.json_encode({
-          ok = false,
-          err = "prev_floor_locked",
-          unlocked_floor = unlocked,
-          required_prev_floor = target_floor - 1,
-          difficulty = diff,
-        })
-      end
-
-      local need_ore = math.max(0, tonumber(req.ore) or 0)
-      local need_gold = math.max(0, tonumber(req.gold) or 0)
-      local need_matter = math.max(0, tonumber(req.matter) or 0)
-      local key_id = tostring(req.key_id or "")
-      local key_amount = math.max(0, tonumber(req.key_amount) or 0)
-
-      if (progress.ore or 0) < need_ore then
-        return nk.json_encode({ ok = false, err = "not_enough_ore", required = need_ore, ore = progress.ore or 0 })
-      end
-      if (progress.gold or 0) < need_gold then
-        return nk.json_encode({ ok = false, err = "not_enough_gold", required = need_gold, gold = progress.gold or 0 })
-      end
-      if (progress.matter or 0) < need_matter then
-        return nk.json_encode({ ok = false, err = "not_enough_matter", required = need_matter, matter = progress.matter or 0 })
-      end
-      if key_id ~= "" and key_amount > 0 then
-        progress.key_items = progress.key_items or empty_key_items()
-        local have_keys = math.max(0, tonumber(progress.key_items[key_id]) or 0)
-        if have_keys < key_amount then
-          return nk.json_encode({
-            ok = false,
-            err = "not_enough_key_item",
-            key_id = key_id,
-            required = key_amount,
-            have = have_keys,
-          })
-        end
-      end
-
-      progress.ore = math.max(0, (progress.ore or 0) - need_ore)
-      progress.gold = math.max(0, (progress.gold or 0) - need_gold)
-      progress.matter = math.max(0, (progress.matter or 0) - need_matter)
-      if key_id ~= "" and key_amount > 0 then
-        progress.key_items[key_id] = math.max(0, (tonumber(progress.key_items[key_id]) or 0) - key_amount)
-      end
-      progress.mine.unlocked[diff] = math.max(unlocked, target_floor)
-      progress.mine.selected_floor = target_floor
-      progress.mine.current_difficulty = diff
-
-      if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
-      local sk = make_floor_state_key(diff, target_floor)
-      local fs = type(progress.mine.floor_states[sk]) == "table" and progress.mine.floor_states[sk] or {}
-      fs.last_affix = random_affix_for_floor(target_floor)
-      progress.mine.floor_states[sk] = fs
-
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then
-        return nk.json_encode({
-          ok = true,
-          floor = target_floor,
-          difficulty = diff,
-          progression = build_progression_payload_auto(progress, user_id),
-          resources = build_resource_payload(progress, user_id),
-        })
-      end
-
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        error(write_err)
-      end
-    end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_mine_barrier_unlock: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
   return result
@@ -5939,16 +5177,17 @@ nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")
 nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
-nk.register_rpc(duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
-nk.register_rpc(duel_character_get, "duel_character_get")
-nk.register_rpc(duel_character_item_move, "duel_character_item_move")
-nk.register_rpc(duel_character_recipe_learn, "duel_character_recipe_learn")
-nk.register_rpc(duel_workshop_craft_start, "duel_workshop_craft_start")
-nk.register_rpc(duel_workshop_craft_claim, "duel_workshop_craft_claim")
-nk.register_rpc(duel_player_resources_get, "duel_player_resources_get")
-nk.register_rpc(duel_player_resources_spend, "duel_player_resources_spend")
-nk.register_rpc(duel_pve_energy_buy, "duel_pve_energy_buy")
-nk.register_rpc(duel_workshop_craft_rush, "duel_workshop_craft_rush")
+nk.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
+nk.register_rpc(MineBarriers.duel_mine_set_difficulty, "duel_mine_set_difficulty")
+nk.register_rpc(EconomyRpc.duel_character_get, "duel_character_get")
+nk.register_rpc(EconomyRpc.duel_character_item_move, "duel_character_item_move")
+nk.register_rpc(EconomyRpc.duel_character_recipe_learn, "duel_character_recipe_learn")
+nk.register_rpc(EconomyRpc.duel_workshop_craft_start, "duel_workshop_craft_start")
+nk.register_rpc(EconomyRpc.duel_workshop_craft_claim, "duel_workshop_craft_claim")
+nk.register_rpc(EconomyRpc.duel_player_resources_get, "duel_player_resources_get")
+nk.register_rpc(EconomyRpc.duel_player_resources_spend, "duel_player_resources_spend")
+nk.register_rpc(EconomyRpc.duel_pve_energy_buy, "duel_pve_energy_buy")
+nk.register_rpc(EconomyRpc.duel_workshop_craft_rush, "duel_workshop_craft_rush")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 nk.register_rpc(duel_match3_server_aura_get, "duel_match3_server_aura_get")
 nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
