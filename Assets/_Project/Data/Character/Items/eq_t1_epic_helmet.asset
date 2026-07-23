@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_epic_helmet
   displayName: eq_t1_epic_helmet
+  colorDisplayName: {r: 0.5778619, g: 0.15300101, b: 0.93207544, a: 1}
+  description: 
   kind: 0
   maxStack: 1
   tier: 1

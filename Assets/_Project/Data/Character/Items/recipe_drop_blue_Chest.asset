@@ -13,13 +13,18 @@ MonoBehaviour:
   m_Name: recipe_drop_blue_Chest
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_blue_Chest
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0411\u0440\u043E\u043D\u0435\u0441\u0442\u0435\u0433\u0430\u043D\u043A\u0430"
   kind: 2
   maxStack: 1
   tier: 1
   quality: 1
   recipeTargetSlot: 2
   craftRecipeId: 
+  craftOre: 0
+  craftGold: 0
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 0
   icon: {fileID: 0}
   equippable: 0
   slot: 0

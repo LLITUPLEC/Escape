@@ -13,19 +13,21 @@ MonoBehaviour:
   m_Name: eq_t1_rare_weapon_r
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_rare_weapon_r
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0422\u044F\u0436\u0451\u043B\u044B\u0439 \u043C\u043E\u043B\u043E\u0442"
+  colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
+  description: 
   kind: 0
   maxStack: 1
   tier: 1
   quality: 1
-  recipeTargetSlot: 0
+  recipeTargetSlot: 7
   craftRecipeId: recipe_drop_blue_WeaponRight
   craftOre: 819
   craftGold: 637
   craftIngotDef: ingot_blue
   craftIngotN: 29
   craftTesseractN: 0
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: fe618f62a35e17d43b00c61746e57513, type: 3}
   equippable: 1
   slot: 7
   modifiers: []

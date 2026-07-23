@@ -13,19 +13,21 @@ MonoBehaviour:
   m_Name: eq_t1_rare_chest
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_rare_chest
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0411\u0440\u043E\u043D\u0435\u0441\u0442\u0435\u0433\u0430\u043D\u043A\u0430"
+  colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
+  description: 77777777777777777  888
   kind: 0
   maxStack: 1
   tier: 1
   quality: 1
-  recipeTargetSlot: 0
+  recipeTargetSlot: 2
   craftRecipeId: recipe_drop_blue_Chest
   craftOre: 588
   craftGold: 491
   craftIngotDef: ingot_blue
   craftIngotN: 15
   craftTesseractN: 0
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 5838efc3e9a9e514ba14d8d51f6c262f, type: 3}
   equippable: 1
   slot: 2
   modifiers: []

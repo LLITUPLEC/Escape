@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_normal_gloves
   displayName: "\u041E\u0431\u043C\u043E\u0442\u043A\u0438 \u0442\u043A\u0430\u043D\u0435\u0432\u044B\u0435"
+  colorDisplayName: {r: 0.08947661, g: 0.8037735, b: 0.13971134, a: 1}
+  description: 
   kind: 0
   maxStack: 1
   tier: 1

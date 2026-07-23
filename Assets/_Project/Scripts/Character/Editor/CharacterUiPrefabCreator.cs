@@ -113,6 +113,7 @@ namespace Project.Character.Editor
             var view = root.GetComponent<EquipmentSlotView>();
             SetPrivateField(view, "button", root.GetComponent<Button>());
             SetPrivateField(view, "itemView", itemView);
+            SetPrivateField(view, "slotImage", bg);
 
             ReplacePrefab(root, EquipmentSlotPrefabPath);
             Object.DestroyImmediate(root);
@@ -158,8 +159,10 @@ namespace Project.Character.Editor
                 new Vector2(0.06f, 0.84f), new Vector2(0.84f, 0.96f), TextAlignmentOptions.Left);
             MakeTmp(rt, "Slot", "Слот", 24, new Color(0.85f, 0.88f, 0.95f, 1f),
                 new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.84f), TextAlignmentOptions.Left);
+            MakeTmp(rt, "Desc", "", 22, new Color(0.78f, 0.80f, 0.88f, 1f),
+                new Vector2(0.06f, 0.58f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
             MakeTmp(rt, "Stats", "-", 26, Color.white,
-                new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
+                new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.56f), TextAlignmentOptions.TopLeft);
 
             MakeRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f), 24);
             MakeRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.34f, 0.16f), 24);

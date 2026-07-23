@@ -10,6 +10,8 @@ namespace Project.Character
         [Header("Identity")]
         [SerializeField] private string itemId = "item_001";
         [SerializeField] private string displayName = "Предмет";
+        [SerializeField] private Color colorDisplayName = Color.white;
+        [SerializeField, TextArea(2, 6)] private string description = "";
 
         [Header("Catalog (сервер: duel_match3_item_defs)")]
         [SerializeField] private ItemKind kind = ItemKind.Equipment;
@@ -47,6 +49,8 @@ namespace Project.Character
 
         public string ItemId => itemId;
         public string DisplayName => displayName;
+        public Color ColorDisplayName => colorDisplayName;
+        public string Description => description;
         public Sprite Icon => icon;
         public ItemKind Kind => kind;
         public int MaxStack => maxStack;

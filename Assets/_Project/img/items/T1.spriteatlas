@@ -53,37 +53,69 @@ SpriteAtlas:
     - {fileID: 21300000, guid: a627d089717565847936142fc4d7b354, type: 3}
     - {fileID: 21300000, guid: 9069d34f16f51ff49a042ea4a0097b55, type: 3}
     - {fileID: 21300000, guid: f1e308c00b0be1649b585981af6b0bde, type: 3}
+    - {fileID: 21300000, guid: 921bdeaf447f49c4f971373cb7d5152f, type: 3}
+    - {fileID: 21300000, guid: 13695041f903fc24ea412cebfa7e18fa, type: 3}
+    - {fileID: 21300000, guid: 7aeaf281fbff98f48b65108022b0aed0, type: 3}
+    - {fileID: 21300000, guid: 18bda4d3b5c8ce24abcc1194a886613e, type: 3}
+    - {fileID: 21300000, guid: fe618f62a35e17d43b00c61746e57513, type: 3}
+    - {fileID: 21300000, guid: 3f9da4851dd4557499aca7fdf2485a7d, type: 3}
+    - {fileID: 21300000, guid: 5838efc3e9a9e514ba14d8d51f6c262f, type: 3}
+    - {fileID: 21300000, guid: ffbe1d116802bec4cb1cd4e92570f48e, type: 3}
     bindAsDefault: 1
     isAtlasV2: 0
     cachedData: {fileID: 0}
     packedSpriteRenderDataKeys:
     - f1e308c00b0be1649b585981af6b0bde: 21300000
+    - ffbe1d116802bec4cb1cd4e92570f48e: 21300000
+    - 13695041f903fc24ea412cebfa7e18fa: 21300000
+    - 7aeaf281fbff98f48b65108022b0aed0: 21300000
+    - fe618f62a35e17d43b00c61746e57513: 21300000
+    - 5838efc3e9a9e514ba14d8d51f6c262f: 21300000
+    - 18bda4d3b5c8ce24abcc1194a886613e: 21300000
     - 44e5f7051e134e24d955a6993b65aaf2: 21300000
+    - 3f9da4851dd4557499aca7fdf2485a7d: 21300000
     - a0c7d146dcac96d4abb9ec414592fda2: 21300000
     - a627d089717565847936142fc4d7b354: 21300000
     - 480446deee34b7e46b0338c18322c297: 21300000
     - 9069d34f16f51ff49a042ea4a0097b55: 21300000
     - 6ec3ff4f11671b64eb9a16153aa5d02a: 21300000
     - 44274f6f9e1e13544bdac0ab58f06f85: 21300000
+    - 921bdeaf447f49c4f971373cb7d5152f: 21300000
   m_MasterAtlas: {fileID: 0}
   m_PackedSprites:
   - {fileID: 21300000, guid: f1e308c00b0be1649b585981af6b0bde, type: 3}
+  - {fileID: 21300000, guid: ffbe1d116802bec4cb1cd4e92570f48e, type: 3}
+  - {fileID: 21300000, guid: 13695041f903fc24ea412cebfa7e18fa, type: 3}
+  - {fileID: 21300000, guid: 7aeaf281fbff98f48b65108022b0aed0, type: 3}
+  - {fileID: 21300000, guid: fe618f62a35e17d43b00c61746e57513, type: 3}
+  - {fileID: 21300000, guid: 5838efc3e9a9e514ba14d8d51f6c262f, type: 3}
+  - {fileID: 21300000, guid: 18bda4d3b5c8ce24abcc1194a886613e, type: 3}
   - {fileID: 21300000, guid: 44e5f7051e134e24d955a6993b65aaf2, type: 3}
+  - {fileID: 21300000, guid: 3f9da4851dd4557499aca7fdf2485a7d, type: 3}
   - {fileID: 21300000, guid: a0c7d146dcac96d4abb9ec414592fda2, type: 3}
   - {fileID: 21300000, guid: a627d089717565847936142fc4d7b354, type: 3}
   - {fileID: 21300000, guid: 480446deee34b7e46b0338c18322c297, type: 3}
   - {fileID: 21300000, guid: 9069d34f16f51ff49a042ea4a0097b55, type: 3}
   - {fileID: 21300000, guid: 6ec3ff4f11671b64eb9a16153aa5d02a, type: 3}
   - {fileID: 21300000, guid: 44274f6f9e1e13544bdac0ab58f06f85, type: 3}
+  - {fileID: 21300000, guid: 921bdeaf447f49c4f971373cb7d5152f, type: 3}
   m_PackedSpriteNamesToIndex:
   - telo
+  - stupni_blue
+  - left_blue
+  - nogi_blue
+  - right_blue
+  - telo_blue
+  - plechi_blue
   - kaska
+  - ruki_blue
   - plechi
   - ruki
   - left
   - stupni
   - right
   - nogi
+  - kaska_blue
   m_RenderDataMap: {}
   m_Tag: T1
   m_IsVariant: 0

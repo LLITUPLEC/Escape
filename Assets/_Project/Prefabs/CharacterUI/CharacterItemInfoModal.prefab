@@ -796,6 +796,7 @@ MonoBehaviour:
   panelCanvasGroup: {fileID: 0}
   titleText: {fileID: 0}
   slotText: {fileID: 0}
+  descText: {fileID: 0}
   statsText: {fileID: 0}
   closeButton: {fileID: 0}
   equipToggleButton: {fileID: 0}
@@ -1111,7 +1112,7 @@ RectTransform:
   m_Father: {fileID: 5572670059156099427}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.06, y: 0.22}
-  m_AnchorMax: {x: 0.94, y: 0.74}
+  m_AnchorMax: {x: 0.94, y: 0.56}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}

@@ -13,14 +13,21 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_purple_WeaponRight
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_purple_WeaponRight
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0420\u0435\u0446\u0435\u043F\u0442 _"
+  colorDisplayName: {r: 0.5591068, g: 0.096226394, b: 1, a: 1}
+  description: 
   kind: 2
   maxStack: 1
   tier: 1
   quality: 2
   recipeTargetSlot: 7
   craftRecipeId: 
-  icon: {fileID: 0}
+  craftOre: 0
+  craftGold: 0
+  craftIngotDef: 
+  craftIngotN: 0
+  craftTesseractN: 0
+  icon: {fileID: 21300000, guid: 7d658a37e9d3c8143945c0cf4a7f5afa, type: 3}
   equippable: 0
   slot: 0
   modifiers: []

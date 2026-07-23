@@ -12,6 +12,7 @@ namespace Project.Character.UI
         [SerializeField] private CanvasGroup panelCanvasGroup;
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text slotText;
+        [SerializeField] private TMP_Text descText;
         [SerializeField] private TMP_Text statsText;
         [SerializeField] private Button closeButton;
         [SerializeField] private Button equipToggleButton;
@@ -99,14 +100,28 @@ namespace Project.Character.UI
             gameObject.SetActive(false);
         }
 
-        public void SetTitle(string value)
+        public void SetTitle(string value, Color? color = null)
         {
-            if (titleText != null) titleText.text = value ?? string.Empty;
+            if (titleText == null) return;
+            titleText.text = value ?? string.Empty;
+            if (color.HasValue) titleText.color = color.Value;
         }
 
         public void SetSlot(string value)
         {
             if (slotText != null) slotText.text = value ?? string.Empty;
+        }
+
+        public void SetDescription(string value)
+        {
+            EnsureDescText();
+            var has = !string.IsNullOrWhiteSpace(value);
+            if (descText != null)
+            {
+                descText.gameObject.SetActive(has);
+                descText.text = has ? value.Trim() : string.Empty;
+            }
+            AdjustStatsAnchorsForDesc(has);
         }
 
         public void SetStats(string value)
@@ -197,6 +212,7 @@ namespace Project.Character.UI
             if (panelCanvasGroup == null) panelCanvasGroup = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
             if (titleText == null) titleText = transform.Find("Title")?.GetComponent<TMP_Text>();
             if (slotText == null) slotText = transform.Find("Slot")?.GetComponent<TMP_Text>();
+            if (descText == null) descText = transform.Find("Desc")?.GetComponent<TMP_Text>();
             if (statsText == null) statsText = transform.Find("Stats")?.GetComponent<TMP_Text>();
             if (closeButton == null) closeButton = transform.Find("CloseButton")?.GetComponent<Button>();
             if (equipToggleButton == null) equipToggleButton = transform.Find("EquipButton")?.GetComponent<Button>();
@@ -206,6 +222,7 @@ namespace Project.Character.UI
             if (salvageButton == null) salvageButton = transform.Find("SalvageButton")?.GetComponent<Button>();
 
             EnsureLearnRecipeButtonFromPrefabIfMissing();
+            EnsureDescText();
 
             EnsureButtonLabelRaycast(closeButton);
             EnsureButtonLabelRaycast(equipToggleButton);
@@ -215,7 +232,59 @@ namespace Project.Character.UI
             EnsureButtonFx(equipToggleButton);
             EnsureButtonFx(learnRecipeButton);
             EnsureButtonFx(salvageButton);
+            if (descText != null) descText.richText = true;
             if (statsText != null) statsText.richText = true;
+
+            if (titleText != null) titleText.fontStyle = FontStyles.Underline;
+            if (descText != null) descText.fontStyle = FontStyles.Italic;
+        }
+
+        /// <summary>
+        /// Старые префабы без Desc — создаём блок между Slot и Stats.
+        /// </summary>
+        private void EnsureDescText()
+        {
+            if (descText != null) return;
+            descText = transform.Find("Desc")?.GetComponent<TMP_Text>();
+            if (descText != null) return;
+
+            var go = new GameObject("Desc", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(transform, false);
+            rt.anchorMin = new Vector2(0.06f, 0.58f);
+            rt.anchorMax = new Vector2(0.94f, 0.74f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.fontSize = 22;
+            tmp.color = new Color(0.78f, 0.80f, 0.88f, 1f);
+            tmp.alignment = TextAlignmentOptions.TopLeft;
+            tmp.raycastTarget = false;
+            tmp.richText = true;
+            tmp.fontStyle = FontStyles.Italic;
+            tmp.text = string.Empty;
+            descText = tmp;
+
+            // Stats мог занимать всю высоту — оставляем место под Desc.
+            if (statsText != null)
+            {
+                var statsRt = statsText.rectTransform;
+                if (statsRt.anchorMax.y > 0.57f)
+                    statsRt.anchorMax = new Vector2(statsRt.anchorMax.x, 0.56f);
+            }
+
+            // Desc между Slot и Stats в иерархии.
+            var slot = transform.Find("Slot");
+            if (slot != null) rt.SetSiblingIndex(slot.GetSiblingIndex() + 1);
+        }
+
+        private void AdjustStatsAnchorsForDesc(bool hasDescription)
+        {
+            if (statsText == null) return;
+            var statsRt = statsText.rectTransform;
+            statsRt.anchorMin = new Vector2(0.06f, 0.22f);
+            statsRt.anchorMax = new Vector2(0.94f, hasDescription ? 0.56f : 0.74f);
         }
 
         /// <summary>

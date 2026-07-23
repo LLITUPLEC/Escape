@@ -50,6 +50,12 @@ namespace Project.Character.UI
             icon.enabled = sprite != null;
         }
 
+        public void SetBackgroundColor(Color color)
+        {
+            if (background == null) return;
+            background.color = color;
+        }
+
         /// <summary>Показывает число при стеке &gt; 1.</summary>
         public void SetStackCount(int amount)
         {

@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_blue_Legs
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_blue_Legs
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0420\u0435\u0446\u0435\u043F\u0442 \"\u0411\u0440\u044E\u043A\u0438
+    \u041F\u0440\u043E\u0445\u043E\u0434\u0447\u0438\u043A\u0430\""
+  colorDisplayName: {r: 0.19274472, g: 0.45172274, b: 0.9547169, a: 1}
+  description: 
   kind: 2
   maxStack: 1
   tier: 1
@@ -25,7 +28,7 @@ MonoBehaviour:
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 0
-  icon: {fileID: 21300000, guid: 2d69f9fcd6ec0a14aa6b031ce096af1f, type: 3}
+  icon: {fileID: 21300000, guid: a54c4697d60bd4544b29b946f71c89f3, type: 3}
   equippable: 0
   slot: 0
   modifiers: []

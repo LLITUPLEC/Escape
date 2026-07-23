@@ -13,19 +13,21 @@ MonoBehaviour:
   m_Name: eq_t1_rare_feet
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_rare_feet
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0435 \u0448\u0438\u043F\u044B"
+  colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
+  description: 
   kind: 0
   maxStack: 1
   tier: 1
   quality: 1
-  recipeTargetSlot: 0
+  recipeTargetSlot: 5
   craftRecipeId: recipe_drop_blue_Feet
   craftOre: 1107
   craftGold: 819
   craftIngotDef: ingot_blue
   craftIngotN: 42
   craftTesseractN: 0
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ffbe1d116802bec4cb1cd4e92570f48e, type: 3}
   equippable: 1
   slot: 5
   modifiers: []

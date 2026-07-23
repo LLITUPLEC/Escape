@@ -302,7 +302,10 @@ namespace Project.Character.UI
 
             CreateLabel(rt, "Title", "Предмет", 34, new Vector2(0.06f, 0.84f), new Vector2(0.84f, 0.96f), TextAlignmentOptions.Left);
             CreateLabel(rt, "Slot", "Слот", 24, new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.84f), TextAlignmentOptions.Left);
-            var stats = CreateLabel(rt, "Stats", "-", 26, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
+            var desc = CreateLabel(rt, "Desc", "", 22, new Vector2(0.06f, 0.58f), new Vector2(0.94f, 0.74f), TextAlignmentOptions.TopLeft);
+            desc.color = new Color(0.78f, 0.80f, 0.88f, 1f);
+            desc.richText = true;
+            var stats = CreateLabel(rt, "Stats", "-", 26, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.56f), TextAlignmentOptions.TopLeft);
             stats.richText = true;
             CreateRectButton(rt, "CloseButton", "X", new Vector2(0.88f, 0.88f), new Vector2(0.97f, 0.97f));
             CreateRectButton(rt, "EquipButton", "Надеть", new Vector2(0.06f, 0.05f), new Vector2(0.34f, 0.16f));
@@ -348,12 +351,13 @@ namespace Project.Character.UI
                 return;
             }
 
-            _infoModal.SetTitle(selectedItem.DisplayName);
+            _infoModal.SetTitle(selectedItem.DisplayName, selectedItem.ColorDisplayName);
             var isRecipe = selectedItem.Kind == ItemKind.Recipe;
             if (isRecipe)
                 _infoModal.SetSlot("Рецепт → " + SlotName(selectedItem.RecipeTargetSlot));
             else
                 _infoModal.SetSlot("Слот: " + (selectedItem.Equippable ? SlotName(selectedItem.Slot) : "Не экипируется"));
+            _infoModal.SetDescription(selectedItem.Description);
             _infoModal.SetStats(BuildStatsDescription(selectedItem));
             var learned = _lastProfile?.learned_recipe_ids != null &&
                           Array.Exists(_lastProfile.learned_recipe_ids, x => x == selectedItem.ItemId);
