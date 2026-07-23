@@ -203,14 +203,8 @@ namespace Project.UI
             return 0;
         }
 
-        private static int MineTierFromDifficulty(string difficulty)
-        {
-            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
-                return 2;
-            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
-                return 3;
-            return 1;
-        }
+        /// <summary>В id свитка всегда t1 (экип только T1). Сложность кодируется цветом green/blue/purple.</summary>
+        private static int MineTierFromDifficulty(string difficulty) => 1;
 
         /// <summary>Ожидаемый def_id свитка с монстра этого этажа (сервер: mine_recipe_item_id_for_floor_index). Иначе null.</summary>
         private static string MineExpectedRecipeItemId(int floor, string difficulty)

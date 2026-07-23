@@ -77,8 +77,14 @@ namespace Project.Leaderboard
 
             gameObject.SetActive(true);
 
-            if (closeButton != null)
-                closeButton.onClick.AddListener(Hide);
+            closeButton = ModalPanelCloseButton.EnsureTopRight(
+                closeButton,
+                sheetRect,
+                transform,
+                "LeaderboardSheet/Header/CloseButton",
+                uiFont,
+                Hide);
+            ModalPanelCloseButton.EnsureDimmerRaycast(dimmerButton);
             if (dimmerButton != null)
                 dimmerButton.onClick.AddListener(Hide);
 
@@ -478,7 +484,7 @@ namespace Project.Leaderboard
             if (scrollRect != null)
                 scrollRect.verticalNormalizedPosition = 1f;
 
-            var selfDto = response.self_entry;
+            var selfDto = SanitizeSelfEntry(response.self_entry, currentUserId);
             if (stickyPlayerRow != null)
             {
                 if (selfDto != null)
@@ -504,6 +510,41 @@ namespace Project.Leaderboard
             3 => podiumBronzePrefab,
             _ => standardRowPrefab,
         };
+
+        /// <summary>
+        /// Sticky всегда про текущего игрока. Если сервер (старый модуль) прислал чужой self_entry —
+        /// показываем нули для себя, а не чужой ник/ранг.
+        /// </summary>
+        private static LeaderboardEntryDto SanitizeSelfEntry(LeaderboardEntryDto selfDto, string currentUserId)
+        {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return selfDto;
+
+            if (selfDto != null
+                && string.Equals(selfDto.user_id, currentUserId, StringComparison.Ordinal))
+                return selfDto;
+
+            return new LeaderboardEntryDto
+            {
+                rank = 0,
+                rank_delta = 0,
+                is_new = false,
+                user_id = currentUserId,
+                nickname = ResolveLocalNickname(currentUserId),
+                score = 0,
+                secondary_score = 0,
+            };
+        }
+
+        private static string ResolveLocalNickname(string userId)
+        {
+            var bootstrap = Project.Nakama.NakamaBootstrap.Instance;
+            var sessionName = bootstrap?.Session?.Username;
+            if (!string.IsNullOrWhiteSpace(sessionName))
+                return sessionName;
+
+            return string.IsNullOrWhiteSpace(userId) ? "—" : "Survivor";
+        }
 
         private void ClearRows()
         {

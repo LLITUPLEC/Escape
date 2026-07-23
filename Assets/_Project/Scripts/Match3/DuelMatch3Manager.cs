@@ -1434,7 +1434,12 @@ namespace Project.Match3
                 var parsed = JsonUtility.FromJson<AchievementSyncRpcResponse>(result.Payload ?? "");
                 if (parsed == null || !parsed.ok)
                     return;
-                AchievementProgressStorage.MergeFromAuthoritativeSnapshot(parsed.achievement_stats_flat, parsed.achievement_claimed);
+                // RpcAsync продолжает на пуле потоков — PlayerPrefs / UI только с main thread.
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    AchievementProgressStorage.MergeFromAuthoritativeSnapshot(
+                        parsed.achievement_stats_flat, parsed.achievement_claimed);
+                }).ConfigureAwait(false);
             }
             catch (Exception e)
             {

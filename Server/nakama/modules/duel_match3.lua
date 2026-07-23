@@ -2632,7 +2632,7 @@ local function inventory_try_add(sheet, def_id, amount)
   return false, "inventory_full"
 end
 
---- Цвет рецепта с монстров шахты: по **сложности** тира (easy → green, medium → blue, hard → purple).
+--- Цвет рецепта с монстров шахты: по **сложности** (easy → green, medium → blue, hard → purple).
 local function mine_recipe_color_for_difficulty(diff)
   local d = normalize_mine_difficulty(diff)
   if d == "medium" then return "blue" end
@@ -2640,10 +2640,8 @@ local function mine_recipe_color_for_difficulty(diff)
   return "green"
 end
 
-local function mine_tier_from_diff(diff)
-  local d = normalize_mine_difficulty(diff)
-  if d == "medium" then return 2 end
-  if d == "hard" then return 3 end
+--- Тир в id свитка. Экип/предметы — только T1; цвет (green/blue/purple) различает сложность.
+local function mine_tier_from_diff(_diff)
   return 1
 end
 
@@ -2665,7 +2663,7 @@ local function ingot_drop_chance_non_boss(floor)
   return 1.0
 end
 
---- id предмета-рецепта: recipe_drop_t{тир шахты}_{цвет}_{Slot} — см. mine_recipe_item_id_for_floor_index.
+--- id предмета-рецепта: recipe_drop_t1_{цвет}_{Slot} (T1-only; цвет = сложность шахты).
 
 --- Этажи с дропом рецепта (только не-боссы): 10 нет — иначе пересечение с боссом 4/8/12; боссы рецептов не дают.
 local MINE_RECIPE_DROP_FLOORS = { 1, 2, 3, 5, 6, 7, 9, 11 }
@@ -2691,6 +2689,7 @@ local MINE_RECIPE_FLOOR_SLOT_ORDER = {
 }
 
 --- def_id свитка для этажа с дропом рецепта или пусто, если этаж вне списка.
+--- Формат: recipe_drop_t1_{green|blue|purple}_{Slot} (mine_tier всегда 1).
 local function mine_recipe_item_id_for_floor_index(floor, color, mine_tier)
   local idx = nil
   for i = 1, #MINE_RECIPE_DROP_FLOORS do

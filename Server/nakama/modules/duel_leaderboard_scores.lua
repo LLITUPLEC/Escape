@@ -239,16 +239,25 @@ function M.list(period, view_id, caller_user_id, limit)
   if self_in_top ~= nil then
     self_entry = self_in_top
   elseif caller_user_id ~= nil and caller_user_id ~= "" then
+    -- nk.leaderboard_records_list → records, owner_records, ...
+    -- При owners[] нужен именно 2-й возврат: 1-й — топ таблицы (limit),
+    -- иначе sticky получает чужой #1, когда у игрока ещё нет записи.
     local owner_ok, owner_result = pcall(function()
-      return nk.leaderboard_records_list(lb_id, { caller_user_id }, 1)
+      local _top, owner_records = nk.leaderboard_records_list(lb_id, { caller_user_id }, 1)
+      return owner_records
     end)
     local owner_recs = {}
     if owner_ok then
       owner_recs = unwrap_records(owner_result)
     end
-    if owner_recs[1] ~= nil then
-      self_entry = record_to_entry(owner_recs[1], 0)
-    else
+    local own = owner_recs[1]
+    if own ~= nil then
+      local own_uid = tostring(own.owner_id or own.ownerId or "")
+      if own_uid == caller_user_id then
+        self_entry = record_to_entry(own, 0)
+      end
+    end
+    if self_entry == nil then
       self_entry = {
         rank = 0,
         rank_delta = 0,

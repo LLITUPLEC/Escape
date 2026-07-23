@@ -89,8 +89,14 @@ namespace Project.Achievements
 
             gameObject.SetActive(true);
 
-            if (closeButton != null)
-                closeButton.onClick.AddListener(Hide);
+            closeButton = ModalPanelCloseButton.EnsureTopRight(
+                closeButton,
+                sheetRect,
+                transform,
+                "AchievementsSheet/Header/CloseButton",
+                achievementUiFont,
+                Hide);
+            ModalPanelCloseButton.EnsureDimmerRaycast(dimmerButton);
             if (dimmerButton != null)
                 dimmerButton.onClick.AddListener(Hide);
 
