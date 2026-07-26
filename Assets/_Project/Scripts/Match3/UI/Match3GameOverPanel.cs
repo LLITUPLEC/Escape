@@ -12,6 +12,18 @@ namespace Project.Match3
         [SerializeField] public TMP_Text   rewardText;
         [SerializeField] public Button backButton;
 
+        [Header("Reward Rows Layout")]
+        [Tooltip("Сколько RewardRow в одной RewardLine.")]
+        [SerializeField, Min(1)] public int rewardCellsPerLine = 2;
+        [Tooltip("Preferred width/height у Icon внутри RewardRow.")]
+        [SerializeField, Min(1f)] public float rewardIconPreferredSize = 60f;
+        [Tooltip("Font size у Value внутри RewardRow.")]
+        [SerializeField, Min(1f)] public float rewardValueFontSize = 50f;
+
+        public int RewardCellsPerLine => Mathf.Max(1, rewardCellsPerLine);
+        public float RewardIconPreferredSize => Mathf.Max(1f, rewardIconPreferredSize);
+        public float RewardValueFontSize => Mathf.Max(1f, rewardValueFontSize);
+
         /// <summary>Fired when the player presses "Back to menu".</summary>
         public event Action OnBackClicked;
 

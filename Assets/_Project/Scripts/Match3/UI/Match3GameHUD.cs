@@ -147,10 +147,7 @@ namespace Project.Match3
                 var tipGo = new GameObject("AffixTooltip", typeof(RectTransform), typeof(Image));
                 affixTooltipRoot = tipGo.GetComponent<RectTransform>();
                 affixTooltipRoot.SetParent(transform, false);
-                affixTooltipRoot.anchorMin = new Vector2(0.62f, 0.10f);
-                affixTooltipRoot.anchorMax = new Vector2(0.98f, 0.90f);
-                affixTooltipRoot.offsetMin = Vector2.zero;
-                affixTooltipRoot.offsetMax = Vector2.zero;
+                ApplyAffixTooltipTopStretch(affixTooltipRoot, height: 120f);
                 tipGo.GetComponent<Image>().color = new Color(0x3e / 255f, 0x73 / 255f, 0xdd / 255f, 0.96f);
             }
 
@@ -165,7 +162,7 @@ namespace Project.Match3
                 txtRt.offsetMax = Vector2.zero;
                 affixTooltipText = txtGo.GetComponent<TextMeshProUGUI>();
                 affixTooltipText.font = TMP_Settings.defaultFontAsset;
-                affixTooltipText.fontSize = 14;
+                affixTooltipText.fontSize = 30;
                 affixTooltipText.alignment = TextAlignmentOptions.TopLeft;
                 affixTooltipText.text = string.Empty;
                 affixTooltipText.textWrappingMode = TextWrappingModes.Normal;
@@ -258,6 +255,17 @@ namespace Project.Match3
                 affixTooltipRoot.gameObject.SetActive(false);
         }
 
+        /// <summary>Unity preset Top-Stretch: anchors (0,1)-(1,1), Left/Right insets, Height.</summary>
+        private static void ApplyAffixTooltipTopStretch(RectTransform rt, float height, float left = 16f, float right = 16f, float top = 0f)
+        {
+            if (rt == null) return;
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.sizeDelta = new Vector2(-(left + right), Mathf.Max(1f, height));
+            rt.anchoredPosition = new Vector2((left - right) * 0.5f, -top);
+        }
+
         private void LayoutAffixTooltip()
         {
             if (affixTooltipRoot == null || affixTooltipText == null) return;
@@ -272,22 +280,21 @@ namespace Project.Match3
             const float padTop = 6f;
             const float padBottom = 10f;
             const float closeReserve = 40f;
-            const float topInset = 56f;
+            const float panelLeft = 16f;
+            const float panelRight = 16f;
+            const float panelTop = 0f;
 
-            float parentW = parent.rect.width;
-            float span = 0.98f - 0.62f;
-            float panelW = span * parentW;
+            float parentW = Mathf.Max(1f, parent.rect.width);
+            float panelW = Mathf.Max(40f, parentW - panelLeft - panelRight);
             float maxTextW = Mathf.Max(40f, panelW - padL - padR);
 
+            affixTooltipText.fontSize = 30;
             var pref = affixTooltipText.GetPreferredValues(affixTooltipText.text, maxTextW, 0f);
-            float textH = Mathf.Max(pref.y, 16f);
+            float textH = Mathf.Max(pref.y, 30f);
             float totalH = padTop + closeReserve + textH + padBottom;
 
-            affixTooltipRoot.pivot = new Vector2(0.5f, 1f);
-            affixTooltipRoot.anchorMin = new Vector2(0.62f, 1f);
-            affixTooltipRoot.anchorMax = new Vector2(0.98f, 1f);
-            affixTooltipRoot.sizeDelta = new Vector2(0f, totalH);
-            affixTooltipRoot.anchoredPosition = new Vector2(0f, -topInset);
+            // Только высота под текст; якоря всегда Top-Stretch (не top-custom).
+            ApplyAffixTooltipTopStretch(affixTooltipRoot, totalH, panelLeft, panelRight, panelTop);
 
             var textRt = affixTooltipText.rectTransform;
             textRt.anchorMin = Vector2.zero;
@@ -298,7 +305,7 @@ namespace Project.Match3
             if (affixTooltipCloseButton != null)
             {
                 var closeRt = affixTooltipCloseButton.GetComponent<RectTransform>();
-                closeRt.anchorMin = new Vector2(0.88f, 1f);
+                closeRt.anchorMin = new Vector2(1f, 1f);
                 closeRt.anchorMax = new Vector2(1f, 1f);
                 closeRt.pivot = new Vector2(1f, 1f);
                 closeRt.sizeDelta = new Vector2(36f, 32f);
@@ -332,6 +339,7 @@ namespace Project.Match3
 
             if (affixTooltipText != null)
             {
+                affixTooltipText.fontSize = 30;
                 affixTooltipText.raycastTarget = false;
                 affixTooltipText.textWrappingMode = TextWrappingModes.Normal;
                 affixTooltipText.overflowMode = TextOverflowModes.Overflow;

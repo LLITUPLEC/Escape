@@ -2412,15 +2412,20 @@ namespace Project.UI
             if (_tesseractSprite == null) _tesseractSprite = _matterSprite;
 
             var isBossFloor = bot.floor == 4 || bot.floor == 8 || bot.floor == 12;
-            if (bot.reward_xp > 0)
-                entries.Add(new RewardEntry { icon = _expSprite, text = FormatCompact(bot.reward_xp), color = Color.white });
-            if (bot.reward_gold > 0)
-                entries.Add(new RewardEntry { icon = _goldSprite, text = FormatCompact(bot.reward_gold), color = Color.white });
-            if (bot.reward_ore > 0)
-                entries.Add(new RewardEntry { icon = _oreSprite, text = FormatCompact(bot.reward_ore), color = Color.white });
-            if (bot.reward_ingots > 0)
+            // Превью как award_pve_victory: base × mine_reward_multiplier(difficulty).
+            var rewardXp = MineRewardFormat.ScaleRewardAmount(bot.reward_xp, _difficulty);
+            var rewardGold = MineRewardFormat.ScaleRewardAmount(bot.reward_gold, _difficulty);
+            var rewardOre = MineRewardFormat.ScaleRewardAmount(bot.reward_ore, _difficulty);
+            var rewardIngots = MineRewardFormat.ScaleRewardAmount(bot.reward_ingots, _difficulty);
+            if (rewardXp > 0)
+                entries.Add(new RewardEntry { icon = _expSprite, text = FormatCompact(rewardXp), color = Color.white });
+            if (rewardGold > 0)
+                entries.Add(new RewardEntry { icon = _goldSprite, text = FormatCompact(rewardGold), color = Color.white });
+            if (rewardOre > 0)
+                entries.Add(new RewardEntry { icon = _oreSprite, text = FormatCompact(rewardOre), color = Color.white });
+            if (rewardIngots > 0)
             {
-                var n = FormatCompact(bot.reward_ingots);
+                var n = FormatCompact(rewardIngots);
                 string ingotLabel;
                 if (!isBossFloor)
                 {
@@ -2429,7 +2434,7 @@ namespace Project.UI
                 }
                 else
                 {
-                    var doubled = bot.reward_ingots * 2;
+                    var doubled = rewardIngots * 2;
                     ingotLabel = FormatCompact(doubled);
                 }
 
@@ -2441,8 +2446,9 @@ namespace Project.UI
 
             if (bot.reward_matter_min > 0 || bot.reward_matter_max > 0)
             {
-                var minMatter = Mathf.Max(0, bot.reward_matter_min);
-                var maxMatter = Mathf.Max(minMatter, bot.reward_matter_max);
+                var minMatter = MineRewardFormat.ScaleRewardAmount(Mathf.Max(0, bot.reward_matter_min), _difficulty);
+                var maxMatter = MineRewardFormat.ScaleRewardAmount(Mathf.Max(bot.reward_matter_min, bot.reward_matter_max), _difficulty);
+                maxMatter = Mathf.Max(minMatter, maxMatter);
                 var matterText = minMatter == maxMatter
                     ? FormatCompact(minMatter)
                     : $"{FormatCompact(minMatter)}-{FormatCompact(maxMatter)}";

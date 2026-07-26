@@ -2156,7 +2156,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2378463208712306870}
-  - component: {fileID: 5367494984628565950}
+  - component: {fileID: 3473130332125060744}
   - component: {fileID: 4227628917014830666}
   m_Layer: 0
   m_Name: BarrierRequirementsDynamic
@@ -2181,10 +2181,10 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1087.0337, y: -422.53598}
-  m_SizeDelta: {x: 2174.0674, y: 40}
+  m_AnchoredPosition: {x: 498.36804, y: -398.0636}
+  m_SizeDelta: {x: 996.7361, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &5367494984628565950
+--- !u!114 &3473130332125060744
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2193,9 +2193,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 5262784680261533753}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
   m_Padding:
     m_Left: 0
     m_Right: 0
@@ -2994,8 +2994,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1087.0337, y: -379.53598}
-  m_SizeDelta: {x: 2174.0674, y: 26}
+  m_AnchoredPosition: {x: 498.36804, y: -355.0636}
+  m_SizeDelta: {x: 996.7361, y: 26}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4538904858554950651
 CanvasRenderer:
@@ -3198,8 +3198,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1091.0337, y: -408.53598}
-  m_SizeDelta: {x: 2174.0674, y: 809.07196}
+  m_AnchoredPosition: {x: 502.36804, y: -1535.1908}
+  m_SizeDelta: {x: 996.7361, y: 760.1272}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &4084371239202711615
 MonoBehaviour:

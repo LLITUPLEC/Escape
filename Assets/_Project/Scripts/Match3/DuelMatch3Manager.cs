@@ -131,7 +131,7 @@ namespace Project.Match3
         private const string RewardTesseractIconPath = "Assets/_Project/img/resources_hud/tesseract.png";
         /// <summary>Resources.Load без расширения: Assets/_Project/Resources/UI/Match3GameHUD.prefab</summary>
         private const string Match3HudResourcesPath = "UI/Match3GameHUD";
-        private const int MaxRewardCellsPerLine = 4;
+        private const int DefaultRewardCellsPerLine = 2;
         private const string PrefLastKnownUsername = "nakama.ui.last_known_username";
         private const string PrefUserNameByUserIdPrefix = "nakama.ui.username.by_user_id.";
         private const int FrozenAffixAbilityPenalty = 10;
@@ -1252,11 +1252,18 @@ namespace Project.Match3
                 Destroy(_gameOverRewardRowsRoot.GetChild(i).gameObject);
         }
 
+        private int GetRewardCellsPerLine()
+        {
+            if (_gameOverPanel != null)
+                return _gameOverPanel.RewardCellsPerLine;
+            return DefaultRewardCellsPerLine;
+        }
+
         private void EnsureCurrentRewardLine()
         {
             if (_gameOverRewardRowsRoot == null)
                 return;
-            if (_gameOverRewardLineRoot != null && _gameOverRewardSlotsInLine < MaxRewardCellsPerLine)
+            if (_gameOverRewardLineRoot != null && _gameOverRewardSlotsInLine < GetRewardCellsPerLine())
                 return;
 
             var line = new GameObject("RewardLine", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
@@ -1309,6 +1316,9 @@ namespace Project.Match3
             h.childForceExpandHeight = false;
             h.childForceExpandWidth = false;
 
+            var iconSize = _gameOverPanel != null ? _gameOverPanel.RewardIconPreferredSize : 60f;
+            var valueFontSize = _gameOverPanel != null ? _gameOverPanel.RewardValueFontSize : 50f;
+
             if (icon != null)
             {
                 var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
@@ -1320,10 +1330,10 @@ namespace Project.Match3
                 iconImg.raycastTarget = false;
                 iconImg.color = Color.white;
                 var iconLe = iconGo.GetComponent<LayoutElement>();
-                iconLe.preferredWidth = 30f;
-                iconLe.preferredHeight = 30f;
-                iconLe.minWidth = 30f;
-                iconLe.minHeight = 30f;
+                iconLe.preferredWidth = iconSize;
+                iconLe.preferredHeight = iconSize;
+                iconLe.minWidth = iconSize;
+                iconLe.minHeight = iconSize;
             }
 
             var textGo = new GameObject("Value", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
@@ -1332,7 +1342,7 @@ namespace Project.Match3
             var text = textGo.GetComponent<TextMeshProUGUI>();
             if (_gameOverPanel != null && _gameOverPanel.rewardText != null)
                 text.font = _gameOverPanel.rewardText.font;
-            text.fontSize = 30f;
+            text.fontSize = valueFontSize;
             text.color = new Color(1f, 0.90f, 0.30f);
             text.alignment = TextAlignmentOptions.Center;
             text.text = valueText;

@@ -9,6 +9,26 @@ namespace Project.UI
     {
         public const string MainItemCatalogAssetPath = "Assets/_Project/Data/Character/Items/MainItemCatalog.asset";
 
+        /// <summary>Как <c>mine_reward_multiplier</c> на сервере: medium ×1.5, hard ×2.</summary>
+        public static float RewardMultiplier(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return 1.5f;
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return 2f;
+            return 1f;
+        }
+
+        public static int ScaleRewardAmount(int baseAmount, string difficulty)
+        {
+            if (baseAmount <= 0)
+                return 0;
+            var mul = RewardMultiplier(difficulty);
+            if (Mathf.Approximately(mul, 1f))
+                return baseAmount;
+            return Mathf.CeilToInt(baseAmount * mul);
+        }
+
         public static string IngotDefIdForDifficulty(string difficulty)
         {
             if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))

@@ -232,6 +232,9 @@ MonoBehaviour:
   titleText: {fileID: 4054942002991027753}
   rewardText: {fileID: 1420342038743608980}
   backButton: {fileID: 5084127371495322333}
+  rewardCellsPerLine: 2
+  rewardIconPreferredSize: 60
+  rewardValueFontSize: 50
 --- !u!1 &4806490919870413127
 GameObject:
   m_ObjectHideFlags: 0
