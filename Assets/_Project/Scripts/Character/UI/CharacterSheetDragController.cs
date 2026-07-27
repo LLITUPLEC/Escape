@@ -114,8 +114,11 @@ namespace Project.Character.UI
 
         private async Task TryMoveFromDropAsync(CharacterDragSlotHandle a, CharacterDragSlotHandle b)
         {
-            if (_view == null) return;
+            if (_view == null || a == null || b == null || a == b) return;
             var ct = _cts != null ? _cts.Token : CancellationToken.None;
+
+            if (!IsDropAllowed(a, b))
+                return;
 
             Task<CharacterGetRpcResponse> t;
             if (a.Kind == CharacterDragSlotKind.Inventory && b.Kind == CharacterDragSlotKind.Equipment)
@@ -140,6 +143,45 @@ namespace Project.Character.UI
                     ProfileUpdated?.Invoke(resp);
                 }
             });
+        }
+
+        /// <summary>
+        /// Инв→экип / экип↔экип только в свой слот предмета.
+        /// Инв↔инв всегда ок (сервер сам стакает одинаковые).
+        /// </summary>
+        private bool IsDropAllowed(CharacterDragSlotHandle source, CharacterDragSlotHandle target)
+        {
+            if (source.Kind == CharacterDragSlotKind.Inventory && target.Kind == CharacterDragSlotKind.Equipment)
+            {
+                if (!_view.TryGetInventoryItem(source.InventoryIndex, out _, out var invDef) || invDef == null)
+                    return false;
+                return invDef.Equippable && invDef.Slot == target.EquipmentSlot;
+            }
+
+            if (source.Kind == CharacterDragSlotKind.Equipment && target.Kind == CharacterDragSlotKind.Equipment)
+            {
+                if (source.EquipmentSlot == target.EquipmentSlot)
+                    return false;
+
+                ItemDefinition srcDef = null;
+                ItemDefinition dstDef = null;
+                var hasSrc = _view.TryGetEquipmentItem(source.EquipmentSlot, out _, out srcDef);
+                var hasDst = _view.TryGetEquipmentItem(target.EquipmentSlot, out _, out dstDef);
+
+                if (hasSrc && (srcDef == null || srcDef.Slot != target.EquipmentSlot))
+                    return false;
+                if (hasDst && (dstDef == null || dstDef.Slot != source.EquipmentSlot))
+                    return false;
+                return hasSrc || hasDst;
+            }
+
+            if (source.Kind == CharacterDragSlotKind.Equipment && target.Kind == CharacterDragSlotKind.Inventory)
+                return true;
+
+            if (source.Kind == CharacterDragSlotKind.Inventory && target.Kind == CharacterDragSlotKind.Inventory)
+                return source.InventoryIndex != target.InventoryIndex;
+
+            return false;
         }
 
         private async Task TryEquipFromInventoryAsync(int inventoryIndex, EquipmentSlotId slotId)

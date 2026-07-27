@@ -120,10 +120,39 @@ return function(deps)
       if a < 0 or a > 24 or b < 0 or b > 24 then return json_fail("bad_inv_index") end
       if a ~= b then
         local ia, ib = a + 1, b + 1
-        sheet.inventory[ia], sheet.inventory[ib] = sheet.inventory[ib], sheet.inventory[ia]
+        local id_a = sheet.inventory[ia] or ""
+        local id_b = sheet.inventory[ib] or ""
         local ca = tonumber(sheet.inventory_counts[ia]) or 0
         local cb = tonumber(sheet.inventory_counts[ib]) or 0
-        sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
+        -- Одинаковый стакаемый предмет → слияние в цель (до max_stack), иначе обмен.
+        if id_a ~= "" and id_a == id_b and ca > 0 and cb > 0 then
+          local max_s = item_max_stack(defs[id_a])
+          if max_s > 1 then
+            local space = max_s - cb
+            if space > 0 then
+              local move = math.min(space, ca)
+              cb = cb + move
+              ca = ca - move
+              sheet.inventory_counts[ib] = cb
+              if ca <= 0 then
+                sheet.inventory[ia] = ""
+                sheet.inventory_counts[ia] = 0
+              else
+                sheet.inventory_counts[ia] = ca
+              end
+            else
+              -- Цель уже полная — обычный swap.
+              sheet.inventory[ia], sheet.inventory[ib] = id_b, id_a
+              sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
+            end
+          else
+            sheet.inventory[ia], sheet.inventory[ib] = id_b, id_a
+            sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
+          end
+        else
+          sheet.inventory[ia], sheet.inventory[ib] = id_b, id_a
+          sheet.inventory_counts[ia], sheet.inventory_counts[ib] = cb, ca
+        end
       end
     elseif op == "equip_swap" then
       local a = tonumber(p.slot_a)
@@ -134,7 +163,22 @@ return function(deps)
       if a < 0 or a > 7 or b < 0 or b > 7 then return json_fail("bad_slot_index") end
       if a ~= b then
         local sa, sb = a + 1, b + 1
-        sheet.equipment[sa], sheet.equipment[sb] = sheet.equipment[sb], sheet.equipment[sa]
+        local item_a = sheet.equipment[sa] or ""
+        local item_b = sheet.equipment[sb] or ""
+        -- Каждый предмет может лежать только в своём слоте (как inv_to_equip).
+        if item_a ~= "" then
+          local def_a = defs[item_a]
+          if def_a == nil then return json_fail("unknown_item") end
+          if not item_def_is_equipment(def_a) then return json_fail("not_equipment") end
+          if def_a.slot ~= EQUIP_ORDER[sb] then return json_fail("wrong_slot") end
+        end
+        if item_b ~= "" then
+          local def_b = defs[item_b]
+          if def_b == nil then return json_fail("unknown_item") end
+          if not item_def_is_equipment(def_b) then return json_fail("not_equipment") end
+          if def_b.slot ~= EQUIP_ORDER[sa] then return json_fail("wrong_slot") end
+        end
+        sheet.equipment[sa], sheet.equipment[sb] = item_b, item_a
       end
     else
       return json_fail("unknown_op")

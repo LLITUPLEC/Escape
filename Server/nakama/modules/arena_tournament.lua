@@ -90,9 +90,9 @@ local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
 
 local arena_runtime = {
   kinds = {
-    [ARENA_KIND_SMITH] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
-    [ARENA_KIND_ORE] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
-    [ARENA_KIND_GOLD] = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true },
+    [ARENA_KIND_SMITH] = { queues = {}, allow_bot_fill = true },
+    [ARENA_KIND_ORE] = { queues = {}, allow_bot_fill = true },
+    [ARENA_KIND_GOLD] = { queues = {}, allow_bot_fill = true },
   },
   tournaments = {},
   -- user_tid[user_id] = { tid = "...", kind = "smith|ore|gold" }
@@ -104,10 +104,78 @@ local function kind_state(kind)
   local k = normalize_kind(kind)
   local ks = arena_runtime.kinds[k]
   if ks == nil then
-    ks = { queue = {}, queue_bet_tier = "", next_bot_at = 0, allow_bot_fill = true }
+    ks = { queues = {}, allow_bot_fill = true }
     arena_runtime.kinds[k] = ks
   end
   return ks, k
+end
+
+--- Миграция со старого формата { queue, queue_bet_tier, next_bot_at } → queues[bet].
+local function ensure_kind_queues(ks)
+  if type(ks.queues) ~= "table" then
+    ks.queues = {}
+  end
+  if type(ks.queue) == "table" and #ks.queue > 0 then
+    local old_bet = tostring(ks.queue_bet_tier or "")
+    if old_bet == "" then
+      local first = ks.queue[1]
+      old_bet = (first ~= nil and tostring(first.bet_tier or "")) or "green"
+    end
+    if old_bet == "" then old_bet = "green" end
+    local bq = ks.queues[old_bet]
+    if bq == nil then
+      bq = { queue = {}, next_bot_at = 0 }
+      ks.queues[old_bet] = bq
+    end
+    if type(bq.queue) ~= "table" then
+      bq.queue = {}
+    end
+    for i = 1, #ks.queue do
+      bq.queue[#bq.queue + 1] = ks.queue[i]
+    end
+    if (tonumber(ks.next_bot_at) or 0) > 0 then
+      bq.next_bot_at = tonumber(ks.next_bot_at) or 0
+    end
+  end
+  ks.queue = nil
+  ks.queue_bet_tier = nil
+  ks.next_bot_at = nil
+end
+
+local function bet_queue_state(kind, bet)
+  local ks, k = kind_state(kind)
+  ensure_kind_queues(ks)
+  local b = string.lower(tostring(bet or ""))
+  if b == "" then b = "green" end
+  local bq = ks.queues[b]
+  if bq == nil then
+    bq = { queue = {}, next_bot_at = 0 }
+    ks.queues[b] = bq
+  elseif type(bq.queue) ~= "table" then
+    bq.queue = {}
+  end
+  return bq, ks, k, b
+end
+
+local function find_user_in_any_queue(user_id)
+  for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
+    local ks = arena_runtime.kinds[kk]
+    if ks ~= nil then
+      ensure_kind_queues(ks)
+      for bet_key, bq in pairs(ks.queues) do
+        local q = bq and bq.queue
+        if type(q) == "table" then
+          for i = 1, #q do
+            local e = q[i]
+            if e ~= nil and e.bot ~= true and e.uid == user_id then
+              return kk, tostring(bet_key), bq, i, e
+            end
+          end
+        end
+      end
+    end
+  end
+  return nil, nil, nil, nil, nil
 end
 
 local function storage_read_one(user_id, collection, key)
@@ -851,9 +919,9 @@ local function arena_start_tournament_from_entries(kind, entries)
   arena_save_tournament(T)
 end
 
-local function arena_try_pop_queue_full(kind)
-  local ks, k = kind_state(kind)
-  local q = ks.queue
+local function arena_try_pop_queue_full(kind, bet)
+  local bq, _ks, k, bet_key = bet_queue_state(kind, bet)
+  local q = bq.queue
   if #q < ARENA_QUEUE_MAX then
     return
   end
@@ -864,21 +932,20 @@ local function arena_try_pop_queue_full(kind)
   for _ = 1, ARENA_QUEUE_MAX do
     table.remove(q, 1)
   end
-  ks.queue_bet_tier = ""
-  ks.next_bot_at = 0
+  bq.next_bot_at = 0
   arena_start_tournament_from_entries(k, batch)
 end
 
-local function arena_maybe_fill_bot(kind)
-  local ks, k = kind_state(kind)
+local function arena_maybe_fill_bot(kind, bet)
+  local bq, ks, k, bet_key = bet_queue_state(kind, bet)
   if ks.allow_bot_fill ~= true then
     return
   end
-  local q = ks.queue
+  local q = bq.queue
   if #q >= ARENA_QUEUE_MAX or #q == 0 then
     return
   end
-  -- Если в очереди не осталось ни одного человека — очищаем очередь от ботов и выходим.
+  -- Если в этой ставке не осталось людей — очищаем очередь от ботов.
   local has_human = false
   for i = 1, #q do
     local e = q[i]
@@ -888,27 +955,34 @@ local function arena_maybe_fill_bot(kind)
     end
   end
   if not has_human then
-    ks.queue = {}
-    ks.queue_bet_tier = ""
-    ks.next_bot_at = 0
+    bq.queue = {}
+    bq.next_bot_at = 0
     return
   end
   local now = os.time()
-  if ks.next_bot_at <= 0 then
-    ks.next_bot_at = now + math.random(5, 8)
+  if bq.next_bot_at <= 0 then
+    bq.next_bot_at = now + math.random(5, 8)
     return
   end
-  if now < ks.next_bot_at then
+  if now < bq.next_bot_at then
     return
   end
-  ks.next_bot_at = now + math.random(5, 8)
+  bq.next_bot_at = now + math.random(5, 8)
   q[#q + 1] = {
     uid = arena_make_bot_uid(),
     display = arena_random_bot_display(),
     bot = true,
-    bet_tier = ks.queue_bet_tier,
+    bet_tier = bet_key,
   }
-  arena_try_pop_queue_full(k)
+  arena_try_pop_queue_full(k, bet_key)
+end
+
+local function arena_maybe_fill_bots_for_kind(kind)
+  local ks, k = kind_state(kind)
+  ensure_kind_queues(ks)
+  for bet_key, _bq in pairs(ks.queues) do
+    arena_maybe_fill_bot(k, bet_key)
+  end
 end
 
 local function arena_json_for_user(user_id)
@@ -917,7 +991,7 @@ local function arena_json_for_user(user_id)
   if tid == nil then
     return nil
   end
-  arena_maybe_fill_bot(kind)
+  arena_maybe_fill_bots_for_kind(kind)
   local T = arena_load_tournament(tid)
   if T == nil then
     arena_clear_human_tid(user_id)
@@ -1018,8 +1092,8 @@ local function duel_arena_queue_join(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
     local kind = normalize_kind(p.arena_kind)
-    local ks, k = kind_state(kind)
     local bet = string.lower(tostring(p.bet_tier or "green"))
+    local k = kind
     if k == ARENA_KIND_SMITH then
       if bet ~= "green" and bet ~= "blue" and bet ~= "purple" then
         bet = "green"
@@ -1031,28 +1105,20 @@ local function duel_arena_queue_join(ctx, payload)
       end
       bet = normalized
     end
-    -- Disallow being in queue of another arena kind too (single active arena entry per user).
-    for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
-      local kst = arena_runtime.kinds[kk]
-      if kst ~= nil then
-        for _, qe in ipairs(kst.queue) do
-          if qe.bot ~= true and qe.uid == user_id then
-            return nk.json_encode({ ok = false, err = "already_in_queue" })
-          end
-        end
-      end
+    -- Один игрок — одна активная запись в любой очереди арены.
+    local already_kind = find_user_in_any_queue(user_id)
+    if already_kind ~= nil then
+      return nk.json_encode({ ok = false, err = "already_in_queue" })
     end
     if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "already_in_tournament" })
     end
-    if ks.queue_bet_tier ~= "" and ks.queue_bet_tier ~= bet then
-      return nk.json_encode({ ok = false, err = "bet_tier_mismatch" })
-    end
-    local ingot_def = ""
+    local bq, _ks, _, bet_key = bet_queue_state(k, bet)
+    bet = bet_key
     if k == ARENA_KIND_SMITH then
       local sheet = read_character_sheet(user_id)
       ensure_sheet_inventory_counts(sheet)
-      ingot_def = arena_bet_to_ingot_def(bet)
+      local ingot_def = arena_bet_to_ingot_def(bet)
       if inventory_remove_def_total(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS) ~= true then
         return nk.json_encode({ ok = false, err = "not_enough_ingots", ingot_def = ingot_def })
       end
@@ -1104,27 +1170,29 @@ local function duel_arena_queue_join(ctx, payload)
       disp = "Игрок"
     end
 
-    if ks.queue_bet_tier == "" then
-      ks.queue_bet_tier = bet
-    end
-    ks.queue[#ks.queue + 1] = {
+    bq.queue[#bq.queue + 1] = {
       uid = user_id,
       display = disp,
       bot = false,
       bet_tier = bet,
     }
-    if ks.next_bot_at <= 0 then
-      ks.next_bot_at = os.time() + math.random(5, 8)
+    if bq.next_bot_at <= 0 then
+      bq.next_bot_at = os.time() + math.random(5, 8)
     end
-    arena_maybe_fill_bot(k)
-    arena_try_pop_queue_full(k)
+    arena_maybe_fill_bot(k, bet)
+    arena_try_pop_queue_full(k, bet)
 
-    -- После попа очередь может быть пуста — клиенту нужно различать «0 в очереди, но вы уже в турнире».
     local in_tournament = arena_load_user_tid(user_id) ~= nil
+    local q_count = #bq.queue
+    if in_tournament then
+      -- Игрок уже вытолкнут в турнир — счётчик для его ставки.
+      local bq_after = select(1, bet_queue_state(k, bet))
+      q_count = #(bq_after.queue or {})
+    end
 
     return nk.json_encode({
       ok = true,
-      queue_count = #ks.queue,
+      queue_count = q_count,
       queue_max = ARENA_QUEUE_MAX,
       bet_tier = bet,
       in_tournament = in_tournament,
@@ -1151,40 +1219,15 @@ local function duel_arena_queue_leave(ctx, payload)
     if arena_load_user_tid(user_id) ~= nil then
       return nk.json_encode({ ok = false, err = "in_tournament" })
     end
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local kind = normalize_kind(p.arena_kind)
-    local ks, k = kind_state(kind)
-    local removed_bet = ""
-    local removed_kind = ""
-    local function try_remove_from(kk)
-      local kst = arena_runtime.kinds[kk]
-      if kst == nil then return false end
-      local q = kst.queue
-      for i = 1, #q do
-        local e = q[i]
-        if e.bot ~= true and e.uid == user_id then
-          removed_bet = e.bet_tier or kst.queue_bet_tier
-          removed_kind = kk
-          table.remove(q, i)
-          return true
-        end
-      end
-      return false
-    end
-    -- Prefer requested kind but allow leaving regardless of what UI selected.
-    if not try_remove_from(k) then
-      for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
-        if try_remove_from(kk) then break end
-      end
-    end
-    if removed_bet == "" then
+    local rk, removed_bet, bq, idx = find_user_in_any_queue(user_id)
+    if rk == nil or bq == nil or idx == nil then
       return nk.json_encode({ ok = false, err = "not_in_queue" })
     end
-    local rk = removed_kind ~= "" and removed_kind or k
-    local rks, _ = kind_state(rk)
+    table.remove(bq.queue, idx)
+    if #bq.queue == 0 then
+      bq.next_bot_at = 0
+    end
+
     if rk == ARENA_KIND_SMITH then
       local sheet = read_character_sheet(user_id)
       ensure_sheet_inventory_counts(sheet)
@@ -1217,11 +1260,13 @@ local function duel_arena_queue_leave(ctx, payload)
         end
       end
     end
-    if #rks.queue == 0 then
-      rks.queue_bet_tier = ""
-      rks.next_bot_at = 0
-    end
-    return nk.json_encode({ ok = true, queue_count = #rks.queue, queue_max = ARENA_QUEUE_MAX })
+    return nk.json_encode({
+      ok = true,
+      queue_count = #bq.queue,
+      queue_max = ARENA_QUEUE_MAX,
+      bet_tier = removed_bet,
+      arena_kind = rk,
+    })
   end)
   if not ok then
     nk.logger_error("duel_arena_queue_leave: " .. tostring(result))
@@ -1246,6 +1291,7 @@ local function duel_arena_queue_poll(ctx, payload)
       p = nk.json_decode(payload) or {}
     end
     local requested_kind = normalize_kind(p.arena_kind)
+    local requested_bet = string.lower(tostring(p.bet_tier or ""))
 
     local tnow = os.time()
     arena_runtime.last_tourn_storage_sweep = tnow
@@ -1257,27 +1303,31 @@ local function duel_arena_queue_poll(ctx, payload)
     local queue_bet = ""
     local queue_count = 0
     local queue_max = ARENA_QUEUE_MAX
-    -- If user is in any queue, report that queue kind/count.
-    for _, k in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
-      local ks = arena_runtime.kinds[k]
-      if ks ~= nil then
-        for _, qe in ipairs(ks.queue) do
-          if qe.bot ~= true and qe.uid == user_id then
-            in_queue = true
-            queue_kind = k
-            queue_bet = qe.bet_tier or ks.queue_bet_tier
-            queue_count = #ks.queue
-            break
+
+    local found_kind, found_bet, found_bq = find_user_in_any_queue(user_id)
+    if found_kind ~= nil then
+      in_queue = true
+      queue_kind = found_kind
+      queue_bet = found_bet
+      queue_count = #(found_bq.queue or {})
+    else
+      queue_kind = requested_kind
+      if requested_bet ~= "" then
+        if requested_kind == ARENA_KIND_SMITH then
+          if requested_bet ~= "green" and requested_bet ~= "blue" and requested_bet ~= "purple" then
+            requested_bet = "green"
           end
+        else
+          local _cfg, normalized = resource_tier_cfg(requested_kind, requested_bet)
+          requested_bet = normalized
         end
+        local bq = select(1, bet_queue_state(requested_kind, requested_bet))
+        queue_bet = requested_bet
+        queue_count = #(bq.queue or {})
+      else
+        queue_bet = ""
+        queue_count = 0
       end
-      if in_queue then break end
-    end
-    if not in_queue then
-      local ks, k = kind_state(requested_kind)
-      queue_kind = k
-      queue_bet = ks.queue_bet_tier
-      queue_count = #ks.queue
     end
 
     local tournament = arena_json_for_user(user_id)
@@ -1285,8 +1335,11 @@ local function duel_arena_queue_poll(ctx, payload)
       tournament = { active = false, id = "" }
     end
 
-    -- Keep bots flowing for a requested queue kind too (helps empty UI reflect "filling").
-    arena_maybe_fill_bot(queue_kind ~= "" and queue_kind or requested_kind)
+    if queue_bet ~= "" then
+      arena_maybe_fill_bot(queue_kind ~= "" and queue_kind or requested_kind, queue_bet)
+    else
+      arena_maybe_fill_bots_for_kind(queue_kind ~= "" and queue_kind or requested_kind)
+    end
 
     return nk.json_encode({
       ok = true,

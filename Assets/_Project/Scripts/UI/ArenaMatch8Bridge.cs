@@ -75,6 +75,8 @@ namespace Project.UI
         private Coroutine _pollRoutine;
         private bool _busyJoin;
         private string _selectedArenaKind = ArenaKindSmith;
+        /// <summary>Последняя выбранная/просматриваемая ставка — для poll (отдельные очереди по bet_tier).</summary>
+        private string _previewBetTier = "";
 
         /// <summary>Без Sprite у UI Image режим «Filled» + Fill Amount часто визуально не работает (сплошной прямоугольник).</summary>
         private static Sprite _arenaBracketHpSprite;
@@ -333,8 +335,11 @@ namespace Project.UI
                 return;
             try
             {
+                var betPart = string.IsNullOrWhiteSpace(_previewBetTier)
+                    ? ""
+                    : ",\"bet_tier\":\"" + _previewBetTier.Trim() + "\"";
                 var payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
-                              ",\"arena_kind\":\"" + (_selectedArenaKind ?? ArenaKindSmith) + "\"}";
+                              ",\"arena_kind\":\"" + (_selectedArenaKind ?? ArenaKindSmith) + "\"" + betPart + "}";
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaPoll, payload);
                 var raw = rpc?.Payload ?? "{}";
                 var model = JsonUtility.FromJson<ArenaPollResponse>(raw);
@@ -544,6 +549,8 @@ namespace Project.UI
 
             if (m != null && m.in_queue && !string.IsNullOrWhiteSpace(m.queue_kind))
                 _selectedArenaKind = m.queue_kind.Trim().ToLowerInvariant();
+            if (m != null && m.in_queue && !string.IsNullOrWhiteSpace(m.queue_bet_tier))
+                _previewBetTier = m.queue_bet_tier.Trim().ToLowerInvariant();
 
             var show = m.in_queue || (m.queue_count > 0);
             _queueTmp.gameObject.SetActive(show);
@@ -675,6 +682,7 @@ namespace Project.UI
             if (_busyJoin || !NakamaBootstrap.Instance.IsReady)
                 return;
             _busyJoin = true;
+            _previewBetTier = string.IsNullOrWhiteSpace(tier) ? "" : tier.Trim().ToLowerInvariant();
             try
             {
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(default);

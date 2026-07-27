@@ -14,8 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: ingot_blue
   displayName: "\u0421\u0438\u043D\u0438\u0439 \u0441\u043B\u0438\u0442\u043E\u043A"
+  colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
+  description: 
   kind: 1
-  maxStack: 100
+  maxStack: 200
   tier: 1
   quality: 1
   recipeTargetSlot: 0
