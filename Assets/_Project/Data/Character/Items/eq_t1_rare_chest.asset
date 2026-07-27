@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 2
   craftRecipeId: recipe_drop_blue_Chest
-  craftOre: 588
-  craftGold: 491
+  craftOre: 5880
+  craftGold: 4910
   craftIngotDef: ingot_blue
-  craftIngotN: 15
+  craftIngotN: 150
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: 5838efc3e9a9e514ba14d8d51f6c262f, type: 3}
   equippable: 1

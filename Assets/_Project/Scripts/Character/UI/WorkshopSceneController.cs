@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,6 +24,8 @@ namespace Project.Character.UI
 
         [Header("Data")]
         [SerializeField] private ItemCatalog itemCatalog;
+        [Tooltip("Подсветка слота во время крафта (TorchLightRadial).")]
+        [SerializeField] private Sprite craftSlotBusyGlowSprite;
 
         [Header("Optional (авто-поиск по имени)")]
         [SerializeField] private Text hintText;
@@ -52,6 +55,7 @@ namespace Project.Character.UI
         private Text _createButtonStatusIcon;
         private Button _claimButton;
         private Button _rushButton;
+        private RectTransform _buttonsRoot;
         private readonly List<GameObject> _recipeRows = new();
 
         private const float WorkshopSlotSquareSize = 200f;
@@ -59,11 +63,18 @@ namespace Project.Character.UI
         private const float WorkshopWeaponsRowWidth = 440f;
         private const float WorkshopWeaponsRowHeight = 220f;
         private const float WorkshopCharacterPlaceholderSize = 400f;
+        private const string CraftSlotBusyGlowAssetPath = "Assets/_Project/Art/UI/Generated/TorchLightRadial.png";
         private static readonly Color WorkshopShortfallColor = new Color(204f / 255f, 0.2f, 0.2f, 1f);
         private static readonly Color WorkshopCanCraftColor = new Color(0.35f, 0.92f, 0.4f, 1f);
         private static readonly Color WorkshopCannotCraftColor = new Color(0.92f, 0.28f, 0.24f, 1f);
+        private static readonly Color WorkshopNeutralTextColor = new Color(0.94f, 0.92f, 0.86f, 1f);
+        private static readonly Color RecipeOwnedGreen = new Color(0.32f, 0.86f, 0.38f, 1f);
+        private static readonly Color RecipeMissingOrange = new Color(1f, 0.55f, 0.18f, 1f);
 
         private Image[] _slotIcons;
+        private Image[] _slotBgImages;
+        private Sprite[] _slotBgDefaultSprites;
+        private Color[] _slotBgDefaultColors;
         private Text[] _slotTimers;
         private Outline[] _slotSelectionOutlines;
 
@@ -151,14 +162,19 @@ namespace Project.Character.UI
             _createButton = r.createButton;
             _claimButton = r.claimButton;
             _rushButton = r.rushButton;
+            _buttonsRoot = _createButton != null ? _createButton.transform.parent as RectTransform : null;
             WorkshopRecipePanelSetup.EnsureCreateButtonStatusUi(_createButton, out _createButtonLabel, out _createButtonStatusIcon);
             if (_itemStatsText != null)
             {
                 WorkshopRecipePanelSetup.ApplyItemStatsTextLayout(_itemStatsText.rectTransform);
                 _itemStatsText.fontSize = 33;
+                _itemStatsText.supportRichText = true;
             }
+            if (_detailText != null)
+                _detailText.supportRichText = true;
             if (_rushButton == null)
                 _rushButton = WorkshopRecipePanelSetup.EnsureRushButton(workshopBackground);
+            UpdateButtonsRootVisibility();
         }
 
         private void WireRecipePanelButtons()
@@ -414,7 +430,11 @@ namespace Project.Character.UI
         private void WireCraftSlots()
         {
             if (craftSlotsRoot == null) return;
+            EnsureCraftSlotBusyGlowSprite();
             _slotIcons = new Image[8];
+            _slotBgImages = new Image[8];
+            _slotBgDefaultSprites = new Sprite[8];
+            _slotBgDefaultColors = new Color[8];
             _slotTimers = new Text[8];
             _slotSelectionOutlines = new Outline[8];
 
@@ -487,6 +507,13 @@ namespace Project.Character.UI
                 _slotTimers[i] = timerTx;
 
                 var img = slot.GetComponent<Image>();
+                _slotBgImages[i] = img;
+                if (img != null)
+                {
+                    _slotBgDefaultSprites[i] = img.sprite;
+                    _slotBgDefaultColors[i] = img.color;
+                }
+
                 var btn = slot.GetComponent<Button>();
                 if (btn == null) btn = slot.gameObject.AddComponent<Button>();
                 btn.targetGraphic = img;
@@ -566,6 +593,7 @@ namespace Project.Character.UI
             UpdateDetailPanel();
             UpdateSlotSelectionVisual();
             UpdateItemStatsVisibility();
+            UpdateButtonsRootVisibility();
         }
 
         private enum WorkshopSlotState { Empty, Busy, Ready }
@@ -645,6 +673,7 @@ namespace Project.Character.UI
             }
             _recipeRows.Clear();
 
+            string firstLearnedId = null;
             foreach (var def in itemCatalog.EnumerateDefinitions())
             {
                 if (def == null || def.Kind != ItemKind.Equipment) continue;
@@ -653,17 +682,21 @@ namespace Project.Character.UI
                 if (!IsRecipeLearnedForCraft(def.CraftRecipeId)) continue;
                 if (def.Tier < 1 || def.Tier > 3) continue;
 
+                if (firstLearnedId == null)
+                    firstLearnedId = def.ItemId;
+
                 var line = new GameObject("Recipe_" + def.ItemId, typeof(RectTransform), typeof(Image), typeof(Button));
                 var rt = line.GetComponent<RectTransform>();
                 rt.SetParent(_recipeContent, false);
                 line.GetComponent<Image>().color = RecipeRowQualityTint(def.Quality);
                 var le = line.AddComponent<LayoutElement>();
-                le.minHeight = 40f;
+                le.minHeight = 48f;
                 var bt = line.GetComponent<Button>();
                 var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
                 var lineTitle = title + " (T" + def.Tier + ", " + WorkshopCraftRules.QualityRu(def.Quality) + ")";
-                CreateUiText("Txt", line.transform, lineTitle, 21, TextAnchor.MiddleLeft,
-                    new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(10f, 3f), new Vector2(-10f, -3f));
+                CreateUiText("Txt", line.transform, lineTitle, 30, TextAnchor.MiddleLeft,
+                    new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(10f, 3f), new Vector2(-270f, -3f));
+                AddRecipeOwnedStatusLabel(line.transform, def);
                 var idCopy = def.ItemId;
                 bt.onClick.AddListener(() =>
                 {
@@ -676,7 +709,95 @@ namespace Project.Character.UI
             if (_recipeRows.Count == 0 && _recipeHeader != null)
                 _recipeHeader.text = SlotRu[_selectedSlot] + ": нет изученных рецептов для этого слота";
 
+            AutoSelectFirstLearnedRecipe(firstLearnedId);
             UpdateItemStatsVisibility();
+        }
+
+        private void AddRecipeOwnedStatusLabel(Transform recipeLine, ItemDefinition def)
+        {
+            if (recipeLine == null || def == null) return;
+
+            var go = new GameObject("OwnedStatus", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(recipeLine, false);
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(260f, 0f);
+            rt.anchoredPosition = new Vector2(-8f, 0f);
+
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = 260f;
+            le.minWidth = 260f;
+            le.flexibleWidth = 0f;
+            le.ignoreLayout = true;
+
+            var owned = PlayerOwnsEquipmentItem(def.ItemId);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.font = TMP_Settings.defaultFontAsset;
+            tmp.fontSize = 24;
+            tmp.alignment = TextAlignmentOptions.MidlineRight;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            tmp.raycastTarget = false;
+            tmp.text = owned ? "есть в наличии" : "нет в наличии";
+            tmp.color = owned ? RecipeOwnedGreen : RecipeMissingOrange;
+        }
+
+        private bool PlayerOwnsEquipmentItem(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || _profile == null || !_profile.ok)
+                return false;
+
+            if (_profile.equipment_def_ids != null)
+            {
+                for (var i = 0; i < _profile.equipment_def_ids.Length; i++)
+                {
+                    if (string.Equals(_profile.equipment_def_ids[i], itemId, StringComparison.Ordinal))
+                        return true;
+                }
+            }
+
+            if (_profile.inventory_def_ids == null || _profile.inventory_counts == null)
+                return false;
+
+            var len = Math.Min(_profile.inventory_def_ids.Length, _profile.inventory_counts.Length);
+            for (var i = 0; i < len; i++)
+            {
+                if (_profile.inventory_counts[i] < 1) continue;
+                if (string.Equals(_profile.inventory_def_ids[i], itemId, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>При выборе слота сразу фокусируем первый выученный рецепт.</summary>
+        private void AutoSelectFirstLearnedRecipe(string firstLearnedId)
+        {
+            if (_selectedSlot < 0)
+            {
+                _selectedOutputDefId = null;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(_selectedOutputDefId) && itemCatalog != null)
+            {
+                var cur = itemCatalog.Get(_selectedOutputDefId);
+                if (cur != null && cur.Kind == ItemKind.Equipment &&
+                    (int)cur.Slot == _selectedSlot &&
+                    !string.IsNullOrEmpty(cur.CraftRecipeId) &&
+                    IsRecipeLearnedForCraft(cur.CraftRecipeId) &&
+                    cur.Tier >= 1 && cur.Tier <= 3)
+                    return;
+            }
+
+            _selectedOutputDefId = firstLearnedId;
+        }
+
+        private void UpdateButtonsRootVisibility()
+        {
+            if (_buttonsRoot != null)
+                _buttonsRoot.gameObject.SetActive(_selectedSlot >= 0);
         }
 
         private bool SlotHasLearnedRecipes(int slotIndex)
@@ -718,6 +839,7 @@ namespace Project.Character.UI
         private void UpdateDetailPanel()
         {
             if (_detailText == null) return;
+            UpdateButtonsRootVisibility();
             if (_profile == null || !_profile.ok || _selectedSlot < 0)
             {
                 _detailText.text = "";
@@ -780,21 +902,23 @@ namespace Project.Character.UI
             var tier = od != null ? od.Tier : 1;
             if (tier < 1) tier = 1;
             if (tier > 3) tier = 3;
-            var quality = od != null ? od.Quality : ItemQualityTier.Normal;
 
             WorkshopCraftRules.GetCraftCost(od, out var needOre, out var needGold, out var needIngotN, out var ingotId, out var needTess);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Требования ({WorkshopCraftRules.QualityRu(quality)}, T{tier}):");
-            sb.AppendLine($"Руда ≥ {needOre}, золото ≥ {needGold}");
+            sb.AppendLine("Требования:");
+            sb.AppendLine($"Руда × {needOre}, золото × {needGold}");
             if (needIngotN > 0 && !string.IsNullOrEmpty(ingotId))
-                sb.AppendLine($"{ingotId} × {needIngotN}");
+                sb.AppendLine($"{ResolveItemDisplayName(ingotId)} × {needIngotN}");
             if (needTess > 0)
-                sb.AppendLine($"tesseract × {needTess}");
+                sb.AppendLine($"{ResolveItemDisplayName("tesseract")} × {needTess}");
 
-            AppendFodderLines(sb, od, _selectedSlot);
+            AppendFodderLines(sb, od);
 
-            sb.AppendLine($"Время: {FormatDuration(WorkshopCraftRules.CraftDurationSecondsForTier(tier))}");
+            sb.Append($"Время: {FormatDuration(WorkshopCraftRules.CraftDurationSecondsForTier(tier))}");
+            _detailText.supportRichText = true;
+            _detailText.text = sb.ToString();
+            UpdateItemStatsPreview(od);
 
             var ore = _profile.progression?.ore ?? 0;
             var gold = _profile.progression?.gold ?? 0;
@@ -803,9 +927,6 @@ namespace Project.Character.UI
             var fodderOk = CraftFodderOk(od, _selectedSlot);
             var resOk = ore >= needOre && gold >= needGold && ing >= needIngotN && tess >= needTess;
             var okRes = fodderOk && resOk;
-            sb.Append(okRes ? "\nУсловий достаточно." : "\nНе хватает ресурсов или поглощаемого предмета.");
-            _detailText.text = sb.ToString();
-            UpdateItemStatsPreview(od);
             var recipeLearned = IsRecipeLearnedForCraft(od != null ? od.CraftRecipeId : "");
             var canCraft = okRes && recipeLearned;
             UpdateCreateButtonVisual(canCraft, od, true, BuildCraftShortfallLines(od, ore, gold, ing, tess, needOre, needGold, needIngotN, ingotId, needTess, fodderOk, resOk));
@@ -909,6 +1030,8 @@ namespace Project.Character.UI
             if (_itemStatsText == null) return;
             UpdateItemStatsVisibility();
             if (!_itemStatsText.gameObject.activeSelf) return;
+            _itemStatsText.supportRichText = true;
+            _itemStatsText.color = WorkshopNeutralTextColor;
             if (def == null)
             {
                 _itemStatsText.text = "Выберите рецепт — здесь будут характеристики создаваемого предмета.";
@@ -918,7 +1041,7 @@ namespace Project.Character.UI
             _itemStatsText.text = BuildCraftStatsSummary(def);
         }
 
-        private static string BuildCraftStatsSummary(ItemDefinition def)
+        private string BuildCraftStatsSummary(ItemDefinition def)
         {
             if (def == null) return "";
             var order = new[] { StatId.Hp, StatId.Damage, StatId.Armor, StatId.Healing, StatId.CritChance };
@@ -931,7 +1054,10 @@ namespace Project.Character.UI
             }
 
             var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
-            var head = $"{title}  ·  T{def.Tier}, {WorkshopCraftRules.QualityRu(def.Quality)}";
+            var qualityRu = WorkshopCraftRules.QualityRu(def.Quality);
+            var coloredTitle = ColorizeRichText(title, def.ColorDisplayName);
+            var coloredQuality = ColorizeRichText(qualityRu, def.ColorDisplayName);
+            var head = $"{coloredTitle}  ·  T{def.Tier}, {coloredQuality}";
             if (lines.Count == 0)
                 return head + "\n— в каталоге нет бонусов к статам (или они нулевые).";
             return head + "\n" + string.Join("\n", lines);
@@ -964,26 +1090,117 @@ namespace Project.Character.UI
             _ => new Color(0.20f, 0.17f, 0.16f, 0.95f),
         };
 
-        private static void AppendFodderLines(StringBuilder sb, ItemDefinition od, int slotIndex)
+        private static string ColorizeRichText(string text, Color color)
         {
-            if (od == null || od.Kind != ItemKind.Equipment) return;
-            var q = od.Quality;
+            if (string.IsNullOrEmpty(text)) return text ?? "";
+            var hex = ColorUtility.ToHtmlStringRGB(color);
+            return $"<color=#{hex}>{text}</color>";
+        }
+
+        private string ResolveItemDisplayName(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || itemCatalog == null)
+                return itemId ?? "";
+            var def = itemCatalog.Get(itemId);
+            if (def == null || string.IsNullOrEmpty(def.DisplayName))
+                return itemId;
+            return def.DisplayName;
+        }
+
+        private ItemDefinition FindEquipmentDef(int slotIndex, int tier, ItemQualityTier quality)
+        {
+            if (itemCatalog == null) return null;
+
+            // 1) То, что сервер реально поглотит первым: экип слота, затем инвентарь.
+            var owned = FindOwnedFodderDef(slotIndex, tier, quality);
+            if (owned != null) return owned;
+
+            // 2) Каноническая линейка крафта (eq_*), иначе старые тестовые helm_rusty / gloves_basic.
+            ItemDefinition anyMatch = null;
+            ItemDefinition craftLineMatch = null;
+            foreach (var def in itemCatalog.EnumerateDefinitions())
+            {
+                if (!EquipmentMatchesSlotTierQuality(def, slotIndex, tier, quality))
+                    continue;
+                anyMatch ??= def;
+                var id = def.ItemId ?? "";
+                if (id.StartsWith("eq_", StringComparison.OrdinalIgnoreCase) ||
+                    !string.IsNullOrEmpty(def.CraftRecipeId))
+                {
+                    craftLineMatch = def;
+                    break;
+                }
+            }
+
+            return craftLineMatch ?? anyMatch;
+        }
+
+        private ItemDefinition FindOwnedFodderDef(int slotIndex, int tier, ItemQualityTier quality)
+        {
+            if (_profile == null || !_profile.ok || itemCatalog == null) return null;
+
+            if (_profile.equipment_def_ids != null &&
+                slotIndex >= 0 && slotIndex < _profile.equipment_def_ids.Length)
+            {
+                var eqId = _profile.equipment_def_ids[slotIndex];
+                var eqDef = itemCatalog.Get(eqId);
+                if (EquipmentMatchesSlotTierQuality(eqDef, slotIndex, tier, quality))
+                    return eqDef;
+            }
+
+            if (_profile.inventory_def_ids == null || _profile.inventory_counts == null)
+                return null;
+
+            var len = Math.Min(_profile.inventory_def_ids.Length, _profile.inventory_counts.Length);
+            for (var i = 0; i < len; i++)
+            {
+                if (_profile.inventory_counts[i] < 1) continue;
+                var invDef = itemCatalog.Get(_profile.inventory_def_ids[i]);
+                if (EquipmentMatchesSlotTierQuality(invDef, slotIndex, tier, quality))
+                    return invDef;
+            }
+
+            return null;
+        }
+
+        private static bool EquipmentMatchesSlotTierQuality(
+            ItemDefinition def, int slotIndex, int tier, ItemQualityTier quality)
+        {
+            if (def == null || def.Kind != ItemKind.Equipment) return false;
+            if ((int)def.Slot != slotIndex) return false;
+            if (def.Tier != tier) return false;
+            return def.Quality == quality;
+        }
+
+        private ItemDefinition FindFodderDefinition(ItemDefinition od)
+        {
+            if (od == null || od.Kind != ItemKind.Equipment) return null;
             var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
+            var q = od.Quality;
             if (q == ItemQualityTier.Normal)
             {
-                if (t == 2)
-                    sb.AppendLine("Поглощение: легендарный предмет T1 в этом слоте (экип или сундук).");
-                else if (t == 3)
-                    sb.AppendLine("Поглощение: легендарный предмет T2 в этом слоте (экип или сундук).");
-                return;
+                if (t == 2) return FindEquipmentDef((int)od.Slot, 1, ItemQualityTier.Legendary);
+                if (t == 3) return FindEquipmentDef((int)od.Slot, 2, ItemQualityTier.Legendary);
+                return null;
             }
 
             if (q == ItemQualityTier.Rare)
-                sb.AppendLine($"Поглощение: обычный (normal) предмет T{t} в этом слоте.");
-            else if (q == ItemQualityTier.Epic)
-                sb.AppendLine($"Поглощение: редкий (rare) предмет T{t} в этом слоте.");
-            else if (q == ItemQualityTier.Legendary)
-                sb.AppendLine($"Поглощение: эпический (epic) предмет T{t} в этом слоте.");
+                return FindEquipmentDef((int)od.Slot, t, ItemQualityTier.Normal);
+            if (q == ItemQualityTier.Epic)
+                return FindEquipmentDef((int)od.Slot, t, ItemQualityTier.Rare);
+            if (q == ItemQualityTier.Legendary)
+                return FindEquipmentDef((int)od.Slot, t, ItemQualityTier.Epic);
+            return null;
+        }
+
+        private void AppendFodderLines(StringBuilder sb, ItemDefinition od)
+        {
+            if (od == null || od.Kind != ItemKind.Equipment) return;
+            var fodder = FindFodderDefinition(od);
+            if (fodder == null) return;
+
+            var name = string.IsNullOrEmpty(fodder.DisplayName) ? fodder.ItemId : fodder.DisplayName;
+            sb.AppendLine($"Поглощение: {ColorizeRichText(name, fodder.ColorDisplayName)}.");
         }
 
         private bool CraftFodderOk(ItemDefinition od, int slotIndex)
@@ -1068,16 +1285,22 @@ namespace Project.Character.UI
         private void UpdateSlotTimersAndIcons()
         {
             if (_slotTimers == null || _profile == null || !_profile.ok) return;
+            EnsureCraftSlotBusyGlowSprite();
 
             for (var i = 0; i < 8; i++)
             {
                 var wOut = GetWorkshopOut(i);
                 var wEnd = GetWorkshopEnd(i);
+                var crafting = !string.IsNullOrEmpty(wOut);
+                ItemDefinition outDef = null;
+                if (crafting && itemCatalog != null)
+                    outDef = itemCatalog.Get(wOut);
+
                 if (_slotIcons != null && _slotIcons[i] != null)
                 {
-                    if (!string.IsNullOrEmpty(wOut) && itemCatalog != null)
+                    if (crafting && itemCatalog != null)
                     {
-                        var ic = itemCatalog.GetDisplayIcon(itemCatalog.Get(wOut));
+                        var ic = outDef != null ? itemCatalog.GetDisplayIcon(outDef) : null;
                         _slotIcons[i].sprite = ic;
                         _slotIcons[i].color = Color.white;
                     }
@@ -1088,14 +1311,40 @@ namespace Project.Character.UI
                     }
                 }
 
+                if (_slotBgImages != null && _slotBgImages[i] != null)
+                {
+                    if (crafting && craftSlotBusyGlowSprite != null)
+                    {
+                        _slotBgImages[i].sprite = craftSlotBusyGlowSprite;
+                        var glow = outDef != null ? outDef.ColorDisplayName : Color.white;
+                        if (glow.a < 0.01f) glow.a = 1f;
+                        _slotBgImages[i].color = glow;
+                    }
+                    else
+                    {
+                        _slotBgImages[i].sprite = _slotBgDefaultSprites != null ? _slotBgDefaultSprites[i] : null;
+                        _slotBgImages[i].color = _slotBgDefaultColors != null
+                            ? _slotBgDefaultColors[i]
+                            : new Color(0.12f, 0.12f, 0.14f, 0.95f);
+                    }
+                }
+
                 if (_slotTimers[i] == null) continue;
-                if (string.IsNullOrEmpty(wOut))
+                if (!crafting)
                     _slotTimers[i].text = "";
                 else if (wEnd > NowUnix())
                     _slotTimers[i].text = FormatRemaining(wEnd - NowUnix());
                 else
                     _slotTimers[i].text = "Готово!";
             }
+        }
+
+        private void EnsureCraftSlotBusyGlowSprite()
+        {
+            if (craftSlotBusyGlowSprite != null) return;
+#if UNITY_EDITOR
+            craftSlotBusyGlowSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(CraftSlotBusyGlowAssetPath);
+#endif
         }
 
         private string GetWorkshopOut(int i)

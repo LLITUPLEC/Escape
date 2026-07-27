@@ -1705,9 +1705,9 @@ local ITEM_DEFS_FALLBACK = {
   eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_drop_t3_green_Helmet", hp = 1120, armor = 92 },
   eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 2600, armor = 280 },
   -- Ресурсы / рецепты (не экипируются)
-  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 100 },
-  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 100 },
-  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 100 },
+  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 200 },
+  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 200 },
+  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 200 },
   tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5 },
   recipe_t2_green_Helmet = { kind = "recipe", tier = 2, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
   recipe_t3_green_Helmet = { kind = "recipe", tier = 3, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },

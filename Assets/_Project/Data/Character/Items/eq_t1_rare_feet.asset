@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 5
   craftRecipeId: recipe_drop_blue_Feet
-  craftOre: 1107
-  craftGold: 819
+  craftOre: 11070
+  craftGold: 8190
   craftIngotDef: ingot_blue
-  craftIngotN: 42
+  craftIngotN: 420
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: ffbe1d116802bec4cb1cd4e92570f48e, type: 3}
   equippable: 1

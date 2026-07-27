@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 1
   craftRecipeId: recipe_drop_blue_Shoulders
-  craftOre: 992
-  craftGold: 746
+  craftOre: 9920
+  craftGold: 7460
   craftIngotDef: ingot_blue
-  craftIngotN: 38
+  craftIngotN: 380
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: 18bda4d3b5c8ce24abcc1194a886613e, type: 3}
   equippable: 1

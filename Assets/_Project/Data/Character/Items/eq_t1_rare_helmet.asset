@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_blue_Helmet
-  craftOre: 531
-  craftGold: 455
+  craftOre: 5310
+  craftGold: 4550
   craftIngotDef: ingot_blue
-  craftIngotN: 6
+  craftIngotN: 60
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: 921bdeaf447f49c4f971373cb7d5152f, type: 3}
   equippable: 1

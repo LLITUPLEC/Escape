@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_green_Shoulders
-  craftOre: 654
-  craftGold: 492
+  craftOre: 1000
+  craftGold: 1100
   craftIngotDef: ingot_green
-  craftIngotN: 25
+  craftIngotN: 120
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: a0c7d146dcac96d4abb9ec414592fda2, type: 3}
   equippable: 1

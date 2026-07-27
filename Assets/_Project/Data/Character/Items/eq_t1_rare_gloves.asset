@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 1
   recipeTargetSlot: 3
   craftRecipeId: recipe_drop_blue_Gloves
-  craftOre: 646
-  craftGold: 528
+  craftOre: 6460
+  craftGold: 5280
   craftIngotDef: ingot_blue
-  craftIngotN: 20
+  craftIngotN: 200
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: 3f9da4851dd4557499aca7fdf2485a7d, type: 3}
   equippable: 1

@@ -22,10 +22,10 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 0
   craftRecipeId: recipe_drop_green_Chest
-  craftOre: 388
-  craftGold: 324
+  craftOre: 500
+  craftGold: 600
   craftIngotDef: ingot_green
-  craftIngotN: 10
+  craftIngotN: 20
   craftTesseractN: 0
   icon: {fileID: 21300000, guid: f1e308c00b0be1649b585981af6b0bde, type: 3}
   equippable: 1

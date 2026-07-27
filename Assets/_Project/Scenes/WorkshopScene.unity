@@ -1369,6 +1369,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.UI.WorkshopSceneController
   itemCatalog: {fileID: 11400000, guid: 1e007d3c1d27cfc4d894d77c6cb422e6, type: 2}
+  craftSlotBusyGlowSprite: {fileID: 21300000, guid: 3cca49580e3a61f429c70d98b1d6261d, type: 3}
   hintText: {fileID: 1334800406}
   craftSlotsRoot: {fileID: 1397016974}
   workshopBackground: {fileID: 1231432504}
