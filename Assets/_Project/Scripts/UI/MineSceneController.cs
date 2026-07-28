@@ -238,7 +238,7 @@ namespace Project.UI
             return "recipe_drop_t" + tier + "_" + color + "_" + slots[idx];
         }
 
-        /// <summary>Соответствует sheet_has_learned_for_craft: свиток t1 и legacy recipe_drop_{цвет}_*.</summary>
+        /// <summary>Точное совпадение def_id свитка: recipe_drop_t{тир}_{цвет}_{Slot}.</summary>
         private static bool MineRecipeDropLearned(string expectedRecipeItemId, string[] learned)
         {
             if (string.IsNullOrEmpty(expectedRecipeItemId) || learned == null || learned.Length == 0)
@@ -250,17 +250,6 @@ namespace Project.UI
                     continue;
                 if (string.Equals(x, expectedRecipeItemId, StringComparison.Ordinal))
                     return true;
-            }
-
-            if (expectedRecipeItemId.StartsWith("recipe_drop_t1_", StringComparison.Ordinal))
-            {
-                var rest = expectedRecipeItemId.Substring("recipe_drop_t1_".Length);
-                var legacy = "recipe_drop_" + rest;
-                for (var i = 0; i < learned.Length; i++)
-                {
-                    if (string.Equals(learned[i], legacy, StringComparison.Ordinal))
-                        return true;
-                }
             }
 
             return false;

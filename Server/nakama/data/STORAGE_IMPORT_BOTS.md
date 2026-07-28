@@ -10,12 +10,12 @@
 
 ## Ключи (Key)
 
-1. **`catalog`** — общий каталог (как раньше); перекрывает `BOTS_FALLBACK` в коде.
+1. **`catalog`** — общий каталог.
 2. **`catalog_easy`** — слой для сложности шахты **easy** (перекрывает id из `catalog`).
 3. **`catalog_medium`** — для **medium**.
 4. **`catalog_hard`** — для **hard**.
 
-Слияние на сервере: `fallback` → `catalog` → `catalog_{difficulty}` (последний побеждает по `id`).
+Слияние на сервере: `catalog` → `catalog_{difficulty}` (последний побеждает по `id`). Без Storage-записи каталог недоступен (ошибка `bot_catalog_unavailable`).
 
 ## Формат JSON (тело `value`)
 

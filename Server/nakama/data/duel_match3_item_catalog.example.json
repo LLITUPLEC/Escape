@@ -102,7 +102,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Helmet",
-      "craft_recipe_id": "recipe_drop_green_Helmet",
+      "craft_recipe_id": "recipe_drop_t1_green_Helmet",
       "hp": 673,
       "armor": 31,
       "damage": 47,
@@ -119,7 +119,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Shoulders",
-      "craft_recipe_id": "recipe_drop_green_Shoulders",
+      "craft_recipe_id": "recipe_drop_t1_green_Shoulders",
       "hp": 368,
       "armor": 69,
       "damage": 0,
@@ -136,7 +136,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Chest",
-      "craft_recipe_id": "recipe_drop_green_Chest",
+      "craft_recipe_id": "recipe_drop_t1_green_Chest",
       "hp": 841,
       "armor": 31,
       "damage": 38,
@@ -153,7 +153,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Gloves",
-      "craft_recipe_id": "recipe_drop_green_Gloves",
+      "craft_recipe_id": "recipe_drop_t1_green_Gloves",
       "hp": 347,
       "armor": 0,
       "damage": 57,
@@ -170,7 +170,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Legs",
-      "craft_recipe_id": "recipe_drop_green_Legs",
+      "craft_recipe_id": "recipe_drop_t1_green_Legs",
       "hp": 768,
       "armor": 37,
       "damage": 11,
@@ -187,7 +187,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "Feet",
-      "craft_recipe_id": "recipe_drop_green_Feet",
+      "craft_recipe_id": "recipe_drop_t1_green_Feet",
       "hp": 368,
       "armor": 69,
       "damage": 0,
@@ -204,7 +204,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "WeaponLeft",
-      "craft_recipe_id": "recipe_drop_green_WeaponLeft",
+      "craft_recipe_id": "recipe_drop_t1_green_WeaponLeft",
       "hp": 400,
       "armor": 40,
       "damage": 88,
@@ -221,7 +221,7 @@
       "tier": 1,
       "quality": "normal",
       "slot": "WeaponRight",
-      "craft_recipe_id": "recipe_drop_green_WeaponRight",
+      "craft_recipe_id": "recipe_drop_t1_green_WeaponRight",
       "hp": 368,
       "armor": 25,
       "damage": 189,
@@ -238,7 +238,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Helmet",
-      "craft_recipe_id": "recipe_drop_blue_Helmet",
+      "craft_recipe_id": "recipe_drop_t1_blue_Helmet",
       "hp": 1556,
       "armor": 69,
       "damage": 105,
@@ -255,7 +255,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Shoulders",
-      "craft_recipe_id": "recipe_drop_blue_Shoulders",
+      "craft_recipe_id": "recipe_drop_t1_blue_Shoulders",
       "hp": 851,
       "armor": 155,
       "damage": 0,
@@ -272,7 +272,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Chest",
-      "craft_recipe_id": "recipe_drop_blue_Chest",
+      "craft_recipe_id": "recipe_drop_t1_blue_Chest",
       "hp": 1944,
       "armor": 69,
       "damage": 85,
@@ -289,7 +289,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Gloves",
-      "craft_recipe_id": "recipe_drop_blue_Gloves",
+      "craft_recipe_id": "recipe_drop_t1_blue_Gloves",
       "hp": 802,
       "armor": 0,
       "damage": 125,
@@ -306,7 +306,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Legs",
-      "craft_recipe_id": "recipe_drop_blue_Legs",
+      "craft_recipe_id": "recipe_drop_t1_blue_Legs",
       "hp": 1774,
       "armor": 81,
       "damage": 25,
@@ -323,7 +323,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "Feet",
-      "craft_recipe_id": "recipe_drop_blue_Feet",
+      "craft_recipe_id": "recipe_drop_t1_blue_Feet",
       "hp": 851,
       "armor": 155,
       "damage": 0,
@@ -340,7 +340,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "WeaponLeft",
-      "craft_recipe_id": "recipe_drop_blue_WeaponLeft",
+      "craft_recipe_id": "recipe_drop_t1_blue_WeaponLeft",
       "hp": 924,
       "armor": 90,
       "damage": 195,
@@ -357,7 +357,7 @@
       "tier": 1,
       "quality": "rare",
       "slot": "WeaponRight",
-      "craft_recipe_id": "recipe_drop_blue_WeaponRight",
+      "craft_recipe_id": "recipe_drop_t1_blue_WeaponRight",
       "hp": 851,
       "armor": 56,
       "damage": 421,
@@ -374,7 +374,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Helmet",
-      "craft_recipe_id": "recipe_drop_purple_Helmet",
+      "craft_recipe_id": "recipe_drop_t1_purple_Helmet",
       "hp": 2438,
       "armor": 107,
       "damage": 163,
@@ -391,7 +391,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Shoulders",
-      "craft_recipe_id": "recipe_drop_purple_Shoulders",
+      "craft_recipe_id": "recipe_drop_t1_purple_Shoulders",
       "hp": 1334,
       "armor": 240,
       "damage": 0,
@@ -408,7 +408,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Chest",
-      "craft_recipe_id": "recipe_drop_purple_Chest",
+      "craft_recipe_id": "recipe_drop_t1_purple_Chest",
       "hp": 3048,
       "armor": 107,
       "damage": 132,
@@ -425,7 +425,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Gloves",
-      "craft_recipe_id": "recipe_drop_purple_Gloves",
+      "craft_recipe_id": "recipe_drop_t1_purple_Gloves",
       "hp": 1257,
       "armor": 0,
       "damage": 194,
@@ -442,7 +442,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Legs",
-      "craft_recipe_id": "recipe_drop_purple_Legs",
+      "craft_recipe_id": "recipe_drop_t1_purple_Legs",
       "hp": 2781,
       "armor": 127,
       "damage": 39,
@@ -459,7 +459,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "Feet",
-      "craft_recipe_id": "recipe_drop_purple_Feet",
+      "craft_recipe_id": "recipe_drop_t1_purple_Feet",
       "hp": 1333,
       "armor": 240,
       "damage": 0,
@@ -476,7 +476,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "WeaponLeft",
-      "craft_recipe_id": "recipe_drop_purple_WeaponLeft",
+      "craft_recipe_id": "recipe_drop_t1_purple_WeaponLeft",
       "hp": 1448,
       "armor": 140,
       "damage": 303,
@@ -493,7 +493,7 @@
       "tier": 1,
       "quality": "epic",
       "slot": "WeaponRight",
-      "craft_recipe_id": "recipe_drop_purple_WeaponRight",
+      "craft_recipe_id": "recipe_drop_t1_purple_WeaponRight",
       "hp": 1333,
       "armor": 87,
       "damage": 653,
@@ -510,7 +510,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Helmet",
-      "craft_recipe_id": "recipe_gold_Helmet",
+      "craft_recipe_id": "recipe_drop_t1_gold_Helmet",
       "hp": 4970,
       "armor": 215,
       "damage": 327,
@@ -527,7 +527,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Shoulders",
-      "craft_recipe_id": "recipe_gold_Shoulders",
+      "craft_recipe_id": "recipe_drop_t1_gold_Shoulders",
       "hp": 2718,
       "armor": 483,
       "damage": 0,
@@ -544,7 +544,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Chest",
-      "craft_recipe_id": "recipe_gold_Chest",
+      "craft_recipe_id": "recipe_drop_t1_gold_Chest",
       "hp": 6213,
       "armor": 214,
       "damage": 265,
@@ -561,7 +561,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Gloves",
-      "craft_recipe_id": "recipe_gold_Gloves",
+      "craft_recipe_id": "recipe_drop_t1_gold_Gloves",
       "hp": 2563,
       "armor": 0,
       "damage": 389,
@@ -578,7 +578,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Legs",
-      "craft_recipe_id": "recipe_gold_Legs",
+      "craft_recipe_id": "recipe_drop_t1_gold_Legs",
       "hp": 5669,
       "armor": 255,
       "damage": 78,
@@ -595,7 +595,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "Feet",
-      "craft_recipe_id": "recipe_gold_Feet",
+      "craft_recipe_id": "recipe_drop_t1_gold_Feet",
       "hp": 2718,
       "armor": 483,
       "damage": 0,
@@ -612,7 +612,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "WeaponLeft",
-      "craft_recipe_id": "recipe_gold_WeaponLeft",
+      "craft_recipe_id": "recipe_drop_t1_gold_WeaponLeft",
       "hp": 2951,
       "armor": 282,
       "damage": 608,
@@ -629,7 +629,7 @@
       "tier": 1,
       "quality": "legendary",
       "slot": "WeaponRight",
-      "craft_recipe_id": "recipe_gold_WeaponRight",
+      "craft_recipe_id": "recipe_drop_t1_gold_WeaponRight",
       "hp": 2718,
       "armor": 174,
       "damage": 1309,
@@ -641,7 +641,7 @@
       "craft_ingot_n": 0,
       "craft_tesseract_n": 1
     },
-    "recipe_drop_green_Helmet": {
+    "recipe_drop_t1_green_Helmet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -649,7 +649,7 @@
       "recipe_slot": "Helmet",
       "recipe_target_slot": "Helmet"
     },
-    "recipe_drop_green_Shoulders": {
+    "recipe_drop_t1_green_Shoulders": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -657,7 +657,7 @@
       "recipe_slot": "Shoulders",
       "recipe_target_slot": "Shoulders"
     },
-    "recipe_drop_green_Chest": {
+    "recipe_drop_t1_green_Chest": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -665,7 +665,7 @@
       "recipe_slot": "Chest",
       "recipe_target_slot": "Chest"
     },
-    "recipe_drop_green_Gloves": {
+    "recipe_drop_t1_green_Gloves": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -673,7 +673,7 @@
       "recipe_slot": "Gloves",
       "recipe_target_slot": "Gloves"
     },
-    "recipe_drop_green_Legs": {
+    "recipe_drop_t1_green_Legs": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -681,7 +681,7 @@
       "recipe_slot": "Legs",
       "recipe_target_slot": "Legs"
     },
-    "recipe_drop_green_Feet": {
+    "recipe_drop_t1_green_Feet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -689,7 +689,7 @@
       "recipe_slot": "Feet",
       "recipe_target_slot": "Feet"
     },
-    "recipe_drop_green_WeaponLeft": {
+    "recipe_drop_t1_green_WeaponLeft": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -697,7 +697,7 @@
       "recipe_slot": "WeaponLeft",
       "recipe_target_slot": "WeaponLeft"
     },
-    "recipe_drop_green_WeaponRight": {
+    "recipe_drop_t1_green_WeaponRight": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
@@ -705,7 +705,7 @@
       "recipe_slot": "WeaponRight",
       "recipe_target_slot": "WeaponRight"
     },
-    "recipe_drop_blue_Helmet": {
+    "recipe_drop_t1_blue_Helmet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -713,7 +713,7 @@
       "recipe_slot": "Helmet",
       "recipe_target_slot": "Helmet"
     },
-    "recipe_drop_blue_Shoulders": {
+    "recipe_drop_t1_blue_Shoulders": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -721,7 +721,7 @@
       "recipe_slot": "Shoulders",
       "recipe_target_slot": "Shoulders"
     },
-    "recipe_drop_blue_Chest": {
+    "recipe_drop_t1_blue_Chest": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -729,7 +729,7 @@
       "recipe_slot": "Chest",
       "recipe_target_slot": "Chest"
     },
-    "recipe_drop_blue_Gloves": {
+    "recipe_drop_t1_blue_Gloves": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -737,7 +737,7 @@
       "recipe_slot": "Gloves",
       "recipe_target_slot": "Gloves"
     },
-    "recipe_drop_blue_Legs": {
+    "recipe_drop_t1_blue_Legs": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -745,7 +745,7 @@
       "recipe_slot": "Legs",
       "recipe_target_slot": "Legs"
     },
-    "recipe_drop_blue_Feet": {
+    "recipe_drop_t1_blue_Feet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -753,7 +753,7 @@
       "recipe_slot": "Feet",
       "recipe_target_slot": "Feet"
     },
-    "recipe_drop_blue_WeaponLeft": {
+    "recipe_drop_t1_blue_WeaponLeft": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -761,7 +761,7 @@
       "recipe_slot": "WeaponLeft",
       "recipe_target_slot": "WeaponLeft"
     },
-    "recipe_drop_blue_WeaponRight": {
+    "recipe_drop_t1_blue_WeaponRight": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
@@ -769,7 +769,7 @@
       "recipe_slot": "WeaponRight",
       "recipe_target_slot": "WeaponRight"
     },
-    "recipe_drop_purple_Helmet": {
+    "recipe_drop_t1_purple_Helmet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -777,7 +777,7 @@
       "recipe_slot": "Helmet",
       "recipe_target_slot": "Helmet"
     },
-    "recipe_drop_purple_Shoulders": {
+    "recipe_drop_t1_purple_Shoulders": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -785,7 +785,7 @@
       "recipe_slot": "Shoulders",
       "recipe_target_slot": "Shoulders"
     },
-    "recipe_drop_purple_Chest": {
+    "recipe_drop_t1_purple_Chest": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -793,7 +793,7 @@
       "recipe_slot": "Chest",
       "recipe_target_slot": "Chest"
     },
-    "recipe_drop_purple_Gloves": {
+    "recipe_drop_t1_purple_Gloves": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -801,7 +801,7 @@
       "recipe_slot": "Gloves",
       "recipe_target_slot": "Gloves"
     },
-    "recipe_drop_purple_Legs": {
+    "recipe_drop_t1_purple_Legs": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -809,7 +809,7 @@
       "recipe_slot": "Legs",
       "recipe_target_slot": "Legs"
     },
-    "recipe_drop_purple_Feet": {
+    "recipe_drop_t1_purple_Feet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -817,7 +817,7 @@
       "recipe_slot": "Feet",
       "recipe_target_slot": "Feet"
     },
-    "recipe_drop_purple_WeaponLeft": {
+    "recipe_drop_t1_purple_WeaponLeft": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -825,7 +825,7 @@
       "recipe_slot": "WeaponLeft",
       "recipe_target_slot": "WeaponLeft"
     },
-    "recipe_drop_purple_WeaponRight": {
+    "recipe_drop_t1_purple_WeaponRight": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
@@ -833,7 +833,7 @@
       "recipe_slot": "WeaponRight",
       "recipe_target_slot": "WeaponRight"
     },
-    "recipe_gold_Helmet": {
+    "recipe_drop_t1_gold_Helmet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -841,7 +841,7 @@
       "recipe_slot": "Helmet",
       "recipe_target_slot": "Helmet"
     },
-    "recipe_gold_Shoulders": {
+    "recipe_drop_t1_gold_Shoulders": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -849,7 +849,7 @@
       "recipe_slot": "Shoulders",
       "recipe_target_slot": "Shoulders"
     },
-    "recipe_gold_Chest": {
+    "recipe_drop_t1_gold_Chest": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -857,7 +857,7 @@
       "recipe_slot": "Chest",
       "recipe_target_slot": "Chest"
     },
-    "recipe_gold_Gloves": {
+    "recipe_drop_t1_gold_Gloves": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -865,7 +865,7 @@
       "recipe_slot": "Gloves",
       "recipe_target_slot": "Gloves"
     },
-    "recipe_gold_Legs": {
+    "recipe_drop_t1_gold_Legs": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -873,7 +873,7 @@
       "recipe_slot": "Legs",
       "recipe_target_slot": "Legs"
     },
-    "recipe_gold_Feet": {
+    "recipe_drop_t1_gold_Feet": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -881,7 +881,7 @@
       "recipe_slot": "Feet",
       "recipe_target_slot": "Feet"
     },
-    "recipe_gold_WeaponLeft": {
+    "recipe_drop_t1_gold_WeaponLeft": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
@@ -889,7 +889,7 @@
       "recipe_slot": "WeaponLeft",
       "recipe_target_slot": "WeaponLeft"
     },
-    "recipe_gold_WeaponRight": {
+    "recipe_drop_t1_gold_WeaponRight": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",

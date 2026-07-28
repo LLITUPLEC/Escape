@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_Gloves
-  craftOre: 1490
-  craftGold: 1218
+  craftRecipeId: recipe_drop_t1_gold_Gloves
+  craftOre: 14900
+  craftGold: 12180
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1

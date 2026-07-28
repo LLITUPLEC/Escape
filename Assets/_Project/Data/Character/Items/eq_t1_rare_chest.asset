@@ -22,7 +22,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 2
-  craftRecipeId: recipe_drop_blue_Chest
+  craftRecipeId: recipe_drop_t1_blue_Chest
   craftOre: 5880
   craftGold: 4910
   craftIngotDef: ingot_blue

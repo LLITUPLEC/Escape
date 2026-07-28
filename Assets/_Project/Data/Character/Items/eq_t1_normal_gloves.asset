@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_Gloves
-  craftOre: 600
-  craftGold: 700
+  craftRecipeId: recipe_drop_t1_green_Gloves
+  craftOre: 1200
+  craftGold: 1050
   craftIngotDef: ingot_green
-  craftIngotN: 26
+  craftIngotN: 18
   craftTesseractN: 0
   craftItemId: 
   craftMinutes: 60

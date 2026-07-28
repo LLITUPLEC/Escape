@@ -28,6 +28,9 @@ MonoBehaviour:
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 0
+  craftItemId: 
+  craftMinutes: 0
+  salePrice: 100
   icon: {fileID: 21300000, guid: a54c4697d60bd4544b29b946f71c89f3, type: 3}
   equippable: 0
   slot: 0

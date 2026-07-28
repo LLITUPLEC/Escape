@@ -22,7 +22,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 6
-  craftRecipeId: recipe_drop_blue_WeaponLeft
+  craftRecipeId: recipe_drop_t1_blue_WeaponLeft
   craftOre: 7610
   craftGold: 6000
   craftIngotDef: ingot_blue

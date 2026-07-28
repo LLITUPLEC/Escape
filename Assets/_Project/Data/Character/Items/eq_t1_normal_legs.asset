@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_Legs
-  craftOre: 900
-  craftGold: 1000
+  craftRecipeId: recipe_drop_t1_green_Legs
+  craftOre: 3500
+  craftGold: 3300
   craftIngotDef: ingot_green
-  craftIngotN: 100
+  craftIngotN: 120
   craftTesseractN: 0
   craftItemId: 
   craftMinutes: 60

@@ -21,7 +21,7 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_Helmet
+  craftRecipeId: recipe_drop_t1_green_Helmet
   craftOre: 350
   craftGold: 300
   craftIngotDef: ingot_green

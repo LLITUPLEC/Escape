@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_Legs
-  craftOre: 2022
-  craftGold: 1554
+  craftRecipeId: recipe_drop_t1_gold_Legs
+  craftOre: 20220
+  craftGold: 15540
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1

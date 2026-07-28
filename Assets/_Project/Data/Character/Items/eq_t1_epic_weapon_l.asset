@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_WeaponLeft
-  craftOre: 1061
-  craftGold: 837
+  craftRecipeId: recipe_drop_t1_purple_WeaponLeft
+  craftOre: 10610
+  craftGold: 8370
   craftIngotDef: ingot_purple
-  craftIngotN: 36
+  craftIngotN: 125
   craftTesseractN: 0
   craftItemId: eq_t1_rare_weapon_l
   craftMinutes: 180

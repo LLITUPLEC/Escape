@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_Feet
-  craftOre: 2555
-  craftGold: 1890
+  craftRecipeId: recipe_drop_t1_gold_Feet
+  craftOre: 25550
+  craftGold: 18900
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1

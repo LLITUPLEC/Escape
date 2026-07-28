@@ -22,7 +22,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 3
-  craftRecipeId: recipe_drop_blue_Gloves
+  craftRecipeId: recipe_drop_t1_blue_Gloves
   craftOre: 6460
   craftGold: 5280
   craftIngotDef: ingot_blue

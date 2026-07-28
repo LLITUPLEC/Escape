@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_Helmet
-  craftOre: 739
-  craftGold: 634
+  craftRecipeId: recipe_drop_t1_purple_Helmet
+  craftOre: 7390
+  craftGold: 6340
   craftIngotDef: ingot_purple
   craftIngotN: 8
   craftTesseractN: 0

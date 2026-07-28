@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_Shoulders
-  craftOre: 1000
-  craftGold: 1100
+  craftRecipeId: recipe_drop_t1_green_Shoulders
+  craftOre: 4000
+  craftGold: 3900
   craftIngotDef: ingot_green
-  craftIngotN: 120
+  craftIngotN: 150
   craftTesseractN: 0
   craftItemId: 
   craftMinutes: 60

@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_Chest
-  craftOre: 500
+  craftRecipeId: recipe_drop_t1_green_Chest
+  craftOre: 700
   craftGold: 600
   craftIngotDef: ingot_green
-  craftIngotN: 20
+  craftIngotN: 10
   craftTesseractN: 0
   craftItemId: 
   craftMinutes: 60

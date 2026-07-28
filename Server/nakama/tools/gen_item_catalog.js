@@ -1,8 +1,8 @@
 /**
  * Генерирует duel_match3_item_catalog.example.json:
  * 32 экипировки (8 слотов × 4 качества, только ТИР-1).
- * Рецепты крафта: 24 из шахты (8 зелёных / 8 синих / 8 фиолетовых по слотам) + 8 золотых recipe_gold_{Slot}
- * (выдача с глобальных боссов — отдельный контент; в JSON заготовки для крафта легендарки).
+ * Рецепты крафта: recipe_drop_t1_{green|blue|purple|gold}_{Slot}
+ * (зелёные/синие/фиолетовые — шахта; золотые — вне шахты).
  * Материалы + устаревшие generic recipe_* (совместимость).
  *
  * Бонус полного комплекта (8 вещей, один tier+quality): ×1.25 к hp/damage/armor/healing с экипа
@@ -13,8 +13,7 @@
  * Сырой бюджет по слотам: (цель − база персонажа) / 1.25, распределение пропорционально шаблону SLOTS.
  *
  * Запуск после gen_mine_bots.js: node Server/nakama/tools/gen_item_catalog.js
- * Затем при необходимости синхронизировать ITEM_DEFS_FALLBACK в duel_match3.lua:
- *   node Server/nakama/tools/sync_lua_fallback_eq.js
+ * Каталог кладётся в Storage (duel_match3_item_defs / catalog) — Lua fallback больше нет.
  */
 const fs = require("fs");
 const path = require("path");
@@ -237,12 +236,13 @@ function craftFor(quality, slotName) {
   };
 }
 
-function recipeDropId(color, slotName) {
-  return `recipe_drop_${color}_${slotName}`;
+function recipeDropId(color, slotName, tier) {
+  const t = tier == null ? 1 : tier;
+  return `recipe_drop_t${t}_${color}_${slotName}`;
 }
 
-function goldRecipeId(slotName) {
-  return `recipe_gold_${slotName}`;
+function goldRecipeId(slotName, tier) {
+  return recipeDropId("gold", slotName, tier);
 }
 
 function buildEquipmentId(quality, shortId) {
@@ -250,9 +250,9 @@ function buildEquipmentId(quality, shortId) {
 }
 
 function craftRecipeForEq(quality, slotName) {
-  if (quality === "legendary") return goldRecipeId(slotName);
+  if (quality === "legendary") return goldRecipeId(slotName, 1);
   const color = { normal: "green", rare: "blue", epic: "purple" }[quality];
-  return recipeDropId(color, slotName);
+  return recipeDropId(color, slotName, 1);
 }
 
 const items = {

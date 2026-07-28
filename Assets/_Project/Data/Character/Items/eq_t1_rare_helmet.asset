@@ -22,7 +22,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_blue_Helmet
+  craftRecipeId: recipe_drop_t1_blue_Helmet
   craftOre: 5310
   craftGold: 4550
   craftIngotDef: ingot_blue

@@ -80,7 +80,7 @@ local CFG = {  SIZE = 6,
   SERVER_AURA_CACHE_TTL_SECONDS = 30,
   BOTS_COLLECTION = "duel_match3_bot_defs",
   BOTS_KEY = "catalog",
-  --- Дополнительные каталоги по сложности шахты (фаза 3): перекрывают id из BOTS_KEY и BOTS_FALLBACK.
+  --- Каталоги ботов по сложности шахты: перекрывают id из BOTS_KEY.
   BOTS_KEYS_BY_DIFFICULTY = {
     easy = "catalog_easy",
     medium = "catalog_medium",

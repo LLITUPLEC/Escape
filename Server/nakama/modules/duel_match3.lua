@@ -148,12 +148,6 @@ function build_floor_bot_entry(floor)
   }
 end
 
-local BOTS_FALLBACK = {}
-for floor = 1, CFG.PVE_MAX_LEVEL do
-  local bot = build_floor_bot_entry(floor)
-  BOTS_FALLBACK[bot.id] = bot
-end
-
 math.randomseed(os.time())
 
 --- First-move fairness: avoid math.random(0,1) here — multiple Lua modules call
@@ -1661,108 +1655,6 @@ local EQUIP_ORDER = {
   "Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight",
 }
 
--- Fallback, если в Storage нет записи или CFG.ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
--- Полный образец — Server/nakama/data/duel_match3_item_catalog.example.json (kind / max_stack / tier / quality).
-local ITEM_DEFS_FALLBACK = {
-  helm_rusty = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", hp = 30, armor = 10, healing = 10, crit_chance = 0.2, sale_price = 100 },
-  sword_basic = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", damage = 35, sale_price = 100 },
-  boots_basic = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", armor = 2, sale_price = 100 },
-  gloves_basic = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", healing = 3, crit_chance = 0.3, sale_price = 100 },
-  -- T1-only: craft_recipe_id = recipe_drop_{цвет}_{Slot} / recipe_gold_{Slot} (каталог v3).
-  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Helmet", hp = 673, armor = 31, damage = 47, craft_ore = 350, craft_gold = 300, craft_ingot_def = "ingot_green", craft_ingot_n = 4, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Shoulders", hp = 368, armor = 69, craft_ore = 654, craft_gold = 492, craft_ingot_def = "ingot_green", craft_ingot_n = 25, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Chest", hp = 841, armor = 31, damage = 38, craft_ore = 388, craft_gold = 324, craft_ingot_def = "ingot_green", craft_ingot_n = 10, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Gloves", hp = 347, damage = 57, healing = 210, crit_chance = 0.006, craft_ore = 426, craft_gold = 348, craft_ingot_def = "ingot_green", craft_ingot_n = 13, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Legs", hp = 768, armor = 37, damage = 11, craft_ore = 578, craft_gold = 444, craft_ingot_def = "ingot_green", craft_ingot_n = 21, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Feet", hp = 368, armor = 69, craft_ore = 730, craft_gold = 540, craft_ingot_def = "ingot_green", craft_ingot_n = 28, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponLeft", hp = 400, armor = 40, damage = 88, craft_ore = 502, craft_gold = 396, craft_ingot_def = "ingot_green", craft_ingot_n = 17, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponRight", hp = 368, armor = 25, damage = 189, craft_ore = 540, craft_gold = 420, craft_ingot_def = "ingot_green", craft_ingot_n = 19, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
-  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Helmet", hp = 1556, armor = 69, damage = 105, craft_ore = 531, craft_gold = 455, craft_ingot_def = "ingot_blue", craft_ingot_n = 6, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_helmet", sale_price = 100 },
-  eq_t1_rare_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Shoulders", hp = 851, armor = 155, craft_ore = 992, craft_gold = 746, craft_ingot_def = "ingot_blue", craft_ingot_n = 38, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_shoulders", sale_price = 100 },
-  eq_t1_rare_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Chest", hp = 1944, armor = 69, damage = 85, craft_ore = 588, craft_gold = 491, craft_ingot_def = "ingot_blue", craft_ingot_n = 15, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_chest", sale_price = 100 },
-  eq_t1_rare_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Gloves", hp = 802, damage = 125, healing = 474, crit_chance = 0.006, craft_ore = 646, craft_gold = 528, craft_ingot_def = "ingot_blue", craft_ingot_n = 20, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_gloves", sale_price = 100 },
-  eq_t1_rare_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Legs", hp = 1774, armor = 81, damage = 25, craft_ore = 876, craft_gold = 673, craft_ingot_def = "ingot_blue", craft_ingot_n = 32, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_legs", sale_price = 100 },
-  eq_t1_rare_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Feet", hp = 851, armor = 155, craft_ore = 1107, craft_gold = 819, craft_ingot_def = "ingot_blue", craft_ingot_n = 42, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_feet", sale_price = 100 },
-  eq_t1_rare_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponLeft", hp = 924, armor = 90, damage = 195, craft_ore = 761, craft_gold = 600, craft_ingot_def = "ingot_blue", craft_ingot_n = 26, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_weapon_l", sale_price = 100 },
-  eq_t1_rare_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponRight", hp = 851, armor = 56, damage = 421, craft_ore = 819, craft_gold = 637, craft_ingot_def = "ingot_blue", craft_ingot_n = 29, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_weapon_r", sale_price = 100 },
-  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Helmet", hp = 2438, armor = 107, damage = 163, craft_ore = 739, craft_gold = 634, craft_ingot_def = "ingot_purple", craft_ingot_n = 8, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_helmet", sale_price = 100 },
-  eq_t1_epic_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Shoulders", hp = 1334, armor = 240, craft_ore = 1382, craft_gold = 1039, craft_ingot_def = "ingot_purple", craft_ingot_n = 53, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_shoulders", sale_price = 100 },
-  eq_t1_epic_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Chest", hp = 3048, armor = 107, damage = 132, craft_ore = 820, craft_gold = 685, craft_ingot_def = "ingot_purple", craft_ingot_n = 21, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_chest", sale_price = 100 },
-  eq_t1_epic_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Gloves", hp = 1257, damage = 194, healing = 737, crit_chance = 0.006, craft_ore = 900, craft_gold = 735, craft_ingot_def = "ingot_purple", craft_ingot_n = 27, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_gloves", sale_price = 100 },
-  eq_t1_epic_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Legs", hp = 2781, armor = 127, damage = 39, craft_ore = 1221, craft_gold = 938, craft_ingot_def = "ingot_purple", craft_ingot_n = 44, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_legs", sale_price = 100 },
-  eq_t1_epic_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Feet", hp = 1333, armor = 240, craft_ore = 1542, craft_gold = 1141, craft_ingot_def = "ingot_purple", craft_ingot_n = 59, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_feet", sale_price = 100 },
-  eq_t1_epic_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponLeft", hp = 1448, armor = 140, damage = 303, craft_ore = 1061, craft_gold = 837, craft_ingot_def = "ingot_purple", craft_ingot_n = 36, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_weapon_l", sale_price = 100 },
-  eq_t1_epic_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponRight", hp = 1333, armor = 87, damage = 653, craft_ore = 1141, craft_gold = 887, craft_ingot_def = "ingot_purple", craft_ingot_n = 40, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_weapon_r", sale_price = 100 },
-  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Helmet", hp = 4970, armor = 215, damage = 327, craft_ore = 1225, craft_gold = 1050, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_helmet", sale_price = 100 },
-  eq_t1_legendary_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Shoulders", hp = 2718, armor = 483, craft_ore = 2288, craft_gold = 1722, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_shoulders", sale_price = 100 },
-  eq_t1_legendary_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Chest", hp = 6213, armor = 214, damage = 265, craft_ore = 1357, craft_gold = 1134, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_chest", sale_price = 100 },
-  eq_t1_legendary_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Gloves", hp = 2563, damage = 389, healing = 1484, crit_chance = 0.006, craft_ore = 1490, craft_gold = 1218, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_gloves", sale_price = 100 },
-  eq_t1_legendary_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Legs", hp = 5669, armor = 255, damage = 78, craft_ore = 2022, craft_gold = 1554, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_legs", sale_price = 100 },
-  eq_t1_legendary_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Feet", hp = 2718, armor = 483, craft_ore = 2555, craft_gold = 1890, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_feet", sale_price = 100 },
-  eq_t1_legendary_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponLeft", hp = 2951, armor = 282, damage = 608, craft_ore = 1757, craft_gold = 1386, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_weapon_l", sale_price = 100 },
-  eq_t1_legendary_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponRight", hp = 2718, armor = 174, damage = 1309, craft_ore = 1890, craft_gold = 1470, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_weapon_r", sale_price = 100 },
-  eq_t2_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "normal", craft_recipe_id = "recipe_drop_t2_green_Helmet", hp = 800, armor = 65 },
-  eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_drop_t3_green_Helmet", hp = 1120, armor = 92 },
-  eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 2600, armor = 280 },
-  -- Ресурсы / рецепты (не экипируются)
-  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 200, sale_price = 20 },
-  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 200, sale_price = 20 },
-  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 200, sale_price = 20 },
-  tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5, sale_price = 100 },
-  recipe_t2_green_Helmet = { kind = "recipe", tier = 2, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
-  recipe_t3_green_Helmet = { kind = "recipe", tier = 3, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
-  recipe_green = { kind = "recipe", tier = 1, quality = "normal", max_stack = 1, recipe_slot = "Helmet" },
-  recipe_blue = { kind = "recipe", tier = 1, quality = "rare", max_stack = 1, recipe_slot = "Helmet" },
-  recipe_purple = { kind = "recipe", tier = 1, quality = "epic", max_stack = 1, recipe_slot = "Helmet" },
-  recipe_gold = { kind = "recipe", tier = 1, quality = "legendary", max_stack = 1, recipe_slot = "Helmet" },
-}
-
--- §4.3: по одному def_id на (цвет × слот); пулы A/B различаются набором слотов (без пересечения id).
-do
-  local slots_a = { "Helmet", "Chest", "Gloves", "WeaponLeft" }
-  local slots_b = { "WeaponRight", "Legs", "Shoulders", "Feet" }
-  local colq = { green = "normal", blue = "rare", purple = "epic" }
-  for cname, qual in pairs(colq) do
-    for _, s in ipairs(slots_a) do
-      local id = "recipe_drop_" .. cname .. "_" .. s
-      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = qual, max_stack = 1, recipe_slot = s, recipe_target_slot = s }
-    end
-    for _, s in ipairs(slots_b) do
-      local id = "recipe_drop_" .. cname .. "_" .. s
-      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = qual, max_stack = 1, recipe_slot = s, recipe_target_slot = s }
-    end
-  end
-end
-
--- Каталог v3: recipe_gold_{Slot} (без тира) для craft_recipe_id легендарки.
-do
-  local slots_gold = { "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet" }
-  for _, s in ipairs(slots_gold) do
-    local id = "recipe_gold_" .. s
-    ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = 1, quality = "legendary", max_stack = 1, recipe_slot = s, recipe_target_slot = s }
-  end
-end
-
--- §4.3: recipe_drop_t{тир_шахты}_{цвет}_{Slot} и золотые recipe_gold_t{тир}_{Slot} (совпадает с duel_match3_item_catalog.example.json).
-do
-  local slots_all = { "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet" }
-  local colq = { green = "normal", blue = "rare", purple = "epic" }
-  for t = 1, 3 do
-    for cname, qual in pairs(colq) do
-      for _, s in ipairs(slots_all) do
-        local id = "recipe_drop_t" .. t .. "_" .. cname .. "_" .. s
-        ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = t, quality = qual, max_stack = 1, recipe_slot = s }
-      end
-    end
-  end
-  for t = 1, 3 do
-    for _, s in ipairs(slots_all) do
-      local id = "recipe_gold_t" .. t .. "_" .. s
-      ITEM_DEFS_FALLBACK[id] = { kind = "recipe", tier = t, quality = "legendary", max_stack = 1, recipe_slot = s }
-    end
-  end
-end
-
 local ITEM_DEFS_CACHE_TTL_SEC = 30
 local _item_defs_merged_cache = nil
 local _item_defs_merged_cache_at = 0
@@ -1904,25 +1796,25 @@ local function read_item_defs_from_storage()
   return out
 end
 
--- Единый каталог для валидации экипировки и суммирования статов: fallback + Storage (Storage перекрывает совпадающие id).
+-- Item defs: Storage only (no Lua fallback). Missing catalog => empty + error log.
 local function get_merged_item_defs()
   local now = os.time()
   if _item_defs_merged_cache ~= nil and (now - _item_defs_merged_cache_at) < ITEM_DEFS_CACHE_TTL_SEC then
     return _item_defs_merged_cache
   end
-  local merged = {}
-  for k, v in pairs(ITEM_DEFS_FALLBACK) do
-    merged[k] = v
-  end
   local from_st = read_item_defs_from_storage()
-  if from_st ~= nil then
-    for k, v in pairs(from_st) do
-      merged[k] = v
-    end
+  if from_st == nil then
+    nk.logger_error(string.format(
+      "item_defs catalog unavailable: collection=%s key=%s user_id=%s",
+      tostring(CFG.ITEM_DEFS_COLLECTION),
+      tostring(CFG.ITEM_DEFS_KEY),
+      tostring(CFG.ITEM_DEFS_STORAGE_USER_ID)
+    ))
+    from_st = {}
   end
-  _item_defs_merged_cache = merged
+  _item_defs_merged_cache = from_st
   _item_defs_merged_cache_at = now
-  return merged
+  return from_st
 end
 
 local BOTS_CACHE_TTL_SEC = 30
@@ -2010,7 +1902,7 @@ local function read_bots_from_storage_key(storage_key)
   return out
 end
 
--- Fallback + legacy catalog (BOTS_KEY) + каталог по сложности (BOTS_KEYS_BY_DIFFICULTY): поздние слои перекрывают id.
+-- Bots: Storage only (BOTS_KEY + optional per-difficulty keys).
 local function get_merged_bots(difficulty)
   local diff = normalize_mine_difficulty(difficulty or CFG.MINE_DIFFICULTY_DEFAULT)
   local now = os.time()
@@ -2020,9 +1912,6 @@ local function get_merged_bots(difficulty)
     return cached
   end
   local merged = {}
-  for k, v in pairs(BOTS_FALLBACK) do
-    merged[k] = v
-  end
   local from_legacy = read_bots_from_storage_key(CFG.BOTS_KEY)
   if from_legacy ~= nil then
     for kid, bot in pairs(from_legacy) do
@@ -2038,6 +1927,14 @@ local function get_merged_bots(difficulty)
       end
     end
   end
+  if next(merged) == nil then
+    nk.logger_error(string.format(
+      "bot_defs catalog unavailable: collection=%s difficulty=%s user_id=%s",
+      tostring(CFG.BOTS_COLLECTION),
+      tostring(diff),
+      tostring(CFG.BOTS_STORAGE_USER_ID)
+    ))
+  end
   _bots_merged_by_diff[diff] = merged
   _bots_merged_at_by_diff[diff] = now
   return merged
@@ -2046,8 +1943,8 @@ end
 local function get_bot_profile(bot_id, difficulty_opt)
   local diff = normalize_mine_difficulty(difficulty_opt or CFG.MINE_DIFFICULTY_DEFAULT)
   local bots = get_merged_bots(diff)
-  local fallback_id = mine_bot_id_for_floor(1)
-  return bots[bot_id] or bots[fallback_id]
+  if bot_id == nil or bot_id == "" then return nil end
+  return bots[bot_id]
 end
 
 local function normalize_character_sheet(val)
@@ -2419,29 +2316,9 @@ local function sheet_has_learned(sheet, recipe_id)
   return false
 end
 
---- learned в sheet = def_id свитка (часто recipe_drop_t1_*); в каталоге экипа T1 craft_recipe_id = recipe_drop_{цвет}_{Slot} без t1.
---- Проверяем обе формы в обе стороны.
+--- craft_recipe_id matches scroll def_id: recipe_drop_t{tier}_{color|gold}_{Slot}.
 local function sheet_has_learned_for_craft(sheet, craft_recipe_id)
-  if sheet_has_learned(sheet, craft_recipe_id) then return true end
-  if craft_recipe_id == nil or craft_recipe_id == "" then return false end
-  local sid = tostring(craft_recipe_id)
-  -- Каталог: recipe_drop_t1_* → в learned может быть recipe_drop_{цвет}_* (старая схема)
-  local g = string.match(sid, "^recipe_drop_t1_green_(.+)$")
-  if g ~= nil and sheet_has_learned(sheet, "recipe_drop_green_" .. g) then return true end
-  local b = string.match(sid, "^recipe_drop_t1_blue_(.+)$")
-  if b ~= nil and sheet_has_learned(sheet, "recipe_drop_blue_" .. b) then return true end
-  local p = string.match(sid, "^recipe_drop_t1_purple_(.+)$")
-  if p ~= nil and sheet_has_learned(sheet, "recipe_drop_purple_" .. p) then return true end
-  -- Каталог T1: recipe_drop_green_* → learned после изучения свитка: recipe_drop_t1_green_*
-  local g2 = string.match(sid, "^recipe_drop_green_(.+)$")
-  if g2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_green_" .. g2) then return true end
-  local b2 = string.match(sid, "^recipe_drop_blue_(.+)$")
-  if b2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_blue_" .. b2) then return true end
-  local p2 = string.match(sid, "^recipe_drop_purple_(.+)$")
-  if p2 ~= nil and sheet_has_learned(sheet, "recipe_drop_t1_purple_" .. p2) then return true end
-  if sid == "recipe_drop_t2_green_Helmet" and sheet_has_learned(sheet, "recipe_t2_green_Helmet") then return true end
-  if sid == "recipe_drop_t3_green_Helmet" and sheet_has_learned(sheet, "recipe_t3_green_Helmet") then return true end
-  return false
+  return sheet_has_learned(sheet, craft_recipe_id)
 end
 
 local function item_def_is_legendary_quality(def)
@@ -3167,6 +3044,26 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
 
   local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
   local bot = get_bot_profile(bot_id, diff)
+  if bot == nil then
+    nk.logger_error(string.format(
+      "award_pve_victory: bot missing bot_id=%s difficulty=%s",
+      tostring(bot_id),
+      tostring(diff)
+    ))
+    local progress = read_pve_progress(user_id)
+    return {
+      reward_xp = 0,
+      reward_gold = 0,
+      reward_ore = 0,
+      reward_matter = 0,
+      level = progress.level or 1,
+      xp = progress.xp or 0,
+      gold = progress.gold or 0,
+      ore = progress.ore or 0,
+      matter = progress.matter or 0,
+      err = "bot_catalog_unavailable",
+    }
+  end
   local floor = CFG.clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
   local stat_mul = mine_stat_multiplier(diff)
   local reward_mul = mine_reward_multiplier(diff)
@@ -3821,10 +3718,18 @@ local function duel_match3_pve_create(ctx, payload)
     local requested_bot_id = tostring(p.bot_id or mine_bot_id_for_floor(1))
     local requested_diff = normalize_mine_difficulty(p.difficulty)
     local requested_floor = CFG.clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
-    local fallback_bot = get_bot_profile(mine_bot_id_for_floor(requested_floor), requested_diff)
     local bot = get_bot_profile(requested_bot_id, requested_diff)
     if bot == nil or bot.id == nil or bot.id == "" then
-      bot = fallback_bot
+      bot = get_bot_profile(mine_bot_id_for_floor(requested_floor), requested_diff)
+    end
+    if bot == nil or bot.id == nil or bot.id == "" then
+      return nk.json_encode({
+        ok = false,
+        err = "bot_catalog_unavailable",
+        bot_id = requested_bot_id,
+        floor = requested_floor,
+        difficulty = requested_diff,
+      })
     end
     local floor = CFG.clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
     local diff = requested_diff
@@ -4085,6 +3990,15 @@ function duel_mine_affix_reroll(ctx, payload)
     local max_retries = 5
     local bid = mine_bot_id_for_floor(requested_floor)
     local bot_for_cost = get_bot_profile(bid, requested_diff)
+    if bot_for_cost == nil then
+      return nk.json_encode({
+        ok = false,
+        err = "bot_catalog_unavailable",
+        bot_id = bid,
+        floor = requested_floor,
+        difficulty = requested_diff,
+      })
+    end
     local banish_cost = PveMineCost.normalize(bot_for_cost.cost_banish, PveMineCost.DEFAULT_BANISH)
 
     for i = 1, max_retries do
@@ -4684,6 +4598,14 @@ local function match_join(context, dispatcher, tick, state, presences)
 
       local pve_diff = normalize_mine_difficulty((state.pve_run or {}).difficulty)
       local bot_profile = get_bot_profile(state.bot_id, pve_diff)
+      if bot_profile == nil or bot_profile.id == nil or bot_profile.id == "" then
+        nk.logger_error(string.format(
+          "pve match join: bot missing bot_id=%s difficulty=%s",
+          tostring(state.bot_id),
+          tostring(pve_diff)
+        ))
+        return state
+      end
       state.bot_id = bot_profile.id
       if state.bot_user_id == nil or state.bot_user_id == "" then
         state.bot_user_id = make_bot_user_id(state.bot_id)
@@ -5174,7 +5096,7 @@ local function match_signal(context, dispatcher, tick, state, data)
   return state, "ok"
 end
 
--- Сводный каталог (fallback + Storage) для отладки и синхронизации с клиентом по id/slot/статам.
+-- Каталог предметов из Storage для отладки и синхронизации с клиентом по id/slot/статам.
 local function duel_match3_item_catalog_get(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -5182,6 +5104,9 @@ local function duel_match3_item_catalog_get(ctx, payload)
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
     local defs = get_merged_item_defs()
+    if next(defs) == nil then
+      return nk.json_encode({ ok = false, err = "item_catalog_unavailable" })
+    end
     local list = {}
     for id, d in pairs(defs) do
       list[#list + 1] = {

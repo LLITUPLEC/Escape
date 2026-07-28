@@ -23,7 +23,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 1
-  craftRecipeId: recipe_drop_blue_Shoulders
+  craftRecipeId: recipe_drop_t1_blue_Shoulders
   craftOre: 9920
   craftGold: 7460
   craftIngotDef: ingot_blue

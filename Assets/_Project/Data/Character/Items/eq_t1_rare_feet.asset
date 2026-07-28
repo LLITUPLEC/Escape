@@ -22,11 +22,11 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 5
-  craftRecipeId: recipe_drop_blue_Feet
+  craftRecipeId: recipe_drop_t1_blue_Feet
   craftOre: 11070
   craftGold: 8190
   craftIngotDef: ingot_blue
-  craftIngotN: 400
+  craftIngotN: 420
   craftTesseractN: 0
   craftItemId: eq_t1_normal_feet
   craftMinutes: 120

@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_WeaponRight
-  craftOre: 1890
-  craftGold: 1470
+  craftRecipeId: recipe_drop_t1_gold_WeaponRight
+  craftOre: 18900
+  craftGold: 14700
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1

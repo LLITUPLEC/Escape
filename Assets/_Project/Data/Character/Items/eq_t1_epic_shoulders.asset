@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_Shoulders
-  craftOre: 1382
-  craftGold: 1039
+  craftRecipeId: recipe_drop_t1_purple_Shoulders
+  craftOre: 13820
+  craftGold: 10390
   craftIngotDef: ingot_purple
-  craftIngotN: 53
+  craftIngotN: 220
   craftTesseractN: 0
   craftItemId: eq_t1_rare_shoulders
   craftMinutes: 180

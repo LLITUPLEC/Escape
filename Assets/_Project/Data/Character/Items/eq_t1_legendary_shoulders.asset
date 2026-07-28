@@ -21,9 +21,9 @@ MonoBehaviour:
   tier: 1
   quality: 3
   recipeTargetSlot: 0
-  craftRecipeId: recipe_gold_Shoulders
-  craftOre: 2288
-  craftGold: 1722
+  craftRecipeId: recipe_drop_t1_gold_Shoulders
+  craftOre: 22880
+  craftGold: 17220
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1

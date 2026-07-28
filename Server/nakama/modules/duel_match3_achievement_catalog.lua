@@ -1,6 +1,6 @@
 --[[
-  Каталог достижений: чтение duel_match3_achievement_defs/catalog из Storage,
-  fallback для dev без записи, награды, пороги claim, RPC для клиента.
+  Каталог достижений: чтение duel_match3_achievement_defs/catalog из Storage.
+  Без Storage-записи каталог недоступен (явная ошибка, без Lua-fallback).
 ]]
 local nk = require("nakama")
 
@@ -11,7 +11,6 @@ local function runtime_lua_require_nested(name_nested, name_root)
 end
 
 local CFG = runtime_lua_require_nested("modules.duel_match3_config", "duel_match3_config")
-local Fallback = runtime_lua_require_nested("modules.duel_match3_achievement_catalog_fallback", "duel_match3_achievement_catalog_fallback")
 
 local M = {}
 
@@ -164,22 +163,25 @@ function M.get_catalog()
     return _cache, _cache_source or "cache"
   end
   local cat = read_from_storage()
-  local source = "storage"
   if cat == nil then
-    cat = Fallback.get()
-    source = "fallback"
-    if cat == nil then
-      cat = { schema_version = 1, categories = {}, chains = {} }
-      source = "empty"
-    else
-      nk.logger_warn("achievement_catalog: using Lua fallback (storage unreadable or missing)")
-    end
+    nk.logger_error(string.format(
+      "achievement_catalog unavailable: collection=%s key=%s user_id=%s",
+      tostring(CFG.ACHIEVEMENT_DEFS_COLLECTION),
+      tostring(CFG.ACHIEVEMENT_DEFS_KEY),
+      tostring(CFG.ACHIEVEMENT_DEFS_STORAGE_USER_ID)
+    ))
+    local empty = { schema_version = 1, categories = {}, chains = {}, updated_at = now }
+    _cache = empty
+    _cache_at = now
+    _cache_source = "unavailable"
+    rebuild_index(empty)
+    return empty, "unavailable"
   end
   _cache = cat
   _cache_at = now
-  _cache_source = source
+  _cache_source = "storage"
   rebuild_index(cat)
-  return cat, source
+  return cat, "storage"
 end
 
 function M.chain_by_id(chain_id)
@@ -289,6 +291,9 @@ function M.rpc_achievement_catalog_get(ctx, payload)
       end
     end
     local cat, source = M.get_catalog()
+    if source == "unavailable" then
+      return nk.json_encode({ ok = false, err = "achievement_catalog_unavailable" })
+    end
     return nk.json_encode({
       ok = true,
       catalog_source = source,

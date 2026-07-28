@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_Chest
-  craftOre: 820
-  craftGold: 685
+  craftRecipeId: recipe_drop_t1_purple_Chest
+  craftOre: 8200
+  craftGold: 6850
   craftIngotDef: ingot_purple
-  craftIngotN: 21
+  craftIngotN: 25
   craftTesseractN: 0
   craftItemId: eq_t1_rare_chest
   craftMinutes: 180

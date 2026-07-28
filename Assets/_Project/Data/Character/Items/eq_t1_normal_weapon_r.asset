@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 0
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_green_WeaponRight
-  craftOre: 800
-  craftGold: 900
+  craftRecipeId: recipe_drop_t1_green_WeaponRight
+  craftOre: 3000
+  craftGold: 2750
   craftIngotDef: ingot_green
-  craftIngotN: 95
+  craftIngotN: 100
   craftTesseractN: 0
   craftItemId: 
   craftMinutes: 60

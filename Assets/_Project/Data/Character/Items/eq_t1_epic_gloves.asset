@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_Gloves
-  craftOre: 900
-  craftGold: 735
+  craftRecipeId: recipe_drop_t1_purple_Gloves
+  craftOre: 9000
+  craftGold: 7350
   craftIngotDef: ingot_purple
-  craftIngotN: 27
+  craftIngotN: 50
   craftTesseractN: 0
   craftItemId: eq_t1_rare_gloves
   craftMinutes: 180

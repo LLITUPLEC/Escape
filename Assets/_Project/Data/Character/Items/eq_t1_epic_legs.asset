@@ -21,11 +21,11 @@ MonoBehaviour:
   tier: 1
   quality: 2
   recipeTargetSlot: 0
-  craftRecipeId: recipe_drop_purple_Legs
-  craftOre: 1221
-  craftGold: 938
+  craftRecipeId: recipe_drop_t1_purple_Legs
+  craftOre: 12210
+  craftGold: 9380
   craftIngotDef: ingot_purple
-  craftIngotN: 44
+  craftIngotN: 180
   craftTesseractN: 0
   craftItemId: eq_t1_rare_legs
   craftMinutes: 180

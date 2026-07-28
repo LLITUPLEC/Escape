@@ -22,7 +22,7 @@ MonoBehaviour:
   tier: 1
   quality: 1
   recipeTargetSlot: 4
-  craftRecipeId: recipe_drop_blue_Legs
+  craftRecipeId: recipe_drop_t1_blue_Legs
   craftOre: 8760
   craftGold: 6730
   craftIngotDef: ingot_blue

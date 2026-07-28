@@ -22,12 +22,14 @@ MonoBehaviour:
   quality: 3
   recipeTargetSlot: 0
   craftRecipeId: 
-  salePrice: 100
   craftOre: 0
   craftGold: 0
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 0
+  craftItemId: 
+  craftMinutes: 0
+  salePrice: 30000
   icon: {fileID: 21300000, guid: 504f8998583b4d94ead5750fdcbc9667, type: 3}
   equippable: 0
   slot: 0
