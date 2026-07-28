@@ -4,7 +4,8 @@
       "kind": "tesseract",
       "tier": 1,
       "quality": "legendary",
-      "max_stack": 5
+      "max_stack": 5,
+      "sale_price": 100
     },
     "helm_rusty": {
       "hp": 30,
@@ -15,13 +16,15 @@
       "damage": 0,
       "healing": 10,
       "quality": "normal",
-      "crit_chance": 0.2
+      "crit_chance": 0.2,
+      "sale_price": 100
     },
     "ingot_blue": {
       "kind": "material",
       "tier": 1,
       "quality": "rare",
-      "max_stack": 100
+      "max_stack": 100,
+      "sale_price": 20
     },
     "boots_basic": {
       "hp": 0,
@@ -32,27 +35,31 @@
       "damage": 0,
       "healing": 0,
       "quality": "normal",
-      "crit_chance": 0
+      "crit_chance": 0,
+      "sale_price": 100
     },
     "ingot_green": {
       "kind": "material",
       "tier": 1,
       "quality": "normal",
-      "max_stack": 100
+      "max_stack": 100,
+      "sale_price": 20
     },
     "recipe_blue": {
       "kind": "recipe",
       "tier": 1,
       "quality": "rare",
       "max_stack": 1,
-      "recipe_slot": "Helmet"
+      "recipe_slot": "Helmet",
+      "sale_price": 100
     },
     "recipe_gold": {
       "kind": "recipe",
       "tier": 1,
       "quality": "legendary",
       "max_stack": 1,
-      "recipe_slot": "Helmet"
+      "recipe_slot": "Helmet",
+      "sale_price": 100
     },
     "sword_basic": {
       "hp": 0,
@@ -63,7 +70,8 @@
       "damage": 35,
       "healing": 0,
       "quality": "normal",
-      "crit_chance": 0
+      "crit_chance": 0,
+      "sale_price": 100
     },
     "gloves_basic": {
       "hp": 0,
@@ -74,27 +82,31 @@
       "damage": 0,
       "healing": 3,
       "quality": "normal",
-      "crit_chance": 0.3
+      "crit_chance": 0.3,
+      "sale_price": 100
     },
     "ingot_purple": {
       "kind": "material",
       "tier": 1,
       "quality": "epic",
-      "max_stack": 100
+      "max_stack": 100,
+      "sale_price": 20
     },
     "recipe_green": {
       "kind": "recipe",
       "tier": 1,
       "quality": "normal",
       "max_stack": 1,
-      "recipe_slot": "Helmet"
+      "recipe_slot": "Helmet",
+      "sale_price": 100
     },
     "recipe_purple": {
       "kind": "recipe",
       "tier": 1,
       "quality": "epic",
       "max_stack": 1,
-      "recipe_slot": "Helmet"
+      "recipe_slot": "Helmet",
+      "sale_price": 100
     },
     "eq_t1_epic_feet": {
       "hp": 1333,
@@ -111,7 +123,10 @@
       "craft_ingot_n": 59,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Feet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_feet"
     },
     "eq_t1_epic_legs": {
       "hp": 2781,
@@ -128,7 +143,10 @@
       "craft_ingot_n": 44,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Legs",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_legs"
     },
     "eq_t1_rare_feet": {
       "hp": 851,
@@ -145,7 +163,10 @@
       "craft_ingot_n": 42,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Feet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_feet"
     },
     "eq_t1_rare_legs": {
       "hp": 1774,
@@ -162,7 +183,10 @@
       "craft_ingot_n": 32,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Legs",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_legs"
     },
     "eq_t1_epic_chest": {
       "hp": 3048,
@@ -179,7 +203,10 @@
       "craft_ingot_n": 21,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Chest",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_chest"
     },
     "eq_t1_rare_chest": {
       "hp": 1944,
@@ -196,7 +223,10 @@
       "craft_ingot_n": 15,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Chest",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_chest"
     },
     "recipe_gold_Feet": {
       "kind": "recipe",
@@ -204,7 +234,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Feet",
-      "recipe_target_slot": "Feet"
+      "recipe_target_slot": "Feet",
+      "sale_price": 100
     },
     "recipe_gold_Legs": {
       "kind": "recipe",
@@ -212,7 +243,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Legs",
-      "recipe_target_slot": "Legs"
+      "recipe_target_slot": "Legs",
+      "sale_price": 100
     },
     "eq_t1_epic_gloves": {
       "hp": 1257,
@@ -229,7 +261,10 @@
       "craft_ingot_n": 27,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Gloves",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_gloves"
     },
     "eq_t1_epic_helmet": {
       "hp": 2438,
@@ -246,7 +281,10 @@
       "craft_ingot_n": 8,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Helmet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_helmet"
     },
     "eq_t1_normal_feet": {
       "hp": 368,
@@ -263,7 +301,9 @@
       "craft_ingot_n": 28,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Feet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "eq_t1_normal_legs": {
       "hp": 768,
@@ -280,7 +320,9 @@
       "craft_ingot_n": 21,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Legs",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "eq_t1_rare_gloves": {
       "hp": 802,
@@ -297,7 +339,10 @@
       "craft_ingot_n": 20,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Gloves",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_gloves"
     },
     "eq_t1_rare_helmet": {
       "hp": 1556,
@@ -314,7 +359,10 @@
       "craft_ingot_n": 6,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Helmet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_helmet"
     },
     "recipe_gold_Chest": {
       "kind": "recipe",
@@ -322,7 +370,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Chest",
-      "recipe_target_slot": "Chest"
+      "recipe_target_slot": "Chest",
+      "sale_price": 100
     },
     "eq_t1_normal_chest": {
       "hp": 841,
@@ -339,7 +388,9 @@
       "craft_ingot_n": 10,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Chest",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "recipe_gold_Gloves": {
       "kind": "recipe",
@@ -347,7 +398,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Gloves",
-      "recipe_target_slot": "Gloves"
+      "recipe_target_slot": "Gloves",
+      "sale_price": 100
     },
     "recipe_gold_Helmet": {
       "kind": "recipe",
@@ -355,7 +407,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Helmet",
-      "recipe_target_slot": "Helmet"
+      "recipe_target_slot": "Helmet",
+      "sale_price": 100
     },
     "eq_t1_epic_weapon_l": {
       "hp": 1448,
@@ -372,7 +425,10 @@
       "craft_ingot_n": 36,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_WeaponLeft",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_weapon_l"
     },
     "eq_t1_epic_weapon_r": {
       "hp": 1333,
@@ -389,7 +445,10 @@
       "craft_ingot_n": 40,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_WeaponRight",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_weapon_r"
     },
     "eq_t1_normal_gloves": {
       "hp": 347,
@@ -406,7 +465,9 @@
       "craft_ingot_n": 13,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Gloves",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "eq_t1_normal_helmet": {
       "hp": 673,
@@ -423,7 +484,9 @@
       "craft_ingot_n": 4,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Helmet",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "eq_t1_rare_weapon_l": {
       "hp": 924,
@@ -440,7 +503,10 @@
       "craft_ingot_n": 26,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_WeaponLeft",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_weapon_l"
     },
     "eq_t1_rare_weapon_r": {
       "hp": 851,
@@ -457,7 +523,10 @@
       "craft_ingot_n": 29,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_WeaponRight",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_weapon_r"
     },
     "eq_t1_epic_shoulders": {
       "hp": 1334,
@@ -474,7 +543,10 @@
       "craft_ingot_n": 53,
       "craft_ingot_def": "ingot_purple",
       "craft_recipe_id": "recipe_drop_purple_Shoulders",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 180,
+      "craft_item_id": "eq_t1_rare_shoulders"
     },
     "eq_t1_legendary_feet": {
       "hp": 2718,
@@ -491,7 +563,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Feet",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_feet"
     },
     "eq_t1_legendary_legs": {
       "hp": 5669,
@@ -508,7 +583,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Legs",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_legs"
     },
     "eq_t1_rare_shoulders": {
       "hp": 851,
@@ -525,7 +603,10 @@
       "craft_ingot_n": 38,
       "craft_ingot_def": "ingot_blue",
       "craft_recipe_id": "recipe_drop_blue_Shoulders",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 120,
+      "craft_item_id": "eq_t1_normal_shoulders"
     },
     "eq_t1_legendary_chest": {
       "hp": 6213,
@@ -542,7 +623,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Chest",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_chest"
     },
     "eq_t1_normal_weapon_l": {
       "hp": 400,
@@ -559,7 +643,9 @@
       "craft_ingot_n": 17,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_WeaponLeft",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "eq_t1_normal_weapon_r": {
       "hp": 368,
@@ -576,7 +662,9 @@
       "craft_ingot_n": 19,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_WeaponRight",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "recipe_drop_blue_Feet": {
       "kind": "recipe",
@@ -584,7 +672,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Feet",
-      "recipe_target_slot": "Feet"
+      "recipe_target_slot": "Feet",
+      "sale_price": 100
     },
     "recipe_drop_blue_Legs": {
       "kind": "recipe",
@@ -592,7 +681,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Legs",
-      "recipe_target_slot": "Legs"
+      "recipe_target_slot": "Legs",
+      "sale_price": 100
     },
     "recipe_gold_Shoulders": {
       "kind": "recipe",
@@ -600,7 +690,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "Shoulders",
-      "recipe_target_slot": "Shoulders"
+      "recipe_target_slot": "Shoulders",
+      "sale_price": 100
     },
     "eq_t1_legendary_gloves": {
       "hp": 2563,
@@ -617,7 +708,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Gloves",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_gloves"
     },
     "eq_t1_legendary_helmet": {
       "hp": 4970,
@@ -634,7 +728,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Helmet",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_helmet"
     },
     "eq_t1_normal_shoulders": {
       "hp": 368,
@@ -651,7 +748,9 @@
       "craft_ingot_n": 25,
       "craft_ingot_def": "ingot_green",
       "craft_recipe_id": "recipe_drop_green_Shoulders",
-      "craft_tesseract_n": 0
+      "craft_tesseract_n": 0,
+      "sale_price": 100,
+      "craft_minutes": 60
     },
     "recipe_drop_blue_Chest": {
       "kind": "recipe",
@@ -659,7 +758,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Chest",
-      "recipe_target_slot": "Chest"
+      "recipe_target_slot": "Chest",
+      "sale_price": 100
     },
     "recipe_drop_green_Feet": {
       "kind": "recipe",
@@ -667,7 +767,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Feet",
-      "recipe_target_slot": "Feet"
+      "recipe_target_slot": "Feet",
+      "sale_price": 100
     },
     "recipe_drop_green_Legs": {
       "kind": "recipe",
@@ -675,7 +776,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Legs",
-      "recipe_target_slot": "Legs"
+      "recipe_target_slot": "Legs",
+      "sale_price": 100
     },
     "recipe_gold_WeaponLeft": {
       "kind": "recipe",
@@ -683,7 +785,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "WeaponLeft",
-      "recipe_target_slot": "WeaponLeft"
+      "recipe_target_slot": "WeaponLeft",
+      "sale_price": 100
     },
     "recipe_drop_blue_Gloves": {
       "kind": "recipe",
@@ -691,7 +794,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Gloves",
-      "recipe_target_slot": "Gloves"
+      "recipe_target_slot": "Gloves",
+      "sale_price": 100
     },
     "recipe_drop_blue_Helmet": {
       "kind": "recipe",
@@ -699,7 +803,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Helmet",
-      "recipe_target_slot": "Helmet"
+      "recipe_target_slot": "Helmet",
+      "sale_price": 100
     },
     "recipe_drop_green_Chest": {
       "kind": "recipe",
@@ -707,7 +812,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Chest",
-      "recipe_target_slot": "Chest"
+      "recipe_target_slot": "Chest",
+      "sale_price": 100
     },
     "recipe_drop_purple_Feet": {
       "kind": "recipe",
@@ -715,7 +821,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Feet",
-      "recipe_target_slot": "Feet"
+      "recipe_target_slot": "Feet",
+      "sale_price": 100
     },
     "recipe_drop_purple_Legs": {
       "kind": "recipe",
@@ -723,7 +830,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Legs",
-      "recipe_target_slot": "Legs"
+      "recipe_target_slot": "Legs",
+      "sale_price": 100
     },
     "recipe_gold_WeaponRight": {
       "kind": "recipe",
@@ -731,7 +839,8 @@
       "quality": "legendary",
       "max_stack": 1,
       "recipe_slot": "WeaponRight",
-      "recipe_target_slot": "WeaponRight"
+      "recipe_target_slot": "WeaponRight",
+      "sale_price": 100
     },
     "eq_t1_legendary_weapon_l": {
       "hp": 2951,
@@ -748,7 +857,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_WeaponLeft",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_weapon_l"
     },
     "eq_t1_legendary_weapon_r": {
       "hp": 2718,
@@ -765,7 +877,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_WeaponRight",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_weapon_r"
     },
     "recipe_drop_green_Gloves": {
       "kind": "recipe",
@@ -773,7 +888,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Gloves",
-      "recipe_target_slot": "Gloves"
+      "recipe_target_slot": "Gloves",
+      "sale_price": 100
     },
     "recipe_drop_green_Helmet": {
       "kind": "recipe",
@@ -781,7 +897,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Helmet",
-      "recipe_target_slot": "Helmet"
+      "recipe_target_slot": "Helmet",
+      "sale_price": 100
     },
     "recipe_drop_purple_Chest": {
       "kind": "recipe",
@@ -789,7 +906,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Chest",
-      "recipe_target_slot": "Chest"
+      "recipe_target_slot": "Chest",
+      "sale_price": 100
     },
     "eq_t1_legendary_shoulders": {
       "hp": 2718,
@@ -806,7 +924,10 @@
       "craft_ingot_n": 0,
       "craft_ingot_def": "",
       "craft_recipe_id": "recipe_gold_Shoulders",
-      "craft_tesseract_n": 1
+      "craft_tesseract_n": 1,
+      "sale_price": 100,
+      "craft_minutes": 300,
+      "craft_item_id": "eq_t1_epic_shoulders"
     },
     "recipe_drop_purple_Gloves": {
       "kind": "recipe",
@@ -814,7 +935,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Gloves",
-      "recipe_target_slot": "Gloves"
+      "recipe_target_slot": "Gloves",
+      "sale_price": 100
     },
     "recipe_drop_purple_Helmet": {
       "kind": "recipe",
@@ -822,7 +944,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Helmet",
-      "recipe_target_slot": "Helmet"
+      "recipe_target_slot": "Helmet",
+      "sale_price": 100
     },
     "recipe_drop_blue_Shoulders": {
       "kind": "recipe",
@@ -830,7 +953,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "Shoulders",
-      "recipe_target_slot": "Shoulders"
+      "recipe_target_slot": "Shoulders",
+      "sale_price": 100
     },
     "recipe_drop_blue_WeaponLeft": {
       "kind": "recipe",
@@ -838,7 +962,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "WeaponLeft",
-      "recipe_target_slot": "WeaponLeft"
+      "recipe_target_slot": "WeaponLeft",
+      "sale_price": 100
     },
     "recipe_drop_green_Shoulders": {
       "kind": "recipe",
@@ -846,7 +971,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "Shoulders",
-      "recipe_target_slot": "Shoulders"
+      "recipe_target_slot": "Shoulders",
+      "sale_price": 100
     },
     "recipe_drop_blue_WeaponRight": {
       "kind": "recipe",
@@ -854,7 +980,8 @@
       "quality": "rare",
       "max_stack": 1,
       "recipe_slot": "WeaponRight",
-      "recipe_target_slot": "WeaponRight"
+      "recipe_target_slot": "WeaponRight",
+      "sale_price": 100
     },
     "recipe_drop_green_WeaponLeft": {
       "kind": "recipe",
@@ -862,7 +989,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "WeaponLeft",
-      "recipe_target_slot": "WeaponLeft"
+      "recipe_target_slot": "WeaponLeft",
+      "sale_price": 100
     },
     "recipe_drop_purple_Shoulders": {
       "kind": "recipe",
@@ -870,7 +998,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "Shoulders",
-      "recipe_target_slot": "Shoulders"
+      "recipe_target_slot": "Shoulders",
+      "sale_price": 100
     },
     "recipe_drop_green_WeaponRight": {
       "kind": "recipe",
@@ -878,7 +1007,8 @@
       "quality": "normal",
       "max_stack": 1,
       "recipe_slot": "WeaponRight",
-      "recipe_target_slot": "WeaponRight"
+      "recipe_target_slot": "WeaponRight",
+      "sale_price": 100
     },
     "recipe_drop_purple_WeaponLeft": {
       "kind": "recipe",
@@ -886,7 +1016,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "WeaponLeft",
-      "recipe_target_slot": "WeaponLeft"
+      "recipe_target_slot": "WeaponLeft",
+      "sale_price": 100
     },
     "recipe_drop_purple_WeaponRight": {
       "kind": "recipe",
@@ -894,7 +1025,8 @@
       "quality": "epic",
       "max_stack": 1,
       "recipe_slot": "WeaponRight",
-      "recipe_target_slot": "WeaponRight"
+      "recipe_target_slot": "WeaponRight",
+      "sale_price": 100
     }
   },
   "version": 3

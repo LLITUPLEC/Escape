@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: recipe_blue
   kind: 2
   maxStack: 1
+  salePrice: 100
   tier: 1
   quality: 1
   recipeTargetSlot: 0

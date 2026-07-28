@@ -27,6 +27,9 @@ MonoBehaviour:
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
+  craftItemId: eq_t1_epic_gloves
+  craftMinutes: 300
+  salePrice: 100
   icon: {fileID: 0}
   equippable: 1
   slot: 3

@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: recipe_gold
   kind: 2
   maxStack: 1
+  salePrice: 100
   tier: 1
   quality: 3
   recipeTargetSlot: 0

@@ -15,7 +15,8 @@ MonoBehaviour:
   itemId: eq_t1_rare_legs
   displayName: "\u0411\u0440\u044E\u043A\u0438 \u041F\u0440\u043E\u0445\u043E\u0434\u0447\u0438\u043A\u0430"
   colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
-  description: 
+  description: "\u041D\u043E\u0433\u0438 \u2014 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0435\u043D\u0438\u0435
+    \u043F\u043E\u0440\u043E\u0434\u044B, \u043D\u0435 \u0432\u044B\u0440\u0432\u0430\u0442\u044C"
   kind: 0
   maxStack: 1
   tier: 1
@@ -27,6 +28,9 @@ MonoBehaviour:
   craftIngotDef: ingot_blue
   craftIngotN: 320
   craftTesseractN: 0
+  craftItemId: eq_t1_normal_legs
+  craftMinutes: 120
+  salePrice: 100
   icon: {fileID: 21300000, guid: 7aeaf281fbff98f48b65108022b0aed0, type: 3}
   equippable: 1
   slot: 4

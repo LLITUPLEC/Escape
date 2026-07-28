@@ -27,6 +27,9 @@ MonoBehaviour:
   craftIngotDef: ingot_green
   craftIngotN: 26
   craftTesseractN: 0
+  craftItemId: 
+  craftMinutes: 60
+  salePrice: 100
   icon: {fileID: 21300000, guid: a627d089717565847936142fc4d7b354, type: 3}
   equippable: 1
   slot: 3

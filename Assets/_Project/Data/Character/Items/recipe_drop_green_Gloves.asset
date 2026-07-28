@@ -20,6 +20,7 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 3
   craftRecipeId: 
+  salePrice: 100
   icon: {fileID: 0}
   equippable: 0
   slot: 0

@@ -15,7 +15,8 @@ MonoBehaviour:
   itemId: eq_t1_rare_feet
   displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0435 \u0448\u0438\u043F\u044B"
   colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
-  description: 
+  description: "\u041D\u0435 \u0441\u043A\u043E\u043B\u044C\u0437\u044F\u0442 \u043D\u0430
+    \u043E\u0441\u044B\u043F\u0438 \u0438 \u043C\u043E\u043A\u0440\u043E\u043C \u043A\u0430\u043C\u043D\u0435"
   kind: 0
   maxStack: 1
   tier: 1
@@ -25,8 +26,11 @@ MonoBehaviour:
   craftOre: 11070
   craftGold: 8190
   craftIngotDef: ingot_blue
-  craftIngotN: 420
+  craftIngotN: 400
   craftTesseractN: 0
+  craftItemId: eq_t1_normal_feet
+  craftMinutes: 120
+  salePrice: 100
   icon: {fileID: 21300000, guid: ffbe1d116802bec4cb1cd4e92570f48e, type: 3}
   equippable: 1
   slot: 5

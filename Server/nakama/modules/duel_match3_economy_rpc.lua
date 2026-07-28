@@ -22,6 +22,9 @@ return function(deps)
   local workshop_consume_legendary_fodder = deps.workshop_consume_legendary_fodder
   local workshop_has_quality_fodder = deps.workshop_has_quality_fodder
   local workshop_consume_quality_fodder = deps.workshop_consume_quality_fodder
+  local workshop_has_exact_item_fodder = deps.workshop_has_exact_item_fodder
+  local workshop_consume_exact_item_fodder = deps.workshop_consume_exact_item_fodder
+  local workshop_craft_duration_seconds = deps.workshop_craft_duration_seconds
   local inventory_count_def = deps.inventory_count_def
   local inventory_try_add = deps.inventory_try_add
   local inventory_remove_def_total = deps.inventory_remove_def_total
@@ -289,6 +292,129 @@ end
   return result
 end
 
+  local function item_sale_unit_price(def, item_id)
+    local sp = tonumber(def and def.sale_price)
+    if sp ~= nil then
+      return math.max(0, math.floor(sp))
+    end
+    local kind = tostring(def and def.kind or "")
+    local id = tostring(item_id or "")
+    if kind == "material" or string.find(id, "^ingot_", 1, false) then
+      return 20
+    end
+    return 100
+  end
+
+  --- Продажа предмета из инвентаря (весь стек) или со слота экипировки.
+  --- payload: { session_epoch, source="inventory"|"equipment", inv_index?, slot_index? }
+  function M.duel_character_item_sell(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+
+    local source = tostring(p.source or "inventory")
+    local sheet = read_character_sheet(user_id)
+    ensure_sheet_inventory_counts(sheet)
+    local defs = get_merged_item_defs()
+
+    local item_id = ""
+    local count = 0
+    local clear_fn = nil
+
+    if source == "inventory" then
+      local inv_index = tonumber(p.inv_index)
+      if inv_index == nil then
+        return nk.json_encode({ ok = false, err = "bad_indices" })
+      end
+      inv_index = math.floor(inv_index)
+      if inv_index < 0 or inv_index > 24 then
+        return nk.json_encode({ ok = false, err = "bad_inv_index" })
+      end
+      local i = inv_index + 1
+      item_id = tostring(sheet.inventory[i] or "")
+      count = tonumber(sheet.inventory_counts[i]) or 0
+      if item_id == "" or count < 1 then
+        return nk.json_encode({ ok = false, err = "empty_source" })
+      end
+      clear_fn = function()
+        sheet.inventory[i] = ""
+        sheet.inventory_counts[i] = 0
+      end
+    elseif source == "equipment" then
+      local slot_index = tonumber(p.slot_index)
+      if slot_index == nil then
+        return nk.json_encode({ ok = false, err = "bad_indices" })
+      end
+      slot_index = math.floor(slot_index)
+      if slot_index < 0 or slot_index > 7 then
+        return nk.json_encode({ ok = false, err = "bad_slot_index" })
+      end
+      local i = slot_index + 1
+      item_id = tostring(sheet.equipment[i] or "")
+      count = 1
+      if item_id == "" then
+        return nk.json_encode({ ok = false, err = "empty_source" })
+      end
+      clear_fn = function()
+        sheet.equipment[i] = ""
+      end
+    else
+      return nk.json_encode({ ok = false, err = "bad_source" })
+    end
+
+    local def = defs[item_id]
+    if def == nil then
+      return nk.json_encode({ ok = false, err = "unknown_item" })
+    end
+
+    local unit = item_sale_unit_price(def, item_id)
+    if unit < 1 then
+      return nk.json_encode({ ok = false, err = "not_sellable" })
+    end
+
+    local gold_gain = unit * count
+    if gold_gain < 1 then
+      return nk.json_encode({ ok = false, err = "not_sellable" })
+    end
+
+    clear_fn()
+    write_character_sheet(user_id, sheet)
+
+    local progress = read_pve_progress(user_id)
+    progress.gold = (tonumber(progress.gold) or 0) + gold_gain
+    write_pve_progress(user_id, progress)
+
+    local encoded = encode_character_ok_response(sheet, progress, user_id)
+    -- Дополняем ответ суммой продажи (если encode вернул JSON-строку).
+    local ok_dec, decoded = pcall(nk.json_decode, encoded)
+    if ok_dec and type(decoded) == "table" and decoded.ok == true then
+      decoded.sold_item_id = item_id
+      decoded.sold_count = count
+      decoded.gold_gained = gold_gain
+      return nk.json_encode(decoded)
+    end
+    return encoded
+  end)
+
+  if not ok then
+    nk.logger_error("duel_character_item_sell: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
   function M.duel_workshop_craft_start(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -365,7 +491,12 @@ end
     local ingot_n = cost.ingot_n
     local tess_n = cost.tesseract_n
 
-    if quality == "normal" then
+    local craft_item_id = tostring(out_def.craft_item_id or "")
+    if craft_item_id ~= "" then
+      if not workshop_has_exact_item_fodder(sheet, craft_item_id) then
+        return nk.json_encode({ ok = false, err = "missing_craft_item_fodder", craft_item_id = craft_item_id })
+      end
+    elseif quality == "normal" then
       if tier == 2 and not workshop_has_legendary_fodder(sheet, defs, slot_index, 1) then
         return nk.json_encode({ ok = false, err = "missing_legend_fodder_t1" })
       end
@@ -396,8 +527,7 @@ end
       return nk.json_encode({ ok = false, err = "not_enough_tesseract" })
     end
 
-    local dur_tbl = CFG.WORKSHOP_CRAFT_DURATION_SEC_BY_TIER
-    local dur = dur_tbl and dur_tbl[tier] or (60 * 60)
+    local dur = workshop_craft_duration_seconds(out_def, tier)
 
     local max_retries = 5
     for attempt = 1, max_retries do
@@ -428,7 +558,12 @@ end
             return nk.json_encode({ ok = false, err = "server_error" })
           end
         end
-        if quality == "normal" then
+        if craft_item_id ~= "" then
+          if not workshop_consume_exact_item_fodder(sheet, craft_item_id) then
+            nk.logger_error("workshop_craft_start: не удалось поглотить craft_item_id=" .. craft_item_id)
+            return nk.json_encode({ ok = false, err = "server_error" })
+          end
+        elseif quality == "normal" then
           if tier == 2 then
             if not workshop_consume_legendary_fodder(sheet, defs, slot_index, 1) then
               nk.logger_error("workshop_craft_start: не удалось поглотить легенду T1")

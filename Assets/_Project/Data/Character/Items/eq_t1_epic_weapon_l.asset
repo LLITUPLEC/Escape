@@ -27,6 +27,9 @@ MonoBehaviour:
   craftIngotDef: ingot_purple
   craftIngotN: 36
   craftTesseractN: 0
+  craftItemId: eq_t1_rare_weapon_l
+  craftMinutes: 180
+  salePrice: 100
   icon: {fileID: 0}
   equippable: 1
   slot: 6

@@ -193,6 +193,7 @@ namespace Project.Character.Editor
             }
 
             localChanged |= SetString(so.FindProperty("craftRecipeId"), rec.craftRecipeId ?? "");
+            localChanged |= SetInt(so.FindProperty("salePrice"), rec.salePrice > 0 ? rec.salePrice : 100);
             if (isEquipment)
             {
                 localChanged |= SetInt(so.FindProperty("craftOre"), rec.craftOre);
@@ -200,6 +201,8 @@ namespace Project.Character.Editor
                 localChanged |= SetString(so.FindProperty("craftIngotDef"), rec.craftIngotDef ?? "");
                 localChanged |= SetInt(so.FindProperty("craftIngotN"), rec.craftIngotN);
                 localChanged |= SetInt(so.FindProperty("craftTesseractN"), rec.craftTesseractN);
+                localChanged |= SetString(so.FindProperty("craftItemId"), rec.craftItemId ?? "");
+                localChanged |= SetInt(so.FindProperty("craftMinutes"), rec.craftMinutes);
             }
 
             var displayName = so.FindProperty("displayName");
@@ -424,6 +427,9 @@ namespace Project.Character.Editor
                     craftIngotDef = GetStringField(itemObj, "craft_ingot_def"),
                     craftIngotN = Mathf.RoundToInt(GetNumberField(itemObj, "craft_ingot_n")),
                     craftTesseractN = Mathf.RoundToInt(GetNumberField(itemObj, "craft_tesseract_n")),
+                    craftItemId = GetStringField(itemObj, "craft_item_id"),
+                    craftMinutes = Mathf.RoundToInt(GetNumberField(itemObj, "craft_minutes")),
+                    salePrice = Mathf.RoundToInt(GetNumberField(itemObj, "sale_price")),
                 };
 
                 items[id] = rec;
@@ -553,6 +559,9 @@ namespace Project.Character.Editor
             public string craftIngotDef;
             public int craftIngotN;
             public int craftTesseractN;
+            public string craftItemId;
+            public int craftMinutes;
+            public int salePrice;
         }
     }
 }

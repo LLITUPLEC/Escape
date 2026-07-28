@@ -11,6 +11,7 @@ namespace Project.Character
         private const string RpcCharacterGet = "duel_character_get";
         private const string RpcCharacterItemMove = "duel_character_item_move";
         private const string RpcCharacterRecipeLearn = "duel_character_recipe_learn";
+        private const string RpcCharacterItemSell = "duel_character_item_sell";
         private const string RpcWorkshopCraftStart = "duel_workshop_craft_start";
         private const string RpcWorkshopCraftClaim = "duel_workshop_craft_claim";
         private const string RpcWorkshopCraftRush = "duel_workshop_craft_rush";
@@ -57,6 +58,20 @@ namespace Project.Character
         public static Task<CharacterGetRpcResponse> LearnRecipeAsync(int inventoryIndex, CancellationToken ct) =>
             RpcCharacterPayloadAsync(RpcCharacterRecipeLearn,
                 "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"inv_index\":" + inventoryIndex + "}", ct);
+
+        public static Task<CharacterGetRpcResponse> SellInventoryItemAsync(int inventoryIndex, CancellationToken ct) =>
+            RpcCharacterPayloadAsync(RpcCharacterItemSell,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
+                ",\"source\":\"inventory\",\"inv_index\":" + inventoryIndex + "}", ct);
+
+        public static Task<CharacterGetRpcResponse> SellEquipmentItemAsync(int slotIndex, CancellationToken ct)
+        {
+            if (slotIndex < 0 || slotIndex > 7)
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            return RpcCharacterPayloadAsync(RpcCharacterItemSell,
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
+                ",\"source\":\"equipment\",\"slot_index\":" + slotIndex + "}", ct);
+        }
 
         public static Task<CharacterGetRpcResponse> WorkshopCraftStartAsync(int slotIndex, string outputDefId, CancellationToken ct)
         {

@@ -13,6 +13,9 @@ namespace Project.Character
         private const string RpcPveEnergyBuy = "duel_pve_energy_buy";
         private const string PlayerResourcesCacheKey = "nakama.cache.player_resources_v1";
 
+        /// <summary>Кэш ресурсов обновился (продажа, покупка энергии и т.п.).</summary>
+        public static event Action CachedResourcesChanged;
+
         /// <summary>Последний успешный снимок ресурсов (устраняет краткий «—» на медленном старте / APK).</summary>
         public static bool TryReadCached(out PlayerResourcesRpcResponse model)
         {
@@ -39,11 +42,30 @@ namespace Project.Character
             {
                 PlayerPrefs.SetString(PlayerResourcesCacheKey, JsonUtility.ToJson(model));
                 PlayerPrefs.Save();
+                CachedResourcesChanged?.Invoke();
             }
             catch
             {
                 // ignored
             }
+        }
+
+        /// <summary>Обновить кэш ресурсов из progression (продажа предмета и т.п.).</summary>
+        public static void PatchCachedFromProgression(Progression progression)
+        {
+            if (progression == null) return;
+            if (!TryReadCached(out var model) || model == null)
+                model = new PlayerResourcesRpcResponse { ok = true };
+
+            model.ok = true;
+            model.gold = Math.Max(0L, progression.gold);
+            model.ore = Math.Max(0L, progression.ore);
+            model.ingots = Math.Max(0L, progression.ingots);
+            model.matter = Math.Max(0L, progression.matter);
+            model.keys = Math.Max(0L, progression.keys);
+            model.energy = Math.Max(0, progression.energy);
+            model.energy_max = Math.Max(0, progression.energy_max);
+            WriteCache(model);
         }
 
         public static async Task<PlayerResourcesRpcResponse> GetAsync(CancellationToken ct)

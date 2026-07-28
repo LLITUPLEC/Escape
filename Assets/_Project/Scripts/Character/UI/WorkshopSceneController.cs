@@ -915,7 +915,7 @@ namespace Project.Character.UI
 
             AppendFodderLines(sb, od);
 
-            sb.Append($"Время: {FormatDuration(WorkshopCraftRules.CraftDurationSecondsForTier(tier))}");
+            sb.Append($"Время: {FormatDuration(WorkshopCraftRules.CraftDurationSeconds(od))}");
             _detailText.supportRichText = true;
             _detailText.text = sb.ToString();
             UpdateItemStatsPreview(od);
@@ -1013,6 +1013,13 @@ namespace Project.Character.UI
         private string FodderShortRu(ItemDefinition od)
         {
             if (od == null) return "нет поглощаемого предмета";
+            var fodder = FindFodderDefinition(od);
+            if (fodder != null)
+            {
+                var name = string.IsNullOrEmpty(fodder.DisplayName) ? fodder.ItemId : fodder.DisplayName;
+                return $"нужен: {name}";
+            }
+
             var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
             return od.Quality switch
             {
@@ -1175,6 +1182,9 @@ namespace Project.Character.UI
         private ItemDefinition FindFodderDefinition(ItemDefinition od)
         {
             if (od == null || od.Kind != ItemKind.Equipment) return null;
+            if (!string.IsNullOrEmpty(od.CraftItemId) && itemCatalog != null)
+                return itemCatalog.Get(od.CraftItemId);
+
             var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
             var q = od.Quality;
             if (q == ItemQualityTier.Normal)
@@ -1206,6 +1216,9 @@ namespace Project.Character.UI
         private bool CraftFodderOk(ItemDefinition od, int slotIndex)
         {
             if (od == null || od.Kind != ItemKind.Equipment) return false;
+            if (!string.IsNullOrEmpty(od.CraftItemId))
+                return HasExactFodder(od.CraftItemId);
+
             var q = od.Quality;
             var t = od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier;
             if (q == ItemQualityTier.Normal)
@@ -1219,6 +1232,30 @@ namespace Project.Character.UI
             if (q == ItemQualityTier.Rare) return HasQualityFodder(slotIndex, t, ItemQualityTier.Normal);
             if (q == ItemQualityTier.Epic) return HasQualityFodder(slotIndex, t, ItemQualityTier.Rare);
             if (q == ItemQualityTier.Legendary) return HasQualityFodder(slotIndex, t, ItemQualityTier.Epic);
+            return false;
+        }
+
+        private bool HasExactFodder(string craftItemId)
+        {
+            if (string.IsNullOrEmpty(craftItemId) || _profile == null) return false;
+            if (_profile.equipment_def_ids != null)
+            {
+                for (var i = 0; i < _profile.equipment_def_ids.Length; i++)
+                {
+                    if (string.Equals(_profile.equipment_def_ids[i], craftItemId, StringComparison.Ordinal))
+                        return true;
+                }
+            }
+
+            if (_profile.inventory_def_ids == null || _profile.inventory_counts == null) return false;
+            var len = Math.Min(_profile.inventory_def_ids.Length, _profile.inventory_counts.Length);
+            for (var i = 0; i < len; i++)
+            {
+                if (_profile.inventory_counts[i] < 1) continue;
+                if (string.Equals(_profile.inventory_def_ids[i], craftItemId, StringComparison.Ordinal))
+                    return true;
+            }
+
             return false;
         }
 
@@ -1468,6 +1505,7 @@ namespace Project.Character.UI
                 case "missing_normal_fodder": return "нужен обычный предмет этого тира в слоте";
                 case "missing_rare_fodder": return "нужен редкий предмет этого тира в слоте";
                 case "missing_epic_fodder": return "нужен эпический предмет этого тира в слоте";
+                case "missing_craft_item_fodder": return "нужен предмет для поглощения";
                 case "not_enough_tesseract": return "мало тессерактов";
                 case "bad_craft_cost": return "некорректная стоимость крафта в каталоге";
                 case "session_stale": return "сессия устарела";
@@ -1527,6 +1565,15 @@ namespace Project.Character.UI
                 case 3: return 240 * 60;
                 default: return 60 * 60;
             }
+        }
+
+        /// <summary>Синхронно с duel_match3.lua workshop_craft_duration_seconds (craft_minutes или тир).</summary>
+        public static int CraftDurationSeconds(ItemDefinition od)
+        {
+            if (od != null && od.CraftMinutes > 0)
+                return od.CraftMinutes * 60;
+            var tier = od == null ? 1 : (od.Tier < 1 ? 1 : od.Tier > 3 ? 3 : od.Tier);
+            return CraftDurationSecondsForTier(tier);
         }
 
         public static string QualityRu(ItemQualityTier q)

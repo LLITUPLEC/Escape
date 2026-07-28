@@ -29,6 +29,12 @@ namespace Project.Character
         [SerializeField] private string craftIngotDef = "";
         [SerializeField] private int craftIngotN;
         [SerializeField] private int craftTesseractN;
+        /// <summary>Id экипа для поглощения при крафте (сервер: craft_item_id). Пусто = не требуется.</summary>
+        [SerializeField] private string craftItemId = "";
+        /// <summary>Длительность крафта в минутах (сервер: craft_minutes).</summary>
+        [SerializeField] private int craftMinutes;
+        /// <summary>Цена продажи одной штуки в золоте (сервер: sale_price). Итог = salePrice × count.</summary>
+        [SerializeField] private int salePrice = 100;
 
         [Header("Visual")]
         [SerializeField] private Sprite icon;
@@ -63,6 +69,9 @@ namespace Project.Character
         public string CraftIngotDef => craftIngotDef;
         public int CraftIngotN => craftIngotN;
         public int CraftTesseractN => craftTesseractN;
+        public string CraftItemId => craftItemId;
+        public int CraftMinutes => craftMinutes;
+        public int SalePrice => salePrice;
         public bool Equippable => equippable;
         public EquipmentSlotId Slot => slot;
         public IReadOnlyList<StatModifier> Modifiers => modifiers;

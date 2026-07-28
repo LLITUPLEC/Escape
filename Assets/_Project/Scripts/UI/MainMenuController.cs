@@ -120,6 +120,7 @@ namespace Project.UI
         private void OnEnable()
         {
             _onlineCts = new CancellationTokenSource();
+            PlayerResourcesService.CachedResourcesChanged += OnCachedResourcesChanged;
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
@@ -133,6 +134,7 @@ namespace Project.UI
 
         private void OnDisable()
         {
+            PlayerResourcesService.CachedResourcesChanged -= OnCachedResourcesChanged;
             _energyHeaderPurchase = null;
             _onlineCts?.Cancel();
             _onlineCts?.Dispose();
@@ -880,6 +882,19 @@ namespace Project.UI
             if (resourcesPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                 resourcesPath = resourcesPath.Substring(0, resourcesPath.Length - 4);
             return Resources.Load<Sprite>(resourcesPath);
+        }
+
+        private void OnCachedResourcesChanged()
+        {
+            if (!PlayerResourcesService.TryReadCached(out var cached) || cached == null) return;
+            EnsureHeaderResources();
+            if (!HasAnyHeaderResourceBindings()) return;
+            SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy));
+            SetHeaderResourceText(_oreBinding, FormatCompact(cached.ore));
+            SetHeaderResourceText(_goldBinding, FormatCompact(cached.gold));
+            SetHeaderResourceText(_ingotsBinding, FormatCompact(cached.ingots));
+            SetHeaderResourceText(_matterBinding, FormatCompact(cached.matter));
+            SetHeaderResourceText(_keysBinding, FormatCompact(cached.keys));
         }
 
         private async Task RefreshHeaderResourcesAsync(CancellationToken ct)

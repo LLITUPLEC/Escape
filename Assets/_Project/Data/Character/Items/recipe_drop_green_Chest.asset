@@ -20,6 +20,7 @@ MonoBehaviour:
   quality: 0
   recipeTargetSlot: 2
   craftRecipeId: 
+  salePrice: 100
   craftOre: 0
   craftGold: 0
   craftIngotDef: 

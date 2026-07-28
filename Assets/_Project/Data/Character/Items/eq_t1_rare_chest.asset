@@ -15,7 +15,8 @@ MonoBehaviour:
   itemId: eq_t1_rare_chest
   displayName: "\u0411\u0440\u043E\u043D\u0435\u0441\u0442\u0435\u0433\u0430\u043D\u043A\u0430"
   colorDisplayName: {r: 0.088237785, g: 0.4149111, b: 0.9169811, a: 1}
-  description: 77777777777777777  888
+  description: "\u041F\u0443\u043B\u0438 \u0432\u044F\u0437\u043D\u0443\u0442 \u0432
+    \u0441\u043B\u043E\u044F\u0445, \u043A\u0430\u043A \u0432 \u0431\u043E\u043B\u043E\u0442\u0435"
   kind: 0
   maxStack: 1
   tier: 1
@@ -27,6 +28,9 @@ MonoBehaviour:
   craftIngotDef: ingot_blue
   craftIngotN: 150
   craftTesseractN: 0
+  craftItemId: eq_t1_normal_chest
+  craftMinutes: 120
+  salePrice: 100
   icon: {fileID: 21300000, guid: 5838efc3e9a9e514ba14d8d51f6c262f, type: 3}
   equippable: 1
   slot: 2

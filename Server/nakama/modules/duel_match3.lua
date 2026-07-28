@@ -1664,51 +1664,51 @@ local EQUIP_ORDER = {
 -- Fallback, если в Storage нет записи или CFG.ITEM_DEFS_STORAGE_USER_ID пустой. Storage перекрывает эти id.
 -- Полный образец — Server/nakama/data/duel_match3_item_catalog.example.json (kind / max_stack / tier / quality).
 local ITEM_DEFS_FALLBACK = {
-  helm_rusty = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", hp = 30, armor = 10, healing = 10, crit_chance = 0.2 },
-  sword_basic = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", damage = 35 },
-  boots_basic = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", armor = 2 },
-  gloves_basic = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", healing = 3, crit_chance = 0.3 },
+  helm_rusty = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", hp = 30, armor = 10, healing = 10, crit_chance = 0.2, sale_price = 100 },
+  sword_basic = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", damage = 35, sale_price = 100 },
+  boots_basic = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", armor = 2, sale_price = 100 },
+  gloves_basic = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", healing = 3, crit_chance = 0.3, sale_price = 100 },
   -- T1-only: craft_recipe_id = recipe_drop_{цвет}_{Slot} / recipe_gold_{Slot} (каталог v3).
-  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Helmet", hp = 673, armor = 31, damage = 47, craft_ore = 350, craft_gold = 300, craft_ingot_def = "ingot_green", craft_ingot_n = 4, craft_tesseract_n = 0 },
-  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Shoulders", hp = 368, armor = 69, craft_ore = 654, craft_gold = 492, craft_ingot_def = "ingot_green", craft_ingot_n = 25, craft_tesseract_n = 0 },
-  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Chest", hp = 841, armor = 31, damage = 38, craft_ore = 388, craft_gold = 324, craft_ingot_def = "ingot_green", craft_ingot_n = 10, craft_tesseract_n = 0 },
-  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Gloves", hp = 347, damage = 57, healing = 210, crit_chance = 0.006, craft_ore = 426, craft_gold = 348, craft_ingot_def = "ingot_green", craft_ingot_n = 13, craft_tesseract_n = 0 },
-  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Legs", hp = 768, armor = 37, damage = 11, craft_ore = 578, craft_gold = 444, craft_ingot_def = "ingot_green", craft_ingot_n = 21, craft_tesseract_n = 0 },
-  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Feet", hp = 368, armor = 69, craft_ore = 730, craft_gold = 540, craft_ingot_def = "ingot_green", craft_ingot_n = 28, craft_tesseract_n = 0 },
-  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponLeft", hp = 400, armor = 40, damage = 88, craft_ore = 502, craft_gold = 396, craft_ingot_def = "ingot_green", craft_ingot_n = 17, craft_tesseract_n = 0 },
-  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponRight", hp = 368, armor = 25, damage = 189, craft_ore = 540, craft_gold = 420, craft_ingot_def = "ingot_green", craft_ingot_n = 19, craft_tesseract_n = 0 },
-  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Helmet", hp = 1556, armor = 69, damage = 105, craft_ore = 531, craft_gold = 455, craft_ingot_def = "ingot_blue", craft_ingot_n = 6, craft_tesseract_n = 0 },
-  eq_t1_rare_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Shoulders", hp = 851, armor = 155, craft_ore = 992, craft_gold = 746, craft_ingot_def = "ingot_blue", craft_ingot_n = 38, craft_tesseract_n = 0 },
-  eq_t1_rare_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Chest", hp = 1944, armor = 69, damage = 85, craft_ore = 588, craft_gold = 491, craft_ingot_def = "ingot_blue", craft_ingot_n = 15, craft_tesseract_n = 0 },
-  eq_t1_rare_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Gloves", hp = 802, damage = 125, healing = 474, crit_chance = 0.006, craft_ore = 646, craft_gold = 528, craft_ingot_def = "ingot_blue", craft_ingot_n = 20, craft_tesseract_n = 0 },
-  eq_t1_rare_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Legs", hp = 1774, armor = 81, damage = 25, craft_ore = 876, craft_gold = 673, craft_ingot_def = "ingot_blue", craft_ingot_n = 32, craft_tesseract_n = 0 },
-  eq_t1_rare_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Feet", hp = 851, armor = 155, craft_ore = 1107, craft_gold = 819, craft_ingot_def = "ingot_blue", craft_ingot_n = 42, craft_tesseract_n = 0 },
-  eq_t1_rare_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponLeft", hp = 924, armor = 90, damage = 195, craft_ore = 761, craft_gold = 600, craft_ingot_def = "ingot_blue", craft_ingot_n = 26, craft_tesseract_n = 0 },
-  eq_t1_rare_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponRight", hp = 851, armor = 56, damage = 421, craft_ore = 819, craft_gold = 637, craft_ingot_def = "ingot_blue", craft_ingot_n = 29, craft_tesseract_n = 0 },
-  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Helmet", hp = 2438, armor = 107, damage = 163, craft_ore = 739, craft_gold = 634, craft_ingot_def = "ingot_purple", craft_ingot_n = 8, craft_tesseract_n = 0 },
-  eq_t1_epic_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Shoulders", hp = 1334, armor = 240, craft_ore = 1382, craft_gold = 1039, craft_ingot_def = "ingot_purple", craft_ingot_n = 53, craft_tesseract_n = 0 },
-  eq_t1_epic_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Chest", hp = 3048, armor = 107, damage = 132, craft_ore = 820, craft_gold = 685, craft_ingot_def = "ingot_purple", craft_ingot_n = 21, craft_tesseract_n = 0 },
-  eq_t1_epic_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Gloves", hp = 1257, damage = 194, healing = 737, crit_chance = 0.006, craft_ore = 900, craft_gold = 735, craft_ingot_def = "ingot_purple", craft_ingot_n = 27, craft_tesseract_n = 0 },
-  eq_t1_epic_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Legs", hp = 2781, armor = 127, damage = 39, craft_ore = 1221, craft_gold = 938, craft_ingot_def = "ingot_purple", craft_ingot_n = 44, craft_tesseract_n = 0 },
-  eq_t1_epic_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Feet", hp = 1333, armor = 240, craft_ore = 1542, craft_gold = 1141, craft_ingot_def = "ingot_purple", craft_ingot_n = 59, craft_tesseract_n = 0 },
-  eq_t1_epic_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponLeft", hp = 1448, armor = 140, damage = 303, craft_ore = 1061, craft_gold = 837, craft_ingot_def = "ingot_purple", craft_ingot_n = 36, craft_tesseract_n = 0 },
-  eq_t1_epic_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponRight", hp = 1333, armor = 87, damage = 653, craft_ore = 1141, craft_gold = 887, craft_ingot_def = "ingot_purple", craft_ingot_n = 40, craft_tesseract_n = 0 },
-  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Helmet", hp = 4970, armor = 215, damage = 327, craft_ore = 1225, craft_gold = 1050, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Shoulders", hp = 2718, armor = 483, craft_ore = 2288, craft_gold = 1722, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Chest", hp = 6213, armor = 214, damage = 265, craft_ore = 1357, craft_gold = 1134, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Gloves", hp = 2563, damage = 389, healing = 1484, crit_chance = 0.006, craft_ore = 1490, craft_gold = 1218, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Legs", hp = 5669, armor = 255, damage = 78, craft_ore = 2022, craft_gold = 1554, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Feet", hp = 2718, armor = 483, craft_ore = 2555, craft_gold = 1890, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponLeft", hp = 2951, armor = 282, damage = 608, craft_ore = 1757, craft_gold = 1386, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
-  eq_t1_legendary_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponRight", hp = 2718, armor = 174, damage = 1309, craft_ore = 1890, craft_gold = 1470, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1 },
+  eq_t1_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Helmet", hp = 673, armor = 31, damage = 47, craft_ore = 350, craft_gold = 300, craft_ingot_def = "ingot_green", craft_ingot_n = 4, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Shoulders", hp = 368, armor = 69, craft_ore = 654, craft_gold = 492, craft_ingot_def = "ingot_green", craft_ingot_n = 25, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Chest", hp = 841, armor = 31, damage = 38, craft_ore = 388, craft_gold = 324, craft_ingot_def = "ingot_green", craft_ingot_n = 10, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Gloves", hp = 347, damage = 57, healing = 210, crit_chance = 0.006, craft_ore = 426, craft_gold = 348, craft_ingot_def = "ingot_green", craft_ingot_n = 13, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Legs", hp = 768, armor = 37, damage = 11, craft_ore = 578, craft_gold = 444, craft_ingot_def = "ingot_green", craft_ingot_n = 21, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_Feet", hp = 368, armor = 69, craft_ore = 730, craft_gold = 540, craft_ingot_def = "ingot_green", craft_ingot_n = 28, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponLeft", hp = 400, armor = 40, damage = 88, craft_ore = 502, craft_gold = 396, craft_ingot_def = "ingot_green", craft_ingot_n = 17, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_normal_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "normal", craft_recipe_id = "recipe_drop_green_WeaponRight", hp = 368, armor = 25, damage = 189, craft_ore = 540, craft_gold = 420, craft_ingot_def = "ingot_green", craft_ingot_n = 19, craft_tesseract_n = 0, craft_minutes = 60, sale_price = 100 },
+  eq_t1_rare_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Helmet", hp = 1556, armor = 69, damage = 105, craft_ore = 531, craft_gold = 455, craft_ingot_def = "ingot_blue", craft_ingot_n = 6, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_helmet", sale_price = 100 },
+  eq_t1_rare_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Shoulders", hp = 851, armor = 155, craft_ore = 992, craft_gold = 746, craft_ingot_def = "ingot_blue", craft_ingot_n = 38, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_shoulders", sale_price = 100 },
+  eq_t1_rare_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Chest", hp = 1944, armor = 69, damage = 85, craft_ore = 588, craft_gold = 491, craft_ingot_def = "ingot_blue", craft_ingot_n = 15, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_chest", sale_price = 100 },
+  eq_t1_rare_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Gloves", hp = 802, damage = 125, healing = 474, crit_chance = 0.006, craft_ore = 646, craft_gold = 528, craft_ingot_def = "ingot_blue", craft_ingot_n = 20, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_gloves", sale_price = 100 },
+  eq_t1_rare_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Legs", hp = 1774, armor = 81, damage = 25, craft_ore = 876, craft_gold = 673, craft_ingot_def = "ingot_blue", craft_ingot_n = 32, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_legs", sale_price = 100 },
+  eq_t1_rare_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_Feet", hp = 851, armor = 155, craft_ore = 1107, craft_gold = 819, craft_ingot_def = "ingot_blue", craft_ingot_n = 42, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_feet", sale_price = 100 },
+  eq_t1_rare_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponLeft", hp = 924, armor = 90, damage = 195, craft_ore = 761, craft_gold = 600, craft_ingot_def = "ingot_blue", craft_ingot_n = 26, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_weapon_l", sale_price = 100 },
+  eq_t1_rare_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "rare", craft_recipe_id = "recipe_drop_blue_WeaponRight", hp = 851, armor = 56, damage = 421, craft_ore = 819, craft_gold = 637, craft_ingot_def = "ingot_blue", craft_ingot_n = 29, craft_tesseract_n = 0, craft_minutes = 120, craft_item_id = "eq_t1_normal_weapon_r", sale_price = 100 },
+  eq_t1_epic_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Helmet", hp = 2438, armor = 107, damage = 163, craft_ore = 739, craft_gold = 634, craft_ingot_def = "ingot_purple", craft_ingot_n = 8, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_helmet", sale_price = 100 },
+  eq_t1_epic_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Shoulders", hp = 1334, armor = 240, craft_ore = 1382, craft_gold = 1039, craft_ingot_def = "ingot_purple", craft_ingot_n = 53, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_shoulders", sale_price = 100 },
+  eq_t1_epic_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Chest", hp = 3048, armor = 107, damage = 132, craft_ore = 820, craft_gold = 685, craft_ingot_def = "ingot_purple", craft_ingot_n = 21, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_chest", sale_price = 100 },
+  eq_t1_epic_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Gloves", hp = 1257, damage = 194, healing = 737, crit_chance = 0.006, craft_ore = 900, craft_gold = 735, craft_ingot_def = "ingot_purple", craft_ingot_n = 27, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_gloves", sale_price = 100 },
+  eq_t1_epic_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Legs", hp = 2781, armor = 127, damage = 39, craft_ore = 1221, craft_gold = 938, craft_ingot_def = "ingot_purple", craft_ingot_n = 44, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_legs", sale_price = 100 },
+  eq_t1_epic_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_Feet", hp = 1333, armor = 240, craft_ore = 1542, craft_gold = 1141, craft_ingot_def = "ingot_purple", craft_ingot_n = 59, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_feet", sale_price = 100 },
+  eq_t1_epic_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponLeft", hp = 1448, armor = 140, damage = 303, craft_ore = 1061, craft_gold = 837, craft_ingot_def = "ingot_purple", craft_ingot_n = 36, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_weapon_l", sale_price = 100 },
+  eq_t1_epic_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "epic", craft_recipe_id = "recipe_drop_purple_WeaponRight", hp = 1333, armor = 87, damage = 653, craft_ore = 1141, craft_gold = 887, craft_ingot_def = "ingot_purple", craft_ingot_n = 40, craft_tesseract_n = 0, craft_minutes = 180, craft_item_id = "eq_t1_rare_weapon_r", sale_price = 100 },
+  eq_t1_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Helmet", hp = 4970, armor = 215, damage = 327, craft_ore = 1225, craft_gold = 1050, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_helmet", sale_price = 100 },
+  eq_t1_legendary_shoulders = { kind = "equipment", slot = "Shoulders", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Shoulders", hp = 2718, armor = 483, craft_ore = 2288, craft_gold = 1722, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_shoulders", sale_price = 100 },
+  eq_t1_legendary_chest = { kind = "equipment", slot = "Chest", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Chest", hp = 6213, armor = 214, damage = 265, craft_ore = 1357, craft_gold = 1134, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_chest", sale_price = 100 },
+  eq_t1_legendary_gloves = { kind = "equipment", slot = "Gloves", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Gloves", hp = 2563, damage = 389, healing = 1484, crit_chance = 0.006, craft_ore = 1490, craft_gold = 1218, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_gloves", sale_price = 100 },
+  eq_t1_legendary_legs = { kind = "equipment", slot = "Legs", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Legs", hp = 5669, armor = 255, damage = 78, craft_ore = 2022, craft_gold = 1554, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_legs", sale_price = 100 },
+  eq_t1_legendary_feet = { kind = "equipment", slot = "Feet", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_Feet", hp = 2718, armor = 483, craft_ore = 2555, craft_gold = 1890, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_feet", sale_price = 100 },
+  eq_t1_legendary_weapon_l = { kind = "equipment", slot = "WeaponLeft", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponLeft", hp = 2951, armor = 282, damage = 608, craft_ore = 1757, craft_gold = 1386, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_weapon_l", sale_price = 100 },
+  eq_t1_legendary_weapon_r = { kind = "equipment", slot = "WeaponRight", tier = 1, quality = "legendary", craft_recipe_id = "recipe_gold_WeaponRight", hp = 2718, armor = 174, damage = 1309, craft_ore = 1890, craft_gold = 1470, craft_ingot_def = "", craft_ingot_n = 0, craft_tesseract_n = 1, craft_minutes = 300, craft_item_id = "eq_t1_epic_weapon_r", sale_price = 100 },
   eq_t2_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "normal", craft_recipe_id = "recipe_drop_t2_green_Helmet", hp = 800, armor = 65 },
   eq_t3_normal_helmet = { kind = "equipment", slot = "Helmet", tier = 3, quality = "normal", craft_recipe_id = "recipe_drop_t3_green_Helmet", hp = 1120, armor = 92 },
   eq_t2_legendary_helmet = { kind = "equipment", slot = "Helmet", tier = 2, quality = "legendary", hp = 2600, armor = 280 },
   -- Ресурсы / рецепты (не экипируются)
-  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 200 },
-  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 200 },
-  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 200 },
-  tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5 },
+  ingot_green = { kind = "material", tier = 1, quality = "normal", max_stack = 200, sale_price = 20 },
+  ingot_blue = { kind = "material", tier = 1, quality = "rare", max_stack = 200, sale_price = 20 },
+  ingot_purple = { kind = "material", tier = 1, quality = "epic", max_stack = 200, sale_price = 20 },
+  tesseract = { kind = "tesseract", tier = 1, quality = "legendary", max_stack = 5, sale_price = 100 },
   recipe_t2_green_Helmet = { kind = "recipe", tier = 2, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
   recipe_t3_green_Helmet = { kind = "recipe", tier = 3, quality = "normal", max_stack = 1, recipe_slot = "Helmet", recipe_target_slot = "Helmet" },
   recipe_green = { kind = "recipe", tier = 1, quality = "normal", max_stack = 1, recipe_slot = "Helmet" },
@@ -1782,6 +1782,11 @@ local function normalize_stored_item_def(def)
       if kind == "material" then max_stack = 100 else max_stack = 1 end
     end
     max_stack = math.max(1, math.floor(max_stack))
+    local sale_price = tonumber(def.sale_price)
+    if sale_price == nil then
+      if kind == "material" then sale_price = 20 else sale_price = 100 end
+    end
+    sale_price = math.max(0, math.floor(sale_price))
     return {
       kind = kind,
       slot = "",
@@ -1790,6 +1795,7 @@ local function normalize_stored_item_def(def)
       quality = quality,
       recipe_slot = recipe_slot,
       craft_recipe_id = "",
+      sale_price = sale_price,
       hp = 0,
       damage = 0,
       armor = 0,
@@ -1800,6 +1806,7 @@ local function normalize_stored_item_def(def)
 
   local slot = tostring(def.slot or "")
   if slot == "" then return nil end
+  local sale_price = math.max(0, math.floor(tonumber(def.sale_price) or 100))
   local out = {
     kind = "equipment",
     slot = slot,
@@ -1808,6 +1815,9 @@ local function normalize_stored_item_def(def)
     quality = quality,
     recipe_slot = "",
     craft_recipe_id = tostring(def.craft_recipe_id or ""),
+    craft_item_id = tostring(def.craft_item_id or ""),
+    craft_minutes = math.max(0, math.floor(tonumber(def.craft_minutes) or 0)),
+    sale_price = sale_price,
     hp = tonumber(def.hp) or 0,
     damage = tonumber(def.damage) or 0,
     armor = tonumber(def.armor) or 0,
@@ -2548,6 +2558,62 @@ local function workshop_consume_quality_fodder(sheet, defs, slot_index, tier, qu
     end
   end
   return false
+end
+
+--- Явное поглощение по craft_item_id из каталога (предпочтительно над эвристикой quality/tier).
+local function workshop_has_exact_item_fodder(sheet, craft_item_id)
+  craft_item_id = tostring(craft_item_id or "")
+  if craft_item_id == "" then return true end
+  for eq_i = 1, 8 do
+    if tostring(sheet.equipment[eq_i] or "") == craft_item_id then
+      return true
+    end
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id == craft_item_id and (tonumber(sheet.inventory_counts[inv_i]) or 0) >= 1 then
+      return true
+    end
+  end
+  return false
+end
+
+local function workshop_consume_exact_item_fodder(sheet, craft_item_id)
+  craft_item_id = tostring(craft_item_id or "")
+  if craft_item_id == "" then return true end
+  for eq_i = 1, 8 do
+    if tostring(sheet.equipment[eq_i] or "") == craft_item_id then
+      sheet.equipment[eq_i] = ""
+      return true
+    end
+  end
+  for inv_i = 1, 25 do
+    local id = sheet.inventory[inv_i] or ""
+    if id == craft_item_id then
+      local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
+      if cnt >= 1 then
+        cnt = cnt - 1
+        if cnt <= 0 then
+          sheet.inventory[inv_i] = ""
+          sheet.inventory_counts[inv_i] = 0
+        else
+          sheet.inventory_counts[inv_i] = cnt
+        end
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--- Длительность крафта: craft_minutes из каталога, иначе WORKSHOP_CRAFT_DURATION_SEC_BY_TIER.
+local function workshop_craft_duration_seconds(out_def, tier)
+  local mins = tonumber(out_def and out_def.craft_minutes)
+  if mins ~= nil and mins > 0 then
+    return math.floor(mins) * 60
+  end
+  local dur_tbl = CFG.WORKSHOP_CRAFT_DURATION_SEC_BY_TIER
+  return (dur_tbl and dur_tbl[tier]) or (60 * 60)
 end
 
 --- Стоимость из каталога (craft_*) или масштаб от WORKSHOP_T*_NORMAL_COST.
@@ -3708,6 +3774,9 @@ EconomyRpc = runtime_lua_require("modules.duel_match3_economy_rpc", "duel_match3
   workshop_consume_legendary_fodder = workshop_consume_legendary_fodder,
   workshop_has_quality_fodder = workshop_has_quality_fodder,
   workshop_consume_quality_fodder = workshop_consume_quality_fodder,
+  workshop_has_exact_item_fodder = workshop_has_exact_item_fodder,
+  workshop_consume_exact_item_fodder = workshop_consume_exact_item_fodder,
+  workshop_craft_duration_seconds = workshop_craft_duration_seconds,
   inventory_count_def = inventory_count_def,
   inventory_try_add = inventory_try_add,
   inventory_remove_def_total = inventory_remove_def_total,
@@ -5124,6 +5193,9 @@ local function duel_match3_item_catalog_get(ctx, payload)
         quality = d.quality or "normal",
         recipe_slot = d.recipe_slot or "",
         craft_recipe_id = d.craft_recipe_id or "",
+        craft_item_id = d.craft_item_id or "",
+        craft_minutes = d.craft_minutes or 0,
+        sale_price = d.sale_price or 0,
         hp = d.hp or 0,
         damage = d.damage or 0,
         armor = d.armor or 0,
@@ -5181,6 +5253,7 @@ nk.register_rpc(MineBarriers.duel_mine_set_difficulty, "duel_mine_set_difficulty
 nk.register_rpc(EconomyRpc.duel_character_get, "duel_character_get")
 nk.register_rpc(EconomyRpc.duel_character_item_move, "duel_character_item_move")
 nk.register_rpc(EconomyRpc.duel_character_recipe_learn, "duel_character_recipe_learn")
+nk.register_rpc(EconomyRpc.duel_character_item_sell, "duel_character_item_sell")
 nk.register_rpc(EconomyRpc.duel_workshop_craft_start, "duel_workshop_craft_start")
 nk.register_rpc(EconomyRpc.duel_workshop_craft_claim, "duel_workshop_craft_claim")
 nk.register_rpc(EconomyRpc.duel_player_resources_get, "duel_player_resources_get")

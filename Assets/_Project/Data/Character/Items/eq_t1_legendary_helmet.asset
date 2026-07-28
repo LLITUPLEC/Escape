@@ -27,6 +27,9 @@ MonoBehaviour:
   craftIngotDef: 
   craftIngotN: 0
   craftTesseractN: 1
+  craftItemId: eq_t1_epic_helmet
+  craftMinutes: 300
+  salePrice: 100
   icon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
   equippable: 1
   slot: 0

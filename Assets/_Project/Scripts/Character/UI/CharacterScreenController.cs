@@ -46,6 +46,10 @@ namespace Project.Character.UI
         private const int CharacterScreenSortingOrder = 32760;
         private Coroutine _hideOverlayRoutine;
         private CharacterGetRpcResponse _lastProfile;
+        private GameObject _sellConfirmRoot;
+        private RectTransform _sellConfirmPanel;
+        private TMP_Text _sellConfirmText;
+        private bool _sellInFlight;
 
         private void Awake()
         {
@@ -77,7 +81,8 @@ namespace Project.Character.UI
                     if (Time.frameCount <= _modalOpenedFrame) return;
                     var overAction = _actionModal != null && _actionModal.gameObject.activeSelf && _actionModal.ContainsScreenPoint(pressPos, null);
                     var overInfo = _infoModal != null && _infoModal.gameObject.activeSelf && _infoModal.ContainsScreenPoint(pressPos, null);
-                    if (!overAction && !overInfo) HideModals();
+                    var overSellConfirm = IsSellConfirmVisible() && ContainsSellConfirmScreenPoint(pressPos);
+                    if (!overAction && !overInfo && !overSellConfirm) HideModals();
                     return;
                 }
 
@@ -239,14 +244,11 @@ namespace Project.Character.UI
                 {
                     if (_selectedHandle == null) return;
                     _actionModal.HideImmediate();
+                    HideSellConfirm();
                     _infoModal.ShowCentered();
                     UpdateInfoModal();
                 },
-                onSell: () =>
-                {
-                    Debug.Log("[CharacterScreen] Продажа предмета пока не реализована.");
-                    HideModals();
-                });
+                onSell: OnSellPressed);
 
             _infoModal.Bind(
                 onClose: () => HideModals(),
@@ -254,7 +256,159 @@ namespace Project.Character.UI
                 onSalvage: () => { Debug.Log("[CharacterScreen] Разбор предмета пока не реализован."); },
                 onLearnRecipe: OnLearnRecipePressed);
 
+            EnsureSellConfirmUi();
             _modalOverlay.SetActive(false);
+        }
+
+        private void EnsureSellConfirmUi()
+        {
+            if (_sellConfirmRoot != null || _modalOverlayRect == null) return;
+
+            _sellConfirmRoot = new GameObject("SellConfirm", typeof(RectTransform));
+            var rootRt = _sellConfirmRoot.GetComponent<RectTransform>();
+            rootRt.SetParent(_modalOverlayRect, false);
+            rootRt.anchorMin = Vector2.zero;
+            rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = Vector2.zero;
+            rootRt.offsetMax = Vector2.zero;
+
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            _sellConfirmPanel = panel.GetComponent<RectTransform>();
+            _sellConfirmPanel.SetParent(rootRt, false);
+            _sellConfirmPanel.anchorMin = new Vector2(0.5f, 0.5f);
+            _sellConfirmPanel.anchorMax = new Vector2(0.5f, 0.5f);
+            _sellConfirmPanel.pivot = new Vector2(0.5f, 0.5f);
+            _sellConfirmPanel.sizeDelta = new Vector2(460f, 220f);
+            panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 1f);
+            panel.GetComponent<Image>().raycastTarget = true;
+
+            var v = panel.GetComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(18, 18, 18, 18);
+            v.spacing = 14f;
+            v.childAlignment = TextAnchor.MiddleCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = true;
+
+            var textGo = new GameObject("Q", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            textGo.GetComponent<RectTransform>().SetParent(_sellConfirmPanel, false);
+            textGo.GetComponent<LayoutElement>().minHeight = 90f;
+            textGo.GetComponent<LayoutElement>().flexibleHeight = 1f;
+            _sellConfirmText = textGo.GetComponent<TextMeshProUGUI>();
+            _sellConfirmText.fontSize = 24;
+            _sellConfirmText.alignment = TextAlignmentOptions.Center;
+            _sellConfirmText.color = Color.white;
+            _sellConfirmText.textWrappingMode = TextWrappingModes.Normal;
+            _sellConfirmText.raycastTarget = false;
+
+            var yn = new GameObject("YesNo", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            yn.GetComponent<RectTransform>().SetParent(_sellConfirmPanel, false);
+            yn.GetComponent<LayoutElement>().preferredHeight = 54f;
+            yn.GetComponent<LayoutElement>().minHeight = 54f;
+            var h = yn.GetComponent<HorizontalLayoutGroup>();
+            h.spacing = 24f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlHeight = true;
+            h.childControlWidth = true;
+            h.childForceExpandWidth = true;
+
+            var yes = CreateLayoutButton(yn.transform, "Yes", "Да");
+            yes.onClick.AddListener(() => _ = ConfirmSellAsync());
+            var no = CreateLayoutButton(yn.transform, "No", "Нет");
+            no.onClick.AddListener(() =>
+            {
+                HideSellConfirm();
+                if (_selectedHandle != null && _actionModal != null)
+                    ShowActionModalNear(_selectedHandle.transform as RectTransform);
+            });
+
+            _sellConfirmRoot.SetActive(false);
+        }
+
+        private bool IsSellConfirmVisible() =>
+            _sellConfirmRoot != null && _sellConfirmRoot.activeSelf;
+
+        private bool ContainsSellConfirmScreenPoint(Vector2 screenPoint) =>
+            _sellConfirmPanel != null &&
+            RectTransformUtility.RectangleContainsScreenPoint(_sellConfirmPanel, screenPoint, null);
+
+        private void HideSellConfirm()
+        {
+            if (_sellConfirmRoot != null) _sellConfirmRoot.SetActive(false);
+        }
+
+        private void OnSellPressed()
+        {
+            if (_selectedHandle == null || view == null) return;
+            if (!TryResolveItem(_selectedHandle, out var itemDef) || itemDef == null) return;
+
+            var count = 1;
+            if (_selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+                count = Mathf.Max(1, view.GetInventoryStackCount(_selectedHandle.InventoryIndex));
+
+            var unit = Mathf.Max(0, itemDef.SalePrice);
+            if (unit < 1)
+            {
+                Debug.LogWarning("[CharacterScreen] Предмет нельзя продать (sale_price=0).");
+                return;
+            }
+
+            var total = (long)unit * count;
+            var name = string.IsNullOrEmpty(itemDef.DisplayName) ? itemDef.ItemId : itemDef.DisplayName;
+
+            EnsureSellConfirmUi();
+            if (_actionModal != null) _actionModal.HideImmediate();
+            if (_infoModal != null) _infoModal.HideImmediate();
+            if (_sellConfirmText != null)
+                _sellConfirmText.text = $"Точно продать {name} за {total} золотых?";
+            if (_sellConfirmRoot != null)
+            {
+                _sellConfirmRoot.SetActive(true);
+                _sellConfirmRoot.transform.SetAsLastSibling();
+            }
+
+            if (_modalOverlay != null) _modalOverlay.SetActive(true);
+            _modalOpenedFrame = Time.frameCount;
+        }
+
+        private async Task ConfirmSellAsync()
+        {
+            if (_sellInFlight || _selectedHandle == null) return;
+            _sellInFlight = true;
+            var handle = _selectedHandle;
+            var ct = _cts != null ? _cts.Token : CancellationToken.None;
+            CharacterGetRpcResponse resp = null;
+            try
+            {
+                if (handle.Kind == CharacterDragSlotKind.Inventory)
+                    resp = await CharacterProfileService.SellInventoryItemAsync(handle.InventoryIndex, ct).ConfigureAwait(false);
+                else
+                    resp = await CharacterProfileService.SellEquipmentItemAsync((int)handle.EquipmentSlot, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sellInFlight = false;
+            }
+
+            if (ct.IsCancellationRequested) return;
+
+            await RunOnMainThreadAsync(() =>
+            {
+                if (resp == null || !resp.ok)
+                {
+                    Debug.LogWarning("[CharacterScreen] Sell failed: " + (resp?.err ?? "null"));
+                    HideSellConfirm();
+                    return;
+                }
+
+                _lastProfile = resp;
+                if (view != null && itemCatalog != null)
+                    view.ApplyCharacterResponse(resp, itemCatalog);
+                if (resp.progression != null)
+                    PlayerResourcesService.PatchCachedFromProgression(resp.progression);
+                HideModals(true);
+            });
         }
 
         private CharacterItemActionModalView InstantiateOrBuildActionModal(Transform parent)
@@ -318,6 +472,7 @@ namespace Project.Character.UI
         {
             if (_modalOverlay == null || _actionModal == null || _infoModal == null || _modalOverlayRect == null) return;
             _modalOverlay.SetActive(true);
+            HideSellConfirm();
             if (_hideOverlayRoutine != null)
             {
                 StopCoroutine(_hideOverlayRoutine);
@@ -542,10 +697,12 @@ namespace Project.Character.UI
             {
                 if (_actionModal != null) _actionModal.HideImmediate();
                 if (_infoModal != null) _infoModal.HideImmediate();
+                HideSellConfirm();
                 if (_modalOverlay != null) _modalOverlay.SetActive(false);
                 return;
             }
 
+            HideSellConfirm();
             var hasAny = false;
             var maxDelay = 0f;
             if (_actionModal != null && _actionModal.gameObject.activeSelf)

@@ -27,6 +27,9 @@ MonoBehaviour:
   craftIngotDef: ingot_purple
   craftIngotN: 27
   craftTesseractN: 0
+  craftItemId: eq_t1_rare_gloves
+  craftMinutes: 180
+  salePrice: 100
   icon: {fileID: 0}
   equippable: 1
   slot: 3
