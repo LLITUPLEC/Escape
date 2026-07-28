@@ -174,6 +174,7 @@ namespace Project.Match3
         private string    _matchmakerTicket;
         private bool      _isLeavingToMenu;
         private CancellationTokenSource _cts;
+        private EnergyHeaderPurchaseController _energyPurchase;
         private TaskCompletionSource<IMatchmakerMatched> _mmTcs;
         private ISocket _hookedSocket;
         private bool _reconnectInFlight;
@@ -4094,6 +4095,7 @@ namespace Project.Match3
             {
                 case "not_enough_energy":
                     ShowPveErrorToast($"Не хватает энергии: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Energy)}.");
+                    OpenEnergyBuyDialog();
                     break;
                 case "not_enough_gold":
                     ShowPveErrorToast($"Не хватает золота: нужно {Mathf.Max(0, e.Required)}, доступно {Mathf.Max(0, e.Gold)}.");
@@ -4131,6 +4133,24 @@ namespace Project.Match3
             if (_pveErrorToastRoutine != null)
                 StopCoroutine(_pveErrorToastRoutine);
             _pveErrorToastRoutine = StartCoroutine(PveErrorToastRoutine());
+        }
+
+        private void OpenEnergyBuyDialog()
+        {
+            var canvas = GetComponentInChildren<Canvas>(true);
+            if (canvas == null) return;
+            if (_energyPurchase == null)
+            {
+                _energyPurchase = new EnergyHeaderPurchaseController(
+                    canvas.transform,
+                    null,
+                    rewardMatterSprite,
+                    rewardGoldSprite,
+                    _ => Task.CompletedTask,
+                    _cts != null ? _cts.Token : CancellationToken.None);
+            }
+
+            _energyPurchase.ShowPurchaseDialog();
         }
 
         private IEnumerator PveErrorToastRoutine()

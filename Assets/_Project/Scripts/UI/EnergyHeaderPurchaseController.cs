@@ -78,6 +78,12 @@ namespace Project.UI
             WirePurchaseButton(iconBtn);
         }
 
+        /// <summary>Открыть модалку покупки энергии (нехватка энергии в шахте / PvE и т.п.).</summary>
+        public void ShowPurchaseDialog()
+        {
+            ShowChoiceModal();
+        }
+
         private void WirePurchaseButton(Button btn)
         {
             if (btn == null) return;

@@ -20,7 +20,7 @@ namespace Project.UI
     [DisallowMultipleComponent]
     public sealed class MainMenuSettingsModalController : MonoBehaviour
     {
-        private const string PrefKnownLinkedEmail = "nakama.ui.known_linked_email";
+        private const string PrefKnownLinkedEmail = NakamaBootstrap.PrefKnownLinkedEmail;
 
         [Header("Окно (если пусто — ищется дочерний объект SettingsModal)")]
         [SerializeField] private GameObject settingsModalRoot;
@@ -37,10 +37,12 @@ namespace Project.UI
         [SerializeField] private Button linkButton;
         [SerializeField] private Button loginButton;
         [SerializeField] private Button logoutAccountButton;
+        [SerializeField] private Button deleteAccountButton;
         [SerializeField] private Button closeButton;
 
         private Button _settingsButton;
         private GameObject _modalGo;
+        private GameObject _deleteConfirmRoot;
         private bool _busy;
 
         /// <summary>Исходная позиция Panel до сдвига от IME (мобильная клавиатура).</summary>
@@ -270,8 +272,65 @@ namespace Project.UI
                 loginButton = panel.Find("LoginButton")?.GetComponent<Button>();
             if (logoutAccountButton == null)
                 logoutAccountButton = panel.Find("LogoutEmailButton")?.GetComponent<Button>();
+            if (deleteAccountButton == null)
+                deleteAccountButton = panel.Find("DeleteAccountButton")?.GetComponent<Button>();
             if (closeButton == null)
                 closeButton = panel.Find("CloseButton")?.GetComponent<Button>();
+
+            EnsureDeleteAccountButton(panel);
+        }
+
+        private void EnsureDeleteAccountButton(Transform panel)
+        {
+            if (panel == null) return;
+
+            if (deleteAccountButton == null)
+            {
+                var go = new GameObject("DeleteAccountButton", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+                go.transform.SetParent(panel, false);
+                go.GetComponent<Image>().color = new Color(0.55f, 0.12f, 0.14f, 1f);
+                var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+                var lrt = labelGo.GetComponent<RectTransform>();
+                lrt.SetParent(go.transform, false);
+                lrt.anchorMin = Vector2.zero;
+                lrt.anchorMax = Vector2.one;
+                lrt.offsetMin = Vector2.zero;
+                lrt.offsetMax = Vector2.zero;
+                var t = labelGo.GetComponent<Text>();
+                t.font = SettingsModalUiHelper.GetDefaultUIFont();
+                t.text = "Удалить аккаунт";
+                t.fontSize = 20;
+                t.alignment = TextAnchor.MiddleCenter;
+                t.color = Color.white;
+                t.raycastTarget = false;
+                if (closeButton != null)
+                    go.transform.SetSiblingIndex(closeButton.transform.GetSiblingIndex());
+                deleteAccountButton = go.GetComponent<Button>();
+            }
+
+            ApplyDeleteAccountButtonLayout(deleteAccountButton);
+        }
+
+        private static void ApplyDeleteAccountButtonLayout(Button btn)
+        {
+            if (btn == null) return;
+            var rt = btn.GetComponent<RectTransform>();
+            if (rt == null) return;
+            // bottom-center, 300×50, Pos Y = 10
+            rt.anchorMin = new Vector2(0.5f, 0f);
+            rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 10f);
+            rt.sizeDelta = new Vector2(300f, 50f);
+            var le = btn.GetComponent<LayoutElement>();
+            if (le != null)
+            {
+                le.ignoreLayout = true;
+                le.minWidth = 300f;
+                le.preferredWidth = 300f;
+                le.minHeight = 50f;
+                le.preferredHeight = 50f;
+            }
         }
 
         private void EnsureInputsUnderSlots()
@@ -288,6 +347,7 @@ namespace Project.UI
             if (linkButton != null) linkButton.onClick.AddListener(OnLinkClicked);
             if (loginButton != null) loginButton.onClick.AddListener(OnLoginClicked);
             if (logoutAccountButton != null) logoutAccountButton.onClick.AddListener(OnLogoutClicked);
+            if (deleteAccountButton != null) deleteAccountButton.onClick.AddListener(OnDeleteAccountClicked);
             if (closeButton != null) closeButton.onClick.AddListener(CloseModal);
         }
 
@@ -296,6 +356,7 @@ namespace Project.UI
             if (linkButton != null) linkButton.onClick.RemoveListener(OnLinkClicked);
             if (loginButton != null) loginButton.onClick.RemoveListener(OnLoginClicked);
             if (logoutAccountButton != null) logoutAccountButton.onClick.RemoveListener(OnLogoutClicked);
+            if (deleteAccountButton != null) deleteAccountButton.onClick.RemoveListener(OnDeleteAccountClicked);
             if (closeButton != null) closeButton.onClick.RemoveListener(CloseModal);
         }
 
@@ -327,6 +388,7 @@ namespace Project.UI
             if (linkButton != null) linkButton.interactable = !busy;
             if (loginButton != null) loginButton.interactable = !busy;
             if (logoutAccountButton != null) logoutAccountButton.interactable = !busy;
+            if (deleteAccountButton != null) deleteAccountButton.interactable = !busy;
         }
 
         /// <summary>Любые изменения UI после await — только через очередь главного потока.</summary>
@@ -443,7 +505,7 @@ namespace Project.UI
                 {
                     if (statusText != null)
                         statusText.text =
-                            "Привязка выполнена. Профиль на сервере тот же; вход с другого устройства — «Войти по e-mail».";
+                            "Привязка выполнена. Вход по e-mail сохранён на устройстве; этот телефон привязан к аккаунту.";
                 });
                 await RefreshStatusAsync(CancellationToken.None);
             }
@@ -530,6 +592,126 @@ namespace Project.UI
             }
             finally
             {
+                RunOnUiThread(() => SetBusy(false));
+            }
+        }
+
+        private void OnDeleteAccountClicked()
+        {
+            if (_busy) return;
+            ShowDeleteConfirmDialog();
+        }
+
+        private void ShowDeleteConfirmDialog()
+        {
+            if (_modalGo == null) return;
+            if (_deleteConfirmRoot != null)
+            {
+                _deleteConfirmRoot.SetActive(true);
+                _deleteConfirmRoot.transform.SetAsLastSibling();
+                return;
+            }
+
+            _deleteConfirmRoot = new GameObject("DeleteAccountConfirm", typeof(RectTransform), typeof(Image));
+            var rt = _deleteConfirmRoot.GetComponent<RectTransform>();
+            rt.SetParent(_modalGo.transform, false);
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            _deleteConfirmRoot.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.72f);
+            _deleteConfirmRoot.GetComponent<Image>().raycastTarget = true;
+
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            var prt = panel.GetComponent<RectTransform>();
+            prt.SetParent(rt, false);
+            prt.anchorMin = new Vector2(0.5f, 0.5f);
+            prt.anchorMax = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(420f, 260f);
+            panel.GetComponent<Image>().color = new Color(0.14f, 0.12f, 0.14f, 1f);
+            var v = panel.GetComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(18, 18, 18, 18);
+            v.spacing = 12f;
+            v.childAlignment = TextAnchor.MiddleCenter;
+            v.childControlWidth = true;
+            v.childControlHeight = true;
+
+            var msg = new GameObject("Msg", typeof(Text), typeof(LayoutElement));
+            msg.transform.SetParent(panel.transform, false);
+            msg.GetComponent<LayoutElement>().minHeight = 120f;
+            var mt = msg.GetComponent<Text>();
+            mt.font = SettingsModalUiHelper.GetDefaultUIFont();
+            mt.fontSize = 18;
+            mt.color = new Color(1f, 0.9f, 0.9f);
+            mt.alignment = TextAnchor.MiddleCenter;
+            mt.horizontalOverflow = HorizontalWrapMode.Wrap;
+            mt.verticalOverflow = VerticalWrapMode.Overflow;
+            mt.text =
+                "Удалить аккаунт?\n\nВесь прогресс будет потерян без возможности восстановления.\nПродолжить?";
+
+            var row = new GameObject("Row", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            row.transform.SetParent(panel.transform, false);
+            row.GetComponent<LayoutElement>().minHeight = 44f;
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            h.spacing = 16f;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+
+            void AddBtn(string label, Color col, UnityEngine.Events.UnityAction act)
+            {
+                var b = new GameObject(label, typeof(Image), typeof(Button), typeof(LayoutElement));
+                b.transform.SetParent(row.transform, false);
+                b.GetComponent<LayoutElement>().minWidth = 140f;
+                b.GetComponent<LayoutElement>().minHeight = 40f;
+                b.GetComponent<Image>().color = col;
+                b.GetComponent<Button>().onClick.AddListener(act);
+                var lt = new GameObject("L", typeof(Text));
+                lt.transform.SetParent(b.transform, false);
+                var ltrt = lt.AddComponent<RectTransform>();
+                ltrt.anchorMin = Vector2.zero;
+                ltrt.anchorMax = Vector2.one;
+                ltrt.offsetMin = Vector2.zero;
+                ltrt.offsetMax = Vector2.zero;
+                var tx = lt.GetComponent<Text>();
+                tx.font = SettingsModalUiHelper.GetDefaultUIFont();
+                tx.text = label;
+                tx.fontSize = 18;
+                tx.alignment = TextAnchor.MiddleCenter;
+                tx.color = Color.white;
+                tx.raycastTarget = false;
+            }
+
+            AddBtn("Да", new Color(0.65f, 0.12f, 0.14f, 1f), () =>
+            {
+                _deleteConfirmRoot.SetActive(false);
+                _ = ConfirmDeleteAccountAsync();
+            });
+            AddBtn("Нет", new Color(0.28f, 0.28f, 0.32f, 1f), () =>
+            {
+                _deleteConfirmRoot.SetActive(false);
+            });
+        }
+
+        private async Task ConfirmDeleteAccountAsync()
+        {
+            if (_busy) return;
+            SetBusy(true);
+            try
+            {
+                if (NakamaBootstrap.Instance == null) throw new InvalidOperationException("NakamaBootstrap отсутствует.");
+                RunOnUiThread(() =>
+                {
+                    if (statusText != null) statusText.text = "Удаление аккаунта…";
+                });
+                await NakamaBootstrap.Instance.WipeAccountAndQuitAsync(CancellationToken.None);
+            }
+            catch (Exception e)
+            {
+                RunOnUiThread(() =>
+                {
+                    if (statusText != null) statusText.text = "Не удалось удалить аккаунт: " + e.Message;
+                });
                 RunOnUiThread(() => SetBusy(false));
             }
         }

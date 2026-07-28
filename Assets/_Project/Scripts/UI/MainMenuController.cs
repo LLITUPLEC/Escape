@@ -828,6 +828,13 @@ namespace Project.UI
             _energyHeaderPurchase.EnsurePlusOnEnergyRow(searchRoot);
         }
 
+        /// <summary>Открыть модалку покупки энергии с главного меню (например при нехватке).</summary>
+        public void OpenEnergyBuyDialog()
+        {
+            TryInstallEnergyHeaderPurchase();
+            _energyHeaderPurchase?.ShowPurchaseDialog();
+        }
+
         private void EnsureHeaderHudIconsForEnergyPurchase()
         {
             var energySearchRoot = ResolveMainMenuHudLayoutRoot() ?? _headerResourcesRoot;

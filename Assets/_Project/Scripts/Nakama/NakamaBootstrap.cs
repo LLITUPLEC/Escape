@@ -56,6 +56,10 @@ namespace Project.Nakama
         private const string PrefUseEmailSession = "nakama.use_email_session";
         private const string PrefAuthToken = "nakama.session.auth_token";
         private const string PrefRefreshToken = "nakama.session.refresh_token";
+        public const string PrefKnownLinkedEmail = "nakama.ui.known_linked_email";
+        /// <summary>После удаления аккаунта: при следующем запуске обязателен ввод e-mail/пароля.</summary>
+        public const string PrefForceEmailSetup = "nakama.force_email_setup";
+        private const string RpcAccountWipe = "duel_account_wipe";
         private const string PlayerUsernamePrefix = "Player_";
         private const int PlayerUsernameSuffixLength = 10;
         private const int PlayerUsernameMaxLength = 17;
@@ -127,6 +131,7 @@ namespace Project.Nakama
             try
             {
                 await EnsureConnectedAsync(_cts.Token);
+                await MaybeShowForceEmailSetupGateAsync(_cts.Token).ConfigureAwait(true);
                 _ = AchievementCatalogService.RefreshOnLoginAsync(_cts.Token);
                 if (keepOnlineHeartbeat)
                     _ = OnlineHeartbeatLoopAsync(_cts.Token);
@@ -259,16 +264,18 @@ namespace Project.Nakama
             }
         }
 
-        /// <summary>Привязать e-mail к текущему user_id (прогресс на сервере остаётся тем же).</summary>
+        /// <summary>Привязать e-mail к текущему user_id и сохранить вход по e-mail (+ привязать device id).</summary>
         public async Task LinkEmailAsync(string email, string password, CancellationToken ct)
         {
             await EnsureConnectedAsync(ct).ConfigureAwait(false);
             if (Session == null || Client == null)
                 throw new InvalidOperationException("Нет активной сессии Nakama.");
             await Client.LinkEmailAsync(Session, email, password, canceller: ct).ConfigureAwait(false);
+            // Переключаем локальную сессию на email-токены и линкуем device → тот же user_id на новых телефонах.
+            await LoginWithEmailAsync(email, password, create: false, ct).ConfigureAwait(false);
         }
 
-        /// <summary>Вход по e-mail (другой телефон или сброс). Сохраняет токены для следующих запусков (только с main thread).</summary>
+        /// <summary>Вход по e-mail (другой телефон или сброс). Сохраняет токены и привязывает device id текущего телефона.</summary>
         public async Task LoginWithEmailAsync(string email, string password, bool create, CancellationToken ct)
         {
             if (config == null)
@@ -302,13 +309,41 @@ namespace Project.Nakama
             Session = await Client
                 .AuthenticateEmailAsync(email, password, username: null, create: create, vars: null, canceller: ct)
                 .ConfigureAwait(false);
-            await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(Session)).ConfigureAwait(false);
+            await MainThreadDispatcher.RunAsync(() =>
+            {
+                PersistEmailSessionSync(Session);
+                PlayerPrefs.SetString(PrefKnownLinkedEmail, email ?? "");
+                PlayerPrefs.DeleteKey(PrefForceEmailSetup);
+                PlayerPrefs.Save();
+            }).ConfigureAwait(false);
 
+            await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
 
             Socket = CreateAndWireSocket();
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
+        }
+
+        /// <summary>
+        /// Привязать текущий device id к аккаунту сессии.
+        /// После этого AuthenticateDevice на этом телефоне вернёт тот же user_id, что и email (а не «гостя»).
+        /// </summary>
+        private async Task TryLinkCurrentDeviceAsync(CancellationToken ct)
+        {
+            if (Session == null || Client == null) return;
+            try
+            {
+                var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(deviceId)) return;
+                await Client.LinkDeviceAsync(Session, deviceId, canceller: ct).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                // Уже привязан / конфликт — не критично: email-сессия всё равно сохранена.
+                if (config != null && config.verboseLogging)
+                    Debug.LogWarning("[Nakama] LinkDevice: " + e.Message);
+            }
         }
 
         /// <summary>Сброс только локально сохранённой сессии по e-mail. В консоли Nakama привязка почты к user_id не удаляется.</summary>
@@ -347,6 +382,71 @@ namespace Project.Nakama
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
+        }
+
+        /// <summary>
+        /// Удаляет прогресс игрока на сервере, чистит локальные prefs, генерирует новый device id
+        /// и завершает приложение. Следующий запуск — как первый вход (обязателен e-mail).
+        /// </summary>
+        public async Task WipeAccountAndQuitAsync(CancellationToken ct)
+        {
+            await EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (Session == null || Client == null)
+                throw new InvalidOperationException("Нет активной сессии Nakama.");
+
+            var rpc = await Client.RpcAsync(Session, RpcAccountWipe, "{}", canceller: ct).ConfigureAwait(false);
+            var payload = rpc?.Payload ?? "";
+            if (payload.IndexOf("\"ok\":true", StringComparison.Ordinal) < 0 &&
+                payload.IndexOf("\"ok\": true", StringComparison.Ordinal) < 0)
+            {
+                throw new InvalidOperationException("Сервер не подтвердил удаление аккаунта: " + payload);
+            }
+
+            await MainThreadDispatcher.RunAsync(() =>
+            {
+                ClearAllLocalAuthPrefsSync();
+                RegenerateDeviceIdentitySync();
+                PlayerPrefs.SetInt(PrefForceEmailSetup, 1);
+                PlayerPrefs.Save();
+            }).ConfigureAwait(false);
+
+            try
+            {
+                if (Socket != null && Socket.IsConnected)
+                    await Socket.CloseAsync();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            Session = null;
+            Socket = null;
+
+            await MainThreadDispatcher.RunAsync(() =>
+            {
+#if UNITY_EDITOR
+                EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+            }).ConfigureAwait(false);
+        }
+
+        private async Task MaybeShowForceEmailSetupGateAsync(CancellationToken ct)
+        {
+            var need = await MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0)
+                .ConfigureAwait(false);
+            if (!need) return;
+            await AuthSetupGate.ShowAndWaitAsync(this, ct).ConfigureAwait(true);
+        }
+
+        private static void ClearAllLocalAuthPrefsSync()
+        {
+            ClearEmailSessionPrefsSync();
+            PlayerPrefs.DeleteKey(PrefKnownLinkedEmail);
+            PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
+            PlayerPrefs.Save();
         }
 
         private ISocket CreateAndWireSocket()
@@ -594,11 +694,18 @@ namespace Project.Nakama
                     }
                 }
 
-                await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                // Не чистим email-prefs сразу: если device был LinkDevice к тому же аккаунту — AuthenticateDevice вернёт тот же user_id.
             }
 
             var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
-            return await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, ct).ConfigureAwait(false);
+            var deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, ct).ConfigureAwait(false);
+            if (useEmail)
+            {
+                // Device auth мог вернуть тот же аккаунт; сохраняем токены, чтобы не «сбрасывать» режим.
+                await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(deviceSession)).ConfigureAwait(false);
+            }
+
+            return deviceSession;
         }
 
         private async Task<ISession> AuthenticateDeviceWithGeneratedUsernameAsync(string deviceId, CancellationToken ct)

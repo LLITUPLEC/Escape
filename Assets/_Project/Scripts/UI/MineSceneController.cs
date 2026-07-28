@@ -450,10 +450,51 @@ namespace Project.UI
             if (string.IsNullOrWhiteSpace(_difficulty))
                 _difficulty = "easy";
             ApplyUnlockedFromCatalog(model);
+            EnsureMissingFloorEntries();
 
             ApplyRows();
             ApplyDifficultyTabVisuals();
             ApplyResourcesFallbackFromProgression();
+        }
+
+        /// <summary>
+        /// Если в каталоге нет бота/этажа (дыра в Storage) — подставляем mine_N из MonsterCatalog,
+        /// иначе открытый 1 этаж рисуется пустым.
+        /// </summary>
+        private void EnsureMissingFloorEntries()
+        {
+            for (var floor = 1; floor <= 12; floor++)
+            {
+                if (_botByFloor.ContainsKey(floor))
+                    continue;
+                if (floor > 1 && floor > GetUnlockedFloorForCurrentDifficulty())
+                    continue;
+
+                var def = monsterCatalog != null ? monsterCatalog.GetByFloor(floor) : null;
+                var botId = "mine_" + floor;
+                _botByFloor[floor] = new PveBotInfo
+                {
+                    id = botId,
+                    name = def != null && !string.IsNullOrWhiteSpace(def.DisplayName)
+                        ? def.DisplayName
+                        : ("Монстр " + floor),
+                    floor = floor,
+                };
+
+                if (!_mineByFloor.ContainsKey(floor))
+                {
+                    _mineByFloor[floor] = new MineFloorInfo
+                    {
+                        floor = floor,
+                        bot_id = botId,
+                        unlocked = true,
+                        respawn_left_seconds = 0,
+                        affix = string.Empty,
+                        is_boss = IsMineBossFloor(floor),
+                        wins = 0,
+                    };
+                }
+            }
         }
 
         private void ApplyUnlockedFromCatalog(MineCatalogResponse model)
@@ -906,6 +947,29 @@ namespace Project.UI
                 fallbackLabel.gameObject.SetActive(true);
         }
 
+        private int GetUnlockedFloorForCurrentDifficulty()
+        {
+            if (string.Equals(_difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return Mathf.Max(0, _unlockedMedium);
+            if (string.Equals(_difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return Mathf.Max(0, _unlockedHard);
+            return Mathf.Max(1, _unlockedEasy);
+        }
+
+        /// <summary>
+        /// Этаж открыт по данным каталога; если записи этажа нет (дыра в bots) — по прогрессу разблокировки.
+        /// 1-й этаж всегда открыт (барьеры с этажа 2).
+        /// </summary>
+        private bool IsFloorUnlocked(int floor)
+        {
+            if (floor <= 1)
+                return true;
+
+            if (_mineByFloor.TryGetValue(floor, out var mf) && mf != null)
+                return mf.unlocked;
+            return floor <= GetUnlockedFloorForCurrentDifficulty();
+        }
+
         private void ApplyRows()
         {
             foreach (var kv in _rows)
@@ -913,7 +977,7 @@ namespace Project.UI
                 var floor = kv.Key;
                 var refs = kv.Value;
                 _mineByFloor.TryGetValue(floor, out var mf);
-                var unlocked = mf != null && mf.unlocked;
+                var unlocked = IsFloorUnlocked(floor);
                 var respawn = mf != null ? Mathf.Max(0, mf.respawn_left_seconds) : 0;
                 ApplyFloorLightingState(refs.root, !unlocked);
 
@@ -995,7 +1059,7 @@ namespace Project.UI
             else
                 ApplyMonsterIconLayout(icon.GetComponent<RectTransform>());
 
-            var def = ResolveMonsterDefinition(bot);
+            var def = ResolveMonsterDefinition(bot, floor);
             if (icon != null)
             {
                 icon.sprite = def != null ? def.Icon : null;
@@ -1004,7 +1068,7 @@ namespace Project.UI
 
             if (frame != null)
             {
-                var isBoss = floorInfo != null && floorInfo.is_boss;
+                var isBoss = (floorInfo != null && floorInfo.is_boss) || IsMineBossFloor(floor);
                 var frameSprite = monsterFrameCatalog != null
                     ? monsterFrameCatalog.GetFrame(_difficulty, isBoss)
                     : (def != null ? def.GetFrame(_difficulty, isBoss) : null);
@@ -1013,12 +1077,17 @@ namespace Project.UI
             }
         }
 
-        private MonsterDefinition ResolveMonsterDefinition(PveBotInfo bot)
+        private MonsterDefinition ResolveMonsterDefinition(PveBotInfo bot, int floor = 0)
         {
-            if (monsterCatalog == null || bot == null) return null;
-            var byId = monsterCatalog.GetByBotId(bot.id);
-            if (byId != null) return byId;
-            return monsterCatalog.GetByFloor(bot.floor);
+            if (monsterCatalog == null) return null;
+            if (bot != null)
+            {
+                var byId = monsterCatalog.GetByBotId(bot.id);
+                if (byId != null) return byId;
+                var byBotFloor = monsterCatalog.GetByFloor(bot.floor);
+                if (byBotFloor != null) return byBotFloor;
+            }
+            return floor > 0 ? monsterCatalog.GetByFloor(floor) : null;
         }
 
         private void FocusFloor(int floor)
@@ -1116,7 +1185,7 @@ namespace Project.UI
                 return;
 
             _mineByFloor.TryGetValue(_selectedFloor, out var mine);
-            if (mine == null || !mine.unlocked)
+            if (mine == null || !IsFloorUnlocked(_selectedFloor))
                 return;
 
             var respawn = Mathf.Max(0, mine.respawn_left_seconds);
@@ -1141,7 +1210,7 @@ namespace Project.UI
             if (_modalSupplementalInfo != null)
                 _modalSupplementalInfo.text = string.Empty;
 
-            var unlocked = mine != null && mine.unlocked;
+            var unlocked = IsFloorUnlocked(floor);
             var respawn = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0;
             var affix = mine != null ? mine.affix : "";
             ApplyAffixVisual(affix);
@@ -1244,6 +1313,8 @@ namespace Project.UI
                         {
                             if (_modalSupplementalInfo != null)
                                 _modalSupplementalInfo.text += "\n\n" + need;
+                            if (IsEnergyShortageMessage(need))
+                                OpenEnergyBuyDialog();
                             return;
                         }
                     }
@@ -1326,6 +1397,8 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
+                    if (string.Equals(model.err, "not_enough_energy", StringComparison.OrdinalIgnoreCase))
+                        OpenEnergyBuyDialog();
                     if (IsSummonInsufficientResourcesError(model.err))
                         ShowInsufficientResourcesToast();
                     else if (_modalSupplementalInfo != null)
@@ -1400,6 +1473,8 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
+                    if (string.Equals(model.err, "not_enough_energy", StringComparison.OrdinalIgnoreCase))
+                        OpenEnergyBuyDialog();
                     if (IsSummonInsufficientResourcesError(model.err))
                         ShowInsufficientResourcesToast();
                     else if (_modalSupplementalInfo != null)
@@ -1701,6 +1776,18 @@ namespace Project.UI
                 async ct => { await RefreshResourcesAsync(ct).ConfigureAwait(true); },
                 _cts != null ? _cts.Token : CancellationToken.None);
             _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
+        }
+
+        private void OpenEnergyBuyDialog()
+        {
+            TryInstallEnergyHeaderPurchase();
+            _energyHeaderPurchase?.ShowPurchaseDialog();
+        }
+
+        private static bool IsEnergyShortageMessage(string message)
+        {
+            return !string.IsNullOrEmpty(message) &&
+                   message.IndexOf("энерг", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void EnsureHeaderResources()
@@ -2304,7 +2391,12 @@ namespace Project.UI
 
             if (req == null)
             {
-                entries.Add(new RewardEntry { icon = null, text = "Требования не найдены.", color = Color.white });
+                entries.Add(new RewardEntry
+                {
+                    icon = null,
+                    text = floor <= 1 ? "Этаж открыт с начала (барьер не нужен)." : "Нет данных о стоимости барьера.",
+                    color = Color.white
+                });
                 RenderIconValueGrid(_modalBarrierRequirementsRoot, entries, 3, stackIconOverValue: false);
                 _modalBarrierRequirementsRoot.gameObject.SetActive(true);
                 return;

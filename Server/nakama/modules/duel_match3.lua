@@ -1935,6 +1935,13 @@ local function get_merged_bots(difficulty)
       tostring(CFG.BOTS_STORAGE_USER_ID)
     ))
   end
+  -- Дыры в Storage (нет mine_1 и т.п.) — добиваем шаблоном этажа, иначе UI/бой ломаются.
+  for floor = 1, CFG.PVE_MAX_LEVEL do
+    local id = mine_bot_id_for_floor(floor)
+    if merged[id] == nil then
+      merged[id] = build_floor_bot_entry(floor)
+    end
+  end
   _bots_merged_by_diff[diff] = merged
   _bots_merged_at_by_diff[diff] = now
   return merged
@@ -3632,7 +3639,17 @@ function get_unlocked_floor(progress, diff)
   local d = normalize_mine_difficulty(diff)
   local mine = progress.mine or {}
   local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
-  return CFG.clamp_int(unlocked[d] or 1, 0, CFG.PVE_MAX_LEVEL)
+  local raw = unlocked[d]
+  -- В Lua 0 truthy: `0 or 1` → 0; для medium/hard с 0 этажей явно оставляем 0, затем поднимаем до 1.
+  local v
+  if raw == nil then
+    v = (d == "easy") and 1 or 0
+  else
+    v = CFG.clamp_int(raw, 0, CFG.PVE_MAX_LEVEL)
+  end
+  -- 1-й этаж выбранной сложности всегда доступен (барьеры с этажа 2).
+  if v < 1 then v = 1 end
+  return v
 end
 
 MineBarriers = runtime_lua_require("modules.duel_match3_mine_barriers", "duel_match3_mine_barriers")({
