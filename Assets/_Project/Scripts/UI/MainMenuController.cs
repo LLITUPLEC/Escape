@@ -57,6 +57,7 @@ namespace Project.UI
         private int _lastOnlineCount = -1;
         private string _lastUsername = "";
         private Coroutine _badgePulseRoutine;
+        private MainMenuXpProgressBar _xpProgressBar;
         private RectTransform _match3StatsRoot;
         private Text _match3PlayedText;
         private Text _match3WinsText;
@@ -102,6 +103,7 @@ namespace Project.UI
             EnsurePlayerUsernameLabel();
             EnsureServerAuraButton();
             EnsureHeaderResources();
+            EnsureXpProgressBar();
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
             EnsureMainMenuNavigationButtons();
@@ -124,6 +126,7 @@ namespace Project.UI
             NicknameService.UsernameChanged += OnNicknameUsernameChanged;
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
+            _ = RefreshXpProgressBarAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
             _ = ServerAuraLoopAsync(_onlineCts.Token);
@@ -1004,6 +1007,30 @@ namespace Project.UI
             }
         }
 
+        private void EnsureXpProgressBar()
+        {
+            if (_xpProgressBar != null) return;
+
+            var parent = ResolveMainMenuHudLayoutRoot();
+            if (parent == null) return;
+
+            var logoRoot = FindRectTransformChildByName(parent, "BottomHeaderLogo");
+            if (logoRoot == null) return;
+
+            var barRt = FindRectTransformChildByName(logoRoot, "progress_bar");
+            if (barRt == null) return;
+
+            _xpProgressBar = barRt.GetComponent<MainMenuXpProgressBar>()
+                             ?? barRt.gameObject.AddComponent<MainMenuXpProgressBar>();
+        }
+
+        private async Task RefreshXpProgressBarAsync(CancellationToken ct)
+        {
+            EnsureXpProgressBar();
+            if (_xpProgressBar == null) return;
+            await _xpProgressBar.RefreshFromServerAsync(ct);
+        }
+
         private void SetHeaderResourcesUnknown()
         {
             SetHeaderResourceText(_energyBinding, "—");
@@ -1045,6 +1072,7 @@ namespace Project.UI
                 if (Time.unscaledTime >= nextResourcesRefreshAt)
                 {
                     await RefreshHeaderResourcesAsync(ct);
+                    await RefreshXpProgressBarAsync(ct);
                     nextResourcesRefreshAt = Time.unscaledTime + Mathf.Max(2f, resourcesPollSeconds);
                 }
                 try
