@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Character;
 using Project.Nakama;
+using Project.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -1152,58 +1153,80 @@ namespace Project.UI
             {
                 if (NakamaBootstrap.Instance == null)
                 {
-                    SetPlayerUsernameText("—");
+                    await ApplyPlayerUsernameOnMainThreadAsync("—");
                     return;
                 }
 
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
                 if (NakamaBootstrap.Instance.Session == null || NakamaBootstrap.Instance.Client == null)
                 {
-                    SetPlayerUsernameText("—");
+                    await ApplyPlayerUsernameOnMainThreadAsync("—");
                     return;
                 }
 
+                // Тот же источник, что у CharacterHudOverlay (RPC), а не GetAccountAsync:
+                // клиентский Account иногда отдаёт пустой Username, пока RPC уже видит актуальный ник.
                 string username = null;
-                try
+                var status = await NicknameService.GetStatusAsync(ct).ConfigureAwait(false);
+                if (status != null && status.ok && !string.IsNullOrWhiteSpace(status.username))
+                    username = status.username.Trim();
+
+                if (string.IsNullOrWhiteSpace(username))
+                    username = NakamaBootstrap.Instance.Session?.Username;
+
+                if (string.IsNullOrWhiteSpace(username))
                 {
-                    var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
-                        NakamaBootstrap.Instance.Session,
-                        canceller: ct);
-                    username = acc?.User?.Username;
-                }
-                catch (Exception e) when (e.Message != null &&
-                                           e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    await NakamaBootstrap.Instance.RecoverSessionAfterRefreshFailureAsync(ct);
-                    var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
-                        NakamaBootstrap.Instance.Session,
-                        canceller: ct);
-                    username = acc?.User?.Username;
+                    try
+                    {
+                        var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
+                            NakamaBootstrap.Instance.Session,
+                            canceller: ct).ConfigureAwait(false);
+                        username = acc?.User?.Username;
+                    }
+                    catch (Exception e) when (e.Message != null &&
+                                               e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        await NakamaBootstrap.Instance.RecoverSessionAfterRefreshFailureAsync(ct)
+                            .ConfigureAwait(false);
+                        var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
+                            NakamaBootstrap.Instance.Session,
+                            canceller: ct).ConfigureAwait(false);
+                        username = acc?.User?.Username;
+                    }
                 }
 
-                var nextUsername = string.IsNullOrWhiteSpace(username) ? "—" : username;
-                if (!string.Equals(_lastUsername, nextUsername, StringComparison.Ordinal))
-                {
-                    _lastUsername = nextUsername;
-                    SetPlayerUsernameText(nextUsername);
-                }
+                var nextUsername = string.IsNullOrWhiteSpace(username) ? "—" : username.Trim();
+                await ApplyPlayerUsernameOnMainThreadAsync(nextUsername);
 
                 if (!string.IsNullOrWhiteSpace(username))
                 {
                     var userId = NakamaBootstrap.Instance.Session?.UserId;
-                    CacheKnownUsername(userId, username);
+                    await MainThreadDispatcher.RunAsync(() => CacheKnownUsername(userId, username.Trim()))
+                        .ConfigureAwait(false);
                 }
             }
             catch
             {
-                var fallback = GetCachedUsernameForCurrentContext();
+                var fallback = await MainThreadDispatcher
+                    .RunAsync(GetCachedUsernameForCurrentContext)
+                    .ConfigureAwait(false);
                 var next = string.IsNullOrWhiteSpace(fallback) ? "—" : fallback;
-                if (!string.Equals(_lastUsername, next, StringComparison.Ordinal))
-                {
-                    _lastUsername = next;
-                    SetPlayerUsernameText(next);
-                }
+                await ApplyPlayerUsernameOnMainThreadAsync(next);
             }
+        }
+
+        private async Task ApplyPlayerUsernameOnMainThreadAsync(string value)
+        {
+            await MainThreadDispatcher.RunAsync(() =>
+            {
+                if (string.Equals(_lastUsername, value, StringComparison.Ordinal) &&
+                    ((_playerUsernameTmp != null && _playerUsernameTmp.text == value) ||
+                     (_playerUsernameText != null && _playerUsernameText.text == value)))
+                    return;
+
+                _lastUsername = value ?? "—";
+                SetPlayerUsernameText(_lastUsername);
+            }).ConfigureAwait(false);
         }
 
         private static RectTransform FindCanvasRoot()
@@ -1366,7 +1389,12 @@ namespace Project.UI
         private void SetPlayerUsernameText(string value)
         {
             if (_playerUsernameText != null) _playerUsernameText.text = value;
-            if (_playerUsernameTmp != null) _playerUsernameTmp.text = value;
+            if (_playerUsernameTmp != null)
+            {
+                _playerUsernameTmp.text = value;
+                // Как в CharacterNicknameEditor: после async TMP иногда не пересобирает mesh.
+                _playerUsernameTmp.ForceMeshUpdate(ignoreActiveState: true);
+            }
         }
 
         private static void CacheKnownUsername(string userId, string username)
