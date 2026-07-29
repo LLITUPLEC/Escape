@@ -9,10 +9,51 @@ using UnityEngine.UI;
 namespace Project.UI
 {
     /// <summary>
-    /// Полноэкранный гейт первого входа после удаления аккаунта: e-mail + пароль → create+link к текущему device user.
+    /// Полноэкранный гейт: привязка e-mail к device-аккаунту или вход в существующий (восстановление прогресса на новом телефоне).
+    /// Закрыть без успешного submit нельзя — иначе при каждом запуске снова покажется то же окно (тот же DeviceID).
     /// </summary>
     public static class AuthSetupGate
     {
+        private static GameObject _blockingOverlay;
+
+        /// <summary>Сразу затемнить экран (до сети), чтобы MainMenu не мелькал с прочерками.</summary>
+        public static void EnsureBlockingOverlayVisible()
+        {
+            if (_blockingOverlay != null) return;
+            var root = new GameObject("AuthSetupGateOverlay", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            UnityEngine.Object.DontDestroyOnLoad(root);
+            var canvas = root.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 4990;
+            var scaler = root.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+
+            var dim = new GameObject("Dim", typeof(RectTransform), typeof(Image));
+            var dimRt = dim.GetComponent<RectTransform>();
+            dimRt.SetParent(root.transform, false);
+            Stretch(dimRt);
+            dim.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.09f, 0.96f);
+            dim.GetComponent<Image>().raycastTarget = true;
+
+            var label = NewText(root.transform, "Wait", "Подключение…", 22, FontStyle.Normal);
+            var labelRt = label.GetComponent<RectTransform>();
+            labelRt.anchorMin = new Vector2(0.1f, 0.45f);
+            labelRt.anchorMax = new Vector2(0.9f, 0.55f);
+            labelRt.offsetMin = Vector2.zero;
+            labelRt.offsetMax = Vector2.zero;
+            label.alignment = TextAnchor.MiddleCenter;
+
+            _blockingOverlay = root;
+        }
+
+        public static void HideBlockingOverlayIfAny()
+        {
+            if (_blockingOverlay == null) return;
+            UnityEngine.Object.Destroy(_blockingOverlay);
+            _blockingOverlay = null;
+        }
+
         public static async Task ShowAndWaitAsync(NakamaBootstrap bootstrap, CancellationToken ct)
         {
             if (bootstrap == null) throw new ArgumentNullException(nameof(bootstrap));
@@ -20,6 +61,7 @@ namespace Project.UI
             var tcs = new TaskCompletionSource<bool>();
             await MainThreadDispatcher.RunAsync(() =>
             {
+                EnsureBlockingOverlayVisible();
                 BuildUi(bootstrap, ct, tcs);
             }).ConfigureAwait(true);
 
@@ -28,6 +70,8 @@ namespace Project.UI
 
         private static void BuildUi(NakamaBootstrap bootstrap, CancellationToken ct, TaskCompletionSource<bool> tcs)
         {
+            HideBlockingOverlayIfAny();
+
             var root = new GameObject("AuthSetupGate", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             UnityEngine.Object.DontDestroyOnLoad(root);
             var canvas = root.GetComponent<Canvas>();
@@ -49,35 +93,32 @@ namespace Project.UI
             panelRt.SetParent(root.transform, false);
             panelRt.anchorMin = new Vector2(0.5f, 0.5f);
             panelRt.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(520f, 420f);
+            panelRt.sizeDelta = new Vector2(540f, 520f);
             panel.GetComponent<Image>().color = new Color(0.12f, 0.14f, 0.2f, 1f);
             var v = panel.GetComponent<VerticalLayoutGroup>();
             v.padding = new RectOffset(24, 24, 24, 24);
-            v.spacing = 12f;
+            v.spacing = 10f;
             v.childControlHeight = true;
             v.childControlWidth = true;
             v.childForceExpandWidth = true;
 
-            var title = NewText(panel.transform, "Title", "Добро пожаловать", 28, FontStyle.Bold);
-            title.alignment = TextAnchor.MiddleCenter;
+            NewText(panel.transform, "Title", "Сохранение прогресса", 26, FontStyle.Bold)
+                .alignment = TextAnchor.MiddleCenter;
             NewText(panel.transform, "Hint",
-                "Создайте аккаунт: укажите e-mail и пароль.\nОни будут привязаны к этому устройству.",
-                18, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
+                "Укажите e-mail и пароль.\n" +
+                "• Новый аккаунт — привяжем к этому устройству.\n" +
+                "• Уже играли на другом телефоне — войдёте и восстановите прогресс.",
+                16, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
 
             var email = CreateInput(panel.transform, "Email", "E-mail", false);
             var pass = CreateInput(panel.transform, "Pass", "Пароль (мин. 8)", true);
-            var status = NewText(panel.transform, "Status", "", 16, FontStyle.Normal);
+            var status = NewText(panel.transform, "Status", "", 15, FontStyle.Normal);
             status.alignment = TextAnchor.MiddleCenter;
             status.color = new Color(1f, 0.85f, 0.7f);
 
-            var btnGo = new GameObject("Submit", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
-            btnGo.transform.SetParent(panel.transform, false);
-            btnGo.GetComponent<LayoutElement>().minHeight = 48f;
-            btnGo.GetComponent<Image>().color = new Color(0.25f, 0.55f, 0.35f, 1f);
-            NewText(btnGo.transform, "L", "Продолжить", 22, FontStyle.Bold).alignment = TextAnchor.MiddleCenter;
-
             var busy = false;
-            btnGo.GetComponent<Button>().onClick.AddListener(async () =>
+
+            async Task SubmitAsync(bool preferRestore)
             {
                 if (busy) return;
                 var em = (email.text ?? "").Trim();
@@ -89,18 +130,26 @@ namespace Project.UI
                 }
 
                 busy = true;
-                status.text = "Регистрация…";
+                status.text = preferRestore ? "Вход и восстановление…" : "Регистрация…";
                 try
                 {
                     await bootstrap.EnsureConnectedAsync(ct);
-                    // Сначала привязываем e-mail к текущему device-аккаунту; если почта уже занята — вход в неё.
-                    try
+                    if (preferRestore)
                     {
-                        await bootstrap.LinkEmailAsync(em, pw, ct);
-                    }
-                    catch
-                    {
+                        // Явный вход в существующий аккаунт + LinkDevice текущего телефона.
                         await bootstrap.LoginWithEmailAsync(em, pw, create: false, ct);
+                    }
+                    else
+                    {
+                        // Сначала привязка к текущему device-user; если почта занята — вход в неё (перенос прогресса).
+                        try
+                        {
+                            await bootstrap.LinkEmailAsync(em, pw, ct);
+                        }
+                        catch
+                        {
+                            await bootstrap.LoginWithEmailAsync(em, pw, create: false, ct);
+                        }
                     }
 
                     PlayerPrefs.SetString(NakamaBootstrap.PrefKnownLinkedEmail, em);
@@ -114,7 +163,22 @@ namespace Project.UI
                     status.text = "Ошибка: " + e.Message;
                     busy = false;
                 }
-            });
+            }
+
+            AddActionButton(panel.transform, "Создать / привязать", new Color(0.25f, 0.55f, 0.35f, 1f),
+                () => _ = SubmitAsync(preferRestore: false));
+            AddActionButton(panel.transform, "У меня уже есть аккаунт", new Color(0.28f, 0.35f, 0.55f, 1f),
+                () => _ = SubmitAsync(preferRestore: true));
+        }
+
+        private static void AddActionButton(Transform parent, string label, Color color, Action onClick)
+        {
+            var btnGo = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            btnGo.transform.SetParent(parent, false);
+            btnGo.GetComponent<LayoutElement>().minHeight = 46f;
+            btnGo.GetComponent<Image>().color = color;
+            NewText(btnGo.transform, "L", label, 18, FontStyle.Bold).alignment = TextAnchor.MiddleCenter;
+            btnGo.GetComponent<Button>().onClick.AddListener(() => onClick());
         }
 
         private static void Stretch(RectTransform rt)

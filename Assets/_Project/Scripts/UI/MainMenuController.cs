@@ -71,9 +71,8 @@ namespace Project.UI
         [SerializeField] private Sprite eyeClosedSprite;
 
         [Header("Server aura")]
-        [Tooltip("Иконка ServerAuraButton. В билде без редактора назначьте здесь (путь по умолчанию: Assets/_Project/img/items/WeaponLeft_green.png).")]
-        [SerializeField] private Sprite serverAuraButtonIcon;
-        private const string ServerAuraButtonIconAssetPath = "Assets/_Project/img/items/WeaponLeft_green.png";
+        private const string ServerAuraBtnRootName = "aura_btn";
+        private const string ServerAuraBtnBorderName = "border";
         private bool _match3StatsVisible;
         private Transform _headerResourcesRoot;
         private readonly ResourceValueBinding _energyBinding = new("Energy");
@@ -90,6 +89,8 @@ namespace Project.UI
         private Sprite _hudGoldSprite;
 
         private GameObject _serverAuraButtonGo;
+        private Button _serverAuraButton;
+        private ServerAuraButtonView _serverAuraButtonView;
         private GameObject _serverAuraModalRoot;
         private Text _serverAuraModalBodyText;
         private ServerAuraGetRpcResponse _serverAuraLast;
@@ -97,7 +98,6 @@ namespace Project.UI
         private void Awake()
         {
             TryAutoAssignEyeSpritesInEditor();
-            TryAutoAssignServerAuraIconInEditor();
             EnsureOnlineBadge();
             EnsurePlayerUsernameLabel();
             EnsureServerAuraButton();
@@ -113,7 +113,6 @@ namespace Project.UI
         private void OnValidate()
         {
             TryAutoAssignEyeSpritesInEditor();
-            TryAutoAssignServerAuraIconInEditor();
         }
 #endif
 
@@ -152,6 +151,7 @@ namespace Project.UI
         {
             if (_mineButton != null) _mineButton.onClick.RemoveListener(OpenMineScene);
             if (_workshopButton != null) _workshopButton.onClick.RemoveListener(OpenWorkshopScene);
+            if (_serverAuraButton != null) _serverAuraButton.onClick.RemoveListener(ShowServerAuraModal);
         }
 
         private void EnsureMainMenuNavigationButtons()
@@ -500,14 +500,6 @@ namespace Project.UI
 #endif
         }
 
-        private void TryAutoAssignServerAuraIconInEditor()
-        {
-#if UNITY_EDITOR
-            if (serverAuraButtonIcon == null)
-                serverAuraButtonIcon = AssetDatabase.LoadAssetAtPath<Sprite>(ServerAuraButtonIconAssetPath);
-#endif
-        }
-
         private void EnsureOnlineBadge()
         {
             if (_onlineCountText != null || _onlineCountTmp != null) return;
@@ -558,7 +550,7 @@ namespace Project.UI
 
         private void EnsureServerAuraButton()
         {
-            if (_serverAuraButtonGo != null) return;
+            if (_serverAuraButton != null) return;
 
             var parent = ResolveMainMenuHudLayoutRoot();
             if (parent == null) return;
@@ -566,30 +558,46 @@ namespace Project.UI
             var logoRoot = FindRectTransformChildByName(parent, "BottomHeaderLogo");
             if (logoRoot == null) return;
 
-            _serverAuraButtonGo = new GameObject("ServerAuraButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            var rt = _serverAuraButtonGo.GetComponent<RectTransform>();
-            rt.SetParent(logoRoot, false);
-            rt.sizeDelta = new Vector2(46f, 46f);
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-6f, 6f);
-
-            var img = _serverAuraButtonGo.GetComponent<Image>();
-            TryAutoAssignServerAuraIconInEditor();
-            if (serverAuraButtonIcon != null)
+            var auraRoot = FindRectTransformChildByName(logoRoot, ServerAuraBtnRootName);
+            if (auraRoot == null)
             {
-                img.sprite = serverAuraButtonIcon;
-                img.type = Image.Type.Simple;
-                img.preserveAspect = true;
+                if (debugUiStats)
+                    Debug.LogWarning("[MainMenu] aura_btn не найден в BottomHeaderLogo.");
+                return;
             }
-            else if (debugUiStats)
-                Debug.LogWarning("[MainMenu] serverAuraButtonIcon не назначен — кнопка аномалии без спрайта.");
 
-            img.color = Color.white;
+            _serverAuraButtonGo = auraRoot.gameObject;
+            _serverAuraButtonView = auraRoot.GetComponent<ServerAuraButtonView>()
+                                   ?? auraRoot.gameObject.AddComponent<ServerAuraButtonView>();
+            // До первого ответа RPC — скрыта.
+            _serverAuraButtonView.SetAnomalyActive(false);
 
-            var btn = _serverAuraButtonGo.GetComponent<Button>();
-            btn.onClick.AddListener(ShowServerAuraModal);
+            var border = FindRectTransformChildByName(auraRoot, ServerAuraBtnBorderName) ?? auraRoot;
+            _serverAuraButton = border.GetComponent<Button>() ?? border.GetComponentInChildren<Button>(true);
+            if (_serverAuraButton == null)
+            {
+                if (debugUiStats)
+                    Debug.LogWarning("[MainMenu] Button на aura_btn/border не найден.");
+                return;
+            }
+
+            // Чтобы клики по img не перехватывали border (если img поверх и raycastTarget=true).
+            var imgTr = FindRectTransformChildByName(auraRoot, "img");
+            if (imgTr != null)
+            {
+                foreach (var g in imgTr.GetComponentsInChildren<Graphic>(true))
+                    g.raycastTarget = false;
+            }
+
+            if (_serverAuraButton.targetGraphic == null)
+            {
+                var borderImg = border.GetComponent<Graphic>() ?? border.GetComponentInChildren<Graphic>(true);
+                if (borderImg != null)
+                    _serverAuraButton.targetGraphic = borderImg;
+            }
+
+            _serverAuraButton.onClick.RemoveListener(ShowServerAuraModal);
+            _serverAuraButton.onClick.AddListener(ShowServerAuraModal);
         }
 
         private void EnsureServerAuraModal()
@@ -734,6 +742,7 @@ namespace Project.UI
 
         private async Task ServerAuraLoopAsync(CancellationToken ct)
         {
+            // Как у ресурсов: сразу ждём connect и тянем данные (не ждать 45 с после раннего miss).
             await Task.Yield();
             while (!ct.IsCancellationRequested)
             {
@@ -753,7 +762,7 @@ namespace Project.UI
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(45), ct).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -762,22 +771,45 @@ namespace Project.UI
             }
         }
 
-        private async Task RefreshServerAuraAsync(CancellationToken ct)
-        {
-            if (NakamaBootstrap.Instance == null || !NakamaBootstrap.Instance.IsReady)
-                return;
-            var resp = await ServerAuraRpc.GetAsync(NakamaBootstrap.Instance.Client, NakamaBootstrap.Instance.Session, ct)
-                .ConfigureAwait(true);
-            _serverAuraLast = resp;
-            ApplyServerAuraButtonVisual();
-        }
-
         private void ApplyServerAuraButtonVisual()
         {
-            if (_serverAuraButtonGo == null) return;
-            var img = _serverAuraButtonGo.GetComponent<Image>();
-            if (img == null) return;
-            img.color = Color.white;
+            EnsureServerAuraButton();
+            if (_serverAuraButtonView == null) return;
+            var active = _serverAuraLast != null && _serverAuraLast.ok && _serverAuraLast.active;
+            var endsAt = active ? _serverAuraLast.endsAtUnix : 0L;
+            _serverAuraButtonView.SetAnomalyActive(active, endsAt);
+        }
+
+        private async Task RefreshServerAuraAsync(CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null)
+                return;
+
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(true);
+                if (!NakamaBootstrap.Instance.IsReady ||
+                    NakamaBootstrap.Instance.Client == null ||
+                    NakamaBootstrap.Instance.Session == null)
+                    return;
+
+                var resp = await ServerAuraRpc.GetAsync(
+                        NakamaBootstrap.Instance.Client,
+                        NakamaBootstrap.Instance.Session,
+                        ct)
+                    .ConfigureAwait(true);
+                _serverAuraLast = resp;
+                ApplyServerAuraButtonVisual();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                if (debugUiStats)
+                    Debug.LogWarning("[MainMenu] Server aura refresh: " + e.Message);
+            }
         }
 
         private void EnsureHeaderResources()
@@ -1080,10 +1112,24 @@ namespace Project.UI
                     return;
                 }
 
-                var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
-                    NakamaBootstrap.Instance.Session,
-                    canceller: ct);
-                var username = acc?.User?.Username;
+                string username = null;
+                try
+                {
+                    var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
+                        NakamaBootstrap.Instance.Session,
+                        canceller: ct);
+                    username = acc?.User?.Username;
+                }
+                catch (Exception e) when (e.Message != null &&
+                                           e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    await NakamaBootstrap.Instance.RecoverSessionAfterRefreshFailureAsync(ct);
+                    var acc = await NakamaBootstrap.Instance.Client.GetAccountAsync(
+                        NakamaBootstrap.Instance.Session,
+                        canceller: ct);
+                    username = acc?.User?.Username;
+                }
+
                 var nextUsername = string.IsNullOrWhiteSpace(username) ? "—" : username;
                 if (!string.Equals(_lastUsername, nextUsername, StringComparison.Ordinal))
                 {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Nakama;
 using Project.Nakama;
 using Project.Utils;
 using UnityEngine;
@@ -90,28 +91,46 @@ namespace Project.Achievements
                 if (!bootstrap.IsReady || bootstrap.Session == null)
                     return false;
 
-                var rpcBody = forceServerRefresh
-                    ? "{\"force_refresh\":true}"
-                    : "{}";
-                var rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcCatalogGet, rpcBody, canceller: ct)
-                    .ConfigureAwait(false);
+                IApiRpc rpc;
+                try
+                {
+                    var rpcBody = forceServerRefresh
+                        ? "{\"force_refresh\":true}"
+                        : "{}";
+                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcCatalogGet, rpcBody, canceller: ct)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e) when (e.Message != null &&
+                                          e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    await bootstrap.RecoverSessionAfterRefreshFailureAsync(ct).ConfigureAwait(false);
+                    if (!bootstrap.IsReady || bootstrap.Session == null)
+                        return false;
+                    var rpcBody = forceServerRefresh
+                        ? "{\"force_refresh\":true}"
+                        : "{}";
+                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcCatalogGet, rpcBody, canceller: ct)
+                        .ConfigureAwait(false);
+                }
+
                 var payload = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(payload))
                     return false;
 
-                if (!TryParseAndApplyCatalog(payload, out var meta))
+                // Парсинг JSON без PlayerPrefs/Unity API — Apply только на main thread.
+                if (!TryParseCatalog(payload, out var meta))
                     return false;
 
-                var cachedUpdatedAt = await MainThreadDispatcher.RunAsync(() =>
-                    long.TryParse(PlayerPrefs.GetString(CatalogCacheUpdatedAtKey, "-1"), out var v) ? v : -1L
-                ).ConfigureAwait(false);
-
-                var changed = meta.UpdatedAt != _lastAppliedUpdatedAt
-                    || meta.UpdatedAt != cachedUpdatedAt
-                    || !string.Equals(payload, PlayerPrefs.GetString(CatalogCacheKey, ""), StringComparison.Ordinal);
-
-                await MainThreadDispatcher.RunAsync(() =>
+                var changed = await MainThreadDispatcher.RunAsync(() =>
                 {
+                    var cachedUpdatedAt = long.TryParse(PlayerPrefs.GetString(CatalogCacheUpdatedAtKey, "-1"), out var v)
+                        ? v
+                        : -1L;
+                    var cachedPayload = PlayerPrefs.GetString(CatalogCacheKey, "");
+                    var didChange = meta.UpdatedAt != _lastAppliedUpdatedAt
+                        || meta.UpdatedAt != cachedUpdatedAt
+                        || !string.Equals(payload, cachedPayload, StringComparison.Ordinal);
+
                     AchievementCatalog.ApplyFromServer(meta.Chains);
                     _lastAppliedUpdatedAt = meta.UpdatedAt;
                     LastCatalogSource = meta.Source;
@@ -128,7 +147,8 @@ namespace Project.Achievements
                         + " source=" + (meta.Source ?? "?")
                         + " updated_at=" + meta.UpdatedAt
                         + " obs.cross last_delta=" + lastThreshold
-                        + (changed ? " (changed)" : " (unchanged)"));
+                        + (didChange ? " (changed)" : " (unchanged)"));
+                    return didChange;
                 }).ConfigureAwait(false);
 
                 if (string.Equals(meta.Source, "fallback", StringComparison.OrdinalIgnoreCase))
@@ -166,8 +186,22 @@ namespace Project.Achievements
                 {
                     session_epoch = sessionEpoch,
                 });
-                var rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcAchievementSync, body, canceller: ct)
-                    .ConfigureAwait(false);
+
+                IApiRpc rpc;
+                try
+                {
+                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcAchievementSync, body, canceller: ct)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e) when (e.Message != null &&
+                                          e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    await bootstrap.RecoverSessionAfterRefreshFailureAsync(ct).ConfigureAwait(false);
+                    if (bootstrap.Session == null) return;
+                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcAchievementSync, body, canceller: ct)
+                        .ConfigureAwait(false);
+                }
+
                 var parsed = JsonUtility.FromJson<AchievementSyncRpcResponse>(rpc?.Payload ?? "{}");
                 if (parsed == null || !parsed.ok)
                     return;
@@ -191,6 +225,15 @@ namespace Project.Achievements
 
         private static bool TryParseAndApplyCatalog(string json, out CatalogApplyMeta meta)
         {
+            if (!TryParseCatalog(json, out meta))
+                return false;
+            AchievementCatalog.ApplyFromServer(meta.Chains);
+            return true;
+        }
+
+        /// <summary>Только парсинг JSON (безопасно с background thread). Apply — на main thread.</summary>
+        private static bool TryParseCatalog(string json, out CatalogApplyMeta meta)
+        {
             meta = default;
             var chains = ParseCatalogChains(json, out var response);
             if (chains == null || chains.Length == 0)
@@ -202,7 +245,6 @@ namespace Project.Achievements
                 UpdatedAt = response != null ? response.updated_at : 0,
                 Source = response?.catalog_source ?? "",
             };
-            AchievementCatalog.ApplyFromServer(chains);
             return true;
         }
 

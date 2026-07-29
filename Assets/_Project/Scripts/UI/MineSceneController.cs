@@ -1763,19 +1763,22 @@ namespace Project.UI
 
         private void TryInstallEnergyHeaderPurchase()
         {
-            if (_energyHeaderPurchase != null || _headerResourcesRoot == null) return;
-            if (!_energyBinding.IsBound) return;
+            if (_energyHeaderPurchase != null) return;
             EnsureHudIconReferences();
-            var canvas = GetComponentInParent<Canvas>();
-            if (canvas == null) return;
+            // Модалка не зависит от HeaderResources: в MineScene шапки ресурсов может не быть.
+            var modalParent = FindMonsterModalParent()
+                              ?? GetComponentInParent<Canvas>()?.transform
+                              ?? FindFirstObjectByType<Canvas>()?.transform;
+            if (modalParent == null) return;
             _energyHeaderPurchase = new EnergyHeaderPurchaseController(
-                canvas.transform,
+                modalParent,
                 _energySprite,
                 _matterSprite,
                 _goldSprite,
                 async ct => { await RefreshResourcesAsync(ct).ConfigureAwait(true); },
                 _cts != null ? _cts.Token : CancellationToken.None);
-            _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
+            if (_headerResourcesRoot != null)
+                _energyHeaderPurchase.EnsurePlusOnEnergyRow(_headerResourcesRoot);
         }
 
         private void OpenEnergyBuyDialog()

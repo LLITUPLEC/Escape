@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: tesseract
   displayName: "\u0422\u0435\u0441\u0441\u0435\u0440\u0430\u043A\u0442"
-  colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
+  colorDisplayName: {r: 0.3468833, g: 0.29699183, b: 0.8867924, a: 1}
   description: 
   kind: 3
   maxStack: 5
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: 
   craftMinutes: 0
   salePrice: 30000
-  icon: {fileID: 21300000, guid: 504f8998583b4d94ead5750fdcbc9667, type: 3}
+  icon: {fileID: 21300000, guid: 5bf4d0b3d4221c3448e19cb7dcb46915, type: 3}
   equippable: 0
   slot: 0
   modifiers: []
