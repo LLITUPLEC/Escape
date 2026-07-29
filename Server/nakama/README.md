@@ -7,7 +7,7 @@
    - `duel_online.lua` (онлайн-статус),
    - `duel_leaderboard.lua` (таблица лидеров: RPC `duel_leaderboard_get`),
    - `duel_leaderboard_scores.lua` (запись побед в Nakama Leaderboards, подключается из `duel_match3.lua`),
-   - `duel_session.lua` (single-session по e-mail: эпоха сессии + уведомление при входе с другого устройства),
+   - `duel_session.lua` (single-session по e-mail: эпоха сессии + уведомление при AuthenticateEmail и RPC `duel_session_claim` для silent-restore),
    - `duel_match3.lua` (server-authoritative Match3; проверка `session_epoch` для мутаций встроена в этот файл, отдельный `require` не нужен),
    - `duel_relay.lua` (authoritative relay fallback),
    - `duel_matchmaker.lua` (matchmaker hook, создаёт нужный тип матча).

@@ -56,6 +56,8 @@ namespace Project.Nakama
         private const string DeviceIdFileName = "nakama_device_id.txt";
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcSessionEpochGet = "duel_session_epoch_get";
+        /// <summary>Захват single-device сессии без AuthenticateEmail (silent restore / reconnect).</summary>
+        private const string RpcSessionClaim = "duel_session_claim";
         private const string PrefUseEmailSession = "nakama.use_email_session";
         private const string PrefAuthToken = "nakama.session.auth_token";
         private const string PrefRefreshToken = "nakama.session.refresh_token";
@@ -279,6 +281,9 @@ namespace Project.Nakama
 
                 Socket = CreateAndWireSocket();
                 ct.ThrowIfCancellationRequested();
+                // Silent restore (JWT / refresh / linked device) не вызывает AuthenticateEmail —
+                // без claim другое устройство с тем же аккаунтом не вытесняется.
+                await ClaimEmailSessionOwnershipAsync(ct).ConfigureAwait(false);
                 await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
                 await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
                 _socketBoundAuthToken = Session?.AuthToken;
@@ -347,6 +352,7 @@ namespace Project.Nakama
 
             Socket = CreateAndWireSocket();
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+            _socketBoundAuthToken = Session?.AuthToken;
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
@@ -406,6 +412,7 @@ namespace Project.Nakama
             Socket = CreateAndWireSocket();
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
+            _socketBoundAuthToken = Session?.AuthToken;
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
@@ -606,6 +613,41 @@ namespace Project.Nakama
             catch
             {
                 // Сервер без duel_session.lua — тихо пропускаем.
+            }
+        }
+
+        /// <summary>
+        /// Захват single-device сессии при silent-входе (сохранённые email-токены / linked device).
+        /// AuthenticateEmail уже бампит эпоху на сервере — здесь покрываем Restore/Refresh без повторного логина.
+        /// </summary>
+        private async Task ClaimEmailSessionOwnershipAsync(CancellationToken ct)
+        {
+            if (Session == null || Client == null) return;
+
+            var shouldClaim = await MainThreadDispatcher.RunAsync(() =>
+                    !string.IsNullOrWhiteSpace(PlayerPrefs.GetString(PrefKnownLinkedEmail, "")))
+                .ConfigureAwait(false);
+            if (!shouldClaim)
+                return;
+
+            try
+            {
+                var rpc = await Client.RpcAsync(Session, RpcSessionClaim, "{}", canceller: ct).ConfigureAwait(false);
+                var payload = rpc?.Payload;
+                if (string.IsNullOrEmpty(payload)) return;
+                var model = JsonUtility.FromJson<SessionEpochRpcResponse>(payload);
+                if (model != null && model.ok)
+                {
+                    await MainThreadDispatcher
+                        .RunAsync(() => PersistLocalSessionEpochSync(model.session_epoch))
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                // Старый сервер без RPC — не блокируем вход; kick тогда только через AuthenticateEmail.
+                if (config != null && config.verboseLogging)
+                    Debug.LogWarning("[Nakama] duel_session_claim: " + e.Message);
             }
         }
 

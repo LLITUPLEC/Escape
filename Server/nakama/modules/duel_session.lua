@@ -33,6 +33,21 @@ local function merge_metadata_and_set_epoch(nk_module, user_id, new_epoch)
   nk_module.account_update_id(user_id, md, nil, nil, nil, nil, nil, nil)
 end
 
+--- Инкремент эпохи + in-app уведомление всем сокетам пользователя (single-device policy).
+local function bump_session_epoch_and_notify(user_id)
+  local epoch = read_session_epoch_from_account(nk, user_id) + 1
+  merge_metadata_and_set_epoch(nk, user_id, epoch)
+  nk.notification_send(
+    user_id,
+    "session_replaced",
+    { session_epoch = epoch },
+    NOTIFY_CODE_SESSION_REPLACED,
+    "",
+    false
+  )
+  return epoch
+end
+
 --- После каждого входа по e-mail инкрементируем эпоху и шлём in-app уведомление всем сокетам этого пользователя.
 local function after_authenticate_email(ctx, logger, nkrt, session, request)
   local user_id = ctx.user_id
@@ -43,16 +58,7 @@ local function after_authenticate_email(ctx, logger, nkrt, session, request)
   local ok, err = pcall(function()
     -- Use the built-in `nk` module here. `nkrt` passed to after-hooks is not guaranteed
     -- to expose account_get_id/account_update_id in all Nakama versions/configs.
-    local epoch = read_session_epoch_from_account(nk, user_id) + 1
-    merge_metadata_and_set_epoch(nk, user_id, epoch)
-    nk.notification_send(
-      user_id,
-      "session_replaced",
-      { session_epoch = epoch },
-      NOTIFY_CODE_SESSION_REPLACED,
-      "",
-      false
-    )
+    bump_session_epoch_and_notify(user_id)
   end)
 
   if not ok then
@@ -80,3 +86,24 @@ local function duel_session_epoch_get(ctx, payload)
 end
 
 nk.register_rpc(duel_session_epoch_get, "duel_session_epoch_get")
+
+--- Клиентский silent-restore / reconnect с сохранёнными email-токенами не вызывает AuthenticateEmail.
+--- Этот RPC явно захватывает сессию (epoch++) и вытесняет другие устройства.
+local function duel_session_claim(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local epoch = bump_session_epoch_and_notify(user_id)
+    return nk.json_encode({ ok = true, session_epoch = epoch })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_session_claim: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+nk.register_rpc(duel_session_claim, "duel_session_claim")
