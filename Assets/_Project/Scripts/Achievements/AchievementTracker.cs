@@ -57,7 +57,25 @@ namespace Project.Achievements
                 SaveSet(PrefClaimedJson, _claimedStepTokens);
         }
 
-        /// <summary>Слияние с данными Nakama (duel_match3_stats / achievement_sync): счётчики берём как max(local,server), метки полученных — объединение.</summary>
+        /// <summary>
+        /// Полный сброс локального прогресса/полученных шагов (wipe аккаунта).
+        /// Каталог определений на сервере/кэш не трогаем.
+        /// </summary>
+        public static void ClearAllLocalProgress()
+        {
+            _stats = new Dictionary<string, int>(StringComparer.Ordinal);
+            _claimedStepTokens = new HashSet<string>(StringComparer.Ordinal);
+            PlayerPrefs.DeleteKey(PrefStatsJson);
+            PlayerPrefs.DeleteKey(PrefClaimedJson);
+            PlayerPrefs.Save();
+            AchievementUiPending.ClearAllAwaitToastTokens();
+            AchievementLifecycle.NotifyDataChanged();
+        }
+
+        /// <summary>
+        /// Слияние с данными Nakama (achievement_sync): сервер авторитетен.
+        /// Если массив claimed/stats пришёл (в т.ч. пустой) — локальные значения заменяются, а не объединяются.
+        /// </summary>
         public static void MergeFromAuthoritativeSnapshot(
             IList<StringIntPair> serverStatsEntries,
             IList<string> serverClaimedTokens)
@@ -69,38 +87,54 @@ namespace Project.Achievements
             var changedStats = false;
             if (serverClaimedTokens != null)
             {
+                var nextClaims = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var tok in serverClaimedTokens)
                 {
                     if (string.IsNullOrEmpty(tok)) continue;
-                    if (_claimedStepTokens.Add(tok))
-                        changedClaims = true;
+                    nextClaims.Add(tok);
                 }
-                if (changedClaims)
+
+                if (nextClaims.Count != _claimedStepTokens.Count || !nextClaims.SetEquals(_claimedStepTokens))
+                {
+                    _claimedStepTokens = nextClaims;
                     SaveSet(PrefClaimedJson, _claimedStepTokens);
+                    changedClaims = true;
+                }
             }
-            if (serverStatsEntries != null && serverStatsEntries.Count > 0)
+
+            if (serverStatsEntries != null)
             {
+                var nextStats = new Dictionary<string, int>(StringComparer.Ordinal);
                 foreach (var e in serverStatsEntries)
                 {
                     if (e == null || string.IsNullOrEmpty(e.k)) continue;
-                    var cur = GetStat(e.k);
-                    // Server is authoritative for these counters. Using max(local,server) can permanently
-                    // lock inflated local values if we ever mis-count in a match (e.g. counting opponent actions).
-                    // Overwrite local stat with server value.
-                    var merged = Mathf.Max(0, e.v);
-                    if (merged != cur)
-                    {
-                        _stats[e.k] = merged;
-                        changedStats = true;
-                    }
+                    nextStats[e.k] = Mathf.Max(0, e.v);
                 }
-                if (changedStats)
+
+                if (!StatsEqual(_stats, nextStats))
+                {
+                    _stats = nextStats;
                     SaveDict(PrefStatsJson, _stats);
+                    changedStats = true;
+                }
             }
 
             var newAwaitClaims = AchievementUiPending.RaiseNewEligibleSince(eligibleBeforeMerge);
             if (changedClaims || changedStats || newAwaitClaims > 0)
                 AchievementLifecycle.NotifyDataChanged();
+        }
+
+        private static bool StatsEqual(Dictionary<string, int> a, Dictionary<string, int> b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a == null || b == null) return false;
+            if (a.Count != b.Count) return false;
+            foreach (var kv in a)
+            {
+                if (!b.TryGetValue(kv.Key, out var v) || v != kv.Value)
+                    return false;
+            }
+            return true;
         }
 
         private static string StepToken(string chainId, int stepIndex) => chainId + ":" + stepIndex;

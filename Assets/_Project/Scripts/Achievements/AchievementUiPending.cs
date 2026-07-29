@@ -18,6 +18,8 @@ namespace Project.Achievements
             AwaitClaimToastSentForStepTokens.Remove($"{chainId}|{stepIndex}");
         }
 
+        public static void ClearAllAwaitToastTokens() => AwaitClaimToastSentForStepTokens.Clear();
+
         public static HashSet<string> CaptureEligibleClaimStepTokens()
         {
             AchievementProgressStorage.EnsureLoaded();

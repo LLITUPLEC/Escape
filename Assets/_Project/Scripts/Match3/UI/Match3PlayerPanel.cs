@@ -45,6 +45,10 @@ namespace Project.Match3
         [SerializeField] public RectTransform damagePopupAnchor;
         [SerializeField] public DamagePopupView damagePopup;
 
+        [Header("Gain Popup (heal / mana)")]
+        [SerializeField] public RectTransform gainPopupAnchor;
+        [SerializeField] public GainPopupView gainPopup;
+
         private bool _visualStyleApplied;
 
         private void Start()
@@ -83,6 +87,7 @@ namespace Project.Match3
             buffStateText ??= FindTmpText("BuffStateText");
 
             ResolveDamagePopupFromHierarchy();
+            ResolveGainPopupFromHierarchy();
         }
 
         /// <summary>
@@ -108,6 +113,28 @@ namespace Project.Match3
             EnsureDamagePopupAnchorAssigned();
         }
 
+        /// <summary>
+        /// Подхватывает <see cref="GainPopupView"/> из иерархии под Avatar.
+        /// </summary>
+        public void ResolveGainPopupFromHierarchy()
+        {
+            if (gainPopup != null)
+            {
+                EnsureGainPopupAnchorAssigned();
+                return;
+            }
+
+            if (avatarImage == null)
+                avatarImage = transform.Find("Avatar")?.GetComponent<Image>();
+            if (avatarImage == null) return;
+
+            var found = avatarImage.GetComponentInChildren<GainPopupView>(true);
+            if (found == null) return;
+
+            gainPopup = found;
+            EnsureGainPopupAnchorAssigned();
+        }
+
         private void EnsureDamagePopupAnchorAssigned()
         {
             if (damagePopup == null) return;
@@ -118,6 +145,18 @@ namespace Project.Match3
                 damagePopupAnchor = parentRt;
             else if (avatarImage != null)
                 damagePopupAnchor = avatarImage.rectTransform;
+        }
+
+        private void EnsureGainPopupAnchorAssigned()
+        {
+            if (gainPopup == null) return;
+            if (gainPopupAnchor != null) return;
+
+            var parentRt = gainPopup.transform.parent as RectTransform;
+            if (parentRt != null)
+                gainPopupAnchor = parentRt;
+            else if (avatarImage != null)
+                gainPopupAnchor = avatarImage.rectTransform;
         }
 
         private TMP_Text FindTmpText(string name)
@@ -209,6 +248,36 @@ namespace Project.Match3
         {
             if (damagePopup == null) return;
             damagePopup.Play(damageAmount, isCrit);
+        }
+
+        public void ShowGainPopup(int amount, GainPopupView.GainKind kind)
+        {
+            if (gainPopup == null || amount <= 0) return;
+            gainPopup.Play(amount, kind);
+        }
+
+        /// <summary>
+        /// Хилл и/или мана за один ход. Если оба — одновременно: хил влево, мана вправо.
+        /// Один из них — случайная сторона дуги.
+        /// </summary>
+        public void ShowGainPopups(int healAmount, int manaAmount)
+        {
+            if (gainPopup == null) return;
+            var heal = healAmount > 0;
+            var mana = manaAmount > 0;
+            if (!heal && !mana) return;
+
+            if (heal && mana)
+            {
+                gainPopup.Play(healAmount, GainPopupView.GainKind.Heal, GainPopupView.ArcSide.Left);
+                gainPopup.Play(manaAmount, GainPopupView.GainKind.Mana, GainPopupView.ArcSide.Right);
+                return;
+            }
+
+            if (heal)
+                gainPopup.Play(healAmount, GainPopupView.GainKind.Heal, GainPopupView.ArcSide.Random);
+            else
+                gainPopup.Play(manaAmount, GainPopupView.GainKind.Mana, GainPopupView.ArcSide.Random);
         }
 
         private static void ApplyBarFill(Image fillImage, float ratio)

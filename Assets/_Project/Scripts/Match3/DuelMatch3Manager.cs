@@ -1847,6 +1847,8 @@ namespace Project.Match3
             int[] currentBoard = beforeBoard;
             int prevMyHp = _myStats.hp;
             int prevOpHp = _opStats.hp;
+            int prevMyMana = _myStats.mana;
+            int prevOpMana = _opStats.mana;
 
             if (_boardView != null)
             {
@@ -1988,6 +1990,17 @@ namespace Project.Match3
                 _myPanel.ShowDamagePopup(myDamageTaken, msg.critTriggered && opDamageTaken == 0);
             if (opDamageTaken > 0 && _opPanel != null)
                 _opPanel.ShowDamagePopup(opDamageTaken, msg.critTriggered && myDamageTaken == 0);
+
+            // Heal / mana gain popups (net positive). Для способностей стоимость маны
+            // вычитается до каскадов — возвращаем её в расчёт, иначе «полученная» мана пропадает.
+            var myHeal = Mathf.Max(0, _myStats.hp - prevMyHp);
+            var opHeal = Mathf.Max(0, _opStats.hp - prevOpHp);
+            var myManaSpent = AbilityManaSpentForUser(msg, _myUserId);
+            var opManaSpent = AbilityManaSpentForUser(msg, _opUserId);
+            var myManaGain = Mathf.Max(0, (_myStats.mana - prevMyMana) + myManaSpent);
+            var opManaGain = Mathf.Max(0, (_opStats.mana - prevOpMana) + opManaSpent);
+            _myPanel?.ShowGainPopups(myHeal, myManaGain);
+            _opPanel?.ShowGainPopups(opHeal, opManaGain);
 
             if (_myStats.hp < prevMyHp || _opStats.hp < prevOpHp)
             {
@@ -3678,6 +3691,7 @@ namespace Project.Match3
             EnsureRewardSpritesAssigned();
             TryAutoAssignUiPrefabsInEditor();
             EnsureDamagePopupWidgets(_myPanel);
+            EnsureGainPopupWidgets(_myPanel);
             ConfigureAbilityButtonsVisuals();
 
             _abilityPanel.OnPetardClicked += OnPetardClicked;
@@ -3692,6 +3706,7 @@ namespace Project.Match3
 
             EnsureCombatWidgets(_opPanel);
             EnsureDamagePopupWidgets(_opPanel);
+            EnsureGainPopupWidgets(_opPanel);
 
             WireQuitButton(root);
 
@@ -3942,6 +3957,44 @@ namespace Project.Match3
                 panel.damagePopup = BuildDamagePopupProcedural(anchor);
         }
 
+        private void EnsureGainPopupWidgets(Match3PlayerPanel panel)
+        {
+            if (panel == null) return;
+
+            panel.ResolveGainPopupFromHierarchy();
+            if (panel.gainPopup != null)
+            {
+                if (panel.gainPopupAnchor == null && panel.gainPopup.transform.parent is RectTransform parentRt)
+                    panel.gainPopupAnchor = parentRt;
+                return;
+            }
+            if (panel.avatarImage == null) return;
+
+            var avatarRt = panel.avatarImage.rectTransform;
+            if (avatarRt == null) return;
+
+            // Можно жить рядом с DamagePopup; отдельный якорь — чуть ниже, чтобы не перекрывать урон.
+            var anchor = panel.gainPopupAnchor
+                         ?? avatarRt.Find("GainPopupAnchor") as RectTransform
+                         ?? panel.damagePopupAnchor
+                         ?? avatarRt.Find("DamagePopupAnchor") as RectTransform;
+            if (anchor == null)
+            {
+                var go = new GameObject("GainPopupAnchor");
+                anchor = go.AddComponent<RectTransform>();
+                anchor.SetParent(avatarRt, false);
+                anchor.anchorMin = new Vector2(0.5f, 0.5f);
+                anchor.anchorMax = new Vector2(0.5f, 0.5f);
+                anchor.pivot = new Vector2(0.5f, 0.5f);
+                anchor.anchoredPosition = new Vector2(0f, 0f);
+                anchor.sizeDelta = new Vector2(0f, 0f);
+            }
+            panel.gainPopupAnchor = anchor;
+
+            if (panel.gainPopup == null)
+                panel.gainPopup = BuildGainPopupProcedural(anchor);
+        }
+
         private DamagePopupView BuildDamagePopupProcedural(RectTransform anchor)
         {
             if (anchor == null) return null;
@@ -3970,6 +4023,34 @@ namespace Project.Match3
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
             viewType.GetField("valueText", flags)?.SetValue(view, txt);
             viewType.GetField("critBackground", flags)?.SetValue(view, critBg);
+            viewType.GetField("canvasGroup", flags)?.SetValue(view, canvasGroup);
+
+            return view;
+        }
+
+        private GainPopupView BuildGainPopupProcedural(RectTransform anchor)
+        {
+            if (anchor == null) return null;
+
+            var rootGo = new GameObject("GainPopup");
+            var rootRt = rootGo.AddComponent<RectTransform>();
+            rootRt.SetParent(anchor, false);
+            rootRt.anchorMin = new Vector2(0.5f, 0.5f);
+            rootRt.anchorMax = new Vector2(0.5f, 0.5f);
+            rootRt.pivot = new Vector2(0.5f, 0.5f);
+            // Чуть ниже DamagePopup (y=40), без CritBg.
+            rootRt.anchoredPosition = new Vector2(0f, 8f);
+            rootRt.sizeDelta = new Vector2(100f, 100f);
+
+            var canvasGroup = rootGo.AddComponent<CanvasGroup>();
+            var view = rootGo.AddComponent<GainPopupView>();
+
+            var txt = MakeTxt(rootRt, "Value", "+12", 22, new Color(0.25f, 0.95f, 0.35f, 1f), V2(0f, 0f), V2(1f, 1f));
+            txt.alignment = TextAlignmentOptions.Center;
+
+            var viewType = typeof(GainPopupView);
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            viewType.GetField("valueText", flags)?.SetValue(view, txt);
             viewType.GetField("canvasGroup", flags)?.SetValue(view, canvasGroup);
 
             return view;
@@ -4262,6 +4343,19 @@ namespace Project.Match3
                 6 => GetFuryAbilityCost(),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Сколько маны актёр потратил на способность в этом синке.
+        /// Нужно, чтобы попап показывал ману с камней, а не net после вычета cost.
+        /// </summary>
+        private int AbilityManaSpentForUser(M3BoardSyncMsg msg, string userId)
+        {
+            if (msg == null || string.IsNullOrEmpty(userId)) return 0;
+            if (msg.actionType < 2 || msg.actionType > 6) return 0;
+            var actor = string.IsNullOrEmpty(msg.actionActorUserId) ? msg.activeUserId : msg.actionActorUserId;
+            if (!string.Equals(actor, userId, StringComparison.Ordinal)) return 0;
+            return Mathf.Max(0, GetAbilityCostByActionType(msg.actionType));
         }
 
         private int GetAbilityCost(AbilityType ability)

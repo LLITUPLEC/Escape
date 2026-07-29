@@ -149,6 +149,10 @@ namespace Project.Nakama
                 if (needEarlyOverlay)
                     AuthSetupGate.EnsureBlockingOverlayVisible();
 
+                // После wipe старой сборки claimed/stats могли остаться в PlayerPrefs — чистим до sync.
+                if (PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0)
+                    AchievementProgressStorage.ClearAllLocalProgress();
+
                 await EnsureConnectedAsync(_cts.Token);
                 await MaybeShowEmailSetupGateAsync(_cts.Token).ConfigureAwait(true);
                 _ = AchievementCatalogService.RefreshOnLoginAsync(_cts.Token);
@@ -545,6 +549,8 @@ namespace Project.Nakama
             ClearEmailSessionPrefsSync();
             PlayerPrefs.DeleteKey(PrefKnownLinkedEmail);
             PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
+            // Локальные claimed/stats достижений иначе переживают wipe и «горят» после нового аккаунта.
+            AchievementProgressStorage.ClearAllLocalProgress();
             PlayerPrefs.Save();
         }
 
