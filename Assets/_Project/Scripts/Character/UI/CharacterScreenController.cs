@@ -50,6 +50,7 @@ namespace Project.Character.UI
         private RectTransform _sellConfirmPanel;
         private TMP_Text _sellConfirmText;
         private bool _sellInFlight;
+        private CharacterNicknameEditor _nicknameEditor;
 
         private void Awake()
         {
@@ -64,6 +65,9 @@ namespace Project.Character.UI
             AchievementLifecycle.OnCombatStatsUpdated += HandleCombatStatsUpdated;
             _parentCanvas = GetComponentInParent<Canvas>(true);
 
+            _nicknameEditor = GetComponent<CharacterNicknameEditor>() ?? gameObject.AddComponent<CharacterNicknameEditor>();
+            _nicknameEditor.EnsureWired();
+
             _cts = new CancellationTokenSource();
             EnsureModalUi();
             if (startHidden) SetVisible(false);
@@ -76,6 +80,9 @@ namespace Project.Character.UI
 
             if (TryGetPressPositionThisFrame(out var pressPos))
             {
+                if (_nicknameEditor != null && _nicknameEditor.IsEditing)
+                    return;
+
                 if (_modalOverlay != null && _modalOverlay.activeSelf)
                 {
                     if (Time.frameCount <= _modalOpenedFrame) return;
@@ -119,6 +126,7 @@ namespace Project.Character.UI
 
         public void Close()
         {
+            if (_nicknameEditor != null) _nicknameEditor.CloseEditor();
             HideModals(true);
             SetVisible(false);
         }
@@ -164,6 +172,9 @@ namespace Project.Character.UI
                     view.ApplyCharacterResponse(profile, itemCatalog);
                 }
             });
+
+            if (_nicknameEditor != null)
+                await _nicknameEditor.RefreshAsync(ct).ConfigureAwait(false);
         }
 
         private void SetVisible(bool visible)

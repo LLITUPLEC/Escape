@@ -105,6 +105,7 @@ namespace Project.UI
             EnsureMatch3StatsCard();
             EnsureMatch3StatsToggleButton();
             EnsureMainMenuNavigationButtons();
+            EnsureRatingButtonSteamFx();
             ApplySafeAreaClamp();
             MainMenuHudLayering.NormalizeHudOverlayOrder(ResolveMainMenuHudLayoutRoot());
         }
@@ -120,6 +121,7 @@ namespace Project.UI
         {
             _onlineCts = new CancellationTokenSource();
             PlayerResourcesService.CachedResourcesChanged += OnCachedResourcesChanged;
+            NicknameService.UsernameChanged += OnNicknameUsernameChanged;
             _ = OnlineLoopAsync(_onlineCts.Token);
             _ = RefreshHeaderResourcesAsync(_onlineCts.Token);
             _ = RefreshMatch3StatsCardAsync(_onlineCts.Token);
@@ -134,6 +136,7 @@ namespace Project.UI
         private void OnDisable()
         {
             PlayerResourcesService.CachedResourcesChanged -= OnCachedResourcesChanged;
+            NicknameService.UsernameChanged -= OnNicknameUsernameChanged;
             _energyHeaderPurchase = null;
             _onlineCts?.Cancel();
             _onlineCts?.Dispose();
@@ -548,6 +551,17 @@ namespace Project.UI
             SetPlayerUsernameText(_lastUsername);
         }
 
+        private void EnsureRatingButtonSteamFx()
+        {
+            var parent = ResolveMainMenuHudLayoutRoot();
+            if (parent == null) return;
+
+            var rating = FindRectTransformChildByName(parent, "RatingButton");
+            if (rating == null) return;
+
+            UiSteamGlowFx.EnsureOnButton(rating);
+        }
+
         private void EnsureServerAuraButton()
         {
             if (_serverAuraButton != null) return;
@@ -921,6 +935,15 @@ namespace Project.UI
             if (resourcesPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                 resourcesPath = resourcesPath.Substring(0, resourcesPath.Length - 4);
             return Resources.Load<Sprite>(resourcesPath);
+        }
+
+        private void OnNicknameUsernameChanged(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return;
+            _lastUsername = username;
+            SetPlayerUsernameText(username);
+            var userId = NakamaBootstrap.Instance?.Session?.UserId;
+            CacheKnownUsername(userId, username);
         }
 
         private void OnCachedResourcesChanged()

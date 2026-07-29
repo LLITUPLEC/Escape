@@ -909,5 +909,156 @@ end
 end
 
 
+
+  local function nickname_sanitize(raw)
+    local s = tostring(raw or "")
+    s = string.gsub(s, "^%s+", "")
+    s = string.gsub(s, "%s+$", "")
+    return s
+  end
+
+  local function nickname_is_valid(name)
+    local min_len = math.max(1, math.floor(tonumber(CFG.NICKNAME_MIN_LEN) or 3))
+    local max_len = math.max(min_len, math.floor(tonumber(CFG.NICKNAME_MAX_LEN) or 17))
+    if #name < min_len or #name > max_len then
+      return false, "bad_length"
+    end
+    if string.find(name, "^[%w_]+$") == nil then
+      return false, "bad_chars"
+    end
+    return true, nil
+  end
+
+  local function read_current_username(user_id)
+    local ok, acc = pcall(function()
+      return nk.account_get_id(user_id)
+    end)
+    if not ok or acc == nil or acc.user == nil then
+      return ""
+    end
+    return tostring(acc.user.username or "")
+  end
+
+  function M.duel_nickname_status_get(ctx, payload)
+    local ok, result = pcall(function()
+      local user_id = ctx and ctx.user_id or ""
+      if user_id == nil or user_id == "" then
+        return nk.json_encode({ ok = false, err = "unauthorized" })
+      end
+      local progress = read_pve_progress(user_id)
+      local changes = math.max(0, math.floor(tonumber(progress.nickname_changes) or 0))
+      local gold_cost = math.max(0, math.floor(tonumber(CFG.NICKNAME_CHANGE_GOLD_COST) or 20000))
+      local next_cost = changes <= 0 and 0 or gold_cost
+      return nk.json_encode({
+        ok = true,
+        username = read_current_username(user_id),
+        nickname_changes = changes,
+        next_change_gold_cost = next_cost,
+        free_change_available = changes <= 0,
+        min_len = math.max(1, math.floor(tonumber(CFG.NICKNAME_MIN_LEN) or 3)),
+        max_len = math.max(1, math.floor(tonumber(CFG.NICKNAME_MAX_LEN) or 17)),
+      })
+    end)
+    if not ok then
+      nk.logger_error("duel_nickname_status_get: " .. tostring(result))
+      return nk.json_encode({ ok = false, err = "server_error" })
+    end
+    return result
+  end
+
+  function M.duel_nickname_change(ctx, payload)
+    local ok, result = pcall(function()
+      local user_id = ctx and ctx.user_id or ""
+      if user_id == nil or user_id == "" then
+        return nk.json_encode({ ok = false, err = "unauthorized" })
+      end
+      local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
+      if not ok_epoch then
+        return nk.json_encode({ ok = false, err = err_epoch })
+      end
+
+      local p = {}
+      if payload ~= nil and payload ~= "" then
+        p = nk.json_decode(payload) or {}
+      end
+      local new_name = nickname_sanitize(p.username or p.nickname or "")
+      local valid, verr = nickname_is_valid(new_name)
+      if not valid then
+        return nk.json_encode({ ok = false, err = verr or "bad_username" })
+      end
+
+      local current = read_current_username(user_id)
+      if string.lower(current) == string.lower(new_name) then
+        return nk.json_encode({ ok = false, err = "same_username" })
+      end
+
+      local gold_cost_cfg = math.max(0, math.floor(tonumber(CFG.NICKNAME_CHANGE_GOLD_COST) or 20000))
+      local max_retries = 5
+      for attempt = 1, max_retries do
+        local progress, version = read_pve_progress(user_id)
+        local changes = math.max(0, math.floor(tonumber(progress.nickname_changes) or 0))
+        local cost = changes <= 0 and 0 or gold_cost_cfg
+        local gold = math.max(0, tonumber(progress.gold) or 0)
+        if cost > 0 and gold < cost then
+          return nk.json_encode({ ok = false, err = "not_enough_gold", need = cost, gold = gold })
+        end
+
+        local upd_ok, upd_err = pcall(function()
+          nk.account_update_id(user_id, nil, new_name, nil, nil, nil, nil, nil)
+        end)
+        if not upd_ok then
+          local err_text = string.lower(tostring(upd_err or ""))
+          if string.find(err_text, "unique", 1, true) ~= nil
+              or string.find(err_text, "already", 1, true) ~= nil
+              or string.find(err_text, "exist", 1, true) ~= nil
+              or string.find(err_text, "taken", 1, true) ~= nil
+              or string.find(err_text, "username", 1, true) ~= nil then
+            return nk.json_encode({ ok = false, err = "username_taken" })
+          end
+          nk.logger_error("duel_nickname_change account_update_id: " .. tostring(upd_err))
+          return nk.json_encode({ ok = false, err = "server_error" })
+        end
+
+        if cost > 0 then
+          progress.gold = gold - cost
+        end
+        progress.nickname_changes = changes + 1
+
+        local write_ok, write_err = pcall(function()
+          write_pve_progress(user_id, progress, version)
+        end)
+        if write_ok then
+          local resources = build_resource_payload(progress, user_id)
+          return nk.json_encode({
+            ok = true,
+            username = new_name,
+            nickname_changes = progress.nickname_changes,
+            next_change_gold_cost = gold_cost_cfg,
+            gold_spent = cost,
+            resources = resources,
+            progression = build_progression_payload_auto(progress, user_id),
+          })
+        end
+
+        pcall(function()
+          if current ~= nil and current ~= "" then
+            nk.account_update_id(user_id, nil, current, nil, nil, nil, nil, nil)
+          end
+        end)
+
+        local err_text = tostring(write_err)
+        if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
+          error(write_err)
+        end
+      end
+      return nk.json_encode({ ok = false, err = "retry_exhausted" })
+    end)
+    if not ok then
+      nk.logger_error("duel_nickname_change: " .. tostring(result))
+      return nk.json_encode({ ok = false, err = "server_error" })
+    end
+    return result
+  end
+
   return M
 end

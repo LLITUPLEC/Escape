@@ -2924,6 +2924,7 @@ local function read_pve_progress(user_id)
       key_items = empty_key_items(),
       energy = math.min(energy_max, math.max(0, tonumber(CFG.PVE_ENERGY_REGEN_CAP) or 100)),
       energy_updated_at = now,
+      nickname_changes = 0,
       mine = {
         current_difficulty = CFG.MINE_DIFFICULTY_DEFAULT,
         selected_floor = 1,
@@ -2957,6 +2958,7 @@ local function read_pve_progress(user_id)
     -- If missing, start from full energy instead of 0.
     energy = CFG.clamp_int(initial_energy, 0, energy_max),
     energy_updated_at = math.floor(tonumber(val.energy_updated_at) or now),
+    nickname_changes = math.max(0, math.floor(tonumber(val.nickname_changes) or 0)),
     mine = type(val.mine) == "table" and val.mine or {},
   }
   progress.mine.current_difficulty = normalize_mine_difficulty(progress.mine.current_difficulty)
@@ -2997,6 +2999,7 @@ local function write_pve_progress(user_id, progress, version)
       key_items = progress.key_items,
       energy = progress.energy,
       energy_updated_at = progress.energy_updated_at,
+      nickname_changes = math.max(0, math.floor(tonumber(progress.nickname_changes) or 0)),
       mine = progress.mine,
       updated_at = os.time(),
     },
@@ -5202,6 +5205,8 @@ nk.register_rpc(EconomyRpc.duel_player_resources_get, "duel_player_resources_get
 nk.register_rpc(EconomyRpc.duel_player_resources_spend, "duel_player_resources_spend")
 nk.register_rpc(EconomyRpc.duel_pve_energy_buy, "duel_pve_energy_buy")
 nk.register_rpc(EconomyRpc.duel_workshop_craft_rush, "duel_workshop_craft_rush")
+nk.register_rpc(EconomyRpc.duel_nickname_status_get, "duel_nickname_status_get")
+nk.register_rpc(EconomyRpc.duel_nickname_change, "duel_nickname_change")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
 nk.register_rpc(duel_match3_server_aura_get, "duel_match3_server_aura_get")
 nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")

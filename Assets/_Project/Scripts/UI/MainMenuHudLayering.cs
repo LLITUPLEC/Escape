@@ -12,6 +12,7 @@ namespace Project.UI
         {
             "SettingsButton",
             "MineButton",
+            UiSteamGlowFx.FxRootName,
             "RatingButton",
         };
 
