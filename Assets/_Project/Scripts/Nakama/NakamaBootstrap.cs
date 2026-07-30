@@ -61,6 +61,8 @@ namespace Project.Nakama
         private const string PrefUseEmailSession = "nakama.use_email_session";
         private const string PrefAuthToken = "nakama.session.auth_token";
         private const string PrefRefreshToken = "nakama.session.refresh_token";
+        /// <summary>Локально сохранённый пароль (Base64) для silent re-auth после expiry JWT/refresh. Чистится только Logout/Wipe.</summary>
+        private const string PrefSavedEmailPassword = "nakama.session.email_password";
         public const string PrefKnownLinkedEmail = "nakama.ui.known_linked_email";
         /// <summary>После удаления аккаунта / гость без email: при запуске обязателен ввод e-mail/пароля.</summary>
         public const string PrefForceEmailSetup = "nakama.force_email_setup";
@@ -346,7 +348,7 @@ namespace Project.Nakama
             await MainThreadDispatcher.RunAsync(() =>
             {
                 PersistEmailSessionSync(Session);
-                PlayerPrefs.SetString(PrefKnownLinkedEmail, email ?? "");
+                PersistEmailCredentialsSync(email, password);
                 PlayerPrefs.DeleteKey(PrefForceEmailSetup);
                 PlayerPrefs.Save();
             }).ConfigureAwait(false);
@@ -381,10 +383,13 @@ namespace Project.Nakama
             }
         }
 
-        /// <summary>Сброс только локально сохранённой сессии по e-mail. В консоли Nakama привязка почты к user_id не удаляется.</summary>
+        /// <summary>
+        /// Сброс локально сохранённого входа по e-mail (токены + почта/пароль).
+        /// В консоли Nakama привязка почты к user_id не удаляется.
+        /// </summary>
         public async Task ClearEmailPersistenceAndReconnectAsync(CancellationToken ct)
         {
-            await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+            await MainThreadDispatcher.RunAsync(ClearAllEmailPersistenceSync).ConfigureAwait(false);
             Session = null;
 
             if (Socket != null)
@@ -473,13 +478,21 @@ namespace Project.Nakama
         }
 
         /// <summary>
-        /// Гейт регистрации: после wipe (флаг) или если у текущего аккаунта на сервере нет email.
-        /// Повторный вход с тем же DeviceID без привязки email снова покажет окно — без нового аккаунта.
+        /// Гейт регистрации: после wipe (флаг) или если на устройстве ещё не было успешного email-setup
+        /// и у текущего аккаунта нет email.
         /// </summary>
         private async Task MaybeShowEmailSetupGateAsync(CancellationToken ct)
         {
-            var force = await MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0)
-                .ConfigureAwait(false);
+            var (force, hasSavedLogin) = await MainThreadDispatcher.RunAsync(() =>
+                (PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0,
+                    HasSavedEmailCredentialsSync())).ConfigureAwait(false);
+
+            // Полные credentials на диске — форма не нужна (ResolveSession сделает silent re-auth).
+            if (!force && hasSavedLogin)
+            {
+                AuthSetupGate.HideBlockingOverlayIfAny();
+                return;
+            }
 
             var hasEmail = false;
             try
@@ -521,6 +534,8 @@ namespace Project.Nakama
                 return;
             }
 
+            // Известный email без пароля (старые установки): один раз покажем форму, чтобы сохранить пароль.
+            // Если force — всегда показываем.
             await AuthSetupGate.ShowAndWaitAsync(this, ct).ConfigureAwait(true);
         }
 
@@ -546,8 +561,7 @@ namespace Project.Nakama
 
         private static void ClearAllLocalAuthPrefsSync()
         {
-            ClearEmailSessionPrefsSync();
-            PlayerPrefs.DeleteKey(PrefKnownLinkedEmail);
+            ClearAllEmailPersistenceSync();
             PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
             // Локальные claimed/stats достижений иначе переживают wipe и «горят» после нового аккаунта.
             AchievementProgressStorage.ClearAllLocalProgress();
@@ -779,18 +793,18 @@ namespace Project.Nakama
                     {
                         if (config != null && config.verboseLogging)
                             Debug.LogWarning($"[Nakama] Не удалось обновить сессию: {e.Message}");
-                        await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                         Session = null;
                     }
                 }
                 else
                 {
-                    // Refresh протух/отсутствует — email-токены больше не используем.
+                    // Refresh протух/отсутствует — JWT больше не используем (credentials оставляем для silent re-auth).
                     if (!string.IsNullOrEmpty(Session.RefreshToken) ||
                         await MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0)
                             .ConfigureAwait(false))
                     {
-                        await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                     }
                     Session = null;
                 }
@@ -816,8 +830,8 @@ namespace Project.Nakama
                     if (!string.IsNullOrEmpty(restored.RefreshToken) &&
                         !restored.HasRefreshExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
                         return restored;
-                    // Refresh уже мёртв: не отдаём сессию в AutoRefresh — уйдём на device.
-                    await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                    // Refresh уже мёртв: не отдаём сессию в AutoRefresh.
+                    await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                 }
                 else if (restored != null && !string.IsNullOrEmpty(restored.RefreshToken) &&
                          !restored.HasRefreshExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
@@ -832,29 +846,38 @@ namespace Project.Nakama
                     {
                         if (config != null && config.verboseLogging)
                             Debug.LogWarning($"[Nakama] Не удалось восстановить сессию по refresh: {e.Message}");
-                        await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                     }
                 }
                 else
                 {
-                    // И auth, и refresh плохие — чистим, дальше device.
-                    await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+                    // И auth, и refresh плохие — чистим только токены, credentials оставляем.
+                    await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                 }
             }
 
+            // JWT/refresh протухли — silent re-auth по сохранённым e-mail/паролю (пока не Logout/Wipe).
+            var emailSession = await TryAuthenticateWithSavedEmailAsync(ct).ConfigureAwait(false);
+            if (emailSession != null)
+                return emailSession;
+
             var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
             var deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, ct).ConfigureAwait(false);
-            // Device, привязанный через LinkDevice, вернёт тот же user_id; сохраняем свежие токены.
-            await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(deviceSession)).ConfigureAwait(false);
+            // Device, привязанный через LinkDevice, вернёт тот же user_id; сохраняем свежие токены,
+            // только если на устройстве уже был сохранённый email-вход (не помечаем чистого гостя).
+            var keepEmailMode = await MainThreadDispatcher.RunAsync(HasSavedEmailCredentialsSync).ConfigureAwait(false);
+            if (keepEmailMode)
+                await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(deviceSession)).ConfigureAwait(false);
             return deviceSession;
         }
 
         /// <summary>
-        /// После сбоя AutoRefresh («Refresh token invalid») — сброс prefs и переподключение через device.
+        /// После сбоя AutoRefresh («Refresh token invalid») — сброс JWT и переподключение
+        /// (сначала silent email, иначе device).
         /// </summary>
         public async Task RecoverSessionAfterRefreshFailureAsync(CancellationToken ct)
         {
-            await MainThreadDispatcher.RunAsync(ClearEmailSessionPrefsSync).ConfigureAwait(false);
+            await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
             Session = null;
             if (Socket != null)
             {
@@ -1066,12 +1089,100 @@ namespace Project.Nakama
             PlayerPrefs.Save();
         }
 
-        private static void ClearEmailSessionPrefsSync()
+        private static void PersistEmailCredentialsSync(string email, string password)
+        {
+            PlayerPrefs.SetString(PrefKnownLinkedEmail, email ?? "");
+            if (!string.IsNullOrEmpty(password))
+                PlayerPrefs.SetString(PrefSavedEmailPassword, EncodeStoredSecret(password));
+            PlayerPrefs.Save();
+        }
+
+        private static bool HasSavedEmailCredentialsSync()
+        {
+            return !string.IsNullOrWhiteSpace(PlayerPrefs.GetString(PrefKnownLinkedEmail, ""))
+                   && !string.IsNullOrEmpty(PlayerPrefs.GetString(PrefSavedEmailPassword, ""));
+        }
+
+        private static bool TryGetSavedEmailCredentialsSync(out string email, out string password)
+        {
+            email = PlayerPrefs.GetString(PrefKnownLinkedEmail, "");
+            password = DecodeStoredSecret(PlayerPrefs.GetString(PrefSavedEmailPassword, ""));
+            return !string.IsNullOrWhiteSpace(email) && !string.IsNullOrEmpty(password);
+        }
+
+        private async Task<ISession> TryAuthenticateWithSavedEmailAsync(CancellationToken ct)
+        {
+            var (email, password) = await MainThreadDispatcher.RunAsync(() =>
+            {
+                if (!TryGetSavedEmailCredentialsSync(out var em, out var pw))
+                    return (null, null);
+                return (em, pw);
+            }).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
+                return null;
+
+            try
+            {
+                var session = await Client
+                    .AuthenticateEmailAsync(email, password, username: null, create: false, vars: null, canceller: ct)
+                    .ConfigureAwait(false);
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    PersistEmailSessionSync(session);
+                    PersistEmailCredentialsSync(email, password);
+                }).ConfigureAwait(false);
+                // LinkDevice читает поле Session.
+                Session = session;
+                await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
+                if (config != null && config.verboseLogging)
+                    Debug.Log("[Nakama] Silent re-auth по сохранённому e-mail.");
+                return session;
+            }
+            catch (Exception e)
+            {
+                if (config != null && config.verboseLogging)
+                    Debug.LogWarning("[Nakama] Silent email re-auth не удался: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>Только JWT/refresh. E-mail и пароль не трогаем — нужны для silent re-auth.</summary>
+        private static void ClearEmailTokenPrefsSync()
         {
             PlayerPrefs.DeleteKey(PrefUseEmailSession);
             PlayerPrefs.DeleteKey(PrefAuthToken);
             PlayerPrefs.DeleteKey(PrefRefreshToken);
             PlayerPrefs.Save();
+        }
+
+        /// <summary>Полный сброс локального email-входа (Logout / Wipe).</summary>
+        private static void ClearAllEmailPersistenceSync()
+        {
+            ClearEmailTokenPrefsSync();
+            PlayerPrefs.DeleteKey(PrefKnownLinkedEmail);
+            PlayerPrefs.DeleteKey(PrefSavedEmailPassword);
+            PlayerPrefs.Save();
+        }
+
+        private static string EncodeStoredSecret(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return "";
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
+        }
+
+        private static string DecodeStoredSecret(string encoded)
+        {
+            if (string.IsNullOrEmpty(encoded)) return "";
+            try
+            {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+            }
+            catch
+            {
+                // На случай старых/битых значений — не используем.
+                return "";
+            }
         }
     }
 }

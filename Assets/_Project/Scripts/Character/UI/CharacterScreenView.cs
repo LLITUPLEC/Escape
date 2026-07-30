@@ -65,7 +65,8 @@ namespace Project.Character.UI
             if (damageText != null) damageText.text = damage.ToString();
             if (armorText != null) armorText.text = armor.ToString();
             if (healText != null) healText.text = healing.ToString();
-            if (critText != null) critText.text = Mathf.RoundToInt(Mathf.Clamp01(critChance01) * 100f) + "%";
+            if (critText != null)
+                critText.text = (Mathf.Clamp01(critChance01) * 100f).ToString("0.00") + "%";
         }
 
         public void SetProfileLoadError(string err)

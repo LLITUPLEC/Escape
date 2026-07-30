@@ -4,7 +4,7 @@
   "description": "Временное усиление для всех PvE-боёв match3 (шахта).",
   "duration_hours": 3,
   "all_stats_pct": 30,
-  "crit_pct": 0,
+  "crit_pct": 15,
   "hp_pct": 0,
   "damage_pct": 0,
   "armor_pct": 0,

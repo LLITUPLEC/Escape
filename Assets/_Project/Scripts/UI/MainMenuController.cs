@@ -94,7 +94,9 @@ namespace Project.UI
         private Button _serverAuraButton;
         private ServerAuraButtonView _serverAuraButtonView;
         private GameObject _serverAuraModalRoot;
-        private Text _serverAuraModalBodyText;
+        private Text _serverAuraModalHeaderText;
+        private RectTransform _serverAuraModalStatsRoot;
+        private Text _serverAuraModalFooterText;
         private ServerAuraGetRpcResponse _serverAuraLast;
 
         private void Awake()
@@ -658,20 +660,50 @@ namespace Project.UI
             titleTx.color = new Color(0.95f, 0.88f, 0.65f);
             titleTx.text = "Аномалия сервера";
 
-            var bodyGo = new GameObject("Body", typeof(RectTransform), typeof(Text));
-            var bodyRt = bodyGo.GetComponent<RectTransform>();
-            bodyRt.SetParent(pr, false);
-            bodyRt.anchorMin = new Vector2(0f, 0.14f);
-            bodyRt.anchorMax = new Vector2(1f, 0.84f);
-            bodyRt.offsetMin = new Vector2(20f, 8f);
-            bodyRt.offsetMax = new Vector2(-20f, -8f);
-            _serverAuraModalBodyText = bodyGo.GetComponent<Text>();
-            _serverAuraModalBodyText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _serverAuraModalBodyText.fontSize = 35;
-            _serverAuraModalBodyText.alignment = TextAnchor.UpperLeft;
-            _serverAuraModalBodyText.color = new Color(0.92f, 0.9f, 0.86f);
-            _serverAuraModalBodyText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _serverAuraModalBodyText.verticalOverflow = VerticalWrapMode.Overflow;
+            var headerGo = new GameObject("Header", typeof(RectTransform), typeof(Text));
+            var headerRt = headerGo.GetComponent<RectTransform>();
+            headerRt.SetParent(pr, false);
+            headerRt.anchorMin = new Vector2(0f, 0.62f);
+            headerRt.anchorMax = new Vector2(1f, 0.84f);
+            headerRt.offsetMin = new Vector2(20f, 0f);
+            headerRt.offsetMax = new Vector2(-20f, -4f);
+            _serverAuraModalHeaderText = headerGo.GetComponent<Text>();
+            _serverAuraModalHeaderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _serverAuraModalHeaderText.fontSize = 30;
+            _serverAuraModalHeaderText.alignment = TextAnchor.UpperLeft;
+            _serverAuraModalHeaderText.color = new Color(0.92f, 0.9f, 0.86f);
+            _serverAuraModalHeaderText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _serverAuraModalHeaderText.verticalOverflow = VerticalWrapMode.Overflow;
+
+            var bodyGo = new GameObject("Body", typeof(RectTransform));
+            _serverAuraModalStatsRoot = bodyGo.GetComponent<RectTransform>();
+            _serverAuraModalStatsRoot.SetParent(pr, false);
+            _serverAuraModalStatsRoot.anchorMin = new Vector2(0f, 0.22f);
+            _serverAuraModalStatsRoot.anchorMax = new Vector2(1f, 0.62f);
+            _serverAuraModalStatsRoot.offsetMin = new Vector2(20f, 4f);
+            _serverAuraModalStatsRoot.offsetMax = new Vector2(-20f, -4f);
+            var statsLayout = bodyGo.AddComponent<VerticalLayoutGroup>();
+            statsLayout.childAlignment = TextAnchor.UpperCenter;
+            statsLayout.childControlHeight = true;
+            statsLayout.childControlWidth = true;
+            statsLayout.childForceExpandHeight = false;
+            statsLayout.childForceExpandWidth = true;
+            statsLayout.spacing = 2f;
+
+            var footerGo = new GameObject("Footer", typeof(RectTransform), typeof(Text));
+            var footerRt = footerGo.GetComponent<RectTransform>();
+            footerRt.SetParent(pr, false);
+            footerRt.anchorMin = new Vector2(0f, 0.14f);
+            footerRt.anchorMax = new Vector2(1f, 0.22f);
+            footerRt.offsetMin = new Vector2(20f, 0f);
+            footerRt.offsetMax = new Vector2(-20f, 0f);
+            _serverAuraModalFooterText = footerGo.GetComponent<Text>();
+            _serverAuraModalFooterText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _serverAuraModalFooterText.fontSize = 26;
+            _serverAuraModalFooterText.alignment = TextAnchor.UpperLeft;
+            _serverAuraModalFooterText.color = new Color(0.78f, 0.76f, 0.72f);
+            _serverAuraModalFooterText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _serverAuraModalFooterText.verticalOverflow = VerticalWrapMode.Overflow;
 
             var closeGo = new GameObject("CloseButton", typeof(RectTransform), typeof(Image), typeof(Button));
             var cr = closeGo.GetComponent<RectTransform>();
@@ -706,8 +738,7 @@ namespace Project.UI
         private void ShowServerAuraModal()
         {
             EnsureServerAuraModal();
-            if (_serverAuraModalBodyText != null)
-                _serverAuraModalBodyText.text = FormatServerAuraModalText(_serverAuraLast);
+            PopulateServerAuraModal(_serverAuraLast);
             _serverAuraModalRoot?.SetActive(true);
         }
 
@@ -717,45 +748,102 @@ namespace Project.UI
                 _serverAuraModalRoot.SetActive(false);
         }
 
-        private static string FormatServerAuraModalText(ServerAuraGetRpcResponse r)
+        private void PopulateServerAuraModal(ServerAuraGetRpcResponse r)
         {
-            if (r == null || !r.ok)
-                return "Не удалось загрузить данные аномалии. Проверьте подключение.";
-            if (!r.active)
-                return "Сейчас нет активной серверной аномалии для PvE match3.";
+            if (_serverAuraModalHeaderText == null || _serverAuraModalStatsRoot == null || _serverAuraModalFooterText == null)
+                return;
 
-            var sb = new System.Text.StringBuilder();
+            for (var i = _serverAuraModalStatsRoot.childCount - 1; i >= 0; i--)
+                Destroy(_serverAuraModalStatsRoot.GetChild(i).gameObject);
+
+            if (r == null || !r.ok)
+            {
+                _serverAuraModalHeaderText.text = "Не удалось загрузить данные аномалии. Проверьте подключение.";
+                _serverAuraModalFooterText.text = "";
+                return;
+            }
+
+            if (!r.active)
+            {
+                _serverAuraModalHeaderText.text = "Сейчас нет активной серверной аномалии для PvE match3.";
+                _serverAuraModalFooterText.text = "";
+                return;
+            }
+
+            var header = new System.Text.StringBuilder();
             if (!string.IsNullOrWhiteSpace(r.title))
-                sb.AppendLine(r.title.Trim());
+                header.AppendLine(r.title.Trim());
             if (!string.IsNullOrWhiteSpace(r.description))
-                sb.AppendLine(r.description.Trim());
-            sb.AppendLine();
+                header.AppendLine(r.description.Trim());
+            header.AppendLine();
             if (r.endsAtUnix > 0)
             {
                 var dto = DateTimeOffset.FromUnixTimeSeconds(r.endsAtUnix).ToLocalTime();
-                sb.AppendLine("До: " + dto.ToString("g", CultureInfo.CurrentCulture));
+                header.AppendLine("До: " + dto.ToString("g", CultureInfo.CurrentCulture));
             }
             else if (r.durationHours > 0.5f)
-                sb.AppendLine($"Длительность (в конфиге): ~{r.durationHours:0.#} ч");
+                header.AppendLine($"Длительность (в конфиге): ~{r.durationHours:0.#} ч");
 
-            void Line(string label, float v, string suffix = "%")
-            {
-                if (Mathf.Abs(v) < 0.0001f) return;
-                sb.AppendLine($"{label}: {(v > 0 ? "+" : "")}{v:0.#}{suffix}");
-            }
+            _serverAuraModalHeaderText.text = header.ToString().TrimEnd();
 
-            Line("Все статы (кроме крита)", r.allStatsPct);
-            Line("Крит", r.critPct);
-            Line("Здоровье", r.hpPct);
-            Line("Урон", r.damagePct);
-            Line("Броня", r.armorPct);
-            Line("Лечение", r.healingPct);
-            Line("Опыт", r.xpBonusPct);
-            Line("Таймер респавна монстров (+ ускоряет, − замедляет)", r.mineRespawnWaitPct);
+            AddServerAuraStatRow("Все статы (кроме крита)", r.allStatsPct);
+            AddServerAuraStatRow("Крит", r.critPct);
+            AddServerAuraStatRow("Здоровье", r.hpPct);
+            AddServerAuraStatRow("Урон", r.damagePct);
+            AddServerAuraStatRow("Броня", r.armorPct);
+            AddServerAuraStatRow("Лечение", r.healingPct);
+            AddServerAuraStatRow("Опыт", r.xpBonusPct);
+            AddServerAuraStatRow("Таймер респавна монстров", r.mineRespawnWaitPct);
 
-            sb.AppendLine();
-            sb.AppendLine("Действует в боях match3 PvE (шахта) на сервере.");
-            return sb.ToString().TrimEnd();
+            _serverAuraModalFooterText.text = "Действует в боях match3 PvE (шахта) на сервере.";
+        }
+
+        private void AddServerAuraStatRow(string label, float value)
+        {
+            if (_serverAuraModalStatsRoot == null) return;
+            if (Mathf.Abs(value) < 0.0001f) return;
+
+            var rowGo = new GameObject("Row_" + label, typeof(RectTransform));
+            var rowRt = rowGo.GetComponent<RectTransform>();
+            rowRt.SetParent(_serverAuraModalStatsRoot, false);
+            var rowLayout = rowGo.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.childAlignment = TextAnchor.MiddleCenter;
+            rowLayout.childControlHeight = true;
+            rowLayout.childControlWidth = true;
+            rowLayout.childForceExpandHeight = true;
+            rowLayout.childForceExpandWidth = true;
+            rowLayout.spacing = 8f;
+            var le = rowGo.AddComponent<LayoutElement>();
+            le.minHeight = 34f;
+            le.preferredHeight = 34f;
+
+            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            labelGo.transform.SetParent(rowRt, false);
+            var labelTx = labelGo.GetComponent<Text>();
+            labelTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            labelTx.fontSize = 28;
+            labelTx.alignment = TextAnchor.MiddleLeft;
+            labelTx.color = new Color(0.92f, 0.9f, 0.86f);
+            labelTx.text = label;
+            labelTx.horizontalOverflow = HorizontalWrapMode.Wrap;
+            labelTx.verticalOverflow = VerticalWrapMode.Truncate;
+            var labelLe = labelGo.AddComponent<LayoutElement>();
+            labelLe.flexibleWidth = 1.6f;
+
+            var valueGo = new GameObject("Value", typeof(RectTransform), typeof(Text));
+            valueGo.transform.SetParent(rowRt, false);
+            var valueTx = valueGo.GetComponent<Text>();
+            valueTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            valueTx.fontSize = 28;
+            valueTx.alignment = TextAnchor.MiddleRight;
+            valueTx.color = value > 0f
+                ? new Color(0.49f, 1f, 0.49f, 1f)   // зелёный
+                : new Color(1f, 0.55f, 0.28f, 1f);  // красно-оранжевый
+            var sign = value > 0f ? "+" : "";
+            valueTx.text = $"{sign}{value:0.#}%";
+            var valueLe = valueGo.AddComponent<LayoutElement>();
+            valueLe.flexibleWidth = 0.7f;
+            valueLe.minWidth = 90f;
         }
 
         private async Task ServerAuraLoopAsync(CancellationToken ct)

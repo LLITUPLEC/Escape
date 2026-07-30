@@ -1602,6 +1602,8 @@ local function aura_mine_respawn_duration_seconds(base_seconds, aura)
   return math.max(10, math.floor(b * mult + 0.5))
 end
 
+--- crit_pct: аддитивные пункты шанса крита (15 → +0.15 к base_crit, в UI «+15%»).
+--- Остальные *_pct — множители: 20 → ×1.20.
 local function aura_apply_to_pve_player_stats(stats, aura)
   if stats == nil or aura == nil then return end
   local function pct_mul(p)
@@ -1613,7 +1615,7 @@ local function aura_apply_to_pve_player_stats(stats, aura)
   local m_dmg = all_ex_crit * pct_mul(aura.damage_pct)
   local m_arm = all_ex_crit * pct_mul(aura.armor_pct)
   local m_heal = all_ex_crit * pct_mul(aura.healing_pct)
-  local m_crit = pct_mul(aura.crit_pct)
+  local crit_add = (tonumber(aura.crit_pct) or 0) / 100
 
   local max_hp = math.max(1, math.floor((tonumber(stats.max_hp) or CFG.MAX_HP) * m_hp + 0.5))
   local hp = math.floor((tonumber(stats.hp) or max_hp) * m_hp + 0.5)
@@ -1622,7 +1624,7 @@ local function aura_apply_to_pve_player_stats(stats, aura)
   stats.base_damage = math.max(0, math.floor((tonumber(stats.base_damage) or 0) * m_dmg + 0.5))
   stats.base_armor = math.max(0, math.floor((tonumber(stats.base_armor) or 0) * m_arm + 0.5))
   stats.base_heal = math.floor((tonumber(stats.base_heal) or 0) * m_heal + 0.5)
-  stats.base_crit = math.max(0, (tonumber(stats.base_crit) or 0) * m_crit)
+  stats.base_crit = math.max(0, math.min(1, (tonumber(stats.base_crit) or 0) + crit_add))
   stats.initial_hp = stats.max_hp
 end
 

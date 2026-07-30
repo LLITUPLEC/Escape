@@ -2762,7 +2762,7 @@ namespace Project.Match3
                 var dmg = Mathf.Max(0, _myStats.baseDamage) + (_myStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _myStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats);
                 var crit = Mathf.Max(0f, _myStats.baseCrit) + (_myStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
-                _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
+                _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.Clamp01(crit) * 100f);
                 _myPanel.UpdateBuffState(GetShieldStacks(_myStats), Mathf.Max(_myStats.shieldT1, Mathf.Max(_myStats.shieldT2, _myStats.shieldT3)));
             }
 
@@ -2771,7 +2771,7 @@ namespace Project.Match3
                 var dmg = Mathf.Max(0, _opStats.baseDamage) + (_opStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _opStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats);
                 var crit = Mathf.Max(0f, _opStats.baseCrit) + (_opStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
-                _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.RoundToInt(Mathf.Clamp01(crit) * 100f));
+                _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.Clamp01(crit) * 100f);
                 _opPanel.UpdateBuffState(GetShieldStacks(_opStats), Mathf.Max(_opStats.shieldT1, Mathf.Max(_opStats.shieldT2, _opStats.shieldT3)));
             }
         }

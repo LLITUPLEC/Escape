@@ -91,9 +91,12 @@ namespace Project.UI
             var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
             var panelRt = panel.GetComponent<RectTransform>();
             panelRt.SetParent(root.transform, false);
-            panelRt.anchorMin = new Vector2(0.5f, 0.5f);
-            panelRt.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(540f, 520f);
+            // middle-stretch, left/right 50, height 800
+            panelRt.anchorMin = new Vector2(0f, 0.5f);
+            panelRt.anchorMax = new Vector2(1f, 0.5f);
+            panelRt.pivot = new Vector2(0.5f, 0.5f);
+            panelRt.anchoredPosition = Vector2.zero;
+            panelRt.sizeDelta = new Vector2(-100f, 800f); // left/right 50 → width = parent - 100
             panel.GetComponent<Image>().color = new Color(0.12f, 0.14f, 0.2f, 1f);
             var v = panel.GetComponent<VerticalLayoutGroup>();
             v.padding = new RectOffset(24, 24, 24, 24);
@@ -102,13 +105,13 @@ namespace Project.UI
             v.childControlWidth = true;
             v.childForceExpandWidth = true;
 
-            NewText(panel.transform, "Title", "Сохранение прогресса", 26, FontStyle.Bold)
+            NewText(panel.transform, "Title", "Сохранение прогресса", 40, FontStyle.Bold)
                 .alignment = TextAnchor.MiddleCenter;
             NewText(panel.transform, "Hint",
                 "Укажите e-mail и пароль.\n" +
                 "• Новый аккаунт — привяжем к этому устройству.\n" +
                 "• Уже играли на другом телефоне — войдёте и восстановите прогресс.",
-                16, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
+                30, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
 
             var email = CreateInput(panel.transform, "Email", "E-mail", false);
             var pass = CreateInput(panel.transform, "Pass", "Пароль (мин. 8)", true);
@@ -175,9 +178,27 @@ namespace Project.UI
         {
             var btnGo = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             btnGo.transform.SetParent(parent, false);
-            btnGo.GetComponent<LayoutElement>().minHeight = 46f;
+            var le = btnGo.GetComponent<LayoutElement>();
+            le.preferredHeight = 80f;
+            le.minHeight = 80f;
             btnGo.GetComponent<Image>().color = color;
-            NewText(btnGo.transform, "L", label, 18, FontStyle.Bold).alignment = TextAnchor.MiddleCenter;
+
+            var labelTx = NewText(btnGo.transform, "L", label, 30, FontStyle.Bold);
+            labelTx.alignment = TextAnchor.MiddleCenter;
+            var labelRt = labelTx.GetComponent<RectTransform>();
+            // middle-stretch
+            labelRt.anchorMin = new Vector2(0f, 0.5f);
+            labelRt.anchorMax = new Vector2(1f, 0.5f);
+            labelRt.pivot = new Vector2(0.5f, 0.5f);
+            labelRt.anchoredPosition = Vector2.zero;
+            labelRt.sizeDelta = new Vector2(0f, 80f);
+            var labelLe = labelTx.GetComponent<LayoutElement>();
+            if (labelLe != null)
+            {
+                labelLe.ignoreLayout = true;
+                labelLe.preferredHeight = 80f;
+            }
+
             btnGo.GetComponent<Button>().onClick.AddListener(() => onClick());
         }
 

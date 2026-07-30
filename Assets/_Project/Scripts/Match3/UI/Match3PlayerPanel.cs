@@ -202,12 +202,12 @@ namespace Project.Match3
             avatarLevelText.text = level < 0 ? "—" : Mathf.Max(1, level).ToString();
         }
 
-        public void UpdateCombatStats(int damageBonus, int armor, int healBonus, int critChancePercent)
+        public void UpdateCombatStats(int damageBonus, int armor, int healBonus, float critChancePercent)
         {
             var dmg = Mathf.Max(0, damageBonus);
             var arm = Mathf.Max(0, armor);
             var heal = Mathf.Max(0, healBonus);
-            var crit = Mathf.Max(0, critChancePercent);
+            var crit = Mathf.Max(0f, critChancePercent);
 
             if (combatStatsName != null && combatStatsValue != null)
             {
@@ -222,7 +222,7 @@ namespace Project.Match3
                     $"{dmg}\n" +
                     $"{arm}\n" +
                     $"{heal}\n" +
-                    $"{crit}%";
+                    $"{crit:0.00}%";
             }
             else if (combatStatsName != null)
             {
@@ -231,7 +231,7 @@ namespace Project.Match3
                     $"Урон:   {dmg}\n" +
                     $"Броня:  {arm}\n" +
                     $"Лечение: {heal}\n" +
-                    $"Крит:   {crit}%";
+                    $"Крит:   {crit:0.00}%";
             }
             else return;
 

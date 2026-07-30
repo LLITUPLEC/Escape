@@ -643,10 +643,10 @@ namespace Project.Character.UI
             var title = StatName(statId);
             if (statId == StatId.CritChance)
             {
-                var v = Mathf.RoundToInt(value * 100f);
-                var d = Mathf.RoundToInt(delta * 100f);
-                if (!showDelta) return $"{title} {v}%";
-                return $"{title} {v}%({ColoredSigned(d)}%)";
+                var v = value * 100f;
+                var d = delta * 100f;
+                if (!showDelta) return $"{title} {v:0.00}%";
+                return $"{title} {v:0.00}%({ColoredSignedFloat(d)}%)";
             }
 
             var iv = Mathf.RoundToInt(value);
@@ -660,10 +660,21 @@ namespace Project.Character.UI
             return value >= 0 ? "+" + value : value.ToString();
         }
 
+        private static string SignedFloat(float value)
+        {
+            return value >= 0f ? "+" + value.ToString("0.00") : value.ToString("0.00");
+        }
+
         private static string ColoredSigned(int value)
         {
             var color = value > 0 ? "#7CFF7C" : value < 0 ? "#FF7B7B" : "#D8D8D8";
             return $"<color={color}>{Signed(value)}</color>";
+        }
+
+        private static string ColoredSignedFloat(float value)
+        {
+            var color = value > 0f ? "#7CFF7C" : value < 0f ? "#FF7B7B" : "#D8D8D8";
+            return $"<color={color}>{SignedFloat(value)}</color>";
         }
 
         private static string SlotName(EquipmentSlotId slot)
