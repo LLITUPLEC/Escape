@@ -1225,11 +1225,16 @@ MonoBehaviour:
   modePanelObjectName: ModePanel
   backButtonObjectName: BackButton
   match3StatsCardObjectName: Match3StatsCard
-  iconGreenIngot: {fileID: 21300000, guid: 3f9110e28a7a4c44d80ba02c2b0f0960, type: 3}
-  iconBlueIngot: {fileID: 21300000, guid: 03f729f742b07574cb85b2dbbe47019a, type: 3}
-  iconPurpleIngot: {fileID: 21300000, guid: 7d658a37e9d3c8143945c0cf4a7f5afa, type: 3}
+  iconGreenIngot: {fileID: 21300000, guid: c50b1bcaf89bae749b2037a1340c3a52, type: 3}
+  iconBlueIngot: {fileID: 21300000, guid: f061f40478cb6c146aaa0207f03561e6, type: 3}
+  iconPurpleIngot: {fileID: 21300000, guid: 1f9390c45328ae44cb6b21a35aa460e5, type: 3}
   iconOre: {fileID: 21300000, guid: 4117ca6c4d60e134b93ac2a590e01610, type: 3}
   iconGold: {fileID: 21300000, guid: 252680e895ebebf438871bb0f6e2ba3d, type: 3}
+  iconBetPanelClear: {fileID: 21300000, guid: e957ab7f31a09fc4381239deb609b57d, type: 3}
+  iconBetRow1: {fileID: 21300000, guid: 72f475e1af9b18a479495dbe549408fc, type: 3}
+  iconBetRow2: {fileID: 21300000, guid: 1954e9cbdacf42f4c99be64690c1072a, type: 3}
+  iconBetRow3: {fileID: 21300000, guid: b6be1b68cf541e54a8870ba835bc9bd8, type: 3}
+  betPanelColor: {r: 0.8039216, g: 0.8352941, b: 0.827451, a: 1}
 --- !u!1 &200000797
 GameObject:
   m_ObjectHideFlags: 0

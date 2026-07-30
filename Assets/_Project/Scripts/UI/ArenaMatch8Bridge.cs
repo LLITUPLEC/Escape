@@ -44,6 +44,18 @@ namespace Project.UI
         [SerializeField] private Sprite iconOre;
         [SerializeField] private Sprite iconGold;
 
+        [Header("Arena Bet Modal")]
+        [SerializeField] private Sprite iconBetPanelClear;
+        [SerializeField] private Sprite iconBetRow1;
+        [SerializeField] private Sprite iconBetRow2;
+        [SerializeField] private Sprite iconBetRow3;
+        [SerializeField] private Color betPanelColor = new Color32(0xCD, 0xD5, 0xD3, 0xFF);
+
+        private const string BetPanelClearPath = "Assets/_Project/img/madals/arena_bet/arena_bet_clear.png";
+        private const string BetRow1Path = "Assets/_Project/img/madals/arena_bet/arena_bet_1row.png";
+        private const string BetRow2Path = "Assets/_Project/img/madals/arena_bet/arena_bet_2row.png";
+        private const string BetRow3Path = "Assets/_Project/img/madals/arena_bet/arena_bet_3row.png";
+
         private const string ArenaKindSmith = "smith";
         private const string ArenaKindOre = "ore";
         private const string ArenaKindGold = "gold";
@@ -863,22 +875,36 @@ namespace Project.UI
             var prect = panel.AddComponent<RectTransform>();
             prect.anchorMin = new Vector2(0.5f, 0.5f);
             prect.anchorMax = new Vector2(0.5f, 0.5f);
-            prect.sizeDelta = new Vector2(780f, 560f);
+            prect.pivot = new Vector2(0.5f, 0.5f);
+            prect.anchoredPosition = Vector2.zero;
+            prect.sizeDelta = new Vector2(793f, 1197f);
 
             var panelBg = panel.AddComponent<Image>();
-            panelBg.color = new Color(0.08f, 0.12f, 0.2f, 0.96f);
+            var panelSprite = iconBetPanelClear != null ? iconBetPanelClear : LoadSpriteAsset(BetPanelClearPath);
+            if (panelSprite != null)
+            {
+                panelBg.sprite = panelSprite;
+                panelBg.type = Image.Type.Sliced;
+            }
+            panelBg.color = betPanelColor;
 
             var vl = panel.AddComponent<VerticalLayoutGroup>();
-            vl.padding = new RectOffset(28, 28, 28, 28);
-            vl.spacing = 14f;
+            vl.padding = new RectOffset(85, 105, 240, 50);
+            vl.spacing = 22.24f;
             vl.childAlignment = TextAnchor.UpperCenter;
-            vl.childForceExpandHeight = false;
+            vl.reverseArrangement = false;
+            vl.childControlWidth = true;
+            vl.childControlHeight = true;
+            vl.childScaleWidth = false;
+            vl.childScaleHeight = false;
             vl.childForceExpandWidth = true;
+            vl.childForceExpandHeight = false;
 
             _modalPanel = panel.transform;
             var titleGo = CreateTmp(panel.transform, "Ставка турнира и награда при победе", 26, FontStyles.Bold);
             titleGo.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 44f);
             _modalTitle = titleGo.GetComponent<TMP_Text>();
+            titleGo.SetActive(false);
 
             var closeBtn = CreateButton(panel.transform, "Закрыть", () =>
             {
@@ -896,14 +922,15 @@ namespace Project.UI
             if (_modalPanel == null)
                 return;
 
-            // Remove all bet rows from previous modal state (order-independent).
+            // DestroyImmediate: Destroy() откладывается до конца кадра и ломает индекс спрайтов Row_*.
             for (var i = _modalPanel.childCount - 1; i >= 0; i--)
             {
                 var ch = _modalPanel.GetChild(i);
                 if (ch == null) continue;
                 if (ch == _modalCloseButtonTr) continue;
                 if (ch == _modalTitle?.transform) continue;
-                if (ch.name.StartsWith("Row_", StringComparison.Ordinal)) Destroy(ch.gameObject);
+                if (ch.name.StartsWith("Row_", StringComparison.Ordinal))
+                    DestroyImmediate(ch.gameObject);
             }
 
             var k = string.IsNullOrWhiteSpace(kind) ? ArenaKindSmith : kind.Trim().ToLowerInvariant();
@@ -912,22 +939,47 @@ namespace Project.UI
                     ? "Ставка турнира и награда при победе"
                     : (k == ArenaKindOre ? "Турнир руды: ставка и награда при победе" : "Турнир золота: ставка и награда при победе");
 
+            var rowIndex = 0;
             if (k == ArenaKindOre)
             {
-                MakeFixedBetRow(_modalPanel, "500", "500 руды", "2500 руды", iconOre);
-                MakeFixedBetRow(_modalPanel, "2000", "2000 руды", "10000 руды", iconOre);
+                MakeFixedBetRow(_modalPanel, rowIndex++, "500", "х 500", "2500", iconOre);
+                MakeFixedBetRow(_modalPanel, rowIndex++, "2000", "х 2000", "10000", iconOre);
             }
             else if (k == ArenaKindGold)
             {
-                MakeFixedBetRow(_modalPanel, "600", "600 золота", "3000 золота", iconGold);
-                MakeFixedBetRow(_modalPanel, "2400", "2400 золота", "12000 золота", iconGold);
+                MakeFixedBetRow(_modalPanel, rowIndex++, "600", "х 600", "3000", iconGold);
+                MakeFixedBetRow(_modalPanel, rowIndex++, "2400", "х 2400", "12000", iconGold);
             }
             else
             {
-                MakeBetRow(_modalPanel, "green", "50 зелёных слитков", "300 руды · 300 золота", iconGreenIngot);
-                MakeBetRow(_modalPanel, "blue", "50 синих слитков", "600 руды · 600 золота", iconBlueIngot);
-                MakeBetRow(_modalPanel, "purple", "50 фиолетовых слитков", "1200 руды · 1200 золота", iconPurpleIngot);
+                MakeBetRow(_modalPanel, rowIndex++, "green", "х 50", "300 · 300", iconGreenIngot);
+                MakeBetRow(_modalPanel, rowIndex++, "blue", "х 50", "600 · 600", iconBlueIngot);
+                MakeBetRow(_modalPanel, rowIndex++, "purple", "х 50", "1200 · 1200", iconPurpleIngot);
             }
+        }
+
+        private Sprite GetBetRowBgSprite(int rowIndexZeroBased)
+        {
+            if (rowIndexZeroBased <= 0)
+                return iconBetRow1 != null ? iconBetRow1 : LoadSpriteAsset(BetRow1Path);
+            if (rowIndexZeroBased == 1)
+                return iconBetRow2 != null ? iconBetRow2 : LoadSpriteAsset(BetRow2Path);
+            return iconBetRow3 != null ? iconBetRow3 : LoadSpriteAsset(BetRow3Path);
+        }
+
+        private static Sprite LoadSpriteAsset(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+                return null;
+#if UNITY_EDITOR
+            var byAssetPath = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (byAssetPath != null)
+                return byAssetPath;
+#endif
+            var resourcesPath = assetPath.Replace("Assets/Resources/", string.Empty);
+            if (resourcesPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                resourcesPath = resourcesPath.Substring(0, resourcesPath.Length - 4);
+            return Resources.Load<Sprite>(resourcesPath);
         }
 
         private void MakeFlexibleSpacerRow(Transform parent, string name)
@@ -943,7 +995,7 @@ namespace Project.UI
             le.preferredHeight = 0f;
         }
 
-        private void MakeFixedBetRow(Transform parent, string betTier, string cost, string prize, Sprite icon)
+        private void MakeFixedBetRow(Transform parent, int rowIndex, string betTier, string cost, string prize, Sprite icon)
         {
             var tier = string.IsNullOrWhiteSpace(betTier) ? "500" : betTier.Trim();
             var row = new GameObject("Row_fixed_" + tier);
@@ -951,20 +1003,21 @@ namespace Project.UI
             if (_modalCloseButtonTr != null)
                 row.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
             var rowRt = row.AddComponent<RectTransform>();
-            rowRt.sizeDelta = new Vector2(0f, 150f);
+            rowRt.sizeDelta = new Vector2(0f, 250f);
             var rowLe = row.AddComponent<LayoutElement>();
-            rowLe.minHeight = 150f;
-            rowLe.preferredHeight = 150f;
+            rowLe.minHeight = 240f;
+            rowLe.preferredHeight = 250f;
             rowLe.flexibleHeight = 0f;
 
             var rowHl = row.AddComponent<HorizontalLayoutGroup>();
             rowHl.spacing = 10f;
             rowHl.childAlignment = TextAnchor.MiddleLeft;
-            rowHl.childForceExpandWidth = true;
+            rowHl.childForceExpandWidth = false;
+            rowHl.childForceExpandHeight = false;
             rowHl.padding = new RectOffset(8, 8, 8, 8);
 
             var rowImg = row.AddComponent<Image>();
-            rowImg.color = new Color(0.12f, 0.28f, 0.52f, 0.55f);
+            ApplyBetRowBg(rowImg, rowIndex);
 
             if (icon != null)
             {
@@ -973,10 +1026,10 @@ namespace Project.UI
                 var img = ico.AddComponent<Image>();
                 img.sprite = icon;
                 var irt = ico.GetComponent<RectTransform>();
-                irt.sizeDelta = new Vector2(48f, 48f);
+                irt.sizeDelta = new Vector2(120f, 120f);
                 var le = ico.AddComponent<LayoutElement>();
-                le.preferredWidth = 52f;
-                le.preferredHeight = 52f;
+                le.preferredWidth = 120f;
+                le.preferredHeight = 120f;
             }
 
             var leftCol = new GameObject("CostCol");
@@ -992,6 +1045,8 @@ namespace Project.UI
             var prizeHl = prizeGo.AddComponent<HorizontalLayoutGroup>();
             prizeHl.spacing = 8f;
             prizeHl.childAlignment = TextAnchor.MiddleRight;
+            prizeHl.childForceExpandWidth = false;
+            prizeHl.childForceExpandHeight = false;
 
             if (icon != null)
                 CreateIconImage(prizeGo.transform, icon);
@@ -1072,35 +1127,40 @@ namespace Project.UI
             _toastRoutine = null;
         }
 
-        private void MakeBetRow(Transform parent, string tier, string cost, string prize, Sprite ingotSp)
+        private void MakeBetRow(Transform parent, int rowIndex, string tier, string cost, string prize, Sprite ingotSp)
         {
             var row = new GameObject("Row_" + tier);
             row.transform.SetParent(parent, false);
             if (_modalCloseButtonTr != null)
                 row.transform.SetSiblingIndex(_modalCloseButtonTr.GetSiblingIndex());
             var rowRt = row.AddComponent<RectTransform>();
-            rowRt.sizeDelta = new Vector2(0f, 96f);
+            rowRt.sizeDelta = new Vector2(0f, 250f);
+            var rowLe = row.AddComponent<LayoutElement>();
+            rowLe.minHeight = 240f;
+            rowLe.preferredHeight = 250f;
+            rowLe.flexibleHeight = 0f;
 
             var rowHl = row.AddComponent<HorizontalLayoutGroup>();
             rowHl.spacing = 10f;
             rowHl.childAlignment = TextAnchor.MiddleLeft;
-            rowHl.childForceExpandWidth = true;
+            rowHl.childForceExpandWidth = false;
+            rowHl.childForceExpandHeight = false;
             rowHl.padding = new RectOffset(8, 8, 8, 8);
 
             var rowImg = row.AddComponent<Image>();
-            rowImg.color = new Color(0.12f, 0.28f, 0.52f, 0.55f);
+            ApplyBetRowBg(rowImg, rowIndex);
 
             if (ingotSp != null)
             {
-                var icon = new GameObject("IngotIcon");
+                var icon = new GameObject("ResIcon");
                 icon.transform.SetParent(row.transform, false);
                 var img = icon.AddComponent<Image>();
                 img.sprite = ingotSp;
                 var irt = icon.GetComponent<RectTransform>();
-                irt.sizeDelta = new Vector2(48f, 48f);
+                irt.sizeDelta = new Vector2(120f, 120f);
                 var le = icon.AddComponent<LayoutElement>();
-                le.preferredWidth = 52f;
-                le.preferredHeight = 52f;
+                le.preferredWidth = 120f;
+                le.preferredHeight = 120f;
             }
 
             var leftCol = new GameObject("CostCol");
@@ -1116,14 +1176,16 @@ namespace Project.UI
             var prizeHl = prizeGo.AddComponent<HorizontalLayoutGroup>();
             prizeHl.spacing = 8f;
             prizeHl.childAlignment = TextAnchor.MiddleRight;
+            prizeHl.childForceExpandWidth = false;
+            prizeHl.childForceExpandHeight = false;
 
             if (iconOre != null)
                 CreateIconImage(prizeGo.transform, iconOre);
-            var prizeOreTxt = CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
+            CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
 
             if (iconGold != null)
                 CreateIconImage(prizeGo.transform, iconGold);
-            var prizeGoldTxt = CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
+            CreateTmp(prizeGo.transform, tier == "green" ? "300" : (tier == "blue" ? "600" : "1200"), 22, FontStyles.Bold);
 
             var btn = row.AddComponent<Button>();
             btn.targetGraphic = rowImg;
@@ -1135,6 +1197,23 @@ namespace Project.UI
             });
         }
 
+        private void ApplyBetRowBg(Image rowImg, int rowIndexZeroBased)
+        {
+            if (rowImg == null)
+                return;
+            var sp = GetBetRowBgSprite(rowIndexZeroBased);
+            if (sp != null)
+            {
+                rowImg.sprite = sp;
+                rowImg.type = Image.Type.Sliced;
+                rowImg.color = Color.white;
+            }
+            else
+            {
+                rowImg.color = new Color(0.12f, 0.28f, 0.52f, 0.55f);
+            }
+        }
+
         private static GameObject CreateIconImage(Transform parent, Sprite sp)
         {
             var icon = new GameObject("Ic");
@@ -1142,10 +1221,10 @@ namespace Project.UI
             var img = icon.AddComponent<Image>();
             img.sprite = sp;
             var rt = icon.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(28f, 28f);
+            rt.sizeDelta = new Vector2(120f, 120f);
             var le = icon.AddComponent<LayoutElement>();
-            le.preferredWidth = 30f;
-            le.preferredHeight = 30f;
+            le.preferredWidth = 120f;
+            le.preferredHeight = 120f;
             return icon;
         }
 
