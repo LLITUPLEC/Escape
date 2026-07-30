@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
 using Project.Leaderboard;
-using Project.UI;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -664,7 +663,6 @@ public static class LeaderboardUiPrefabCreator
         var toggle = go.AddComponent<Toggle>();
         toggle.isOn = isOn;
         toggle.transition = Selectable.Transition.ColorTint;
-        go.AddComponent<UiNeonPulseOutline>();
 
         var txt = MakeTmp(go.transform, "Label", label, 15f, FontStyles.Bold);
         StretchFull(txt.rectTransform);

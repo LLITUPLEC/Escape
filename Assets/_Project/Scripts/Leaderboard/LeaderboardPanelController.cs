@@ -310,10 +310,12 @@ namespace Project.Leaderboard
             cg.blocksRaycasts = true;
             cg.interactable = true;
 
+            // Убрать остатки неоновой обводки, если компонент/Outline остались на вкладках.
             var neon = t.GetComponent<UiNeonPulseOutline>();
-            if (neon == null)
-                neon = t.gameObject.AddComponent<UiNeonPulseOutline>();
-            neon.SetHighlight(!muted);
+            if (neon != null)
+                Destroy(neon);
+            foreach (var outline in t.GetComponents<Outline>())
+                Destroy(outline);
         }
 
         private void TryBindOpenButton()

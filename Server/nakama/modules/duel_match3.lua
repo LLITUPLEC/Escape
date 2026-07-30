@@ -4963,7 +4963,10 @@ local function match_loop(context, dispatcher, tick, state, messages)
     end
 
     if m.op_code == CFG.OP_ACTION_REQUEST then
+      -- Arena human×bot matches are mode=pve but must not reject on session_epoch bump
+      -- (reconnect/claim mid-match). Mine PvE rewards still use this guard.
       local stale_pve = state.mode == "pve"
+        and state.arena_mirror == nil
         and state.owner_user_id ~= nil
         and state.owner_user_id ~= ""
         and m.sender.user_id == state.owner_user_id
