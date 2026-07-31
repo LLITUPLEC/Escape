@@ -31,6 +31,7 @@ namespace Project.UI
         [SerializeField] private string match3ArenaGoldButtonName = "match3Arena_Gold";
         [SerializeField] private string queueTextObjectName = "queue";
         [SerializeField] private string duelMatch3SceneName = "DuelMatch3";
+        [SerializeField] private string bettingToggleObjectName = "BettingToggle";
 
         [Header("Queue lock UI (optional names; hides while in queue)")]
         [SerializeField] private string modePanelObjectName = "ModePanel";
@@ -80,6 +81,8 @@ namespace Project.UI
         private TMP_Text _cdText;
         private TMP_Text _headerTemplate;
         private Transform _pairRowTemplate;
+        private Toggle _bettingToggle;
+        private bool _bettingUiEnabled;
         private GameObject _toastRoot;
         private TMP_Text _toastText;
         private Coroutine _toastRoutine;
@@ -216,9 +219,55 @@ namespace Project.UI
             _backButtonGo = FindByName(backButtonObjectName);
             _statsCardGo = FindByName(match3StatsCardObjectName);
             EnsureLeaveQueueButtonBuilt();
+            BindBettingToggle();
 
             EnsureBetModalBuilt();
             EnsureBracketBuilt();
+        }
+
+        private void BindBettingToggle()
+        {
+            if (_bettingToggle != null)
+                _bettingToggle.onValueChanged.RemoveListener(OnBettingToggleChanged);
+
+            _bettingToggle = FindComponentByGameObjectName<Toggle>(bettingToggleObjectName);
+            _bettingUiEnabled = _bettingToggle != null && _bettingToggle.isOn;
+            if (_bettingToggle != null)
+                _bettingToggle.onValueChanged.AddListener(OnBettingToggleChanged);
+        }
+
+        private void OnBettingToggleChanged(bool isOn)
+        {
+            _bettingUiEnabled = isOn;
+            ApplyBettingUiToAllRows();
+        }
+
+        private void ApplyBettingUiToAllRows()
+        {
+            if (_rowsRoot == null) return;
+            var rows = CollectBracketRows(_rowsRoot);
+            for (var i = 0; i < rows.Count; i++)
+                ApplyBettingUiToRow(rows[i]);
+
+            // Also update inactive template so clones inherit correct default visibility.
+            if (_pairRowTemplate != null)
+                ApplyBettingUiToRow(_pairRowTemplate);
+        }
+
+        private void ApplyBettingUiToRow(Transform row)
+        {
+            if (row == null) return;
+            var select = row.GetComponent<PairRowBetSelect>();
+            if (select == null)
+            {
+                // Prefab without component yet — toggle GameObjects by name.
+                var a = row.Find(PairRowBetSelect.BetAName);
+                var b = row.Find(PairRowBetSelect.BetBName);
+                if (a != null) a.gameObject.SetActive(_bettingUiEnabled);
+                if (b != null) b.gameObject.SetActive(_bettingUiEnabled);
+                return;
+            }
+            select.SetBettingUiActive(_bettingUiEnabled);
         }
 
         private static void OnAnyActiveSceneChanged(Scene prev, Scene next)
@@ -230,6 +279,8 @@ namespace Project.UI
         {
             if (_lastPrevSceneNameForArenaUi == duelMatch3SceneName)
                 _suppressFightReloadUntil = Time.realtimeSinceStartup + 8f;
+
+            BindBettingToggle();
 
             if (Match3LaunchContext.ArenaMenuAwaitBracketOverlay)
             {
@@ -265,6 +316,8 @@ namespace Project.UI
                 StopCoroutine(_pollRoutine);
                 _pollRoutine = null;
             }
+            if (_bettingToggle != null)
+                _bettingToggle.onValueChanged.RemoveListener(OnBettingToggleChanged);
         }
 
         private IEnumerator PollLoop()
@@ -1487,6 +1540,7 @@ namespace Project.UI
             }
 
             BindPairRowData(row, pr);
+            ApplyBettingUiToRow(row);
         }
 
         private static string PhaseTitle(string phase)

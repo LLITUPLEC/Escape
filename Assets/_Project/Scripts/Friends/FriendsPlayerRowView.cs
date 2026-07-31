@@ -14,16 +14,22 @@ namespace Project.Friends
         private TMP_Text _nameText;
         private TMP_Text _statusText;
         private Button _removeButton;
+        private Button _acceptButton;
         private Button _actionButton;
+        private Text _removeLabel;
+        private Text _acceptLabel;
         private TMP_FontAsset _font;
 
         private string _userId;
         private string _username;
+        private FriendRelationState _state;
         private Action<FriendsPlayerRowView> _onRemove;
+        private Action<FriendsPlayerRowView> _onAccept;
         private Action<FriendsPlayerRowView> _onAction;
 
         public string UserId => _userId;
         public string Username => _username;
+        public FriendRelationState State => _state;
 
         public static FriendsPlayerRowView Create(Transform parent, TMP_FontAsset font, bool showFriendControls)
         {
@@ -81,8 +87,12 @@ namespace Project.Friends
 
             if (showFriendControls)
             {
-                _removeButton = MakeIconButton("RemoveButton", "-", new Color(0.55f, 0.22f, 0.22f, 1f));
+                // ✗ / ✓ — тот же LegacyRuntime, что StatusIcon в Workshop CreateButton.
+                _removeButton = MakeSymbolButton("RemoveButton", "✗", new Color(0.55f, 0.22f, 0.22f, 1f), out _removeLabel);
                 _removeButton.onClick.AddListener(() => _onRemove?.Invoke(this));
+
+                _acceptButton = MakeSymbolButton("AcceptButton", "✓", new Color(0.22f, 0.52f, 0.28f, 1f), out _acceptLabel);
+                _acceptButton.onClick.AddListener(() => _onAccept?.Invoke(this));
 
                 _actionButton = MakeIconButton("ActionButton", "...", new Color(0.24f, 0.40f, 0.62f, 1f));
                 _actionButton.onClick.AddListener(() => _onAction?.Invoke(this));
@@ -94,6 +104,7 @@ namespace Project.Friends
         public void BindFriend(
             FriendListEntry entry,
             Action<FriendsPlayerRowView> onRemove,
+            Action<FriendsPlayerRowView> onAccept,
             Action<FriendsPlayerRowView> onAction)
         {
             if (entry == null)
@@ -105,7 +116,9 @@ namespace Project.Friends
             gameObject.SetActive(true);
             _userId = entry.UserId;
             _username = entry.Username;
+            _state = entry.State;
             _onRemove = onRemove;
+            _onAccept = onAccept;
             _onAction = onAction;
 
             if (_nameText != null)
@@ -121,8 +134,16 @@ namespace Project.Friends
                     : new Color(0.95f, 0.78f, 0.40f, 1f);
             }
 
+            var incoming = entry.State == FriendRelationState.InviteReceived;
+            if (_removeLabel != null)
+                _removeLabel.text = incoming ? "✗" : "-";
+            if (_acceptLabel != null)
+                _acceptLabel.text = "✓";
+
             if (_removeButton != null)
                 _removeButton.gameObject.SetActive(true);
+            if (_acceptButton != null)
+                _acceptButton.gameObject.SetActive(incoming);
             if (_actionButton != null)
                 _actionButton.gameObject.SetActive(entry.State == FriendRelationState.Mutual);
         }
@@ -185,6 +206,42 @@ namespace Project.Friends
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = Color.white;
             tmp.raycastTarget = false;
+            var lrt = labelGo.GetComponent<RectTransform>();
+            lrt.anchorMin = Vector2.zero;
+            lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMax = Vector2.zero;
+            return btn;
+        }
+
+        /// <summary>Кнопка с символами ✓/✗ через LegacyRuntime.ttf — как StatusIcon в Workshop.</summary>
+        private Button MakeSymbolButton(string name, string label, Color color, out Text labelText)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.transform.SetParent(transform, false);
+            var img = go.GetComponent<Image>();
+            img.sprite = ModalPanelCloseButton.WhiteSprite();
+            img.color = color;
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = 48f;
+            le.preferredHeight = 48f;
+            le.minWidth = 48f;
+            le.minHeight = 48f;
+
+            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            labelGo.transform.SetParent(go.transform, false);
+            labelText = labelGo.GetComponent<Text>();
+            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            labelText.fontSize = 28;
+            labelText.fontStyle = FontStyle.Bold;
+            labelText.text = label;
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.color = Color.white;
+            labelText.raycastTarget = false;
+            labelText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            labelText.verticalOverflow = VerticalWrapMode.Overflow;
             var lrt = labelGo.GetComponent<RectTransform>();
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;

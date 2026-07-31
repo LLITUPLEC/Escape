@@ -10,6 +10,7 @@ namespace Project.Friends
     public static class FriendsService
     {
         private const string RpcOnlineList = "duel_online_list";
+        private const string RpcResolveUsername = "duel_friends_resolve_username";
         private const int FriendsPageLimit = 100;
 
         public static async Task<FriendsListResult> ListFriendsAsync(CancellationToken ct)
@@ -90,6 +91,52 @@ namespace Project.Friends
             }
         }
 
+        /// <summary>Число входящих заявок (Nakama state = InviteReceived).</summary>
+        public static async Task<int> CountIncomingInvitesAsync(CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null)
+                return 0;
+
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+                if (!IsClientReady())
+                    return 0;
+
+                var total = 0;
+                string cursor = null;
+                do
+                {
+                    var page = await NakamaBootstrap.Instance.Client.ListFriendsAsync(
+                            NakamaBootstrap.Instance.Session,
+                            state: (int)FriendRelationState.InviteReceived,
+                            limit: FriendsPageLimit,
+                            cursor: cursor,
+                            canceller: ct)
+                        .ConfigureAwait(false);
+
+                    if (page?.Friends != null)
+                    {
+                        foreach (var _ in page.Friends)
+                            total++;
+                    }
+
+                    cursor = page?.Cursor;
+                } while (!string.IsNullOrEmpty(cursor) && !ct.IsCancellationRequested);
+
+                return total;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] CountIncomingInvites failed: " + e.Message);
+                return 0;
+            }
+        }
+
         public static async Task<FriendsMutationResult> AddFriendByUsernameAsync(string username, CancellationToken ct)
         {
             var name = (username ?? string.Empty).Trim();
@@ -112,6 +159,30 @@ namespace Project.Friends
 
             try
             {
+                var resolved = await ResolveUsernameAsync(name, ct).ConfigureAwait(false);
+                if (resolved.Ok)
+                {
+                    var selfId = NakamaBootstrap.Instance.Session?.UserId;
+                    if (!string.IsNullOrWhiteSpace(selfId)
+                        && string.Equals(selfId.Trim(), resolved.UserId, StringComparison.Ordinal))
+                    {
+                        return FailMutation("cannot_add_self");
+                    }
+
+                    await NakamaBootstrap.Instance.Client.AddFriendsAsync(
+                            NakamaBootstrap.Instance.Session,
+                            ids: new[] { resolved.UserId },
+                            usernames: null,
+                            canceller: ct)
+                        .ConfigureAwait(false);
+
+                    return new FriendsMutationResult { Ok = true };
+                }
+
+                // RPC ещё не на сервере — пробуем точный username (как раньше).
+                if (!IsRpcUnavailable(resolved.Err))
+                    return FailMutation(resolved.Err);
+
                 await NakamaBootstrap.Instance.Client.AddFriendsAsync(
                         NakamaBootstrap.Instance.Session,
                         ids: null,
@@ -128,6 +199,42 @@ namespace Project.Friends
             catch (Exception e)
             {
                 Debug.LogWarning("[Friends] AddFriend failed: " + e.Message);
+                return FailMutation(e.Message);
+            }
+        }
+
+        /// <summary>Принять входящую заявку: повторный AddFriends по user id (Nakama → mutual).</summary>
+        public static async Task<FriendsMutationResult> AcceptFriendAsync(string userId, CancellationToken ct)
+        {
+            var id = (userId ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(id))
+                return FailMutation("empty_target");
+
+            if (NakamaBootstrap.Instance == null)
+                return FailMutation("nakama_not_initialized");
+
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (!IsClientReady())
+                return FailMutation("nakama_not_ready");
+
+            try
+            {
+                await NakamaBootstrap.Instance.Client.AddFriendsAsync(
+                        NakamaBootstrap.Instance.Session,
+                        ids: new[] { id },
+                        usernames: null,
+                        canceller: ct)
+                    .ConfigureAwait(false);
+
+                return new FriendsMutationResult { Ok = true };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] AcceptFriend failed: " + e.Message);
                 return FailMutation(e.Message);
             }
         }
@@ -250,11 +357,51 @@ namespace Project.Friends
                 "empty_payload" => "Пустой ответ сервера",
                 "parse_failed" => "Ошибка ответа сервера",
                 "server_error" => "Ошибка сервера",
+                "user_not_found" => "Игрок не найден",
                 _ => err.Contains("not found", StringComparison.OrdinalIgnoreCase)
                     || err.Contains("User not found", StringComparison.OrdinalIgnoreCase)
+                    || err.Contains("No valid ID or username", StringComparison.OrdinalIgnoreCase)
                     ? "Игрок не найден"
                     : "Ошибка: " + err,
             };
+        }
+
+        private static async Task<(bool Ok, string Err, string UserId, string Username)> ResolveUsernameAsync(
+            string username, CancellationToken ct)
+        {
+            try
+            {
+                var body = JsonUtility.ToJson(new ResolveUsernamePayload { username = username });
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                        NakamaBootstrap.Instance.Session, RpcResolveUsername, body, canceller: ct)
+                    .ConfigureAwait(false);
+
+                var parsed = JsonUtility.FromJson<ResolveUsernameRpcResponse>(rpc?.Payload ?? "{}");
+                if (parsed == null)
+                    return (false, "parse_failed", null, null);
+                if (!parsed.ok)
+                    return (false, string.IsNullOrWhiteSpace(parsed.err) ? "user_not_found" : parsed.err, null, null);
+                if (string.IsNullOrWhiteSpace(parsed.user_id))
+                    return (false, "user_not_found", null, null);
+
+                return (true, null, parsed.user_id.Trim(),
+                    string.IsNullOrWhiteSpace(parsed.username) ? username : parsed.username.Trim());
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] ResolveUsername failed: " + e.Message);
+                return (false, e.Message, null, null);
+            }
+        }
+
+        [Serializable]
+        private sealed class ResolveUsernamePayload
+        {
+            public string username;
         }
 
         private static async Task<HashSet<string>> FetchOnlineIdSetAsync(CancellationToken ct)
@@ -281,6 +428,17 @@ namespace Project.Friends
             }
 
             return set;
+        }
+
+        private static bool IsRpcUnavailable(string err)
+        {
+            if (string.IsNullOrWhiteSpace(err)) return false;
+            if (string.Equals(err, "user_not_found", StringComparison.OrdinalIgnoreCase))
+                return false;
+            // Типичные ответы Nakama, если модуль ещё не задеплоен.
+            return err.IndexOf("rpc function", StringComparison.OrdinalIgnoreCase) >= 0
+                   || err.IndexOf("RPC function", StringComparison.OrdinalIgnoreCase) >= 0
+                   || err.IndexOf("not registered", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool IsClientReady() =>

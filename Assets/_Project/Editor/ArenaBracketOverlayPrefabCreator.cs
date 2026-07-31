@@ -102,6 +102,20 @@ public static class ArenaBracketOverlayPrefabCreator
         var status = MakeTmp(rowT.transform, "Status", "", 18, FontStyles.Italic);
         SetRect(status.rectTransform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(160f, 28f), new Vector2(-120f, 10f));
 
+        // Radio-ставки на игрока (взаимоисключающие); видимость — через BettingToggle в рантайме.
+        var group = rowT.AddComponent<ToggleGroup>();
+        group.allowSwitchOff = true;
+        var betA = MakeBetToggle(rowT.transform, "BetA", new Vector2(-48f, 0f), group);
+        var betB = MakeBetToggle(rowT.transform, "BetB", new Vector2(48f, 0f), group);
+        betA.gameObject.SetActive(false);
+        betB.gameObject.SetActive(false);
+        var betSelect = rowT.AddComponent<Project.UI.PairRowBetSelect>();
+        var betSo = new SerializedObject(betSelect);
+        betSo.FindProperty("betA").objectReferenceValue = betA;
+        betSo.FindProperty("betB").objectReferenceValue = betB;
+        betSo.FindProperty("group").objectReferenceValue = group;
+        betSo.ApplyModifiedPropertiesWithoutUndo();
+
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         Object.DestroyImmediate(root);
 
@@ -188,6 +202,44 @@ public static class ArenaBracketOverlayPrefabCreator
         rt.pivot = pivot;
         rt.sizeDelta = size;
         rt.anchoredPosition = anchoredPos;
+    }
+
+    private static Toggle MakeBetToggle(Transform parent, string name, Vector2 anchoredPos, ToggleGroup group)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(36f, 36f);
+        rt.anchoredPosition = anchoredPos;
+
+        var ws = BuiltinWhiteSprite();
+        var bg = go.AddComponent<Image>();
+        bg.sprite = ws;
+        bg.color = new Color(0.22f, 0.24f, 0.28f, 1f);
+        bg.raycastTarget = true;
+
+        var checkGo = new GameObject("Checkmark", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        checkGo.transform.SetParent(go.transform, false);
+        var checkRt = checkGo.GetComponent<RectTransform>();
+        checkRt.anchorMin = new Vector2(0.18f, 0.18f);
+        checkRt.anchorMax = new Vector2(0.82f, 0.82f);
+        checkRt.offsetMin = Vector2.zero;
+        checkRt.offsetMax = Vector2.zero;
+        var checkImg = checkGo.GetComponent<Image>();
+        checkImg.sprite = ws;
+        checkImg.color = new Color(0.25f, 0.85f, 0.35f, 1f);
+        checkImg.raycastTarget = false;
+
+        var toggle = go.AddComponent<Toggle>();
+        toggle.transition = Selectable.Transition.ColorTint;
+        toggle.targetGraphic = bg;
+        toggle.graphic = checkImg;
+        toggle.group = group;
+        toggle.isOn = false;
+        return toggle;
     }
 }
 #endif

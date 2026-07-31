@@ -44,9 +44,21 @@ namespace Project.Friends
         private TMP_Text _addFriendFeedback;
         private GameObject _actionPopupRoot;
         private TMP_Text _actionPopupTitle;
+        private GameObject _removeConfirmRoot;
+        private TMP_Text _removeConfirmMessage;
+        private string _removeConfirmUserId;
+        private string _removeConfirmUsername;
 
         private Button _openButton;
         private bool _wiredOpenButton;
+        private RectTransform _pendingBadgeRt;
+        private CanvasGroup _pendingBadgeCanvasGroup;
+        private TMP_Text _pendingBadgeText;
+        private Vector2 _pendingBadgeAnchoredRest;
+        private Coroutine _pendingBadgeIdleCo;
+        private bool _incomingBadgeRefreshInFlight;
+        private CancellationTokenSource _incomingBadgeCts;
+
         private Coroutine _slideRoutine;
         private Vector2 _sheetShownPos;
         private FriendsTab _currentTab = FriendsTab.Friends;
@@ -124,6 +136,7 @@ namespace Project.Friends
             WireTabs();
             WireToolbar();
             TryBindOpenButton();
+            EnsurePendingInviteBadge();
             SwitchTab(FriendsTab.Friends, refresh: false);
             MainMenuHudLayering.EnsurePanelSubModalsOnTop(transform);
         }
@@ -131,14 +144,26 @@ namespace Project.Friends
         private void OnEnable()
         {
             TryBindOpenButton();
+            EnsurePendingInviteBadge();
+            StopPendingBadgeIdle();
+            _pendingBadgeIdleCo = StartCoroutine(PendingInviteBadgeIdleLoop());
+        }
+
+        private void OnDisable()
+        {
+            StopPendingBadgeIdle();
+            _incomingBadgeCts?.Cancel();
         }
 
         private void OnDestroy()
         {
+            StopPendingBadgeIdle();
             _friendsCts?.Cancel();
             _friendsCts?.Dispose();
             _onlineCts?.Cancel();
             _onlineCts?.Dispose();
+            _incomingBadgeCts?.Cancel();
+            _incomingBadgeCts?.Dispose();
             if (_openButton != null)
                 _openButton.onClick.RemoveListener(TogglePanel);
             if (s_buttonOwner == this)
@@ -204,6 +229,7 @@ namespace Project.Friends
             _onlinePage = MakeOnlinePage(_sheetRect);
             MakeAddFriendOverlay(_sheetRect);
             MakeActionPopup(transform);
+            MakeRemoveConfirmOverlay(transform);
 
             _closeButton = header.Find("CloseButton")?.GetComponent<Button>();
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, uiFont);
@@ -590,6 +616,60 @@ namespace Project.Friends
             _actionPopupRoot.SetActive(false);
         }
 
+        private void MakeRemoveConfirmOverlay(Transform root)
+        {
+            _removeConfirmRoot = new GameObject("FriendsRemoveConfirm", typeof(RectTransform), typeof(Image), typeof(Button));
+            _removeConfirmRoot.transform.SetParent(root, false);
+            StretchFull(_removeConfirmRoot.GetComponent<RectTransform>());
+            var dim = _removeConfirmRoot.GetComponent<Image>();
+            dim.sprite = ModalPanelCloseButton.WhiteSprite();
+            dim.color = new Color(0f, 0f, 0f, 0.55f);
+            var dimBtn = _removeConfirmRoot.GetComponent<Button>();
+            dimBtn.transition = Selectable.Transition.None;
+            dimBtn.targetGraphic = dim;
+            dimBtn.onClick.AddListener(HideRemoveConfirm);
+
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            panel.transform.SetParent(_removeConfirmRoot.transform, false);
+            var prt = panel.GetComponent<RectTransform>();
+            prt.anchorMin = new Vector2(0.5f, 0.5f);
+            prt.anchorMax = new Vector2(0.5f, 0.5f);
+            prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(460f, 0f);
+            panel.GetComponent<Image>().sprite = ModalPanelCloseButton.WhiteSprite();
+            panel.GetComponent<Image>().color = new Color(0.12f, 0.13f, 0.17f, 1f);
+            var vl = panel.GetComponent<VerticalLayoutGroup>();
+            vl.padding = new RectOffset(18, 18, 18, 14);
+            vl.spacing = 14f;
+            vl.childControlWidth = true;
+            vl.childControlHeight = true;
+            vl.childForceExpandWidth = true;
+            panel.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            _removeConfirmMessage = MakeTmp(panel.transform, "Message", "Точно удалить из друзей?", 24f, FontStyles.Normal);
+            _removeConfirmMessage.alignment = TextAlignmentOptions.Center;
+            _removeConfirmMessage.textWrappingMode = TextWrappingModes.Normal;
+            var msgLe = _removeConfirmMessage.gameObject.AddComponent<LayoutElement>();
+            msgLe.minHeight = 56f;
+            msgLe.preferredHeight = 72f;
+
+            var buttons = new GameObject("Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            buttons.transform.SetParent(panel.transform, false);
+            buttons.GetComponent<LayoutElement>().preferredHeight = 48f;
+            var hl = buttons.GetComponent<HorizontalLayoutGroup>();
+            hl.spacing = 12f;
+            hl.childForceExpandWidth = true;
+            hl.childControlWidth = true;
+            hl.childControlHeight = true;
+
+            var noBtn = MakeToolbarButton(buttons.transform, "No", "Нет", new Color(0.28f, 0.30f, 0.34f, 1f));
+            var yesBtn = MakeToolbarButton(buttons.transform, "Yes", "Да", new Color(0.55f, 0.22f, 0.22f, 1f));
+            noBtn.onClick.AddListener(HideRemoveConfirm);
+            yesBtn.onClick.AddListener(OnRemoveConfirmYes);
+
+            _removeConfirmRoot.SetActive(false);
+        }
+
         private void WireTabs()
         {
             if (_tabFriends != null)
@@ -620,6 +700,7 @@ namespace Project.Friends
 
             HideAddFriendOverlay();
             HideActionPopup();
+            HideRemoveConfirm();
 
             if (!refresh)
                 return;
@@ -662,6 +743,8 @@ namespace Project.Friends
             _openButton.onClick.AddListener(TogglePanel);
             _wiredOpenButton = true;
             s_buttonOwner = this;
+            EnsurePendingInviteBadge();
+            _ = RefreshIncomingInviteBadgeAsync();
         }
 
         private void TogglePanel()
@@ -675,6 +758,7 @@ namespace Project.Friends
         {
             HideAddFriendOverlay();
             HideActionPopup();
+            HideRemoveConfirm();
             MainMenuHudLayering.BringPanelToFront(transform);
             if (_rootCanvasGroup != null)
             {
@@ -694,6 +778,7 @@ namespace Project.Friends
         {
             HideAddFriendOverlay();
             HideActionPopup();
+            HideRemoveConfirm();
             _friendsCts?.Cancel();
             _onlineCts?.Cancel();
             if (_slideRoutine != null)
@@ -764,6 +849,7 @@ namespace Project.Friends
 
                     ApplyFriends(result.Friends);
                     SetFriendsStatus(result.Friends.Length == 0 ? "Нет друзей" : string.Empty);
+                    ApplyIncomingInviteBadge(CountIncomingInList(result.Friends));
                 });
             }
             catch (OperationCanceledException)
@@ -833,7 +919,7 @@ namespace Project.Friends
             {
                 if (entry == null) continue;
                 var row = FriendsPlayerRowView.Create(_friendsContent, uiFont, showFriendControls: true);
-                row.BindFriend(entry, OnRemoveFriendClicked, OnActionFriendClicked);
+                row.BindFriend(entry, OnRemoveFriendClicked, OnAcceptFriendClicked, OnActionFriendClicked);
                 _friendRows.Add(row);
             }
 
@@ -934,7 +1020,83 @@ namespace Project.Friends
         private void OnRemoveFriendClicked(FriendsPlayerRowView row)
         {
             if (row == null) return;
+            if (row.State == FriendRelationState.Mutual)
+            {
+                ShowRemoveConfirm(row.UserId, row.Username);
+                return;
+            }
+
             _ = DeleteFriendAsync(row.UserId, row.Username);
+        }
+
+        private void ShowRemoveConfirm(string userId, string username)
+        {
+            HideActionPopup();
+            HideAddFriendOverlay();
+            if (_removeConfirmRoot == null)
+                MakeRemoveConfirmOverlay(transform);
+
+            _removeConfirmUserId = userId;
+            _removeConfirmUsername = username;
+            if (_removeConfirmMessage != null)
+            {
+                var name = string.IsNullOrWhiteSpace(username) ? "этого игрока" : $"«{username}»";
+                _removeConfirmMessage.text = $"Точно удалить {name} из друзей?";
+            }
+
+            _removeConfirmRoot.SetActive(true);
+            _removeConfirmRoot.transform.SetAsLastSibling();
+            MainMenuHudLayering.EnsurePanelSubModalsOnTop(transform);
+        }
+
+        private void HideRemoveConfirm()
+        {
+            if (_removeConfirmRoot != null)
+                _removeConfirmRoot.SetActive(false);
+            _removeConfirmUserId = null;
+            _removeConfirmUsername = null;
+        }
+
+        private void OnRemoveConfirmYes()
+        {
+            var userId = _removeConfirmUserId;
+            var username = _removeConfirmUsername;
+            HideRemoveConfirm();
+            if (string.IsNullOrWhiteSpace(userId) && string.IsNullOrWhiteSpace(username))
+                return;
+            _ = DeleteFriendAsync(userId, username);
+        }
+
+        private void OnAcceptFriendClicked(FriendsPlayerRowView row)
+        {
+            if (row == null) return;
+            _ = AcceptFriendAsync(row.UserId);
+        }
+
+        private async System.Threading.Tasks.Task AcceptFriendAsync(string userId)
+        {
+            SetFriendsStatus("Принятие...");
+            try
+            {
+                var result = await FriendsService.AcceptFriendAsync(userId, CancellationToken.None);
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (!result.Ok)
+                    {
+                        SetFriendsStatus(FriendsService.DescribeError(result.Err));
+                        return;
+                    }
+
+                    SetFriendsStatus("Заявка принята");
+                    _ = RefreshFriendsAsync();
+                    _ = RefreshIncomingInviteBadgeAsync();
+                });
+            }
+            catch (Exception e)
+            {
+                await MainThreadDispatcher.RunAsync(() =>
+                    SetFriendsStatus(FriendsService.DescribeError(e.Message)));
+            }
         }
 
         private async System.Threading.Tasks.Task DeleteFriendAsync(string userId, string username)
@@ -953,6 +1115,7 @@ namespace Project.Friends
 
                     SetFriendsStatus(string.Empty);
                     _ = RefreshFriendsAsync();
+                    _ = RefreshIncomingInviteBadgeAsync();
                 });
             }
             catch (Exception e)
@@ -1005,6 +1168,215 @@ namespace Project.Friends
                 ? $"Приглашение в группу турнира для «{name}» скоро будет доступно"
                 : $"Предложение дуэли для «{name}» скоро будет доступно";
             SetFriendsStatus(message);
+        }
+
+        private void EnsurePendingInviteBadge()
+        {
+            if (_openButton == null || _pendingBadgeRt != null)
+                return;
+
+            var parentRt = _openButton.transform as RectTransform;
+            if (parentRt == null)
+                return;
+
+            var badgeSize = new Vector2(44f, 44f);
+            var badgeBgColor = new Color(0.85f, 0.22f, 0.26f, 0.96f);
+            var cfg = _openButton.GetComponent<BottomButtonAchievementBadgeConfig>();
+            if (cfg != null)
+            {
+                badgeSize = cfg.BadgeSpriteSize;
+                badgeBgColor = cfg.BadgeColor;
+            }
+
+            var root = new GameObject("PendingClaimBadge", typeof(RectTransform), typeof(CanvasGroup));
+            root.transform.SetParent(parentRt, false);
+            root.transform.SetAsLastSibling();
+            _pendingBadgeRt = root.GetComponent<RectTransform>();
+            _pendingBadgeCanvasGroup = root.GetComponent<CanvasGroup>();
+            _pendingBadgeRt.anchorMin = new Vector2(1f, 1f);
+            _pendingBadgeRt.anchorMax = new Vector2(1f, 1f);
+            _pendingBadgeRt.pivot = new Vector2(1f, 1f);
+            _pendingBadgeRt.anchoredPosition = new Vector2(-10f, -8f);
+            _pendingBadgeRt.sizeDelta = badgeSize;
+            _pendingBadgeAnchoredRest = _pendingBadgeRt.anchoredPosition;
+            _pendingBadgeCanvasGroup.blocksRaycasts = false;
+            _pendingBadgeCanvasGroup.interactable = false;
+            _pendingBadgeCanvasGroup.alpha = 0f;
+
+            var bgGo = new GameObject("BadgeBg", typeof(RectTransform), typeof(Image));
+            bgGo.transform.SetParent(_pendingBadgeRt, false);
+            var bgRt = bgGo.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.offsetMin = Vector2.zero;
+            bgRt.offsetMax = Vector2.zero;
+
+            var img = bgGo.GetComponent<Image>();
+            img.raycastTarget = false;
+            img.type = Image.Type.Simple;
+            if (cfg != null && cfg.BadgeSprite != null)
+            {
+                img.sprite = cfg.BadgeSprite;
+                img.color = badgeBgColor;
+            }
+            else
+            {
+                var t = Texture2D.whiteTexture;
+                img.sprite = Sprite.Create(
+                    t,
+                    new Rect(0f, 0f, t.width, t.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f);
+                img.color = badgeBgColor;
+            }
+
+            var labelGo = new GameObject("BadgeLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelGo.transform.SetParent(_pendingBadgeRt, false);
+            var lr = labelGo.GetComponent<RectTransform>();
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = Vector2.zero;
+            lr.offsetMax = Vector2.zero;
+
+            var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+            var fo = AchievementUiFontLoader.Resolve(uiFont);
+            tmp.font = fo;
+            tmp.fontSize = 22f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 14f;
+            tmp.fontSizeMax = 24f;
+            tmp.alignment = TextAlignmentOptions.Midline;
+            tmp.color = new Color(0.98f, 0.98f, 0.93f);
+            tmp.raycastTarget = false;
+
+            AchievementsTmpMaterialRepair.RepairHierarchy(labelGo.transform, fo);
+            _pendingBadgeText = tmp;
+        }
+
+        private void ApplyIncomingInviteBadge(int count)
+        {
+            EnsurePendingInviteBadge();
+            if (_pendingBadgeText != null)
+                _pendingBadgeText.text = count > 99 ? "99+" : count.ToString();
+            if (_pendingBadgeCanvasGroup != null)
+                _pendingBadgeCanvasGroup.alpha = count > 0 ? 1f : 0f;
+        }
+
+        private static int CountIncomingInList(FriendListEntry[] friends)
+        {
+            if (friends == null) return 0;
+            var n = 0;
+            foreach (var f in friends)
+            {
+                if (f != null && f.State == FriendRelationState.InviteReceived)
+                    n++;
+            }
+
+            return n;
+        }
+
+        private async System.Threading.Tasks.Task RefreshIncomingInviteBadgeAsync()
+        {
+            if (_incomingBadgeRefreshInFlight)
+                return;
+            _incomingBadgeRefreshInFlight = true;
+            _incomingBadgeCts?.Cancel();
+            _incomingBadgeCts?.Dispose();
+            _incomingBadgeCts = new CancellationTokenSource();
+            var ct = _incomingBadgeCts.Token;
+
+            try
+            {
+                var count = await FriendsService.CountIncomingInvitesAsync(ct);
+                if (ct.IsCancellationRequested)
+                    return;
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (!ct.IsCancellationRequested)
+                        ApplyIncomingInviteBadge(count);
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] Incoming badge refresh failed: " + e.Message);
+            }
+            finally
+            {
+                _incomingBadgeRefreshInFlight = false;
+            }
+        }
+
+        private void StopPendingBadgeIdle()
+        {
+            if (_pendingBadgeIdleCo != null)
+            {
+                StopCoroutine(_pendingBadgeIdleCo);
+                _pendingBadgeIdleCo = null;
+            }
+
+            if (_pendingBadgeRt != null)
+            {
+                _pendingBadgeRt.anchoredPosition = _pendingBadgeAnchoredRest;
+                _pendingBadgeRt.localEulerAngles = Vector3.zero;
+            }
+        }
+
+        private IEnumerator PendingInviteBadgeIdleLoop()
+        {
+            while (isActiveAndEnabled)
+            {
+                TryBindOpenButton();
+                EnsurePendingInviteBadge();
+                _ = RefreshIncomingInviteBadgeAsync();
+
+                var visible = _pendingBadgeCanvasGroup != null && _pendingBadgeCanvasGroup.alpha > 0.01f;
+                if (!visible)
+                {
+                    yield return new WaitForSecondsRealtime(1.85f);
+                    continue;
+                }
+
+                yield return new WaitForSecondsRealtime(5.2f);
+                if (_pendingBadgeRt == null || _pendingBadgeCanvasGroup == null
+                    || _pendingBadgeCanvasGroup.alpha < 0.01f)
+                    continue;
+
+                yield return ShakeBadgeRoutine();
+            }
+        }
+
+        private IEnumerator ShakeBadgeRoutine()
+        {
+            var rt = _pendingBadgeRt;
+            if (rt == null)
+                yield break;
+
+            var rest = _pendingBadgeAnchoredRest;
+            const float dur = 0.52f;
+            var t = 0f;
+            while (t < dur)
+            {
+                t += Time.unscaledDeltaTime;
+                var k = t / dur;
+                var damping = Mathf.Lerp(1f, 0f, k);
+                var phase = k * Mathf.PI * 22f;
+                var bx = Mathf.Sin(phase) * 10f * damping;
+                var by = Mathf.Cos(phase * 0.93f + 1.1f) * 8f * damping;
+                rt.anchoredPosition = rest + new Vector2(bx, by);
+                rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(phase + 2.3f) * 9f * damping);
+                yield return null;
+            }
+
+            if (rt != null)
+            {
+                rt.anchoredPosition = rest;
+                rt.localEulerAngles = Vector3.zero;
+            }
         }
 
         private void SetFriendsStatus(string message)

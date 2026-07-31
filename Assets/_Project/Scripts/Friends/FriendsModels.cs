@@ -73,4 +73,13 @@ namespace Project.Friends
         public bool Ok;
         public string Err;
     }
+
+    [Serializable]
+    public sealed class ResolveUsernameRpcResponse
+    {
+        public bool ok;
+        public string err;
+        public string user_id;
+        public string username;
+    }
 }
