@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Nakama;
 using Project.Character;
 using Project.Match3;
 using Project.Nakama;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -2400,7 +2402,7 @@ namespace Project.UI
                     text = floor <= 1 ? "Этаж открыт с начала (барьер не нужен)." : "Нет данных о стоимости барьера.",
                     color = Color.white
                 });
-                RenderIconValueGrid(_modalBarrierRequirementsRoot, entries, 3, stackIconOverValue: false);
+                RenderBarrierRequirementsList(_modalBarrierRequirementsRoot, entries);
                 _modalBarrierRequirementsRoot.gameObject.SetActive(true);
                 return;
             }
@@ -2412,7 +2414,9 @@ namespace Project.UI
                 entries.Add(new RewardEntry
                 {
                     icon = null,
-                    text = prevOk ? $"Победа на этаже {floor - 1}: да" : $"Победа на этаже {floor - 1}: нет",
+                    text = prevOk
+                        ? $"Победа на этаже {floor - 1}    да"
+                        : $"Победа на этаже {floor - 1}    нет",
                     color = GetEnoughColor(prevOk),
                 });
                 hasAny = true;
@@ -2422,46 +2426,71 @@ namespace Project.UI
             {
                 var haveLevel = Mathf.Max(0, _progression != null ? _progression.level : 0);
                 var levelOk = haveLevel >= req.level;
-                entries.Add(new RewardEntry { icon = null, text = $"Уровень {haveLevel}/{req.level}", color = GetEnoughColor(levelOk) });
+                entries.Add(new RewardEntry
+                {
+                    icon = null,
+                    text = $"Уровень    {FormatAmountPair(haveLevel, req.level)}",
+                    color = GetEnoughColor(levelOk),
+                });
                 hasAny = true;
             }
 
             if (req.ore > 0)
             {
                 _oreSprite ??= LoadSpriteAsset(HudOreIconAssetPath);
-                var haveOre = Mathf.Max(0L, _lastResources != null ? _lastResources.ore : (_progression != null ? _progression.ore : 0));
-                entries.Add(new RewardEntry { icon = _oreSprite, text = $"{haveOre}/{req.ore}", color = GetEnoughColor(haveOre >= req.ore) });
+                var haveOre = Math.Max(0L, _lastResources != null ? _lastResources.ore : (_progression != null ? _progression.ore : 0L));
+                entries.Add(new RewardEntry
+                {
+                    icon = _oreSprite,
+                    text = FormatAmountPair(haveOre, req.ore),
+                    color = GetEnoughColor(haveOre >= req.ore),
+                });
                 hasAny = true;
             }
 
             if (req.gold > 0)
             {
                 _goldSprite ??= LoadSpriteAsset(HudGoldIconAssetPath);
-                var haveGold = Mathf.Max(0L, _lastResources != null ? _lastResources.gold : (_progression != null ? _progression.gold : 0));
-                entries.Add(new RewardEntry { icon = _goldSprite, text = $"{haveGold}/{req.gold}", color = GetEnoughColor(haveGold >= req.gold) });
+                var haveGold = Math.Max(0L, _lastResources != null ? _lastResources.gold : (_progression != null ? _progression.gold : 0L));
+                entries.Add(new RewardEntry
+                {
+                    icon = _goldSprite,
+                    text = FormatAmountPair(haveGold, req.gold),
+                    color = GetEnoughColor(haveGold >= req.gold),
+                });
                 hasAny = true;
             }
 
             if (req.matter > 0)
             {
                 _matterSprite ??= LoadSpriteAsset(HudMatterIconAssetPath);
-                var haveMatter = Mathf.Max(0L, _lastResources != null ? _lastResources.matter : (_progression != null ? _progression.matter : 0));
-                entries.Add(new RewardEntry { icon = _matterSprite, text = $"{haveMatter}/{req.matter}", color = GetEnoughColor(haveMatter >= req.matter) });
+                var haveMatter = Math.Max(0L, _lastResources != null ? _lastResources.matter : (_progression != null ? _progression.matter : 0L));
+                entries.Add(new RewardEntry
+                {
+                    icon = _matterSprite,
+                    text = FormatAmountPair(haveMatter, req.matter),
+                    color = GetEnoughColor(haveMatter >= req.matter),
+                });
                 hasAny = true;
             }
 
             if (!string.IsNullOrWhiteSpace(req.key_id) && req.key_amount > 0)
             {
                 _lockSprite ??= LoadSpriteAsset(HudKeyIconAssetPath);
-                var haveKey = Mathf.Max(0, GetOwnedKeyAmount(req.key_id));
-                entries.Add(new RewardEntry { icon = _lockSprite, text = $"{haveKey}/{req.key_amount}", color = GetEnoughColor(haveKey >= req.key_amount) });
+                var haveKey = Math.Max(0, GetOwnedKeyAmount(req.key_id));
+                entries.Add(new RewardEntry
+                {
+                    icon = _lockSprite,
+                    text = FormatAmountPair(haveKey, req.key_amount),
+                    color = GetEnoughColor(haveKey >= req.key_amount),
+                });
                 hasAny = true;
             }
 
             if (!hasAny)
                 entries.Add(new RewardEntry { icon = null, text = "Без доп. условий", color = Color.white });
 
-            RenderIconValueGrid(_modalBarrierRequirementsRoot, entries, 3, stackIconOverValue: false);
+            RenderBarrierRequirementsList(_modalBarrierRequirementsRoot, entries);
             _modalBarrierRequirementsRoot.gameObject.SetActive(true);
         }
 
@@ -2597,6 +2626,22 @@ namespace Project.UI
             _modalMonsterRewardsColumnsRoot.gameObject.SetActive(true);
         }
 
+        /// <summary>
+        /// Требования барьера — вертикальный список (по одной строке на условие),
+        /// чтобы длинные числа have/need не ломались посередине.
+        /// </summary>
+        private void RenderBarrierRequirementsList(RectTransform verticalParent, List<RewardEntry> entries)
+        {
+            if (verticalParent == null || entries == null || entries.Count == 0)
+                return;
+
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+                CreateBarrierRequirementRow(verticalParent, e.icon, e.text, e.color);
+            }
+        }
+
         private void RenderIconValueGrid(RectTransform verticalParent, List<RewardEntry> entries, int columns, bool stackIconOverValue)
         {
             if (verticalParent == null || entries == null || entries.Count == 0)
@@ -2710,25 +2755,37 @@ namespace Project.UI
 
         private void CreateIconValueRow(RectTransform parent, Sprite icon, string value, Color textColor)
         {
+            CreateBarrierRequirementRow(parent, icon, value, textColor);
+        }
+
+        private static TMP_FontAsset _barrierBulletFont;
+        private static Material _barrierBulletDropShadowMaterial;
+
+        private void CreateBarrierRequirementRow(RectTransform parent, Sprite icon, string value, Color textColor)
+        {
             if (parent == null)
                 return;
 
-            const float iconSize = 60f;
+            const float iconSize = 48f;
+            const float rowHeight = 52f;
 
             var row = new GameObject("RequirementRow", typeof(RectTransform), typeof(LayoutElement));
             var rowRt = row.GetComponent<RectTransform>();
             rowRt.SetParent(parent, false);
             var rowLayout = row.AddComponent<HorizontalLayoutGroup>();
-            rowLayout.padding = new RectOffset(0, 0, 0, 0);
-            rowLayout.spacing = 8f;
+            rowLayout.padding = new RectOffset(8, 8, 2, 2);
+            rowLayout.spacing = 12f;
             rowLayout.childAlignment = TextAnchor.MiddleLeft;
             rowLayout.childControlHeight = true;
             rowLayout.childControlWidth = true;
             rowLayout.childForceExpandWidth = false;
             rowLayout.childForceExpandHeight = false;
             var rowLe = row.GetComponent<LayoutElement>();
-            rowLe.preferredHeight = iconSize;
+            rowLe.preferredHeight = rowHeight;
+            rowLe.minHeight = rowHeight;
             rowLe.flexibleWidth = 1f;
+
+            CreateBarrierRequirementBullet(rowRt);
 
             if (icon != null)
             {
@@ -2755,16 +2812,71 @@ namespace Project.UI
             var label = labelGo.GetComponent<Text>();
             label.font = _modalMonsterRewardsValueFont != null ? _modalMonsterRewardsValueFont : GetBuiltinFont();
             label.fontStyle = FontStyle.Bold;
-            label.fontSize = 30;
+            label.fontSize = 28;
             label.color = textColor;
             label.alignment = TextAnchor.MiddleLeft;
-            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            // Без Wrap: длинные have/need остаются в одной строке на всю ширину модалки.
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
             label.verticalOverflow = VerticalWrapMode.Overflow;
-            label.text = value;
+            label.text = value ?? string.Empty;
             var labelLe = labelGo.GetComponent<LayoutElement>();
             labelLe.minHeight = 34f;
             labelLe.preferredHeight = 36f;
             labelLe.flexibleWidth = 1f;
+            labelLe.minWidth = 120f;
+        }
+
+        private static void CreateBarrierRequirementBullet(RectTransform rowRt)
+        {
+            if (rowRt == null)
+                return;
+
+            var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(rowRt, false);
+            go.transform.SetAsFirstSibling();
+
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            if (_barrierBulletFont == null)
+                _barrierBulletFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (_barrierBulletFont != null)
+                tmp.font = _barrierBulletFont;
+
+            if (_barrierBulletDropShadowMaterial == null)
+            {
+                _barrierBulletDropShadowMaterial =
+                    Resources.Load<Material>("Fonts & Materials/LiberationSans SDF - Drop Shadow");
+            }
+
+            if (_barrierBulletDropShadowMaterial != null)
+                tmp.fontSharedMaterial = _barrierBulletDropShadowMaterial;
+
+            tmp.text = " - ";
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+            tmp.richText = false;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 18f;
+            tmp.fontSizeMax = 72f;
+
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = 36f;
+            le.minWidth = 28f;
+            le.preferredHeight = 40f;
+            le.minHeight = 34f;
+            le.flexibleWidth = 0f;
+            le.flexibleHeight = 0f;
+        }
+
+        private static string FormatAmountPair(long have, long need)
+        {
+            return FormatAmount(have) + " / " + FormatAmount(need);
+        }
+
+        private static string FormatAmount(long value)
+        {
+            return value.ToString("N0", CultureInfo.GetCultureInfo("ru-RU"));
         }
 
         private static Color GetEnoughColor(bool isEnough)

@@ -40,5 +40,7 @@ namespace Project.Character
         public int session_epoch;
         /// <summary>Server: "matter" (1 → 100 эн) или "gold" (1000 → 100 эн).</summary>
         public string mode;
+        /// <summary>Сколько пакетов купить (1..50). Сервер умножает cost/grant.</summary>
+        public int count;
     }
 }

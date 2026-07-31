@@ -783,10 +783,13 @@ end
     if mode ~= "matter" and mode ~= "gold" then
       return nk.json_encode({ ok = false, err = "bad_mode" })
     end
-    local matter_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_COST) or 1))
-    local matter_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_GRANT) or 100))
-    local gold_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_COST) or 1000))
-    local gold_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_GRANT) or 100))
+    local count = math.floor(tonumber(p.count) or 1)
+    if count < 1 then count = 1 end
+    if count > 50 then count = 50 end
+    local matter_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_COST) or 1)) * count
+    local matter_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_MATTER_GRANT) or 100)) * count
+    local gold_cost = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_COST) or 1000)) * count
+    local gold_grant = math.max(1, math.floor(tonumber(CFG.PVE_ENERGY_BUY_GOLD_GRANT) or 100)) * count
     local max_retries = 5
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)

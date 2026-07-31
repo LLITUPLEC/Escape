@@ -1,5 +1,6 @@
 using System;
 using Project.Achievements;
+using Project.Friends;
 using Project.Leaderboard;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ namespace Project.UI
         {
             AchievementsPanelController.PanelRootName,
             LeaderboardPanelController.PanelRootName,
+            FriendsPanelController.PanelRootName,
         };
 
         public static void NormalizeHudOverlayOrder(Transform hudRoot)
@@ -64,6 +66,10 @@ namespace Project.UI
             var picker = panelRoot.Find("LeaderboardFilterPicker");
             if (picker != null)
                 picker.SetAsLastSibling();
+
+            var friendsAction = panelRoot.Find("FriendsActionPopup");
+            if (friendsAction != null)
+                friendsAction.SetAsLastSibling();
         }
 
         private static Transform FindDirectChild(Transform parent, string name)

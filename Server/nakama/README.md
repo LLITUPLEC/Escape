@@ -4,7 +4,7 @@
 
 1. Скопируйте файлы модулей в каталог **modules** вашего Nakama (часто `data/modules/` в Docker-образе):
    - `duel_keypad.lua` (RPC для PIN дверей),
-   - `duel_online.lua` (онлайн-статус),
+   - `duel_online.lua` (онлайн-статус: ping/count, leave, list до 50 игроков),
    - `duel_leaderboard.lua` (таблица лидеров: RPC `duel_leaderboard_get`),
    - `duel_leaderboard_scores.lua` (запись побед в Nakama Leaderboards, подключается из `duel_match3.lua`),
    - `duel_session.lua` (single-session по e-mail: эпоха сессии + уведомление при AuthenticateEmail и RPC `duel_session_claim` для silent-restore),
@@ -62,6 +62,13 @@
   - `duel_skirmish` — PvP Pro (`match3ProButton`, `pvp_pro=true`)
   - `duel_arena` — классическая 1v1 дуэль (`match3Button`)
   - победы пишутся в `duel_match3_achievements.lua` → `duel_leaderboard_scores.lua`
+
+Онлайн / друзья (главное меню, вкладка «Онлайн»):
+- `duel_online_list` с payload `{"limit":50}` (limit 1..50)
+  - ответ: `{ ok, total, shown, players[{user_id,username,level}], online_ids[] }`
+  - `players` — до `limit` игроков (без текущего): ник из account, `level` 1..12 из `duel_match3_progress/profile`
+  - `online_ids` — все user_id в онлайн-карте
+  - список друзей на клиенте — стандартный Nakama Friends API (`ListFriends` / `AddFriends` / `DeleteFriends`)
 
 **Очистка тестовых лидербордов** (если dashboard не удаляет ID с `%` — Bad Request):
 

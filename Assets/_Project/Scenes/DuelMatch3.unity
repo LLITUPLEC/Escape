@@ -2755,6 +2755,10 @@ PrefabInstance:
       propertyPath: m_hasFontAssetChanged
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2894908071957080201, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5349941940387898103, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
       propertyPath: m_Name
       value: DamagePopup
@@ -3242,11 +3246,11 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 183329600}
     - targetCorrespondingSourceObject: {fileID: 7718368666204608118, guid: 4e6bc5a550fb9524e98c30b8a702ab47, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 755269661}
+      insertIndex: 0
+      addedObject: {fileID: 1631572282}
     - targetCorrespondingSourceObject: {fileID: 7718368666204608118, guid: 4e6bc5a550fb9524e98c30b8a702ab47, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1631572282}
+      addedObject: {fileID: 755269661}
     - targetCorrespondingSourceObject: {fileID: 7718368666204608118, guid: 4e6bc5a550fb9524e98c30b8a702ab47, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1945780850}
@@ -3292,8 +3296,8 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1890784395}
   - {fileID: 610629488}
+  - {fileID: 1890784395}
   - {fileID: 1182655652}
   - {fileID: 1312802649}
   m_Father: {fileID: 438581820}
@@ -3916,6 +3920,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: GainPopupAnchor
       objectReference: {fileID: 0}
+    - target: {fileID: 916764986313495597, guid: 1e6cac7e5a1b4894f910d00d7b9b5148, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4282240317
+      objectReference: {fileID: 0}
     - target: {fileID: 1642259061404695259, guid: 1e6cac7e5a1b4894f910d00d7b9b5148, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -4006,6 +4014,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1642259061404695259, guid: 1e6cac7e5a1b4894f910d00d7b9b5148, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6835260126944246442, guid: 1e6cac7e5a1b4894f910d00d7b9b5148, type: 3}
+      propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

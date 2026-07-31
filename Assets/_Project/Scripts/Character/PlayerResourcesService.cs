@@ -110,7 +110,10 @@ namespace Project.Character
             return SpendAsync(JsonUtility.ToJson(request), ct);
         }
 
-        public static async Task<PlayerResourcesRpcResponse> BuyEnergyAsync(string mode, CancellationToken ct)
+        public static Task<PlayerResourcesRpcResponse> BuyEnergyAsync(string mode, CancellationToken ct) =>
+            BuyEnergyAsync(mode, count: 1, ct);
+
+        public static async Task<PlayerResourcesRpcResponse> BuyEnergyAsync(string mode, int count, CancellationToken ct)
         {
             if (NakamaBootstrap.Instance == null)
                 return new PlayerResourcesRpcResponse { ok = false, err = "nakama_not_initialized" };
@@ -122,11 +125,14 @@ namespace Project.Character
             if (!string.Equals(mode, "matter", StringComparison.Ordinal) && !string.Equals(mode, "gold", StringComparison.Ordinal))
                 return new PlayerResourcesRpcResponse { ok = false, err = "bad_mode" };
 
+            var packs = Math.Clamp(count, 1, 50);
+
             try
             {
                 var request = new EnergyBuyRpcRequest
                 {
                     mode = string.Equals(mode, "gold", StringComparison.Ordinal) ? "gold" : "matter",
+                    count = packs,
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
                 };
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(

@@ -17,9 +17,14 @@ namespace Project.UI
         private const int MatterGrant = 100;
         private const int GoldCost = 1000;
         private const int GoldGrant = 100;
+        private const int MaxPacks = 50;
 
-        private const int DialogFontSize = 25;
-        private const float PanelInnerWidth = 404f; // ширина Panel 440 − padding VLG 18×2
+        private const float UiScale = 1.5f;
+        private const int DialogFontSize = 38; // ~25 * 1.5
+        private const float PanelWidth = 660f; // 440 * 1.5
+            private const float PanelHeight = 620f;
+        private const float PanelPad = 27f; // 18 * 1.5
+        private const float PanelInnerWidth = PanelWidth - PanelPad * 2f; // 606
 
         private readonly Transform _modalParent;
         private readonly Sprite _energySprite;
@@ -33,7 +38,23 @@ namespace Project.UI
         private GameObject _confirmRoot;
         private Text _confirmText;
         private string _pendingMode;
+        private int _pendingCount = 1;
         private UnityAction _openModalAction;
+
+        private OfferRowState _matterRow;
+        private OfferRowState _goldRow;
+
+        private sealed class OfferRowState
+        {
+            public bool IsMatter;
+            public int BaseCost;
+            public int BaseGrant;
+            public int Qty = 1;
+            public Text CostLabel;
+            public Text GrantLabel;
+            public Button UpButton;
+            public Button DownButton;
+        }
 
         public EnergyHeaderPurchaseController(
             Transform modalParent,
@@ -107,6 +128,8 @@ namespace Project.UI
         {
             EnsureModal();
             if (_root == null) return;
+            ResetOfferQty(_matterRow);
+            ResetOfferQty(_goldRow);
             _confirmRoot.SetActive(false);
             _choiceRoot.SetActive(true);
             _root.SetActive(true);
@@ -121,34 +144,48 @@ namespace Project.UI
         private void OnPickMatter()
         {
             _pendingMode = "matter";
+            _pendingCount = _matterRow != null ? Mathf.Max(1, _matterRow.Qty) : 1;
             _choiceRoot.SetActive(false);
             _confirmRoot.SetActive(true);
             if (_confirmText != null)
-                _confirmText.text = BuildConfirmLine(true);
+                _confirmText.text = BuildConfirmLine(true, _pendingCount);
         }
 
         private void OnPickGold()
         {
             _pendingMode = "gold";
+            _pendingCount = _goldRow != null ? Mathf.Max(1, _goldRow.Qty) : 1;
             _choiceRoot.SetActive(false);
             _confirmRoot.SetActive(true);
             if (_confirmText != null)
-                _confirmText.text = BuildConfirmLine(false);
+                _confirmText.text = BuildConfirmLine(false, _pendingCount);
         }
 
-        private string BuildConfirmLine(bool matter)
+        private static string BuildConfirmLine(bool matter, int count)
         {
-            if (matter) return $"Потратить 1 ед. материи ({MatterCost})?";
-            return $"Потратить {GoldCost} золота?";
+            count = Mathf.Clamp(count, 1, MaxPacks);
+            if (matter)
+            {
+                var total = MatterCost * count;
+                return count == 1
+                    ? $"Потратить {total} ед. материи?"
+                    : $"Потратить {total} ед. материи (x{count})?";
+            }
+
+            var goldTotal = GoldCost * count;
+            return count == 1
+                ? $"Потратить {goldTotal} золота?"
+                : $"Потратить {goldTotal} золота (x{count})?";
         }
 
         private async void OnConfirmYes()
         {
             var mode = _pendingMode;
+            var count = Mathf.Clamp(_pendingCount, 1, MaxPacks);
             HideAll();
             try
             {
-                var r = await PlayerResourcesService.BuyEnergyAsync(mode, _sceneCt).ConfigureAwait(true);
+                var r = await PlayerResourcesService.BuyEnergyAsync(mode, count, _sceneCt).ConfigureAwait(true);
                 if (r is { ok: true } && _refreshHeaderAsync != null)
                     await _refreshHeaderAsync(_sceneCt).ConfigureAwait(true);
             }
@@ -188,52 +225,53 @@ namespace Project.UI
             panelRt.anchorMin = new Vector2(0.5f, 0.5f);
             panelRt.anchorMax = new Vector2(0.5f, 0.5f);
             panelRt.pivot = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(440f, 300f);
+            panelRt.sizeDelta = new Vector2(PanelWidth, PanelHeight);
             panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 1f);
             panel.GetComponent<Image>().raycastTarget = true;
 
             var v = panel.GetComponent<VerticalLayoutGroup>();
-            v.padding = new RectOffset(18, 18, 16, 16);
-            v.spacing = 8f;
+            var pad = Mathf.RoundToInt(PanelPad);
+            v.padding = new RectOffset(pad, pad, Mathf.RoundToInt(16f * UiScale), Mathf.RoundToInt(16f * UiScale));
+            v.spacing = 12f; // 8 * 1.5
             v.childControlHeight = true;
             v.childControlWidth = true;
             v.childForceExpandWidth = false;
             v.childAlignment = TextAnchor.UpperCenter;
 
-            NewText(panel.transform, "Title", "Купить энергию", DialogFontSize, FontStyle.Bold, 36f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
+            NewText(panel.transform, "Title", "Купить энергию", DialogFontSize, FontStyle.Bold, 54f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
 
             _choiceRoot = new GameObject("ChoiceBlock", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
             var chRt = _choiceRoot.GetComponent<RectTransform>();
             chRt.SetParent(panel.transform, false);
-            chRt.sizeDelta = new Vector2(PanelInnerWidth, 150f);
+            chRt.sizeDelta = new Vector2(PanelInnerWidth, 360f);
             var chLe = _choiceRoot.GetComponent<LayoutElement>();
             chLe.preferredWidth = PanelInnerWidth;
             chLe.flexibleWidth = 0f;
-            chLe.minHeight = 150f;
+            chLe.minHeight = 360f;
             var chV = _choiceRoot.GetComponent<VerticalLayoutGroup>();
-            chV.spacing = 10f;
+            chV.spacing = 15f; // 10 * 1.5
             chV.childControlHeight = true;
             chV.childControlWidth = true;
             chV.childForceExpandWidth = false;
             chV.childAlignment = TextAnchor.UpperCenter;
 
-            MakeOfferRow(_choiceRoot.transform, _matterSprite, MatterCost, _energySprite, MatterGrant, OnPickMatter);
-            MakeOfferRow(_choiceRoot.transform, _goldSprite, GoldCost, _energySprite, GoldGrant, OnPickGold);
+            _matterRow = MakeOfferRow(_choiceRoot.transform, _matterSprite, MatterCost, _energySprite, MatterGrant, isMatter: true, OnPickMatter);
+            _goldRow = MakeOfferRow(_choiceRoot.transform, _goldSprite, GoldCost, _energySprite, GoldGrant, isMatter: false, OnPickGold);
 
             _confirmRoot = new GameObject("Confirm", typeof(RectTransform), typeof(VerticalLayoutGroup));
             _confirmRoot.GetComponent<RectTransform>().SetParent(panel.transform, false);
             var cV = _confirmRoot.GetComponent<VerticalLayoutGroup>();
-            cV.spacing = 12f;
+            cV.spacing = 18f; // 12 * 1.5
             cV.childControlHeight = true;
             cV.childControlWidth = true;
             cV.childForceExpandWidth = false;
             cV.childAlignment = TextAnchor.MiddleCenter;
 
-            _confirmText = NewText(_confirmRoot.transform, "Q", "", DialogFontSize, FontStyle.Normal, 40f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
+            _confirmText = NewText(_confirmRoot.transform, "Q", "", DialogFontSize, FontStyle.Bold, 60f, flexibleWidth: 0f, preferredWidth: PanelInnerWidth);
             var yn = new GameObject("YesNo", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             yn.GetComponent<RectTransform>().SetParent(_confirmRoot.transform, false);
             var h = yn.GetComponent<HorizontalLayoutGroup>();
-            h.spacing = 24f;
+            h.spacing = 36f; // 24 * 1.5
             h.childAlignment = TextAnchor.MiddleCenter;
             h.childControlHeight = true;
             h.childControlWidth = true;
@@ -248,34 +286,163 @@ namespace Project.UI
             _root.SetActive(false);
         }
 
-        private void MakeOfferRow(Transform parent, Sprite costSp, int cost, Sprite getSp, int grant, Action onRowClick)
+        private OfferRowState MakeOfferRow(
+            Transform parent,
+            Sprite costSp,
+            int cost,
+            Sprite getSp,
+            int grant,
+            bool isMatter,
+            Action onRowClick)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(Button), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             go.GetComponent<RectTransform>().SetParent(parent, false);
             var rowLe = go.GetComponent<LayoutElement>();
-            rowLe.minHeight = 48f;
+            rowLe.minHeight = 160f;
+            rowLe.preferredHeight = 160f;
             rowLe.preferredWidth = PanelInnerWidth;
             rowLe.flexibleWidth = 0f;
             go.GetComponent<Image>().color = new Color(0.18f, 0.2f, 0.25f, 1f);
             go.GetComponent<Button>().onClick.AddListener(() => onRowClick());
             var h = go.GetComponent<HorizontalLayoutGroup>();
-            h.padding = new RectOffset(10, 10, 6, 6);
-            h.spacing = 4f;
+            h.padding = new RectOffset(12, 12, 6, 6); // ~8/4 * 1.5
+            h.spacing = 6f;
             h.childControlHeight = true;
             h.childControlWidth = true;
             h.childForceExpandWidth = false;
             h.childAlignment = TextAnchor.MiddleCenter;
+
+            var state = new OfferRowState
+            {
+                IsMatter = isMatter,
+                BaseCost = cost,
+                BaseGrant = grant,
+                Qty = 1,
+            };
+
+            AddStepper(go.transform, state);
+
             if (costSp != null) AddRowIcon(go.transform, costSp);
-            AddRowLabel(go.transform, "Cost", cost.ToString(), 72f);
-            AddRowLabel(go.transform, "Eq", "=", 28f);
+            state.CostLabel = AddRowLabel(go.transform, "Cost", cost.ToString(), 132f); // 88 * 1.5
+            AddRowLabel(go.transform, "Eq", "=", 42f); // 28 * 1.5
             if (getSp != null) AddRowIcon(go.transform, getSp);
-            AddRowLabel(go.transform, "Gr", grant.ToString(), 72f);
+            state.GrantLabel = AddRowLabel(go.transform, "Gr", grant.ToString(), 132f);
+
+            RefreshOfferRow(state);
+            return state;
         }
 
-        private static void AddRowLabel(Transform p, string name, string s, float preferredWidth)
+        private void AddStepper(Transform row, OfferRowState state)
         {
-            var t = NewText(p, name, s, DialogFontSize, FontStyle.Normal, 34f, flexibleWidth: 0f, preferredWidth: preferredWidth);
+            var box = new GameObject("Stepper", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
+            box.transform.SetParent(row, false);
+            var le = box.GetComponent<LayoutElement>();
+            le.preferredWidth = 108f; // 54 * 2
+            le.minWidth = 108f;
+            le.preferredHeight = 156f; // 78 * 2
+            le.minHeight = 144f;
+            le.flexibleWidth = 0f;
+            var v = box.GetComponent<VerticalLayoutGroup>();
+            v.spacing = 6f;
+            v.childAlignment = TextAnchor.MiddleCenter;
+            v.childControlHeight = true;
+            v.childControlWidth = true;
+            v.childForceExpandHeight = false;
+            v.childForceExpandWidth = true;
+            v.padding = new RectOffset(0, 0, 0, 0);
+
+            state.UpButton = MakeStepperButton(box.transform, "Up", "+", () => ChangeQty(state, +1));
+            state.DownButton = MakeStepperButton(box.transform, "Down", "-", () => ChangeQty(state, -1));
+        }
+
+        private static Button MakeStepperButton(Transform parent, string name, string label, Action onClick)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.28f, 0.32f, 0.40f, 1f);
+            img.raycastTarget = true;
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = 72f; // 36 * 2
+            le.minHeight = 66f;
+            le.flexibleWidth = 1f;
+
+            var t = NewText(go.transform, "L", label, 36, FontStyle.Bold, 66f, flexibleWidth: 0f, preferredWidth: 96f);
             t.alignment = TextAnchor.MiddleCenter;
+            t.raycastTarget = false;
+            return btn;
+        }
+
+        private void ChangeQty(OfferRowState state, int delta)
+        {
+            if (state == null) return;
+            var max = ResolveMaxQty(state);
+            state.Qty = Mathf.Clamp(state.Qty + delta, 1, max);
+            RefreshOfferRow(state);
+        }
+
+        private void ResetOfferQty(OfferRowState state)
+        {
+            if (state == null) return;
+            state.Qty = 1;
+            RefreshOfferRow(state);
+        }
+
+        private void RefreshOfferRow(OfferRowState state)
+        {
+            if (state == null) return;
+            var max = ResolveMaxQty(state);
+            if (state.Qty > max) state.Qty = max;
+            if (state.Qty < 1) state.Qty = 1;
+
+            if (state.CostLabel != null)
+                state.CostLabel.text = (state.BaseCost * (long)state.Qty).ToString();
+            if (state.GrantLabel != null)
+                state.GrantLabel.text = (state.BaseGrant * (long)state.Qty).ToString();
+
+            if (state.UpButton != null)
+                state.UpButton.interactable = state.Qty < max;
+            if (state.DownButton != null)
+                state.DownButton.interactable = state.Qty > 1;
+        }
+
+        private static int ResolveMaxQty(OfferRowState state)
+        {
+            if (state == null)
+                return 1;
+
+            var grantPerPack = state.BaseGrant;
+            var costPerPack = state.BaseCost;
+            var max = MaxPacks;
+            if (PlayerResourcesService.TryReadCached(out var res) && res != null && res.ok)
+            {
+                if (res.energy_max > 0 && grantPerPack > 0)
+                {
+                    var room = res.energy_max - res.energy;
+                    if (room <= 0)
+                        return 1;
+                    max = Math.Min(max, Math.Max(1, room / grantPerPack));
+                }
+
+                if (costPerPack > 0)
+                {
+                    var wallet = state.IsMatter ? res.matter : res.gold;
+                    if (wallet >= 0)
+                        max = Math.Min(max, Math.Max(1, (int)(wallet / costPerPack)));
+                }
+            }
+
+            return Mathf.Clamp(max, 1, MaxPacks);
+        }
+
+        private static Text AddRowLabel(Transform p, string name, string s, float preferredWidth)
+        {
+            var t = NewText(p, name, s, DialogFontSize, FontStyle.Bold, 51f, flexibleWidth: 0f, preferredWidth: preferredWidth);
+            t.alignment = TextAnchor.MiddleCenter;
+            return t;
         }
 
         private static void AddRowIcon(Transform parent, Sprite sp)
@@ -284,8 +451,8 @@ namespace Project.UI
             var igo = new GameObject("Ic", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             igo.GetComponent<RectTransform>().SetParent(parent, false);
             var le = igo.GetComponent<LayoutElement>();
-            le.minWidth = le.preferredWidth = 32f;
-            le.minHeight = le.preferredHeight = 32f;
+            le.minWidth = le.preferredWidth = 48f; // 32 * 1.5
+            le.minHeight = le.preferredHeight = 48f;
             le.flexibleWidth = 0f;
             igo.GetComponent<Image>().sprite = sp;
             igo.GetComponent<Image>().preserveAspect = true;
@@ -317,11 +484,11 @@ namespace Project.UI
         {
             var bgo = new GameObject(label, typeof(Image), typeof(Button), typeof(LayoutElement));
             bgo.transform.SetParent(p, false);
-            bgo.GetComponent<LayoutElement>().minWidth = 100f;
-            bgo.GetComponent<LayoutElement>().minHeight = 40f;
+            bgo.GetComponent<LayoutElement>().minWidth = 150f; // 100 * 1.5
+            bgo.GetComponent<LayoutElement>().minHeight = 60f; // 40 * 1.5
             bgo.GetComponent<Image>().color = new Color(0.28f, 0.25f, 0.3f, 1f);
             bgo.GetComponent<Button>().onClick.AddListener(() => act());
-            NewText(bgo.transform, "L", label, DialogFontSize, FontStyle.Normal, 40f, flexibleWidth: 0f, preferredWidth: 88f);
+            NewText(bgo.transform, "L", label, DialogFontSize, FontStyle.Bold, 60f, flexibleWidth: 0f, preferredWidth: 132f);
         }
 
         private static Transform FindChildByName(Transform root, string name)

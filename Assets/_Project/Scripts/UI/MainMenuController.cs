@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
 using Project.Character;
+using Project.Friends;
 using Project.Nakama;
 using Project.Utils;
 using TMPro;
@@ -111,6 +112,7 @@ namespace Project.UI
             EnsureMatch3StatsToggleButton();
             EnsureMainMenuNavigationButtons();
             EnsureRatingButtonSteamFx();
+            EnsureFriendsPanel();
             ApplySafeAreaClamp();
             MainMenuHudLayering.NormalizeHudOverlayOrder(ResolveMainMenuHudLayoutRoot());
         }
@@ -134,6 +136,7 @@ namespace Project.UI
             _ = RefreshPlayerUsernameAsync(_onlineCts.Token);
             _ = ServerAuraLoopAsync(_onlineCts.Token);
             EnsureMainMenuNavigationButtons();
+            EnsureFriendsPanel();
             TryInstallEnergyHeaderPurchase();
             ApplySafeAreaClamp();
             MainMenuHudLayering.NormalizeHudOverlayOrder(ResolveMainMenuHudLayoutRoot());
@@ -161,6 +164,13 @@ namespace Project.UI
             if (_mineButton != null) _mineButton.onClick.RemoveListener(OpenMineScene);
             if (_workshopButton != null) _workshopButton.onClick.RemoveListener(OpenWorkshopScene);
             if (_serverAuraButton != null) _serverAuraButton.onClick.RemoveListener(ShowServerAuraModal);
+        }
+
+        private void EnsureFriendsPanel()
+        {
+            var layout = ResolveMainMenuHudLayoutRoot();
+            if (layout == null) return;
+            FriendsPanelController.Ensure(layout);
         }
 
         private void EnsureMainMenuNavigationButtons()
