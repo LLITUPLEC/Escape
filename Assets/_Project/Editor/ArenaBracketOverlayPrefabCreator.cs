@@ -66,6 +66,13 @@ public static class ArenaBracketOverlayPrefabCreator
         rowsVl.childForceExpandWidth = true;
         rowsVl.childForceExpandHeight = false;
 
+        var prize = MakeTmp(root.transform, "PrizeFooter", "Потенциальный приз: —\nСтавки: зашло 0 · мимо 0", 40, FontStyles.Normal);
+        prize.alignment = TextAlignmentOptions.Center;
+        var prizeLe = prize.gameObject.AddComponent<LayoutElement>();
+        prizeLe.preferredHeight = 112f;
+        prizeLe.minHeight = 96f;
+        prize.gameObject.SetActive(false);
+
         // Templates (inactive): runtime clones these
         var headerT = MakeTmp(rows.transform, "RoundHeaderTemplate", "1/4", 22, FontStyles.Bold);
         headerT.gameObject.SetActive(false);

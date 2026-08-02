@@ -23,7 +23,9 @@ namespace Project.UI
         private const string RpcArenaJoin = "duel_arena_queue_join";
         private const string RpcArenaLeave = "duel_arena_queue_leave";
         private const string RpcArenaPoll = "duel_arena_queue_poll";
+        private const string RpcArenaPlaceBet = "duel_arena_place_bet";
         private const string BracketPrefabResourcesPath = "UI/ArenaBracketOverlay";
+        private const string PrefBettingEnabled = "arena.betting_ui_enabled";
 
         [Header("Buttons (by GameObject name)")]
         [SerializeField] private string match3ArenaButtonName = "match3Arena";
@@ -79,10 +81,16 @@ namespace Project.UI
         private Transform _rowsRoot;
         private TMP_Text _bracketTitle;
         private TMP_Text _cdText;
+        private TMP_Text _prizeFooterText;
         private TMP_Text _headerTemplate;
         private Transform _pairRowTemplate;
+        private ArenaTournamentState _lastTournament;
         private Toggle _bettingToggle;
         private bool _bettingUiEnabled;
+        private bool _betsOpen;
+        private string _bettingRound = "";
+        private string _myUserId = "";
+        private readonly Dictionary<int, int> _myBetSidesBySlot = new Dictionary<int, int>();
         private GameObject _toastRoot;
         private TMP_Text _toastText;
         private Coroutine _toastRoutine;
@@ -173,6 +181,16 @@ namespace Project.UI
             public ArenaPairRow[] qf;
             public ArenaPairRow[] sf;
             public ArenaPairRow[] final_pairs;
+            public bool bets_open;
+            public string betting_round;
+            public ArenaSideBet[] my_bets;
+            public int bet_score;
+            public int bet_wins;
+            public int bet_losses;
+            public int prize_base_gold;
+            public int prize_base_ore;
+            public int prize_preview_gold;
+            public int prize_preview_ore;
         }
 
         [Serializable]
@@ -188,6 +206,29 @@ namespace Project.UI
             public float hp_b;
             public string status;
             public string winner_uid;
+        }
+
+        [Serializable]
+        private sealed class ArenaSideBet
+        {
+            public string round;
+            public int slot;
+            public string side;
+            public string pick_uid;
+        }
+
+        [Serializable]
+        private sealed class ArenaPlaceBetResponse
+        {
+            public bool ok;
+            public string err;
+            public bool cleared;
+            public string round;
+            public int slot;
+            public string side;
+            public string pick_uid;
+            public ArenaSideBet[] my_bets;
+            public int bet_score;
         }
 
         private void Awake()
@@ -231,15 +272,25 @@ namespace Project.UI
                 _bettingToggle.onValueChanged.RemoveListener(OnBettingToggleChanged);
 
             _bettingToggle = FindComponentByGameObjectName<Toggle>(bettingToggleObjectName);
-            _bettingUiEnabled = _bettingToggle != null && _bettingToggle.isOn;
+            // Настройка игрока: переживает выход из сцены / возврат с боя (1/4 → 1/2).
+            _bettingUiEnabled = PlayerPrefs.GetInt(PrefBettingEnabled, 0) != 0;
             if (_bettingToggle != null)
+            {
+                _bettingToggle.SetIsOnWithoutNotify(_bettingUiEnabled);
                 _bettingToggle.onValueChanged.AddListener(OnBettingToggleChanged);
+                // Если уже в очереди — держим скрытым (как ModePanel).
+                if (_queueUiLocked)
+                    _bettingToggle.gameObject.SetActive(false);
+            }
         }
 
         private void OnBettingToggleChanged(bool isOn)
         {
             _bettingUiEnabled = isOn;
+            PlayerPrefs.SetInt(PrefBettingEnabled, isOn ? 1 : 0);
+            PlayerPrefs.Save();
             ApplyBettingUiToAllRows();
+            UpdatePrizeFooter(_lastTournament);
         }
 
         private void ApplyBettingUiToAllRows()
@@ -248,10 +299,6 @@ namespace Project.UI
             var rows = CollectBracketRows(_rowsRoot);
             for (var i = 0; i < rows.Count; i++)
                 ApplyBettingUiToRow(rows[i]);
-
-            // Also update inactive template so clones inherit correct default visibility.
-            if (_pairRowTemplate != null)
-                ApplyBettingUiToRow(_pairRowTemplate);
         }
 
         private void ApplyBettingUiToRow(Transform row)
@@ -260,14 +307,114 @@ namespace Project.UI
             var select = row.GetComponent<PairRowBetSelect>();
             if (select == null)
             {
-                // Prefab without component yet — toggle GameObjects by name.
-                var a = row.Find(PairRowBetSelect.BetAName);
-                var b = row.Find(PairRowBetSelect.BetBName);
-                if (a != null) a.gameObject.SetActive(_bettingUiEnabled);
-                if (b != null) b.gameObject.SetActive(_bettingUiEnabled);
+                var a = FindDeep(row, PairRowBetSelect.BetAName);
+                var b = FindDeep(row, PairRowBetSelect.BetBName);
+                var show = _bettingUiEnabled && _betsOpen;
+                if (a != null) a.gameObject.SetActive(show);
+                if (b != null) b.gameObject.SetActive(show);
                 return;
             }
-            select.SetBettingUiActive(_bettingUiEnabled);
+
+            var slot = select.Slot;
+            var ownPair = !string.IsNullOrEmpty(_myUserId)
+                          && (string.Equals(select.UidA, _myUserId, StringComparison.Ordinal)
+                              || string.Equals(select.UidB, _myUserId, StringComparison.Ordinal));
+            var showBets = _bettingUiEnabled && (_betsOpen || _myBetSidesBySlot.ContainsKey(slot)) && !ownPair;
+            var interactable = _bettingUiEnabled && _betsOpen && !ownPair;
+            var side = -1;
+            if (_myBetSidesBySlot.TryGetValue(slot, out var s))
+                side = s;
+            select.ApplyState(showBets, interactable, side);
+        }
+
+        private void SyncMyBetsFromTournament(ArenaTournamentState t)
+        {
+            _betsOpen = t != null && t.bets_open;
+            _bettingRound = t != null ? (t.betting_round ?? "") : "";
+            _myBetSidesBySlot.Clear();
+            if (t?.my_bets == null) return;
+            foreach (var b in t.my_bets)
+            {
+                if (b == null || b.slot <= 0) continue;
+                var side = -1;
+                if (string.Equals(b.side, "a", StringComparison.OrdinalIgnoreCase)) side = 0;
+                else if (string.Equals(b.side, "b", StringComparison.OrdinalIgnoreCase)) side = 1;
+                if (side >= 0)
+                    _myBetSidesBySlot[b.slot] = side;
+            }
+        }
+
+        private void EnsureMyUserId()
+        {
+            if (!string.IsNullOrEmpty(_myUserId)) return;
+            try
+            {
+                _myUserId = NakamaBootstrap.Instance?.Session?.UserId ?? "";
+            }
+            catch
+            {
+                _myUserId = "";
+            }
+        }
+
+        private void OnPairBetSideChanged(int slot, int side)
+        {
+            if (!_betsOpen || !_bettingUiEnabled) return;
+            if (side < 0)
+                _myBetSidesBySlot.Remove(slot);
+            else
+                _myBetSidesBySlot[slot] = side;
+            _ = PlaceBetFireAndForget(slot, side);
+        }
+
+        private async Task PlaceBetFireAndForget(int slot, int side)
+        {
+            if (!NakamaBootstrap.Instance.IsReady) return;
+            try
+            {
+                string payload;
+                if (side < 0)
+                {
+                    payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch()
+                              + ",\"slot\":" + slot + ",\"clear\":true}";
+                }
+                else
+                {
+                    var sideStr = side == 0 ? "a" : "b";
+                    payload = "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch()
+                              + ",\"slot\":" + slot + ",\"side\":\"" + sideStr + "\"}";
+                }
+
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                    NakamaBootstrap.Instance.Session, RpcArenaPlaceBet, payload);
+                var resp = JsonUtility.FromJson<ArenaPlaceBetResponse>(rpc?.Payload ?? "{}");
+                if (resp == null || !resp.ok)
+                {
+                    Debug.LogWarning("[Arena8] place_bet: " + (resp?.err ?? "failed"));
+                    return;
+                }
+
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    if (resp.my_bets != null)
+                    {
+                        _myBetSidesBySlot.Clear();
+                        foreach (var b in resp.my_bets)
+                        {
+                            if (b == null || b.slot <= 0) continue;
+                            var s = -1;
+                            if (string.Equals(b.side, "a", StringComparison.OrdinalIgnoreCase)) s = 0;
+                            else if (string.Equals(b.side, "b", StringComparison.OrdinalIgnoreCase)) s = 1;
+                            if (s >= 0) _myBetSidesBySlot[b.slot] = s;
+                        }
+                    }
+                    ApplyBettingUiToAllRows();
+                });
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Arena8] place_bet: " + e.Message);
+            }
         }
 
         private static void OnAnyActiveSceneChanged(Scene prev, Scene next)
@@ -432,14 +579,26 @@ namespace Project.UI
 
             if (m.tournament != null && m.tournament.active && !m.tournament.eliminated)
             {
+                EnsureMyUserId();
+                _lastTournament = m.tournament;
                 var sig = BuildBracketSignature(m.tournament);
                 if (sig != _lastBracketSignature)
                 {
+                    // Полная пересборка — берём ставки с сервера.
+                    SyncMyBetsFromTournament(m.tournament);
                     _lastBracketSignature = sig;
                     ShowBracket(m.tournament);
                 }
                 else
+                {
+                    // Не затираем локальный выбор каждым poll (гонка с place_bet).
+                    _betsOpen = m.tournament.bets_open;
+                    _bettingRound = m.tournament.betting_round ?? "";
+                    // Обновляем resolved win/loss и приз с сервера без сброса локальных пиков.
+                    // (bet_wins/losses меняются только после раунда — безопасно.)
                     RefreshBracketInPlace(m.tournament);
+                    ApplyBettingUiToAllRows();
+                }
 
                 ReleaseArenaReturnBlockerAfterBracketShown();
                 TryArmFightScene(m.tournament);
@@ -447,6 +606,10 @@ namespace Project.UI
             else
             {
                 _lastBracketSignature = string.Empty;
+                _lastTournament = null;
+                _betsOpen = false;
+                _bettingRound = "";
+                _myBetSidesBySlot.Clear();
                 HideBracket();
             }
         }
@@ -454,7 +617,8 @@ namespace Project.UI
         private static string BuildBracketSignature(ArenaTournamentState t)
         {
             if (t == null) return string.Empty;
-            return $"{t.phase}|{t.countdown_left}|{t.join_match_id ?? ""}|{RowsSignature(t.qf)}{RowsSignature(t.sf)}{RowsSignature(t.final_pairs)}";
+            // countdown_left меняется каждый poll — не включаем, иначе ряды пересобираются и сбрасываются ставки.
+            return $"{t.phase}|{t.next_round ?? ""}|{t.join_match_id ?? ""}|{RowsSignature(t.qf)}{RowsSignature(t.sf)}{RowsSignature(t.final_pairs)}";
         }
 
         private static string RowsSignature(ArenaPairRow[] rows)
@@ -476,11 +640,94 @@ namespace Project.UI
             if (_bracketRoot == null || t == null) return;
             ApplyBracketOverlayTitle(t);
             var cd = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
-            if (cd == null) return;
-            if (t.phase == "countdown")
-                cd.text = Mathf.Max(0, t.countdown_left).ToString();
-            else
-                cd.text = PhaseTitle(t.phase);
+            if (cd != null)
+            {
+                if (t.phase == "countdown")
+                    cd.text = Mathf.Max(0, t.countdown_left).ToString();
+                else
+                    cd.text = PhaseTitle(t.phase);
+            }
+            UpdatePrizeFooter(t);
+        }
+
+        // Размеры блока приза/ставок (PrizeFooter). Править здесь — или в префабе ArenaBracketOverlay → PrizeFooter.
+        private const float PrizeFooterFontSize = 40f;
+        private const float PrizeFooterPreferredHeight = 112f;
+        private const float PrizeFooterMinHeight = 96f;
+
+        private void EnsurePrizeFooter()
+        {
+            if (_bracketRoot == null) return;
+
+            if (_prizeFooterText == null)
+            {
+                var existing = _bracketRoot.transform.Find("PrizeFooter");
+                if (existing != null)
+                    _prizeFooterText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (_prizeFooterText == null)
+            {
+                var go = CreateTmp(_bracketRoot.transform, "", PrizeFooterFontSize, FontStyles.Normal);
+                go.name = "PrizeFooter";
+                var tmp = go.GetComponent<TextMeshProUGUI>();
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.color = new Color(0.85f, 0.9f, 0.95f, 1f);
+                go.transform.SetAsLastSibling();
+                _prizeFooterText = tmp;
+                go.SetActive(false);
+            }
+
+            _prizeFooterText.fontSize = PrizeFooterFontSize;
+            var le = _prizeFooterText.GetComponent<LayoutElement>();
+            if (le == null) le = _prizeFooterText.gameObject.AddComponent<LayoutElement>();
+            le.preferredHeight = PrizeFooterPreferredHeight;
+            le.minHeight = PrizeFooterMinHeight;
+            le.flexibleWidth = 1f;
+        }
+
+        private void UpdatePrizeFooter(ArenaTournamentState t)
+        {
+            EnsurePrizeFooter();
+            if (_prizeFooterText == null) return;
+
+            var show = _bettingUiEnabled
+                       && t != null
+                       && t.active
+                       && !t.eliminated
+                       && string.Equals(t.phase, "countdown", StringComparison.Ordinal);
+            _prizeFooterText.gameObject.SetActive(show);
+            if (!show) return;
+
+            var prizeLine = FormatPrizePreviewLine(t);
+            var wins = Mathf.Max(0, t.bet_wins);
+            var losses = Mathf.Max(0, t.bet_losses);
+            _prizeFooterText.text = prizeLine + "\nСтавки: зашло " + wins + " · мимо " + losses;
+        }
+
+        private static string FormatPrizePreviewLine(ArenaTournamentState t)
+        {
+            if (t == null) return "Потенциальный приз: —";
+            var kind = (t.kind ?? "").Trim().ToLowerInvariant();
+            var g = Mathf.Max(0, t.prize_preview_gold);
+            var o = Mathf.Max(0, t.prize_preview_ore);
+            var baseG = Mathf.Max(0, t.prize_base_gold);
+            var baseO = Mathf.Max(0, t.prize_base_ore);
+            var deltaScore = t.bet_score;
+            var deltaPct = deltaScore * 20;
+            var deltaSuffix = deltaScore == 0
+                ? ""
+                : (deltaScore > 0 ? $" (+{deltaPct}%)" : $" ({deltaPct}%)");
+
+            if (kind == ArenaKindOre)
+                return $"Потенциальный приз: {o} руды{deltaSuffix}";
+            if (kind == ArenaKindGold)
+                return $"Потенциальный приз: {g} золота{deltaSuffix}";
+
+            // smith — золото и руда
+            if (g > 0 || o > 0 || baseG > 0 || baseO > 0)
+                return $"Потенциальный приз: {g} зол. / {o} руды{deltaSuffix}";
+            return $"Потенциальный приз: —{deltaSuffix}";
         }
 
         private static string BracketOverlayMainTitle(string kindRaw)
@@ -549,21 +796,35 @@ namespace Project.UI
             return list;
         }
 
+        /// <summary>
+        /// Ищет потомка по имени на любой глубине (Left_div/LeftName, Middle_div/BetA и т.п.).
+        /// </summary>
+        private static Transform FindDeep(Transform root, string name)
+        {
+            if (root == null || string.IsNullOrEmpty(name))
+                return null;
+            var direct = root.Find(name);
+            if (direct != null)
+                return direct;
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var found = FindDeep(root.GetChild(i), name);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        }
+
         private static Image ResolveHpFillImage(Transform row, string barName)
         {
             if (row == null || string.IsNullOrEmpty(barName))
                 return null;
 
-            var fillPath = barName + "/Fill";
-            var fill = row.Find(fillPath)?.GetComponent<Image>();
-            if (fill != null)
-                return fill;
-
-            var bar = row.Find(barName);
+            var bar = FindDeep(row, barName);
             if (bar == null)
                 return null;
 
-            fill = bar.Find("Fill")?.GetComponent<Image>();
+            var fill = bar.Find("Fill")?.GetComponent<Image>();
             if (fill != null)
                 return fill;
 
@@ -577,12 +838,12 @@ namespace Project.UI
             if (row == null || pr == null)
                 return;
 
-            var leftName = row.Find("LeftName")?.GetComponent<TMP_Text>();
-            if (leftName == null) leftName = row.Find("Txt")?.GetComponent<TMP_Text>();
+            var leftName = FindDeep(row, "LeftName")?.GetComponent<TMP_Text>();
+            if (leftName == null) leftName = FindDeep(row, "Txt")?.GetComponent<TMP_Text>();
             if (leftName != null)
                 leftName.text = pr.display_a ?? "";
 
-            var rightName = row.Find("RightName")?.GetComponent<TMP_Text>();
+            var rightName = FindDeep(row, "RightName")?.GetComponent<TMP_Text>();
             if (rightName != null)
                 rightName.text = pr.display_b ?? "";
 
@@ -591,7 +852,7 @@ namespace Project.UI
                 SetHp(hpA, pr.hp_a);
             else
             {
-                var legacyHp = row.Find("Hp")?.GetComponent<Image>();
+                var legacyHp = FindDeep(row, "Hp")?.GetComponent<Image>();
                 if (legacyHp != null)
                     SetHp(legacyHp, pr.hp_a);
             }
@@ -600,9 +861,7 @@ namespace Project.UI
             if (hpB != null)
                 SetHp(hpB, pr.hp_b);
 
-            var status = row.Find("Status")?.GetComponent<TMP_Text>();
-            if (status == null)
-                status = row.Find("Vs/Status")?.GetComponent<TMP_Text>();
+            var status = FindDeep(row, "Status")?.GetComponent<TMP_Text>();
             if (status != null)
                 status.text = FormatPairStatus(pr.status);
         }
@@ -631,6 +890,8 @@ namespace Project.UI
             {
                 if (_leaveQueueButton != null)
                     _leaveQueueButton.gameObject.SetActive(inQueue);
+                if (_bettingToggle != null)
+                    _bettingToggle.gameObject.SetActive(!inQueue);
                 return;
             }
 
@@ -638,6 +899,7 @@ namespace Project.UI
             if (_modePanelGo != null) _modePanelGo.SetActive(!inQueue);
             if (_backButtonGo != null) _backButtonGo.SetActive(!inQueue);
             if (_statsCardGo != null) _statsCardGo.SetActive(!inQueue);
+            if (_bettingToggle != null) _bettingToggle.gameObject.SetActive(!inQueue);
             if (_leaveQueueButton != null) _leaveQueueButton.gameObject.SetActive(inQueue);
         }
 
@@ -1341,6 +1603,7 @@ namespace Project.UI
             _pairRowTemplate = _rowsRoot != null
                 ? _rowsRoot.Find("PairRowTemplate")
                 : null;
+            _prizeFooterText = _bracketRoot.transform.Find("PrizeFooter")?.GetComponent<TMP_Text>();
 
             // Fallback: if prefab missing OR prefab does not contain required nodes, build procedurally.
             if (_rowsRoot == null || _cdText == null)
@@ -1352,8 +1615,10 @@ namespace Project.UI
                 _rowsRoot = _bracketRoot.transform.Find("ArenaRows");
                 _headerTemplate = null;
                 _pairRowTemplate = null;
+                _prizeFooterText = null;
             }
 
+            EnsurePrizeFooter();
             _bracketRoot.SetActive(false);
         }
 
@@ -1437,6 +1702,8 @@ namespace Project.UI
                 else
                     _cdText.text = PhaseTitle(t.phase);
             }
+
+            UpdatePrizeFooter(t);
 
             if (_rowsRoot == null)
                 return;
@@ -1540,6 +1807,11 @@ namespace Project.UI
             }
 
             BindPairRowData(row, pr);
+
+            var select = row.GetComponent<PairRowBetSelect>();
+            if (select == null)
+                select = row.gameObject.AddComponent<PairRowBetSelect>();
+            select.Configure(pr.slot > 0 ? pr.slot : row.GetSiblingIndex(), pr.uid_a, pr.uid_b, OnPairBetSideChanged);
             ApplyBettingUiToRow(row);
         }
 

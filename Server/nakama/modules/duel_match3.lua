@@ -979,6 +979,7 @@ end
 local arena_mirror_commit
 local arena_on_match_finished
 local arena_final_prize_gold_ore
+local arena_final_prize_for_winner
 
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
@@ -1117,13 +1118,16 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       Pvp.apply_game_over_rewards(state, winner, game_over_payload)
     end
 
-    -- Arena финал: награда в UI совпадает с arena_grant_final_progress (та же функция, что в Arena).
+    -- Arena финал: награда в UI с учётом side-bet (±20% от базы за каждую ставку).
     if game_over_payload.arenaRound == "final"
         and state.arena_mirror ~= nil
         and type(arena_final_prize_gold_ore) == "function" then
       local bt = string.lower(tostring(state.arena_mirror.bet_tier or game_over_payload.arenaBetTier or "green"))
       local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
       local rg, ro = arena_final_prize_gold_ore(ak, bt)
+      if type(arena_final_prize_for_winner) == "function" and winner ~= nil then
+        rg, ro = arena_final_prize_for_winner(state.arena_mirror.tournament_id, winner, ak, bt)
+      end
       game_over_payload.rewardGold = tonumber(rg) or 0
       game_over_payload.rewardOre = tonumber(ro) or 0
     end
@@ -3632,6 +3636,7 @@ local Arena = arena_factory({
 arena_mirror_commit = Arena.mirror_commit
 arena_on_match_finished = Arena.on_match_finished
 arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
+arena_final_prize_for_winner = Arena.final_prize_for_winner
 
 
 function parse_floor_from_bot_id(bot_id)
@@ -4754,6 +4759,10 @@ local function augment_arena_game_over_payload(state, payload)
     local bt = string.lower(tostring(state.arena_mirror.bet_tier or payload.arenaBetTier or "green"))
     local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
     local rg, ro = arena_final_prize_gold_ore(ak, bt)
+    local win_uid = tostring(payload.winnerUserId or payload.winner or "")
+    if type(arena_final_prize_for_winner) == "function" and win_uid ~= "" then
+      rg, ro = arena_final_prize_for_winner(state.arena_mirror.tournament_id, win_uid, ak, bt)
+    end
     payload.rewardXp = tonumber(payload.rewardXp or 0) or 0
     payload.rewardMatter = tonumber(payload.rewardMatter or 0) or 0
     payload.rewardGold = tonumber(rg) or 0
@@ -5217,6 +5226,7 @@ nk.register_rpc(duel_match3_server_aura_get, "duel_match3_server_aura_get")
 nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
 nk.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_leave")
 nk.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")
+nk.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet")
 
 return {
   match_init = match_init,

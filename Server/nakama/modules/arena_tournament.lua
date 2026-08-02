@@ -536,8 +536,23 @@ local function final_prize_for_kind_and_bet(kind, bet_tier)
   return tonumber(gold_g) or 0, tonumber(ore_g) or 0
 end
 
-local function arena_grant_final_progress(user_id, kind, bet_tier)
+--- Множитель финальной награды по сумме угаданных/проигранных side-bet: ±0.2 за каждую.
+local function arena_bet_prize_multiplier(bet_score)
+  local mult = 1 + (tonumber(bet_score) or 0) * 0.2
+  if mult < 0 then
+    return 0
+  end
+  return mult
+end
+
+local function arena_apply_bet_score_to_prize(kind, bet_tier, bet_score)
   local g, o = final_prize_for_kind_and_bet(kind, bet_tier)
+  local mult = arena_bet_prize_multiplier(bet_score)
+  return math.floor((tonumber(g) or 0) * mult + 0.5), math.floor((tonumber(o) or 0) * mult + 0.5)
+end
+
+local function arena_grant_final_progress(user_id, kind, bet_tier, bet_score)
+  local g, o = arena_apply_bet_score_to_prize(kind, bet_tier, bet_score)
   local max_retries = 5
   for attempt = 1, max_retries do
     local progress, version = read_pve_progress(user_id)
@@ -547,15 +562,136 @@ local function arena_grant_final_progress(user_id, kind, bet_tier)
       write_pve_progress(user_id, progress, version)
     end)
     if ok then
-      return true
+      return true, g, o
     end
     local err_text = tostring(err)
     if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
       nk.logger_error("arena_grant_final_progress: " .. err_text)
-      return false
+      return false, g, o
     end
   end
-  return false
+  return false, g, o
+end
+
+--- Раунд, на который сейчас принимают side-bet: qf / sf / nil (финал и бои — нельзя).
+local function arena_open_side_bet_round(T)
+  if T == nil or T.phase ~= "countdown" then
+    return nil
+  end
+  local nr = tostring(T.next_round or "")
+  if nr == "final" then
+    return nil
+  end
+  if nr == "sf" then
+    return "sf"
+  end
+  return "qf"
+end
+
+--- Раунд, чьи ставки ещё лежат в side_bets (открытый countdown или текущий бой).
+local function arena_active_side_bet_round(T)
+  if T == nil then
+    return nil
+  end
+  local open = arena_open_side_bet_round(T)
+  if open ~= nil then
+    return open
+  end
+  local ph = tostring(T.phase or "")
+  if ph == "qf" or ph == "sf" then
+    return ph
+  end
+  return nil
+end
+
+local function arena_ensure_side_bet_tables(T)
+  if type(T.side_bets) ~= "table" then
+    T.side_bets = {}
+  end
+  if type(T.bet_score) ~= "table" then
+    T.bet_score = {}
+  end
+  if type(T.bet_wins) ~= "table" then
+    T.bet_wins = {}
+  end
+  if type(T.bet_losses) ~= "table" then
+    T.bet_losses = {}
+  end
+end
+
+--- После завершения раунда: ±1 в bet_score и счётчики win/loss за каждую ставку игрока.
+local function arena_resolve_side_bets(T, rk)
+  arena_ensure_side_bet_tables(T)
+  local plist = T[rk]
+  if plist == nil then
+    return
+  end
+  for uid, bag in pairs(T.side_bets) do
+    if type(bag) == "table" then
+      local picks = bag[rk]
+      if type(picks) == "table" then
+        for slot_key, pick_uid in pairs(picks) do
+          local pr = plist[tonumber(slot_key)]
+          if pr ~= nil and pick_uid ~= nil and pick_uid ~= "" then
+            local w = tostring(pr.winner_uid or "")
+            if w ~= "" then
+              local cur = tonumber(T.bet_score[uid]) or 0
+              if w == tostring(pick_uid) then
+                T.bet_score[uid] = cur + 1
+                T.bet_wins[uid] = (tonumber(T.bet_wins[uid]) or 0) + 1
+              else
+                T.bet_score[uid] = cur - 1
+                T.bet_losses[uid] = (tonumber(T.bet_losses[uid]) or 0) + 1
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+local function arena_pack_my_side_bets(T, user_id, rk)
+  local out = {}
+  if T == nil or rk == nil or rk == "" then
+    return out
+  end
+  arena_ensure_side_bet_tables(T)
+  local bag = T.side_bets[user_id]
+  local picks = bag ~= nil and bag[rk] or nil
+  if type(picks) ~= "table" then
+    return out
+  end
+  local plist = T[rk]
+  for slot_key, pick_uid in pairs(picks) do
+    local slot = tonumber(slot_key) or 0
+    local side = ""
+    if plist ~= nil and plist[slot] ~= nil then
+      if tostring(plist[slot].uid_a) == tostring(pick_uid) then
+        side = "a"
+      elseif tostring(plist[slot].uid_b) == tostring(pick_uid) then
+        side = "b"
+      end
+    end
+    out[#out + 1] = {
+      round = rk,
+      slot = slot,
+      side = side,
+      pick_uid = tostring(pick_uid or ""),
+    }
+  end
+  return out
+end
+
+--- Приз финала с учётом side-bet счёта победителя (для UI GAME_OVER).
+local function final_prize_for_winner(tournament_id, user_id, kind, bet_tier)
+  local score = 0
+  local T = arena_load_tournament(tournament_id)
+  if T ~= nil then
+    arena_ensure_side_bet_tables(T)
+    score = tonumber(T.bet_score[user_id]) or 0
+  end
+  return arena_apply_bet_score_to_prize(kind, bet_tier, score)
 end
 
 local function arena_pair_row_from_slots(a, b)
@@ -721,6 +857,7 @@ arena_on_pair_completed = function(T, rk)
     if #winners ~= 4 then
       return
     end
+    arena_resolve_side_bets(T, "qf")
     -- Prepare next bracket immediately (no history in UI).
     arena_shuffle_inplace(winners)
     T.sf = arena_build_round_from_slots(winners)
@@ -737,6 +874,7 @@ arena_on_pair_completed = function(T, rk)
     if #winners ~= 2 then
       return
     end
+    arena_resolve_side_bets(T, "sf")
     arena_shuffle_inplace(winners)
     T.final = arena_build_round_from_slots(winners)
     T.sf = {}
@@ -756,7 +894,8 @@ arena_on_pair_completed = function(T, rk)
     end
     local w = pr.winner_uid
     if w ~= nil and w ~= "" and not arena_uid_is_bot(T, w) then
-      arena_grant_final_progress(w, T.kind, T.bet_tier)
+      arena_ensure_side_bet_tables(T)
+      arena_grant_final_progress(w, T.kind, T.bet_tier, T.bet_score[w] or 0)
     end
     T.phase = "done"
     T.done_at = os.time()
@@ -897,6 +1036,10 @@ local function arena_start_tournament_from_entries(kind, entries)
     sf = {},
     final = {},
     eliminated = {},
+    side_bets = {},
+    bet_score = {},
+    bet_wins = {},
+    bet_losses = {},
     created_at = os.time(),
   }
   arena_shuffle_inplace(entries)
@@ -1060,6 +1203,15 @@ local function arena_json_for_user(user_id)
     countdown_left = math.max(0, tonumber(T.countdown_until) - os.time())
   end
 
+  arena_ensure_side_bet_tables(T)
+  local open_rk = arena_open_side_bet_round(T)
+  local active_rk = arena_active_side_bet_round(T)
+  local score = tonumber(T.bet_score[user_id]) or 0
+  local wins = tonumber(T.bet_wins[user_id]) or 0
+  local losses = tonumber(T.bet_losses[user_id]) or 0
+  local base_g, base_o = final_prize_for_kind_and_bet(T.kind, T.bet_tier)
+  local prev_g, prev_o = arena_apply_bet_score_to_prize(T.kind, T.bet_tier, score)
+
   return {
     active = true,
     id = tid,
@@ -1074,6 +1226,16 @@ local function arena_json_for_user(user_id)
     qf = pack_pairs("qf"),
     sf = pack_pairs("sf"),
     final_pairs = pack_pairs("final"),
+    bets_open = open_rk ~= nil,
+    betting_round = active_rk or "",
+    my_bets = arena_pack_my_side_bets(T, user_id, active_rk),
+    bet_score = score,
+    bet_wins = wins,
+    bet_losses = losses,
+    prize_base_gold = base_g,
+    prize_base_ore = base_o,
+    prize_preview_gold = prev_g,
+    prize_preview_ore = prev_o,
   }
 end
 
@@ -1275,6 +1437,103 @@ local function duel_arena_queue_leave(ctx, payload)
   return result
 end
 
+local function duel_arena_place_bet(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+    local p = {}
+    if payload ~= nil and payload ~= "" then
+      p = nk.json_decode(payload) or {}
+    end
+    local tid = arena_load_user_tid(user_id)
+    if tid == nil then
+      return nk.json_encode({ ok = false, err = "not_in_tournament" })
+    end
+    local T = arena_load_tournament(tid)
+    if T == nil then
+      arena_clear_human_tid(user_id)
+      return nk.json_encode({ ok = false, err = "no_tournament" })
+    end
+    if T.eliminated[user_id] == true then
+      return nk.json_encode({ ok = false, err = "eliminated" })
+    end
+    local rk = arena_open_side_bet_round(T)
+    if rk == nil then
+      return nk.json_encode({ ok = false, err = "bets_closed" })
+    end
+    local slot = tonumber(p.slot) or 0
+    local plist = T[rk]
+    if plist == nil or slot < 1 or slot > #plist then
+      return nk.json_encode({ ok = false, err = "bad_slot" })
+    end
+    local pr = plist[slot]
+    if pr.uid_a == user_id or pr.uid_b == user_id then
+      return nk.json_encode({ ok = false, err = "own_pair" })
+    end
+
+    arena_ensure_side_bet_tables(T)
+    local bag = T.side_bets[user_id]
+    if type(bag) ~= "table" then
+      bag = {}
+      T.side_bets[user_id] = bag
+    end
+    local picks = bag[rk]
+    if type(picks) ~= "table" then
+      picks = {}
+      bag[rk] = picks
+    end
+
+    local slot_key = tostring(slot)
+    if p.clear == true then
+      picks[slot_key] = nil
+      arena_save_tournament(T)
+      return nk.json_encode({
+        ok = true,
+        cleared = true,
+        round = rk,
+        slot = slot,
+        my_bets = arena_pack_my_side_bets(T, user_id, rk),
+        bet_score = tonumber(T.bet_score[user_id]) or 0,
+      })
+    end
+
+    local side = string.lower(tostring(p.side or ""))
+    local pick_uid = ""
+    if side == "a" then
+      pick_uid = tostring(pr.uid_a or "")
+    elseif side == "b" then
+      pick_uid = tostring(pr.uid_b or "")
+    else
+      return nk.json_encode({ ok = false, err = "bad_side" })
+    end
+    if pick_uid == "" then
+      return nk.json_encode({ ok = false, err = "bad_side" })
+    end
+    picks[slot_key] = pick_uid
+    arena_save_tournament(T)
+    return nk.json_encode({
+      ok = true,
+      round = rk,
+      slot = slot,
+      side = side,
+      pick_uid = pick_uid,
+      my_bets = arena_pack_my_side_bets(T, user_id, rk),
+      bet_score = tonumber(T.bet_score[user_id]) or 0,
+    })
+  end)
+  if not ok then
+    nk.logger_error("duel_arena_place_bet: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 local function duel_arena_queue_poll(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -1361,8 +1620,10 @@ end
     mirror_commit = mirror_commit,
     on_match_finished = on_match_finished,
     final_prize_for_kind_and_bet = final_prize_for_kind_and_bet,
+    final_prize_for_winner = final_prize_for_winner,
     duel_arena_queue_join = duel_arena_queue_join,
     duel_arena_queue_leave = duel_arena_queue_leave,
     duel_arena_queue_poll = duel_arena_queue_poll,
+    duel_arena_place_bet = duel_arena_place_bet,
   }
 end
