@@ -277,6 +277,9 @@ namespace Project.UI
             if (_bettingToggle != null)
             {
                 _bettingToggle.SetIsOnWithoutNotify(_bettingUiEnabled);
+                // SetIsOnWithoutNotify не шлёт onValueChanged — SwitchToggleVisual иначе остаётся «выкл».
+                var visual = _bettingToggle.GetComponent<SwitchToggleVisual>();
+                if (visual != null) visual.Refresh();
                 _bettingToggle.onValueChanged.AddListener(OnBettingToggleChanged);
                 // Если уже в очереди — держим скрытым (как ModePanel).
                 if (_queueUiLocked)

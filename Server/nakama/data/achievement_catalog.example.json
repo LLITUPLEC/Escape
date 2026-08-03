@@ -18,7 +18,7 @@
         { "threshold_delta": 10, "description_ru": "Использовать «Крест» 10 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
         { "threshold_delta": 50, "description_ru": "Использовать «Крест» 50 раз", "reward_text_ru": "Награда: +40 к здоровью", "rewards": [{ "type": "hp_flat", "value": 40 }] },
         { "threshold_delta": 250, "description_ru": "Использовать «Крест» 250 раз", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
-        { "threshold_delta": 300, "description_ru": "Использовать «Крест» 300 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 140 }] }
+        { "threshold_delta": 500, "description_ru": "Использовать «Крест» 500 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 190 }] }
       ]
     },
     {
@@ -32,7 +32,7 @@
         { "threshold_delta": 10, "description_ru": "Использовать «Квадрат» 10 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
         { "threshold_delta": 50, "description_ru": "Использовать «Квадрат» 50 раз", "reward_text_ru": "Награда: +40 к здоровью", "rewards": [{ "type": "hp_flat", "value": 40 }] },
         { "threshold_delta": 250, "description_ru": "Использовать «Квадрат» 250 раз", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
-        { "threshold_delta": 500, "description_ru": "Использовать «Квадрат» 500 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 140 }] }
+        { "threshold_delta": 500, "description_ru": "Использовать «Квадрат» 500 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 190 }] }
       ]
     },
     {
@@ -183,8 +183,8 @@
       "steps": [
         { "threshold_delta": 10, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
         { "threshold_delta": 50, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +25 к урону", "rewards": [{ "type": "damage_flat", "value": 25 }] },
-        { "threshold_delta": 500, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +100 к урону", "rewards": [{ "type": "damage_flat", "value": 100 }] },
-        { "threshold_delta": 2000, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +250 к урону", "rewards": [{ "type": "damage_flat", "value": 250 }] }
+        { "threshold_delta": 300, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +100 к урону", "rewards": [{ "type": "damage_flat", "value": 100 }] },
+        { "threshold_delta": 1000, "description_ru": "Добить противника петардой в PvP", "reward_text_ru": "Награда: +250 к урону", "rewards": [{ "type": "damage_flat", "value": 250 }] }
       ]
     },
     {

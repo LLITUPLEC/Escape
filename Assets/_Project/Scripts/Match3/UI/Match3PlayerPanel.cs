@@ -50,6 +50,8 @@ namespace Project.Match3
         [SerializeField] public GainPopupView gainPopup;
 
         private bool _visualStyleApplied;
+        private Match3AvatarFuryFx _furyFx;
+        private bool _furyVisualActive;
 
         private void Start()
         {
@@ -242,6 +244,28 @@ namespace Project.Match3
         {
             if (buffStateText == null) return;
             buffStateText.text = shieldStacks > 0 ? $"Щит x{shieldStacks} ({Mathf.Max(0, shieldTurnsRemaining)})" : string.Empty;
+        }
+
+        /// <summary>
+        /// Включает/выключает огненную рамку аватара на время «Ярости».
+        /// </summary>
+        public void SetFuryVisual(bool active)
+        {
+            if (_furyVisualActive == active && (_furyFx != null || !active))
+                return;
+
+            _furyVisualActive = active;
+            if (!active && _furyFx == null)
+                return;
+
+            if (avatarImage == null)
+                ResolveReferences();
+
+            if (_furyFx == null && avatarImage != null)
+                _furyFx = Match3AvatarFuryFx.Ensure(avatarImage);
+
+            if (_furyFx != null)
+                _furyFx.SetActive(active);
         }
 
         public void ShowDamagePopup(int damageAmount, bool isCrit)

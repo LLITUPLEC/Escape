@@ -1095,6 +1095,7 @@ MonoBehaviour:
   sfxAbilitySquare: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
   sfxAbilityCross: {fileID: 8300000, guid: b103f754fc7e6a248a65c76c889cd5fe, type: 3}
   sfxAbilityPetard: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
+  sfxAbilityFury: {fileID: 8300000, guid: 9cd1cb6321548c2459986b735c7b9500, type: 3}
   sfxCascadeFall: {fileID: 8300000, guid: 2c5292ba5cf254919a6b9e2b18e04f49, type: 3}
   sfxExtraTurn: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
   sfxTimerEnd: {fileID: 8300000, guid: 35fbad8cdde724f11ba6481f1e64af71, type: 3}

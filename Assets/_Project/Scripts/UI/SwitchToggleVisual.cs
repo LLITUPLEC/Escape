@@ -21,6 +21,7 @@ namespace Project.UI
         [SerializeField] private float handlePadding = 5f;
 
         private Coroutine _anim;
+        private Coroutine _deferredRefresh;
         private RectTransform _root;
 
         private void Awake()
@@ -35,7 +36,11 @@ namespace Project.UI
             EnsureSprites();
             if (toggle != null)
                 toggle.onValueChanged.AddListener(OnToggleChanged);
-            ApplyImmediate(toggle != null && toggle.isOn);
+            // Сразу + на следующий кадр: другие скрипты часто делают SetIsOnWithoutNotify в OnEnable
+            // (событие не приходит), а rect.width на первом кадре ещё может быть 0.
+            Refresh();
+            if (_deferredRefresh != null) StopCoroutine(_deferredRefresh);
+            _deferredRefresh = StartCoroutine(CoDeferredRefresh());
         }
 
         private void OnDisable()
@@ -47,6 +52,27 @@ namespace Project.UI
                 StopCoroutine(_anim);
                 _anim = null;
             }
+            if (_deferredRefresh != null)
+            {
+                StopCoroutine(_deferredRefresh);
+                _deferredRefresh = null;
+            }
+        }
+
+        /// <summary>
+        /// Синхронизировать Background/Handle с текущим <see cref="Toggle.isOn"/>.
+        /// Нужен после <c>SetIsOnWithoutNotify</c> (onValueChanged не вызывается).
+        /// </summary>
+        public void Refresh()
+        {
+            ApplyImmediate(toggle != null && toggle.isOn);
+        }
+
+        private IEnumerator CoDeferredRefresh()
+        {
+            yield return null;
+            Refresh();
+            _deferredRefresh = null;
         }
 
         private void OnToggleChanged(bool isOn)

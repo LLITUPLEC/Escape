@@ -65,6 +65,7 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxAbilitySquare;
         [SerializeField] private AudioClip sfxAbilityCross;
         [SerializeField] private AudioClip sfxAbilityPetard;
+        [SerializeField] private AudioClip sfxAbilityFury;
         [SerializeField] private AudioClip sfxCascadeFall;
         [SerializeField] private AudioClip sfxExtraTurn;
         [SerializeField] private AudioClip sfxTimerEnd;
@@ -1886,6 +1887,7 @@ namespace Project.Match3
                 }
                 else if (msg.actionType == 6)
                 {
+                    PlaySfx(sfxAbilityFury);
                     _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
                 }
             }
@@ -2324,6 +2326,7 @@ namespace Project.Match3
                 {
                     ApplyFury(actorStats, board);
                     keepTurn = true;
+                    PlaySfx(sfxAbilityFury);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
                     return true;
                 }
@@ -2759,20 +2762,24 @@ namespace Project.Match3
         {
             if (_myPanel != null)
             {
-                var dmg = Mathf.Max(0, _myStats.baseDamage) + (_myStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _myStats.furyDamageBonus) : 0);
+                var myFury = _myStats.furyTurnsRemaining > 0;
+                var dmg = Mathf.Max(0, _myStats.baseDamage) + (myFury ? Mathf.Max(0, _myStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats);
-                var crit = Mathf.Max(0f, _myStats.baseCrit) + (_myStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
+                var crit = Mathf.Max(0f, _myStats.baseCrit) + (myFury ? furyCritChance : 0f);
                 _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.Clamp01(crit) * 100f);
                 _myPanel.UpdateBuffState(GetShieldStacks(_myStats), Mathf.Max(_myStats.shieldT1, Mathf.Max(_myStats.shieldT2, _myStats.shieldT3)));
+                _myPanel.SetFuryVisual(myFury);
             }
 
             if (_opPanel != null)
             {
-                var dmg = Mathf.Max(0, _opStats.baseDamage) + (_opStats.furyTurnsRemaining > 0 ? Mathf.Max(0, _opStats.furyDamageBonus) : 0);
+                var opFury = _opStats.furyTurnsRemaining > 0;
+                var dmg = Mathf.Max(0, _opStats.baseDamage) + (opFury ? Mathf.Max(0, _opStats.furyDamageBonus) : 0);
                 var armor = Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats);
-                var crit = Mathf.Max(0f, _opStats.baseCrit) + (_opStats.furyTurnsRemaining > 0 ? furyCritChance : 0f);
+                var crit = Mathf.Max(0f, _opStats.baseCrit) + (opFury ? furyCritChance : 0f);
                 _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.Clamp01(crit) * 100f);
                 _opPanel.UpdateBuffState(GetShieldStacks(_opStats), Mathf.Max(_opStats.shieldT1, Mathf.Max(_opStats.shieldT2, _opStats.shieldT3)));
+                _opPanel.SetFuryVisual(opFury);
             }
         }
 
@@ -2932,6 +2939,7 @@ namespace Project.Match3
             if (sfxAbilitySquare == null) sfxAbilitySquare = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
             if (sfxAbilityCross == null) sfxAbilityCross = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav");
             if (sfxAbilityPetard == null) sfxAbilityPetard = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
+            if (sfxAbilityFury == null)   sfxAbilityFury   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/Bloodlust.wav");
             if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav");
             if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
             if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
