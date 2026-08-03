@@ -220,6 +220,12 @@ public static class AchievementsUiPrefabCreator
                 var rowTr = root.transform.Find("AchievementChainRowPrefabTemplate");
                 so.FindProperty("chainRowPrefab").objectReferenceValue =
                     rowTr != null ? rowTr.GetComponent<AchievementChainRowView>() : null;
+                var iconCatProp = so.FindProperty("iconCatalog");
+                if (iconCatProp != null && iconCatProp.objectReferenceValue == null)
+                {
+                    iconCatProp.objectReferenceValue = AssetDatabase.LoadAssetAtPath<AchievementIconCatalog>(
+                        AchievementIconCatalog.MainCatalogAssetPath);
+                }
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
         }

@@ -289,6 +289,7 @@ namespace Project.Achievements
             return AchievementCatalog.ChainFromServer(
                 ch.id,
                 ch.category,
+                ch.title_ru,
                 ch.counter_key,
                 thresholds,
                 descriptions,

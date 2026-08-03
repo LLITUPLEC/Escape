@@ -141,13 +141,18 @@ namespace Project.Achievements
 
         public void Show(string requirementText, string rewardText)
         {
-            Show(requirementText, rewardText, false, false, null);
+            Show(null, requirementText, rewardText, false, false, null);
         }
 
         public void Show(string requirementText, string rewardText, bool showClaimReward, bool alreadyClaimed, Action onClaimClicked)
         {
+            Show(null, requirementText, rewardText, showClaimReward, alreadyClaimed, onClaimClicked);
+        }
+
+        public void Show(string titleRu, string requirementText, string rewardText, bool showClaimReward, bool alreadyClaimed, Action onClaimClicked)
+        {
             if (_titleTmp != null)
-                _titleTmp.text = alreadyClaimed ? "Получено" : "Условие";
+                _titleTmp.text = string.IsNullOrWhiteSpace(titleRu) ? "Достижение" : titleRu.Trim();
             if (_bodyTmp != null)
                 _bodyTmp.text = requirementText ?? string.Empty;
             if (_rewardTmp != null)

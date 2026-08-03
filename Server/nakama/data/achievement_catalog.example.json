@@ -15,10 +15,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "ability_used", "action_type": 2 },
       "steps": [
-        { "threshold_delta": 10, "description_ru": "Использовать «Крест» 10 раз", "reward_text_ru": "Награда: +10 к здоровью", "rewards": [{ "type": "hp_flat", "value": 10 }] },
-        { "threshold_delta": 50, "description_ru": "Использовать «Крест» 50 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
-        { "threshold_delta": 250, "description_ru": "Использовать «Крест» 250 раз", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
-        { "threshold_delta": 300, "description_ru": "Использовать «Крест» 300 раз", "reward_text_ru": "Награда: +70 к здоровью", "rewards": [{ "type": "hp_flat", "value": 70 }] }
+        { "threshold_delta": 10, "description_ru": "Использовать «Крест» 10 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Крест» 50 раз", "reward_text_ru": "Награда: +40 к здоровью", "rewards": [{ "type": "hp_flat", "value": 40 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Крест» 250 раз", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
+        { "threshold_delta": 300, "description_ru": "Использовать «Крест» 300 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 140 }] }
       ]
     },
     {
@@ -29,10 +29,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "ability_used", "action_type": 3 },
       "steps": [
-        { "threshold_delta": 10, "description_ru": "Использовать «Квадрат» 10 раз", "reward_text_ru": "Награда: +10 к здоровью", "rewards": [{ "type": "hp_flat", "value": 10 }] },
-        { "threshold_delta": 50, "description_ru": "Использовать «Квадрат» 50 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
-        { "threshold_delta": 250, "description_ru": "Использовать «Квадрат» 250 раз", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
-        { "threshold_delta": 500, "description_ru": "Использовать «Квадрат» 500 раз", "reward_text_ru": "Награда: +70 к здоровью", "rewards": [{ "type": "hp_flat", "value": 70 }] }
+        { "threshold_delta": 10, "description_ru": "Использовать «Квадрат» 10 раз", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Квадрат» 50 раз", "reward_text_ru": "Награда: +40 к здоровью", "rewards": [{ "type": "hp_flat", "value": 40 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Квадрат» 250 раз", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Квадрат» 500 раз", "reward_text_ru": "Награда: +140 к здоровью", "rewards": [{ "type": "hp_flat", "value": 140 }] }
       ]
     },
     {
@@ -43,10 +43,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "ability_used", "action_type": 4 },
       "steps": [
-        { "threshold_delta": 10, "description_ru": "Использовать «Петарду» 10 раз", "reward_text_ru": "Награда: +5 к урону", "rewards": [{ "type": "damage_flat", "value": 5 }] },
-        { "threshold_delta": 50, "description_ru": "Использовать «Петарду» 50 раз", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
-        { "threshold_delta": 250, "description_ru": "Использовать «Петарду» 250 раз", "reward_text_ru": "Награда: +15 к урону", "rewards": [{ "type": "damage_flat", "value": 15 }] },
-        { "threshold_delta": 500, "description_ru": "Использовать «Петарду» 500 раз", "reward_text_ru": "Награда: +20 к урону", "rewards": [{ "type": "damage_flat", "value": 20 }] }
+        { "threshold_delta": 10, "description_ru": "Использовать «Петарду» 10 раз", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Петарду» 50 раз", "reward_text_ru": "Награда: +20 к урону", "rewards": [{ "type": "damage_flat", "value": 20 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Петарду» 250 раз", "reward_text_ru": "Награда: +30 к урону", "rewards": [{ "type": "damage_flat", "value": 30 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Петарду» 500 раз", "reward_text_ru": "Награда: +40 к урону", "rewards": [{ "type": "damage_flat", "value": 40 }] }
       ]
     },
     {
@@ -71,10 +71,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "ability_used", "action_type": 5 },
       "steps": [
-        { "threshold_delta": 10, "description_ru": "Использовать «Щит» 10 раз", "reward_text_ru": "Награда: +5 к броне", "rewards": [{ "type": "armor_flat", "value": 5 }] },
-        { "threshold_delta": 50, "description_ru": "Использовать «Щит» 50 раз", "reward_text_ru": "Награда: +10 к броне", "rewards": [{ "type": "armor_flat", "value": 10 }] },
-        { "threshold_delta": 250, "description_ru": "Использовать «Щит» 250 раз", "reward_text_ru": "Награда: +15 к броне", "rewards": [{ "type": "armor_flat", "value": 15 }] },
-        { "threshold_delta": 500, "description_ru": "Использовать «Щит» 500 раз", "reward_text_ru": "Награда: +20 к броне", "rewards": [{ "type": "armor_flat", "value": 20 }] }
+        { "threshold_delta": 10, "description_ru": "Использовать «Щит» 10 раз", "reward_text_ru": "Награда: +15 к броне", "rewards": [{ "type": "armor_flat", "value": 15 }] },
+        { "threshold_delta": 50, "description_ru": "Использовать «Щит» 50 раз", "reward_text_ru": "Награда: +30 к броне", "rewards": [{ "type": "armor_flat", "value": 30 }] },
+        { "threshold_delta": 250, "description_ru": "Использовать «Щит» 250 раз", "reward_text_ru": "Награда: +45 к броне", "rewards": [{ "type": "armor_flat", "value": 45 }] },
+        { "threshold_delta": 500, "description_ru": "Использовать «Щит» 500 раз", "reward_text_ru": "Награда: +60 к броне", "rewards": [{ "type": "armor_flat", "value": 60 }] }
       ]
     },
     {
@@ -85,9 +85,9 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "arena_final_win", "tournament_kind": "smith" },
       "steps": [
-        { "threshold_delta": 5, "description_ru": "Выиграть турнир кузнеца 5 раз", "reward_text_ru": "Награда: +1000 золота", "rewards": [{ "type": "gold", "value": 1000 }] },
-        { "threshold_delta": 25, "description_ru": "Выиграть турнир кузнеца 25 раз", "reward_text_ru": "Награда: +5000 золота", "rewards": [{ "type": "gold", "value": 5000 }] },
-        { "threshold_delta": 100, "description_ru": "Выиграть турнир кузнеца 100 раз", "reward_text_ru": "Награда: +15000 золота", "rewards": [{ "type": "gold", "value": 15000 }] },
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир кузнеца 5 раз", "reward_text_ru": "Награда: +2000 золота", "rewards": [{ "type": "gold", "value": 2000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир кузнеца 25 раз", "reward_text_ru": "Награда: +10000 золота", "rewards": [{ "type": "gold", "value": 10000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир кузнеца 100 раз", "reward_text_ru": "Награда: +30000 золота", "rewards": [{ "type": "gold", "value": 30000 }] },
         { "threshold_delta": 500, "description_ru": "Выиграть турнир кузнеца 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
       ]
     },
@@ -99,9 +99,9 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "arena_final_win", "tournament_kind": "ore" },
       "steps": [
-        { "threshold_delta": 5, "description_ru": "Выиграть турнир руды 5 раз", "reward_text_ru": "Награда: +1000 руды", "rewards": [{ "type": "ore", "value": 1000 }] },
-        { "threshold_delta": 25, "description_ru": "Выиграть турнир руды 25 раз", "reward_text_ru": "Награда: +5000 руды", "rewards": [{ "type": "ore", "value": 5000 }] },
-        { "threshold_delta": 100, "description_ru": "Выиграть турнир руды 100 раз", "reward_text_ru": "Награда: +15000 руды", "rewards": [{ "type": "ore", "value": 15000 }] },
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир руды 5 раз", "reward_text_ru": "Награда: +2000 руды", "rewards": [{ "type": "ore", "value": 2000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир руды 25 раз", "reward_text_ru": "Награда: +10000 руды", "rewards": [{ "type": "ore", "value": 10000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир руды 100 раз", "reward_text_ru": "Награда: +30000 руды", "rewards": [{ "type": "ore", "value": 30000 }] },
         { "threshold_delta": 500, "description_ru": "Выиграть турнир руды 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
       ]
     },
@@ -113,9 +113,9 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "arena_final_win", "tournament_kind": "gold" },
       "steps": [
-        { "threshold_delta": 5, "description_ru": "Выиграть турнир золота 5 раз", "reward_text_ru": "Награда: +1000 золота", "rewards": [{ "type": "gold", "value": 1000 }] },
-        { "threshold_delta": 25, "description_ru": "Выиграть турнир золота 25 раз", "reward_text_ru": "Награда: +5000 золота", "rewards": [{ "type": "gold", "value": 5000 }] },
-        { "threshold_delta": 100, "description_ru": "Выиграть турнир золота 100 раз", "reward_text_ru": "Награда: +15000 золота", "rewards": [{ "type": "gold", "value": 15000 }] },
+        { "threshold_delta": 5, "description_ru": "Выиграть турнир золота 5 раз", "reward_text_ru": "Награда: +2000 золота", "rewards": [{ "type": "gold", "value": 2000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть турнир золота 25 раз", "reward_text_ru": "Награда: +10000 золота", "rewards": [{ "type": "gold", "value": 10000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть турнир золота 100 раз", "reward_text_ru": "Награда: +30000 золота", "rewards": [{ "type": "gold", "value": 30000 }] },
         { "threshold_delta": 500, "description_ru": "Выиграть турнир золота 500 раз", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
       ]
     },
@@ -127,9 +127,9 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "pvp_duel_win" },
       "steps": [
-        { "threshold_delta": 5, "description_ru": "Выиграть дуэль (Три-в-ряд) 5 раз", "reward_text_ru": "Награда: +1000 руды", "rewards": [{ "type": "ore", "value": 1000 }] },
-        { "threshold_delta": 25, "description_ru": "Выиграть дуэль (Три-в-ряд) 25 раз", "reward_text_ru": "Награда: +5000 руды", "rewards": [{ "type": "ore", "value": 5000 }] },
-        { "threshold_delta": 100, "description_ru": "Выиграть дуэль (Три-в-ряд) 100 раз", "reward_text_ru": "Награда: +10000 руды", "rewards": [{ "type": "ore", "value": 10000 }] },
+        { "threshold_delta": 5, "description_ru": "Выиграть дуэль (Три-в-ряд) 5 раз", "reward_text_ru": "Награда: +2000 руды", "rewards": [{ "type": "ore", "value": 2000 }] },
+        { "threshold_delta": 25, "description_ru": "Выиграть дуэль (Три-в-ряд) 25 раз", "reward_text_ru": "Награда: +10000 руды", "rewards": [{ "type": "ore", "value": 10000 }] },
+        { "threshold_delta": 100, "description_ru": "Выиграть дуэль (Три-в-ряд) 100 раз", "reward_text_ru": "Награда: +20000 руды", "rewards": [{ "type": "ore", "value": 20000 }] },
         { "threshold_delta": 500, "description_ru": "Выиграть дуэль (Три-в-ряд) 500 раз", "reward_text_ru": "Награда: +5% к урону", "rewards": [{ "type": "damage_pct", "value": 0.05 }] }
       ]
     },
@@ -141,10 +141,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "pvp_win_finish", "finish_action_type": 4 },
       "steps": [
-        { "threshold_delta": 5, "description_ru": "Победить в дуэли (Три-в-ряд) финишём «Петардой» 5 раз", "reward_text_ru": "Награда: +5 материи", "rewards": [{ "type": "matter", "value": 5 }] },
-        { "threshold_delta": 50, "description_ru": "Победить в дуэли финишём «Петардой» 50 раз", "reward_text_ru": "Награда: +50 материи", "rewards": [{ "type": "matter", "value": 50 }] },
-        { "threshold_delta": 100, "description_ru": "Победить в дуэли финишём «Петардой» 100 раз", "reward_text_ru": "Награда: +100 материи", "rewards": [{ "type": "matter", "value": 100 }] },
-        { "threshold_delta": 500, "description_ru": "Победить в дуэли финишём «Петардой» 500 раз", "reward_text_ru": "Награда: +500 материи и +1% шансу крита", "rewards": [{ "type": "matter", "value": 500 }, { "type": "crit_flat", "value": 0.01 }] }
+        { "threshold_delta": 5, "description_ru": "Победить в дуэли «Петардой» 5 раз", "reward_text_ru": "Награда: +20 материи", "rewards": [{ "type": "matter", "value": 20 }] },
+        { "threshold_delta": 50, "description_ru": "Победить в дуэли «Петардой» 50 раз", "reward_text_ru": "Награда: +150 материи", "rewards": [{ "type": "matter", "value": 150 }] },
+        { "threshold_delta": 100, "description_ru": "Победить в дуэли «Петардой» 100 раз", "reward_text_ru": "Награда: +500 материи", "rewards": [{ "type": "matter", "value": 500 }] },
+        { "threshold_delta": 500, "description_ru": "Победить в дуэли «Петардой» 500 раз", "reward_text_ru": "Награда: +2000 материи и +1% шансу крита", "rewards": [{ "type": "matter", "value": 2000 }, { "type": "crit_flat", "value": 0.01 }] }
       ]
     },
     {
@@ -155,7 +155,10 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "dnn_double_five_plus_same_turn" },
       "steps": [
-        { "threshold_delta": 1, "description_ru": "За один ход собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] }
+        { "threshold_delta": 1, "description_ru": "За одно действие собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] },
+        { "threshold_delta": 5, "description_ru": "За одно действие собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] },
+        { "threshold_delta": 25, "description_ru": "За одно действие собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +3% к броне", "rewards": [{ "type": "armor_pct", "value": 0.03 }] },
+        { "threshold_delta": 100, "description_ru": "За одно действие собрать две линии 5+ (можно каскадно)", "reward_text_ru": "Награда: +5% к криту", "rewards": [{ "type": "crit_flat", "value": 0.05 }] }
       ]
     },
     {
@@ -166,7 +169,8 @@
       "threshold_mode": "cumulative_delta",
       "event": { "primitive": "win_after_hp_was_one" },
       "steps": [
-        { "threshold_delta": 1, "description_ru": "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли", "reward_text_ru": "Награда: +5% к броне", "rewards": [{ "type": "armor_pct", "value": 0.05 }] }
+        { "threshold_delta": 1, "description_ru": "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли", "reward_text_ru": "Награда: +5% к броне", "rewards": [{ "type": "armor_pct", "value": 0.05 }] },
+        { "threshold_delta": 5, "description_ru": "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли", "reward_text_ru": "Награда: +5% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.05 }] }
       ]
     },
     {
@@ -193,9 +197,8 @@
       "steps": [
         { "threshold_delta": 25, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
         { "threshold_delta": 100, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +150 к здоровью", "rewards": [{ "type": "hp_flat", "value": 150 }] },
-        { "threshold_delta": 250, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +500 к здоровью", "rewards": [{ "type": "hp_flat", "value": 500 }] },
-        { "threshold_delta": 500, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +750 к здоровью", "rewards": [{ "type": "hp_flat", "value": 750 }] },
-        { "threshold_delta": 1000, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +1250 к здоровью", "rewards": [{ "type": "hp_flat", "value": 1250 }] }
+        { "threshold_delta": 250, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +300 к здоровью", "rewards": [{ "type": "hp_flat", "value": 300 }] },
+        { "threshold_delta": 500, "description_ru": "Убить «Ржавый гвоздь» (2 этаж)", "reward_text_ru": "Награда: +1% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.01 }] }
       ]
     },
     {
@@ -207,9 +210,9 @@
       "event": { "primitive": "arena_final_result", "won": false },
       "steps": [
         { "threshold_delta": 1, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +5 материи", "rewards": [{ "type": "matter", "value": 5 }] },
-        { "threshold_delta": 10, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +10 материи", "rewards": [{ "type": "matter", "value": 10 }] },
-        { "threshold_delta": 25, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +50 материи", "rewards": [{ "type": "matter", "value": 50 }] },
-        { "threshold_delta": 100, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +200 материи", "rewards": [{ "type": "matter", "value": 200 }] }
+        { "threshold_delta": 10, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +50 материи", "rewards": [{ "type": "matter", "value": 50 }] },
+        { "threshold_delta": 25, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +100 материи", "rewards": [{ "type": "matter", "value": 100 }] },
+        { "threshold_delta": 100, "description_ru": "Проиграть в финале любого турнира", "reward_text_ru": "Награда: +400 материи", "rewards": [{ "type": "matter", "value": 400 }] }
       ]
     }
   ]

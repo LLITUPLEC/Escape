@@ -35,6 +35,8 @@ namespace Project.Achievements
     public sealed class AchievementChainDefinition
     {
         public string ChainId;
+        /// <summary>Локализованное имя цепочки (Storage: title_ru).</summary>
+        public string TitleRu;
         public AchievementTab Tab;
         public string StatKey;
         public int[] Thresholds;
@@ -99,7 +101,7 @@ namespace Project.Achievements
         {
             return new[]
             {
-                Chain(AchievementTab.Obsession, "obs.cross", AchievementStatKeys.UsesCross,
+                Chain(AchievementTab.Obsession, "obs.cross", "Крест", AchievementStatKeys.UsesCross,
                     new[] { 10, 50, 250, 300 },
                     new[]
                     {
@@ -117,7 +119,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Obsession, "obs.square", AchievementStatKeys.UsesSquare,
+                Chain(AchievementTab.Obsession, "obs.square", "Квадрат", AchievementStatKeys.UsesSquare,
                     new[] { 10, 50, 250, 500 },
                     new[]
                     {
@@ -135,7 +137,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Obsession, "obs.petard", AchievementStatKeys.UsesPetard,
+                Chain(AchievementTab.Obsession, "obs.petard", "Петарда", AchievementStatKeys.UsesPetard,
                     new[] { 10, 50, 250, 500 },
                     new[]
                     {
@@ -153,7 +155,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Obsession, "obs.fury", AchievementStatKeys.UsesFury,
+                Chain(AchievementTab.Obsession, "obs.fury", "Ярость", AchievementStatKeys.UsesFury,
                     new[] { 10, 50, 250, 500 },
                     new[]
                     {
@@ -171,7 +173,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Obsession, "obs.shield", AchievementStatKeys.UsesShield,
+                Chain(AchievementTab.Obsession, "obs.shield", "Щит", AchievementStatKeys.UsesShield,
                     new[] { 10, 50, 250, 500 },
                     new[]
                     {
@@ -189,7 +191,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.blacksmith", AchievementStatKeys.TournamentSmithWinFinal,
+                Chain(AchievementTab.Slaughter, "sl.blacksmith", "Турнир кузнеца", AchievementStatKeys.TournamentSmithWinFinal,
                     new[] { 5, 25, 100, 500 },
                     new[]
                     {
@@ -207,7 +209,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.ore_tournament", AchievementStatKeys.TournamentOreWinFinal,
+                Chain(AchievementTab.Slaughter, "sl.ore_tournament", "Турнир руды", AchievementStatKeys.TournamentOreWinFinal,
                     new[] { 5, 25, 100, 500 },
                     new[]
                     {
@@ -225,7 +227,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.gold_tournament", AchievementStatKeys.TournamentGoldWinFinal,
+                Chain(AchievementTab.Slaughter, "sl.gold_tournament", "Турнир золота", AchievementStatKeys.TournamentGoldWinFinal,
                     new[] { 5, 25, 100, 500 },
                     new[]
                     {
@@ -243,7 +245,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.duel", AchievementStatKeys.DuelTriWin,
+                Chain(AchievementTab.Slaughter, "sl.duel", "Дуэли", AchievementStatKeys.DuelTriWin,
                     new[] { 5, 25, 100, 500 },
                     new[]
                     {
@@ -261,7 +263,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.petard_finish", AchievementStatKeys.DuelPetardFinisher,
+                Chain(AchievementTab.Slaughter, "sl.petard_finish", "Финиш петардой", AchievementStatKeys.DuelPetardFinisher,
                     new[] { 5, 50, 100, 500 },
                     new[]
                     {
@@ -279,7 +281,7 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Dnn, "dnn.double_line", AchievementStatKeys.DnnDoubleFivePlusOneTurn,
+                Chain(AchievementTab.Dnn, "dnn.double_line", "Две линии 5+", AchievementStatKeys.DnnDoubleFivePlusOneTurn,
                     new[] { 1 },
                     new[]
                     {
@@ -291,7 +293,7 @@ namespace Project.Achievements
                     },
                     new[] { G }),
 
-                Chain(AchievementTab.Dnn, "dnn.win_1hp", AchievementStatKeys.DnnWinAtOneHp,
+                Chain(AchievementTab.Dnn, "dnn.win_1hp", "Победа с 1 HP", AchievementStatKeys.DnnWinAtOneHp,
                     new[] { 1 },
                     new[]
                     {
@@ -308,6 +310,7 @@ namespace Project.Achievements
         private static AchievementChainDefinition Chain(
             AchievementTab tab,
             string id,
+            string titleRu,
             string statKey,
             int[] thresholds,
             string[] descriptions,
@@ -317,6 +320,7 @@ namespace Project.Achievements
             return new AchievementChainDefinition
             {
                 ChainId = id,
+                TitleRu = titleRu ?? string.Empty,
                 Tab = tab,
                 StatKey = statKey,
                 Thresholds = thresholds,
@@ -348,6 +352,7 @@ namespace Project.Achievements
         internal static AchievementChainDefinition ChainFromServer(
             string id,
             string category,
+            string titleRu,
             string counterKey,
             int[] thresholdDeltas,
             string[] descriptions,
@@ -356,6 +361,7 @@ namespace Project.Achievements
             return Chain(
                 TabFromCategoryId(category),
                 id,
+                titleRu,
                 counterKey,
                 thresholdDeltas,
                 descriptions,

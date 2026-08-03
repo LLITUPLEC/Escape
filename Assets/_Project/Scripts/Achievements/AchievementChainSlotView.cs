@@ -92,7 +92,8 @@ namespace Project.Achievements
             bool thresholdMet,
             bool rewardClaimed,
             bool canClaimReward,
-            Action<string, int> onStepClick)
+            Action<string, int> onStepClick,
+            Sprite chainIcon = null)
         {
             if (rewardTmp != null)
                 rewardTmp.text = rewardLine ?? string.Empty;
@@ -166,6 +167,9 @@ namespace Project.Achievements
 
             if (iconImage != null)
             {
+                if (chainIcon != null)
+                    iconImage.sprite = chainIcon;
+                iconImage.enabled = iconImage.sprite != null;
                 iconImage.color = grayLocked ? new Color(0.35f, 0.35f, 0.38f, 1f) : Color.white;
                 iconImage.raycastTarget = false;
             }

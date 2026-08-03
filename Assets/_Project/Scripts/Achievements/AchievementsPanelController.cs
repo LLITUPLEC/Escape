@@ -33,6 +33,9 @@ namespace Project.Achievements
 
         [SerializeField] private AchievementChainRowView chainRowPrefab;
 
+        [Header("Иконки достижений (одна на chain id)")]
+        [SerializeField] private AchievementIconCatalog iconCatalog;
+
         [Header("Шрифт UI (TF2CSecondary: Assets/_Project/Fonts)")]
         [SerializeField] private TMP_FontAsset achievementUiFont;
 
@@ -282,7 +285,8 @@ namespace Project.Achievements
                     continue;
                 var inst = Instantiate(chainRowPrefab, host);
                 inst.gameObject.SetActive(true);
-                inst.Bind(chain, OpenStepDetail);
+                var icon = iconCatalog != null ? iconCatalog.GetDisplayIcon(chain.ChainId) : null;
+                inst.Bind(chain, OpenStepDetail, icon);
                 _spawnedRows.Add(inst);
             }
 
@@ -306,7 +310,7 @@ namespace Project.Achievements
                 onClaim = () => ClaimStepRoutineAsync(def.ChainId, stepIndex);
             }
 
-            _stepDetailModal.Show(def.Descriptions[stepIndex], reward, canClaim, claimed, onClaim);
+            _stepDetailModal.Show(def.TitleRu, def.Descriptions[stepIndex], reward, canClaim, claimed, onClaim);
         }
 
         private async void ClaimStepRoutineAsync(string chainId, int stepIndex)
@@ -628,6 +632,11 @@ namespace Project.Achievements
         private void OnValidate()
         {
             if (Application.isPlaying) return;
+            if (iconCatalog == null)
+            {
+                iconCatalog = UnityEditor.AssetDatabase.LoadAssetAtPath<AchievementIconCatalog>(
+                    AchievementIconCatalog.MainCatalogAssetPath);
+            }
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, achievementUiFont);
         }
 #endif

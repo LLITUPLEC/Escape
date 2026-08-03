@@ -11,7 +11,7 @@ namespace Project.Achievements
         [SerializeField] private Graphic[] arrows;
         [SerializeField] private bool overrideArrowColorByState;
 
-        public void Bind(AchievementChainDefinition chain, Action<string, int> onStepClick)
+        public void Bind(AchievementChainDefinition chain, Action<string, int> onStepClick, Sprite chainIcon = null)
         {
             var stat = AchievementProgressStorage.GetStat(chain.StatKey);
             var n = chain.Thresholds.Length;
@@ -57,7 +57,8 @@ namespace Project.Achievements
                     thresholdMet,
                     rewardClaimed,
                     canClaimReward,
-                    onStepClick);
+                    onStepClick,
+                    chainIcon);
 
                 if (arrows != null && i < n - 1 && i < arrows.Length && arrows[i] != null)
                 {
