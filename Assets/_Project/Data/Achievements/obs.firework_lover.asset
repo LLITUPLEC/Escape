@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: obs.firework_lover
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: obs.firework_lover
-  titleRu: "\u041B\u044E\u0431\u0438\u0442\u0435\u043B\u044C \u0444\u0435\u0439\u0435\u0440\u0432\u0435\u0440\u043A\u0430"
+  titleRu: "\u041F\u0438\u0440\u043E\u0442\u0435\u0445\u043D\u0438\u043A"
   category: obsession
-  icon: {fileID: 21300000, guid: 865b473a303443e41b470b92c3c85ed2, type: 3}
+  icon: {fileID: 21300000, guid: dd71da4f6901e2046ac65421f7940fc4, type: 3}

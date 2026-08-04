@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: sl.duel
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: sl.duel
-  titleRu: "\u0414\u0443\u044D\u043B\u0438"
+  titleRu: "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u043E\u043D\u0435\u0440
+    \u0427\u0435\u0440\u0435\u043F\u043E\u0432"
   category: slaughter
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1661704edd0f1c642b20c6aea073a920, type: 3}

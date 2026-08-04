@@ -15,4 +15,4 @@ MonoBehaviour:
   achievementId: obs.nail_rusty
   titleRu: "\u041F\u0440\u0438\u0433\u0432\u043E\u0437\u0434\u0438\u0442\u044C"
   category: obsession
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0f97f5685a4b99c499d77d0f568273d9, type: 3}

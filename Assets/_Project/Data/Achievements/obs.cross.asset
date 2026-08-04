@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: obs.cross
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: obs.cross
-  titleRu: "\u041A\u0440\u0435\u0441\u0442"
+  titleRu: "\u0422\u043E\u0447\u043A\u0430 \u041F\u0435\u0440\u0435\u0441\u0435\u0447\u0435\u043D\u0438\u044F"
   category: obsession
-  icon: {fileID: 21300000, guid: 8feda5bd91b2aa840a3851d5f5060829, type: 3}
+  icon: {fileID: 21300000, guid: 1af68b1d027234c4099f3d26312dfa54, type: 3}

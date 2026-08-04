@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: dnn.double_line
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: dnn.double_line
-  titleRu: "\u0414\u0432\u0435 \u043B\u0438\u043D\u0438\u0438 5+"
+  titleRu: "\u0413\u0440\u0430\u043D\u0434\u0438\u043E\u0437\u043D\u044B\u0439 \u041A\u0430\u0441\u043A\u0430\u0434"
   category: dnn
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: ff3f415835dde434e8e1e606c14f7109, type: 3}

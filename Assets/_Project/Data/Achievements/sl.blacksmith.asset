@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: sl.blacksmith
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: sl.blacksmith
-  titleRu: "\u0422\u0443\u0440\u043D\u0438\u0440 \u043A\u0443\u0437\u043D\u0435\u0446\u0430"
+  titleRu: "\u041A\u0443\u0437\u043D\u0435\u0447\u043D\u044B\u0439 \u041A\u043E\u0440\u043E\u043B\u044C"
   category: slaughter
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d2649b97851df2a42bf1a7ebc33d730e, type: 3}

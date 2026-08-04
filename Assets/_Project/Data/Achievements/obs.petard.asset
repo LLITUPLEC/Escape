@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: obs.petard
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: obs.petard
-  titleRu: "\u0425\u0443\u043B\u0438\u0433\u0430\u043D"
+  titleRu: "\u0428\u0443\u043C\u043D\u044B\u0439 \u0421\u043E\u0441\u0435\u0434"
   category: obsession
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: d78dbf7f788f7354daab8e3919ce6c92, type: 3}

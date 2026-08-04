@@ -65,8 +65,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: ca84811fddfac554f87b79d2c375fa31, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -2172,7 +2172,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 108, y: 0}
-  m_SizeDelta: {x: 148, y: 210}
+  m_SizeDelta: {x: 177.6, y: 252}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1254086643677590528
 MonoBehaviour:
@@ -2225,6 +2225,27 @@ MonoBehaviour:
   progressTmp: {fileID: 431738660580290596}
   rewardTmp: {fileID: 1762048962784601658}
   lockOverlay: {fileID: 6787301633207730503}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 1, g: 0.25, b: 0.25, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 0}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 14
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
+  unclaimedGlowZOffset: 0.1
 --- !u!1 &4247277243454253193
 GameObject:
   m_ObjectHideFlags: 0
@@ -3613,9 +3634,11 @@ MonoBehaviour:
   contentSlaughter: {fileID: 838093908109147686}
   contentDnn: {fileID: 3095179541048672267}
   chainRowPrefab: {fileID: 3367600257849553303, guid: d069b5eb7f17b0147831d80d1197aa58, type: 3}
+  iconCatalog: {fileID: 11400000, guid: e8a92f992b930cc408b611166a70cbb8, type: 2}
   achievementUiFont: {fileID: 11400000, guid: c34364bd766fa28498ab817f24929186, type: 2}
   slideDuration: 0.38
   hiddenAnchoredY: -1400
+  inactiveTabAlpha: 0.48
 --- !u!1 &5696848204396135598
 GameObject:
   m_ObjectHideFlags: 0
@@ -5791,8 +5814,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: ca84811fddfac554f87b79d2c375fa31, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -5843,7 +5866,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -324, y: 0}
-  m_SizeDelta: {x: 148, y: 210}
+  m_SizeDelta: {x: 177.6, y: 252}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1866574401360913028
 MonoBehaviour:
@@ -5896,6 +5919,27 @@ MonoBehaviour:
   progressTmp: {fileID: 5691242734344423193}
   rewardTmp: {fileID: 5601611984269160031}
   lockOverlay: {fileID: 5696848204396135598}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 1, g: 0.25, b: 0.25, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 0}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 14
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
+  unclaimedGlowZOffset: 0.1
 --- !u!1 &8106427590968046670
 GameObject:
   m_ObjectHideFlags: 0
@@ -6170,7 +6214,7 @@ MonoBehaviour:
   m_MinWidth: -1
   m_MinHeight: 200
   m_PreferredWidth: -1
-  m_PreferredHeight: 240
+  m_PreferredHeight: 260
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -6195,6 +6239,7 @@ MonoBehaviour:
   - {fileID: 434809085113633004}
   - {fileID: 3267497428583820335}
   - {fileID: 2724961175401900037}
+  overrideArrowColorByState: 0
 --- !u!1 &8340055204200431965
 GameObject:
   m_ObjectHideFlags: 0
@@ -6237,7 +6282,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -108, y: 0}
-  m_SizeDelta: {x: 148, y: 210}
+  m_SizeDelta: {x: 177.6, y: 252}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &5448359722703314762
 MonoBehaviour:
@@ -6290,6 +6335,27 @@ MonoBehaviour:
   progressTmp: {fileID: 5835256803783443705}
   rewardTmp: {fileID: 7689584333780313024}
   lockOverlay: {fileID: 4567955728004998803}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 1, g: 0.25, b: 0.25, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 0}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 14
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
+  unclaimedGlowZOffset: 0.1
 --- !u!1 &8470976558973696273
 GameObject:
   m_ObjectHideFlags: 0
@@ -6505,8 +6571,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: ca84811fddfac554f87b79d2c375fa31, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -6830,7 +6896,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 324, y: 0}
-  m_SizeDelta: {x: 148, y: 210}
+  m_SizeDelta: {x: 177.6, y: 252}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &5132086438301622162
 MonoBehaviour:
@@ -6883,6 +6949,27 @@ MonoBehaviour:
   progressTmp: {fileID: 8832950368858546697}
   rewardTmp: {fileID: 3560497554809985574}
   lockOverlay: {fileID: 6157219253309055646}
+  overrideFrameColorByState: 0
+  overrideFillColorsByTier: 0
+  showClaimedOverlay: 1
+  claimedOverlayColor: {r: 0.45, g: 0.95, b: 0.55, a: 0.22}
+  showUnclaimedHint: 1
+  unclaimedHintColor: {r: 1, g: 0.25, b: 0.25, a: 0.9}
+  unclaimedHintHeadSprite: {fileID: 0}
+  unclaimedHintTrailColor: {r: 1, g: 0.85, b: 0.15, a: 0.55}
+  unclaimedHintDotSize: 14
+  unclaimedHintTrailThickness: 3
+  unclaimedHintTrailLength: 22
+  unclaimedHintSpeedPxPerSecond: 220
+  unclaimedHintInset: 2
+  showUnclaimedGlow: 1
+  unclaimedGlowColor: {r: 0.25, g: 1, b: 0.35, a: 0.85}
+  unclaimedGlowMinAlpha: 0.12
+  unclaimedGlowMaxAlpha: 0.45
+  unclaimedGlowPulseSpeed: 0.7
+  unclaimedGlowOutsetHorizontal: 77
+  unclaimedGlowOutsetVertical: 100
+  unclaimedGlowZOffset: 0.1
 --- !u!1 &9072756072400404469
 GameObject:
   m_ObjectHideFlags: 0
@@ -6948,8 +7035,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: ca84811fddfac554f87b79d2c375fa31, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4

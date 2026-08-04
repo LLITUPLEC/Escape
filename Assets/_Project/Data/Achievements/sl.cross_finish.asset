@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: sl.cross_finish
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: sl.cross_finish
-  titleRu: "\u0424\u0438\u043D\u0438\u0448 \u043A\u0440\u0435\u0441\u0442\u043E\u043C"
+  titleRu: "\u0420\u0430\u0441\u043F\u044F\u0442\u0438\u0435 \u043D\u0430 \u0410\u0440\u0435\u043D\u0435"
   category: slaughter
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2597fe9ab5c28c444b5fb01c5ff19b7b, type: 3}

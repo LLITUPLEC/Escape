@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: sl.bets_placed
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: sl.bets_placed
-  titleRu: "\u0411\u0443\u043A\u043C\u0435\u043A\u0435\u0440"
+  titleRu: "\u0410\u043B\u0447\u043D\u044B\u0439 \u0413\u043B\u0430\u0437"
   category: slaughter
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0a61a320fd65475439f5830a1039840c, type: 3}

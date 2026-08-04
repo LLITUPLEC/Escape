@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: obs.line6
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: obs.line6
-  titleRu: "\u0428\u0435\u0441\u0442\u0451\u0440\u043A\u0430"
+  titleRu: "\u0410\u0431\u0441\u043E\u043B\u044E\u0442"
   category: obsession
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 621096a8713d4434cb6c3a11e5a879bd, type: 3}

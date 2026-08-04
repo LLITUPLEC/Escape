@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: sl.ore_tournament
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: sl.ore_tournament
-  titleRu: "\u0422\u0443\u0440\u043D\u0438\u0440 \u0440\u0443\u0434\u044B"
+  titleRu: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0427\u0435\u043C\u043F\u0438\u043E\u043D"
   category: slaughter
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 9eb7254e7d94540488d27dc39e0702ed, type: 3}

@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: dnn.perfect_bets
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
   achievementId: dnn.perfect_bets
-  titleRu: "\u0422\u043E\u0442\u0430\u043B\u0438\u0437\u0430\u0442\u043E\u0440"
+  titleRu: "\u0413\u0435\u043D\u0438\u0439 \u0422\u043E\u0442\u0430\u043B\u0438\u0437\u0430\u0442\u043E\u0440\u0430"
   category: dnn
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 44e57af684542cb49918802f8c89625a, type: 3}
