@@ -14,6 +14,15 @@ return function(deps)
   local inventory_remove_def_total = deps.inventory_remove_def_total
   local inventory_try_add = deps.inventory_try_add
   local stats_inc_arena_tournament_played = deps.stats_inc_arena_tournament_played
+  local achievement_merge_stats = deps.achievement_merge_stats
+
+  local function ach_inc(uid, key, delta)
+    if type(achievement_merge_stats) ~= "function" then return end
+    if uid == nil or uid == "" or key == nil or key == "" then return end
+    local d = tonumber(delta) or 0
+    if d == 0 then return end
+    pcall(achievement_merge_stats, uid, { [key] = d })
+  end
 
 --- ═══════════════════════════════════════════════════════════════════════════
 --- Арена: турнир на 8 участников (очередь + сетка + интеграция с duel_match3).
@@ -639,15 +648,71 @@ local function arena_resolve_side_bets(T, rk)
               if w == tostring(pick_uid) then
                 T.bet_score[uid] = cur + 1
                 T.bet_wins[uid] = (tonumber(T.bet_wins[uid]) or 0) + 1
+                ach_inc(uid, "slaughter.arena_bets_won", 1)
               else
                 T.bet_score[uid] = cur - 1
                 T.bet_losses[uid] = (tonumber(T.bet_losses[uid]) or 0) + 1
+                ach_inc(uid, "slaughter.arena_bets_lost", 1)
               end
             end
           end
         end
       end
     end
+  end
+end
+
+--- Сколько side-ставок должен сделать финалист на все чужие пары (для сетки 2^n).
+local function arena_expected_side_bets_for_finalist(bracket_size)
+  local n = tonumber(bracket_size) or ARENA_QUEUE_MAX
+  if n < 4 then
+    n = ARENA_QUEUE_MAX
+  end
+  local expected = 0
+  local round_pairs = math.floor(n / 2)
+  while round_pairs >= 2 do
+    expected = expected + (round_pairs - 1)
+    round_pairs = math.floor(round_pairs / 2)
+  end
+  return expected
+end
+
+local function arena_count_side_bets_placed(T, uid)
+  arena_ensure_side_bet_tables(T)
+  local bag = T.side_bets[uid]
+  if type(bag) ~= "table" then
+    return 0
+  end
+  local n = 0
+  for _, picks in pairs(bag) do
+    if type(picks) == "table" then
+      for _, pick_uid in pairs(picks) do
+        if pick_uid ~= nil and pick_uid ~= "" then
+          n = n + 1
+        end
+      end
+    end
+  end
+  return n
+end
+
+local function arena_try_grant_perfect_bets_achievement(T, winner_uid)
+  if T == nil or winner_uid == nil or winner_uid == "" then
+    return
+  end
+  if arena_uid_is_bot(T, winner_uid) then
+    return
+  end
+  arena_ensure_side_bet_tables(T)
+  local expected = arena_expected_side_bets_for_finalist(T.bracket_size or ARENA_QUEUE_MAX)
+  if expected <= 0 then
+    return
+  end
+  local wins = tonumber(T.bet_wins[winner_uid]) or 0
+  local losses = tonumber(T.bet_losses[winner_uid]) or 0
+  local placed = arena_count_side_bets_placed(T, winner_uid)
+  if wins == expected and losses == 0 and placed == expected then
+    ach_inc(winner_uid, "dnn.arena_perfect_bets_win", 1)
   end
 end
 
@@ -895,6 +960,7 @@ arena_on_pair_completed = function(T, rk)
     local w = pr.winner_uid
     if w ~= nil and w ~= "" and not arena_uid_is_bot(T, w) then
       arena_ensure_side_bet_tables(T)
+      arena_try_grant_perfect_bets_achievement(T, w)
       arena_grant_final_progress(w, T.kind, T.bet_tier, T.bet_score[w] or 0)
     end
     T.phase = "done"
@@ -1027,6 +1093,7 @@ local function arena_start_tournament_from_entries(kind, entries)
     id = tid,
     kind = k,
     bet_tier = bet,
+    bracket_size = #entries,
     phase = "countdown",
     countdown_until = os.time() + ARENA_COUNTDOWN_SEC,
     next_round = nil,
@@ -1517,6 +1584,7 @@ local function duel_arena_place_bet(ctx, payload)
     end
     picks[slot_key] = pick_uid
     arena_save_tournament(T)
+    ach_inc(user_id, "slaughter.arena_bets_placed", 1)
     return nk.json_encode({
       ok = true,
       round = rk,

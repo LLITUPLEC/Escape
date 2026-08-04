@@ -65,10 +65,18 @@ local ACH_STAT_BLACKSMITH = "slaughter.tournament_smith_final"
 local ACH_STAT_ORE_TOURN = "slaughter.tournament_ore_final"
 local ACH_STAT_GOLD_TOURN = "slaughter.tournament_gold_final"
 local ACH_STAT_DUEL_TRI = "slaughter.duel_tri_win"
-local ACH_STAT_PETARD_FINISH = "slaughter.duel_petard_finish"
+local ACH_STAT_CROSS_FINISH = "slaughter.duel_cross_finish"
+local ACH_STAT_SQUARE_FINISH = "slaughter.duel_square_finish"
 local ACH_STAT_PETARD_PVP_FINISH = "slaughter.finish_petard_pvp"
 local ACH_STAT_FINAL_LOSS = "slaughter.tournament_final_loss"
 local ACH_STAT_PVE_KILL_MINE_2 = "pve.kill.mine_2"
+local ACH_STAT_LINE5 = "matches.line5"
+local ACH_STAT_LINE6 = "matches.line6"
+local ACH_STAT_THREE_STREAK = "dnn.three_five_plus_streak"
+local ACH_STAT_BETS_PLACED = "slaughter.arena_bets_placed"
+local ACH_STAT_BETS_WON = "slaughter.arena_bets_won"
+local ACH_STAT_BETS_LOST = "slaughter.arena_bets_lost"
+local ACH_STAT_PERFECT_BETS = "dnn.arena_perfect_bets_win"
 
 function M.is_human(uid)
   if uid == nil or uid == "" then return false end
@@ -303,12 +311,19 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
       e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
     end
 
+    -- Финиш способностью в PvP: 2=крест, 3=квадрат, 4=петарда (obs.firework_lover).
     local at_n = tonumber(action_type) or 0
-    if is_achievement_pvp_context(state) and actor ~= nil and opponent ~= nil and uid == actor and uid == winner and at_n == 4 then
+    if is_achievement_pvp_context(state) and actor ~= nil and opponent ~= nil and uid == actor and uid == winner
+        and (at_n == 2 or at_n == 3 or at_n == 4) then
       local oh = tonumber(state.stats[opponent] and state.stats[opponent].hp) or 0
       if oh <= 0 then
-        e[ACH_STAT_PETARD_FINISH] = (e[ACH_STAT_PETARD_FINISH] or 0) + 1
-        e[ACH_STAT_PETARD_PVP_FINISH] = (e[ACH_STAT_PETARD_PVP_FINISH] or 0) + 1
+        if at_n == 2 then
+          e[ACH_STAT_CROSS_FINISH] = (e[ACH_STAT_CROSS_FINISH] or 0) + 1
+        elseif at_n == 3 then
+          e[ACH_STAT_SQUARE_FINISH] = (e[ACH_STAT_SQUARE_FINISH] or 0) + 1
+        else
+          e[ACH_STAT_PETARD_PVP_FINISH] = (e[ACH_STAT_PETARD_PVP_FINISH] or 0) + 1
+        end
       end
     end
 
@@ -586,6 +601,59 @@ end
 --- resolve_action: DNN (импортируем константу как поле модуля при необходимости — строка здесь же).
 function M.stat_key_dnn()
   return ACH_STAT_DNN
+end
+
+function M.stat_key_line5()
+  return ACH_STAT_LINE5
+end
+
+function M.stat_key_line6()
+  return ACH_STAT_LINE6
+end
+
+function M.stat_key_three_streak()
+  return ACH_STAT_THREE_STREAK
+end
+
+function M.stat_key_bets_placed()
+  return ACH_STAT_BETS_PLACED
+end
+
+function M.stat_key_bets_won()
+  return ACH_STAT_BETS_WON
+end
+
+function M.stat_key_bets_lost()
+  return ACH_STAT_BETS_LOST
+end
+
+function M.stat_key_perfect_bets()
+  return ACH_STAT_PERFECT_BETS
+end
+
+--- Серия ходов с линией 5+: при 3 подряд +1 к dnn.three_five_plus_streak и сброс.
+function M.note_five_plus_streak(state, uid, got_five_plus)
+  if state == nil or not M.is_human(uid) then return end
+  if state._ach_five_plus_streak == nil then
+    state._ach_five_plus_streak = {}
+  end
+  if got_five_plus then
+    local s = (tonumber(state._ach_five_plus_streak[uid]) or 0) + 1
+    if s >= 3 then
+      M.inc_session(state, uid, ACH_STAT_THREE_STREAK, 1)
+      s = 0
+    end
+    state._ach_five_plus_streak[uid] = s
+  else
+    state._ach_five_plus_streak[uid] = 0
+  end
+end
+
+--- Сброс серии при передаче хода сопернику.
+function M.clear_five_plus_streak(state, uid)
+  if state == nil or uid == nil or uid == "" then return end
+  if state._ach_five_plus_streak == nil then return end
+  state._ach_five_plus_streak[uid] = 0
 end
 
 return M

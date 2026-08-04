@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ab46bee0f4e45a0419066b4de3025be7, type: 3}
-  m_Name: sl.petard_finish
+  m_Name: sl.square_finish
   m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
-  achievementId: sl.petard_finish
-  titleRu: "\u0424\u0438\u043D\u0438\u0448 \u043F\u0435\u0442\u0430\u0440\u0434\u043E\u0439"
+  achievementId: sl.square_finish
+  titleRu: "\u0424\u0438\u043D\u0438\u0448 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u043E\u043C"
   category: slaughter
   icon: {fileID: 0}

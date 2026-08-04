@@ -219,9 +219,12 @@ namespace Project.Match3
         private string _arenaGameOverRound = string.Empty;
         private string _arenaGameOverBetTier = string.Empty;
         private string _arenaGameOverKind = string.Empty;
-        private bool _pendingPetardFinisherForAchievement;
+        /// <summary>actionType добивания (2/3/4) или 0, если не было.</summary>
+        private int _pendingFinisherActionTypeForAchievement;
         /// <summary>Счётчик сегментов линий 5+ за один локальный ход (swap / крест / квадрат).</summary>
         private int _fivePlusLinesThisAction;
+        private int _line5ThisAction;
+        private int _line6ThisAction;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
         private bool _pvpProQueue;
         private bool _isSoloBotMode;
@@ -1391,7 +1394,7 @@ namespace Project.Match3
         {
             if (!won)
             {
-                _pendingPetardFinisherForAchievement = false;
+                _pendingFinisherActionTypeForAchievement = 0;
                 return;
             }
 
@@ -1408,7 +1411,7 @@ namespace Project.Match3
                     AchievementTracker.NotifyBlacksmithTournamentFinalWin();
             }
 
-            // Solo PvE (шахта / выбор бота): не считаем ключи slaughter.duel_tri_win / duel_petard_finish.
+            // Solo PvE (шахта / выбор бота): не считаем ключи slaughter.duel_tri_win / *_finish.
             // Арена турнир и живая дуэль matchmaking против игрока — считаются.
             var soloPvEMineVersusBots = _isSoloBotMode;
 
@@ -1420,14 +1423,14 @@ namespace Project.Match3
             {
                 AchievementTracker.NotifyTriMatchDuelWin();
 
-                if (_pendingPetardFinisherForAchievement)
-                    AchievementTracker.NotifyPetardFinisherWin();
+                if (_pendingFinisherActionTypeForAchievement > 0)
+                    AchievementTracker.NotifyAbilityFinisherWin(_pendingFinisherActionTypeForAchievement);
             }
 
             if (_myStats.hp == 1)
                 AchievementTracker.NotifyWinAtOneHp();
 
-            _pendingPetardFinisherForAchievement = false;
+            _pendingFinisherActionTypeForAchievement = 0;
         }
 
         private async Task PullAchievementsAuthoritativeSyncAsync()
@@ -1469,8 +1472,10 @@ namespace Project.Match3
             if (msg.actionType >= 2 && msg.actionType <= 6)
                 AchievementTracker.NotifyAbilityUsedMatch3(msg.actionType);
 
-            if (msg.actionType == 4 && prevOpHp > 0 && _opStats.hp <= 0 && _myStats.hp > 0)
-                _pendingPetardFinisherForAchievement = true;
+            // Добивание: 2=крест, 3=квадрат, 4=петарда.
+            if ((msg.actionType == 2 || msg.actionType == 3 || msg.actionType == 4)
+                && prevOpHp > 0 && _opStats.hp <= 0 && _myStats.hp > 0)
+                _pendingFinisherActionTypeForAchievement = msg.actionType;
         }
 
         private async Task RecordMatch3ResultServerAsync(bool won)
@@ -2280,6 +2285,8 @@ namespace Project.Match3
             keepTurn = false;
             msg.animSteps = new List<M3AnimStep>();
             _fivePlusLinesThisAction = 0;
+            _line5ThisAction = 0;
+            _line6ThisAction = 0;
             _localPendingAnkhCount = 0;
 
             if (req.actionType == 1)
@@ -2298,6 +2305,7 @@ namespace Project.Match3
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
                 ApplyPendingLocalAnkhHeal(actorStats);
+                NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                 NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
@@ -2311,6 +2319,7 @@ namespace Project.Match3
                     var crit = DealDamage(board, actorStats, oppStats, PetardDamage);
                     if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
                     keepTurn = true;
+                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                     return true;
                 }
 
@@ -2319,6 +2328,7 @@ namespace Project.Match3
                     ApplyShield(actorStats);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
                     keepTurn = true;
+                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                     return true;
                 }
 
@@ -2328,6 +2338,7 @@ namespace Project.Match3
                     keepTurn = true;
                     PlaySfx(sfxAbilityFury);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
+                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                     return true;
                 }
 
@@ -2339,6 +2350,7 @@ namespace Project.Match3
                 ResolveCascades(board, actorStats, oppStats, msg, ref extraTurn);
                 FlushLocalOutgoingDamage(board, actorStats, oppStats);
                 ApplyPendingLocalAnkhHeal(actorStats);
+                NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                 NotifyDoubleFiveAchievementIfEligible(achievementActorId);
                 return true;
             }
@@ -2355,6 +2367,19 @@ namespace Project.Match3
             if (_fivePlusLinesThisAction < 2)
                 return;
             AchievementTracker.NotifyDoubleFivePlusLinesSameTurn();
+        }
+
+        private void NotifyLineAndStreakAchievementsIfEligible(string achievementActorId)
+        {
+            if (string.IsNullOrEmpty(achievementActorId) || string.IsNullOrEmpty(_myUserId))
+                return;
+            if (!string.Equals(achievementActorId, _myUserId, StringComparison.Ordinal))
+                return;
+
+            if (_line5ThisAction > 0 || _line6ThisAction > 0)
+                AchievementTracker.NotifyLineMatches(_line5ThisAction, _line6ThisAction);
+
+            AchievementTracker.NotifyFivePlusStreakTurn(_fivePlusLinesThisAction >= 1);
         }
 
         private void ResolveCascades(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, M3BoardSyncMsg msg, ref bool extraTurn)
@@ -2379,7 +2404,10 @@ namespace Project.Match3
                 {
                     extraTurn = true;
                     _fivePlusLinesThisAction++;
+                    _line5ThisAction++;
                 }
+                if (match.count >= 6)
+                    _line6ThisAction++;
                 if (match.type == PieceType.GemRed || match.type == PieceType.GemYellow || match.type == PieceType.GemGreen)
                 {
                     actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(match.type) * match.count);

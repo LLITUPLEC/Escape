@@ -230,6 +230,8 @@ namespace Project.Achievements
     /// <summary>Статический вход для игровых систем: счётчики событий. Награды шагов выдаются только через <see cref="AchievementRewardClaim"/>.</summary>
     public static class AchievementTracker
     {
+        private static int _localFivePlusStreak;
+
         public static void AddStat(string key, int delta = 1)
         {
             if (delta == 0 || string.IsNullOrEmpty(key))
@@ -283,14 +285,56 @@ namespace Project.Achievements
             AddStat(AchievementStatKeys.DuelTriWin);
         }
 
-        public static void NotifyPetardFinisherWin()
+        public static void NotifyAbilityFinisherWin(int actionType)
         {
-            AddStat(AchievementStatKeys.DuelPetardFinisher);
+            // actionType: 2=крест, 3=квадрат, 4=петарда (как на сервере).
+            switch (actionType)
+            {
+                case 2:
+                    AddStat(AchievementStatKeys.DuelCrossFinisher);
+                    break;
+                case 3:
+                    AddStat(AchievementStatKeys.DuelSquareFinisher);
+                    break;
+                case 4:
+                    AddStat(AchievementStatKeys.DuelPetardFinisher);
+                    break;
+            }
         }
 
         public static void NotifyDoubleFivePlusLinesSameTurn()
         {
             AddStat(AchievementStatKeys.DnnDoubleFivePlusOneTurn);
+        }
+
+        public static void NotifyLineMatches(int line5Count, int line6Count)
+        {
+            if (line5Count > 0)
+                AddStat(AchievementStatKeys.Line5, line5Count);
+            if (line6Count > 0)
+                AddStat(AchievementStatKeys.Line6, line6Count);
+        }
+
+        public static void NotifyFivePlusStreakTurn(bool gotFivePlus)
+        {
+            // Локальный офлайн-трек; сервер авторитетен в сетевом матче.
+            if (!gotFivePlus)
+            {
+                _localFivePlusStreak = 0;
+                return;
+            }
+
+            _localFivePlusStreak++;
+            if (_localFivePlusStreak >= 3)
+            {
+                AddStat(AchievementStatKeys.DnnThreeFivePlusStreak);
+                _localFivePlusStreak = 0;
+            }
+        }
+
+        public static void ClearFivePlusStreak()
+        {
+            _localFivePlusStreak = 0;
         }
 
         public static void NotifyWinAtOneHp()

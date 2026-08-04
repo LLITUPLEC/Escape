@@ -57,10 +57,20 @@ namespace Project.Achievements
         public const string TournamentOreWinFinal = "slaughter.tournament_ore_final";
         public const string TournamentGoldWinFinal = "slaughter.tournament_gold_final";
         public const string DuelTriWin = "slaughter.duel_tri_win";
-        public const string DuelPetardFinisher = "slaughter.duel_petard_finish";
+        public const string DuelCrossFinisher = "slaughter.duel_cross_finish";
+        public const string DuelSquareFinisher = "slaughter.duel_square_finish";
+        public const string DuelPetardFinisher = "slaughter.finish_petard_pvp";
+
+        public const string Line5 = "matches.line5";
+        public const string Line6 = "matches.line6";
+        public const string ArenaBetsPlaced = "slaughter.arena_bets_placed";
+        public const string ArenaBetsWon = "slaughter.arena_bets_won";
+        public const string ArenaBetsLost = "slaughter.arena_bets_lost";
 
         public const string DnnDoubleFivePlusOneTurn = "dnn.double_line5_same_turn";
         public const string DnnWinAtOneHp = "dnn.win_at_one_hp";
+        public const string DnnThreeFivePlusStreak = "dnn.three_five_plus_streak";
+        public const string DnnArenaPerfectBetsWin = "dnn.arena_perfect_bets_win";
     }
 
     public static class AchievementCatalog
@@ -263,47 +273,199 @@ namespace Project.Achievements
                     },
                     new[] { G, Lb, Db, P }),
 
-                Chain(AchievementTab.Slaughter, "sl.petard_finish", "Финиш петардой", AchievementStatKeys.DuelPetardFinisher,
-                    new[] { 5, 50, 100, 500 },
+                Chain(AchievementTab.Slaughter, "sl.cross_finish", "Финиш крестом", AchievementStatKeys.DuelCrossFinisher,
+                    new[] { 10, 50, 300, 1000 },
                     new[]
                     {
-                        "Победить в дуэли (Три-в-ряд) финишём «Петардой» 5 раз",
-                        "Победить в дуэли финишём «Петардой» 50 раз",
-                        "Победить в дуэли финишём «Петардой» 100 раз",
-                        "Победить в дуэли финишём «Петардой» 500 раз",
+                        "Добить противника крестом в PvP",
+                        "Добить противника крестом в PvP",
+                        "Добить противника крестом в PvP",
+                        "Добить противника крестом в PvP",
                     },
                     new[]
                     {
-                        "Награда: +5 материи",
-                        "Награда: +50 материи",
-                        "Награда: +100 материи",
-                        "Награда: +500 материи и +1% шансу крита",
+                        "Награда: +10 к урону",
+                        "Награда: +25 к урону",
+                        "Награда: +100 к урону",
+                        "Награда: +250 к урону",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.square_finish", "Финиш квадратом", AchievementStatKeys.DuelSquareFinisher,
+                    new[] { 10, 50, 300, 1000 },
+                    new[]
+                    {
+                        "Добить противника квадратом в PvP",
+                        "Добить противника квадратом в PvP",
+                        "Добить противника квадратом в PvP",
+                        "Добить противника квадратом в PvP",
+                    },
+                    new[]
+                    {
+                        "Награда: +10 к урону",
+                        "Награда: +25 к урону",
+                        "Награда: +100 к урону",
+                        "Награда: +250 к урону",
                     },
                     new[] { G, Lb, Db, P }),
 
                 Chain(AchievementTab.Dnn, "dnn.double_line", "Две линии 5+", AchievementStatKeys.DnnDoubleFivePlusOneTurn,
-                    new[] { 1 },
+                    new[] { 1, 5, 25, 100 },
                     new[]
                     {
-                        "За один ход собрать две линии 5+ (можно каскадно)",
+                        "За одно действие собрать две линии 5+ (можно каскадно)",
+                        "За одно действие собрать две линии 5+ (можно каскадно)",
+                        "За одно действие собрать две линии 5+ (можно каскадно)",
+                        "За одно действие собрать две линии 5+ (можно каскадно)",
                     },
                     new[]
                     {
-                        "Награда: +1% к урону от носимой экипировки",
+                        "Награда: +1% к урону",
+                        "Награда: +2% к здоровью",
+                        "Награда: +3% к броне",
+                        "Награда: +5% к криту",
                     },
-                    new[] { G }),
+                    new[] { G, Lb, Db, P }),
 
                 Chain(AchievementTab.Dnn, "dnn.win_1hp", "Победа с 1 HP", AchievementStatKeys.DnnWinAtOneHp,
-                    new[] { 1 },
+                    new[] { 1, 5 },
                     new[]
                     {
+                        "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли",
                         "Имея 1 очко здоровья, выиграть соперника в турнире или дуэли",
                     },
                     new[]
                     {
-                        "Награда: +5% к броне от носимой экипировки",
+                        "Награда: +5% к броне",
+                        "Награда: +5% к здоровью",
                     },
-                    new[] { G }),
+                    new[] { G, Lb }),
+
+                Chain(AchievementTab.Obsession, "obs.line5", "Пятёрка", AchievementStatKeys.Line5,
+                    new[] { 5, 25, 100, 500 },
+                    new[]
+                    {
+                        "Собрать 5 камней в линию 5 раз",
+                        "Собрать 5 камней в линию 25 раз",
+                        "Собрать 5 камней в линию 100 раз",
+                        "Собрать 5 камней в линию 500 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +1% к здоровью",
+                        "Награда: +2% к здоровью",
+                        "Награда: +3% к здоровью",
+                        "Награда: +4% к здоровью",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Obsession, "obs.line6", "Шестёрка", AchievementStatKeys.Line6,
+                    new[] { 5, 25, 100, 500 },
+                    new[]
+                    {
+                        "Собрать 6 камней в линию 5 раз",
+                        "Собрать 6 камней в линию 25 раз",
+                        "Собрать 6 камней в линию 100 раз",
+                        "Собрать 6 камней в линию 500 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +1% к урону",
+                        "Награда: +2% к урону",
+                        "Награда: +3% к урону",
+                        "Награда: +4% к урону",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.bets_placed", "Букмекер", AchievementStatKeys.ArenaBetsPlaced,
+                    new[] { 10, 50, 250, 1000 },
+                    new[]
+                    {
+                        "Сделать ставку в турнире 10 раз",
+                        "Сделать ставку в турнире 50 раз",
+                        "Сделать ставку в турнире 250 раз",
+                        "Сделать ставку в турнире 1000 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +2000 золота и +2000 руды",
+                        "Награда: +10000 золота и +10000 руды",
+                        "Награда: +50000 золота и +50000 руды",
+                        "Награда: +200000 золота, +200000 руды и +5% к броне",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.bets_won", "Оракул", AchievementStatKeys.ArenaBetsWon,
+                    new[] { 8, 40, 200, 800 },
+                    new[]
+                    {
+                        "Сделать успешную ставку в турнире 8 раз",
+                        "Сделать успешную ставку в турнире 40 раз",
+                        "Сделать успешную ставку в турнире 200 раз",
+                        "Сделать успешную ставку в турнире 800 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +7% к здоровью",
+                        "Награда: +7% к броне",
+                        "Награда: +7% к хилу",
+                        "Награда: +7% к урону",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Slaughter, "sl.bets_lost", "Мимо кассы", AchievementStatKeys.ArenaBetsLost,
+                    new[] { 10, 50, 250, 1000 },
+                    new[]
+                    {
+                        "Сделать неуспешную ставку в турнире 10 раз",
+                        "Сделать неуспешную ставку в турнире 50 раз",
+                        "Сделать неуспешную ставку в турнире 250 раз",
+                        "Сделать неуспешную ставку в турнире 1000 раз",
+                    },
+                    new[]
+                    {
+                        "Награда: +10 материи",
+                        "Награда: +40 материи",
+                        "Награда: +100 материи",
+                        "Награда: +300 материи",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Dnn, "dnn.triple_extra", "Три хода подряд", AchievementStatKeys.DnnThreeFivePlusStreak,
+                    new[] { 1, 5, 25, 100 },
+                    new[]
+                    {
+                        "Сделать 3 хода подряд с линией 5+",
+                        "Сделать 3 хода подряд с линией 5+",
+                        "Сделать 3 хода подряд с линией 5+",
+                        "Сделать 3 хода подряд с линией 5+",
+                    },
+                    new[]
+                    {
+                        "Награда: +300 здоровья",
+                        "Награда: +300 брони",
+                        "Награда: +5% к броне",
+                        "Награда: +10% к здоровью",
+                    },
+                    new[] { G, Lb, Db, P }),
+
+                Chain(AchievementTab.Dnn, "dnn.perfect_bets", "Тотализатор", AchievementStatKeys.DnnArenaPerfectBetsWin,
+                    new[] { 1, 5, 25, 100 },
+                    new[]
+                    {
+                        "Успешно поставить на все возможные пары турнира и выиграть его",
+                        "Успешно поставить на все возможные пары турнира и выиграть его",
+                        "Успешно поставить на все возможные пары турнира и выиграть его",
+                        "Успешно поставить на все возможные пары турнира и выиграть его",
+                    },
+                    new[]
+                    {
+                        "Награда: +2% к урону",
+                        "Награда: +4% к урону",
+                        "Награда: +6% к урону",
+                        "Награда: +8% к урону",
+                    },
+                    new[] { G, Lb, Db, P }),
             };
         }
 

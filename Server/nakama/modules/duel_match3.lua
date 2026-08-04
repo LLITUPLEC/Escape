@@ -1160,6 +1160,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     state.active_user_id = actor
   else
     tick_buffs_end_turn(state.stats[actor])
+    Ach.clear_five_plus_streak(state, actor)
     state.active_user_id = opponent
     tick_cooldowns(state.stats[opponent])
     if state.mode == "pve" and opponent == state.owner_user_id then
@@ -1332,7 +1333,13 @@ local function resolve_action(state, action, actor_id, opponent_id)
     if matches == nil then return end
     for _, m in ipairs(matches) do
       local c = tonumber(m.count)
-      if c ~= nil and c >= 5 then five_plus_segments = five_plus_segments + 1 end
+      if c ~= nil and c >= 5 then
+        five_plus_segments = five_plus_segments + 1
+        Ach.inc_session(state, actor_id, Ach.stat_key_line5(), 1)
+      end
+      if c ~= nil and c >= 6 then
+        Ach.inc_session(state, actor_id, Ach.stat_key_line6(), 1)
+      end
     end
   end
   if action.actionType == 1 then
@@ -1347,11 +1354,13 @@ local function resolve_action(state, action, actor_id, opponent_id)
     if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1) then crit_triggered = true end
     keep_turn = true
     state.last_crit = crit_triggered
+    Ach.note_five_plus_streak(state, actor_id, false)
     return true, nil, false, true, anim_steps
   elseif action.actionType == 5 then
     apply_shield_stack(state.stats[actor_id])
     keep_turn = true
     state.last_crit = false
+    Ach.note_five_plus_streak(state, actor_id, false)
     return true, nil, false, true, anim_steps
   elseif action.actionType == 6 then
     local fus = state.stats[actor_id]
@@ -1359,6 +1368,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
     fus.fury_bomb_bonus = count_skulls(state.board)
     keep_turn = true
     state.last_crit = false
+    Ach.note_five_plus_streak(state, actor_id, false)
     return true, nil, false, true, anim_steps
   else
     local sy = client_to_server_y(action.cy)
@@ -1434,6 +1444,8 @@ local function resolve_action(state, action, actor_id, opponent_id)
   if five_plus_segments >= 2 then
     Ach.inc_session(state, actor_id, Ach.stat_key_dnn(), 1)
   end
+
+  Ach.note_five_plus_streak(state, actor_id, five_plus_segments >= 1)
 
   state.last_crit = crit_triggered
   return true, nil, extra_turn, keep_turn, anim_steps
@@ -3632,6 +3644,7 @@ local Arena = arena_factory({
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
   stats_inc_arena_tournament_played = stats_inc_arena_tournament_played,
+  achievement_merge_stats = Ach.merge_persistent_stats,
 })
 arena_mirror_commit = Arena.mirror_commit
 arena_on_match_finished = Arena.on_match_finished

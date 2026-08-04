@@ -40,7 +40,15 @@ namespace Project.Achievements
             Accumulate("sl.ore_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
             Accumulate("sl.gold_tournament", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
             Accumulate("sl.duel", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
-            Accumulate("sl.petard_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.cross_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.square_finish", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.firework_lover", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.line5", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("obs.line6", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.bets_placed", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("sl.bets_won", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("dnn.triple_extra", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
+            Accumulate("dnn.perfect_bets", 4, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
             Accumulate("dnn.double_line", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
             Accumulate("dnn.win_1hp", 1, ref flatHp, ref flatDmg, ref flatArmor, ref flatCrit, ref hpPct, ref dmgPct, ref armorPct, ref healPct);
 
@@ -111,8 +119,42 @@ namespace Project.Achievements
                 case "sl.duel":
                     if (step == 3) dmgPct += 0.05f;
                     break;
-                case "sl.petard_finish":
+                case "sl.cross_finish":
+                case "sl.square_finish":
+                    flatDmg += step switch { 0 => 10, 1 => 25, 2 => 100, _ => 250 };
+                    break;
+                case "obs.firework_lover":
                     if (step == 3) flatCrit += 0.01f;
+                    break;
+                case "obs.line5":
+                    hpPct += step switch { 0 => 0.01f, 1 => 0.02f, 2 => 0.03f, _ => 0.04f };
+                    break;
+                case "obs.line6":
+                    dmgPct += step switch { 0 => 0.01f, 1 => 0.02f, 2 => 0.03f, _ => 0.04f };
+                    break;
+                case "sl.bets_placed":
+                    if (step == 3) armorPct += 0.05f;
+                    break;
+                case "sl.bets_won":
+                    switch (step)
+                    {
+                        case 0: hpPct += 0.07f; break;
+                        case 1: armorPct += 0.07f; break;
+                        case 2: healPct += 0.07f; break;
+                        default: dmgPct += 0.07f; break;
+                    }
+                    break;
+                case "dnn.triple_extra":
+                    switch (step)
+                    {
+                        case 0: flatHp += 300; break;
+                        case 1: flatArmor += 300; break;
+                        case 2: armorPct += 0.05f; break;
+                        default: hpPct += 0.10f; break;
+                    }
+                    break;
+                case "dnn.perfect_bets":
+                    dmgPct += step switch { 0 => 0.02f, 1 => 0.04f, 2 => 0.06f, _ => 0.08f };
                     break;
                 case "dnn.double_line":
                     dmgPct += 0.01f;
