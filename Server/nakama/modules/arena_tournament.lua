@@ -1,5 +1,13 @@
 local nk = require("nakama")
 
+local function runtime_lua_require(name_nested, name_root)
+  local ok, mod = pcall(require, name_nested)
+  if ok and mod ~= nil then return mod end
+  return require(name_root)
+end
+
+local FakeOnline = runtime_lua_require("modules.duel_fake_online", "duel_fake_online")
+
 --- Турнир арены (отдельный chunk — не упирается в лимит локалей duel_match3.lua).
 return function(deps)
   local try_match_create = deps.try_match_create
@@ -299,19 +307,10 @@ local function arena_load_user_tid(user_id)
   return nil, nil
 end
 
--- Каталог имён ботов (не мутировать). Уникальность — на уровне очереди/турнира, не через deplete.
-local ARENA_BOT_DISPLAY_NAMES = {
-  "Player_eUIbGX83r3",
-  "_eby_kak_xo4y_",
-  "Морозко",
-  "Шипогрыз",
-  "Player_qKwBIlSUfZ",
-  "Vanya_22",
-  "Туманный",
-  "Жнец",
-  "Player_4e66fa56-",
-  "Шутиха",
-}
+-- Имена ботов:
+-- - ARENA_ALWAYS (Морозко/…/Надзиратель) — всегда можно в турнир;
+-- - ONLINE_POOL (Player_…/Vanya_…) — только если сейчас в фиктивном онлайне.
+-- См. modules/duel_fake_online.lua.
 
 local function arena_shuffle_inplace(arr)
   for i = #arr, 2, -1 do
@@ -330,12 +329,13 @@ local function arena_collect_used_displays(entries)
   return used
 end
 
---- Имя бота, которого ещё нет среди display в текущей очереди/пачке (и людей тоже учитываем).
+--- Имя бота из текущего eligible-каталога (всегда-ники + «онлайн» из пула).
 local function arena_pick_bot_display(used)
   used = used or {}
+  local catalog = FakeOnline.arena_eligible_bot_names(os.time())
   local free = {}
-  for i = 1, #ARENA_BOT_DISPLAY_NAMES do
-    local n = ARENA_BOT_DISPLAY_NAMES[i]
+  for i = 1, #catalog do
+    local n = catalog[i]
     if used[n] ~= true then
       free[#free + 1] = n
     end
@@ -345,7 +345,7 @@ local function arena_pick_bot_display(used)
     used[name] = true
     return name
   end
-  -- Каталог исчерпан (другие очереди / >10 ботов) — гарантируем уникальность суффиксом.
+  -- Каталог исчерпан (ночь / мало pad) — уникальный суффикс, без оффлайн-пула.
   for _ = 1, 32 do
     local name = "Боец_" .. string.sub(nk.uuid_v4(), 1, 8)
     if used[name] ~= true then
@@ -1127,6 +1127,17 @@ local function arena_start_tournament_from_entries(kind, entries)
   end
 
   arena_dedupe_bot_displays(entries)
+
+  -- ONLINE_POOL: 1 турнир / час — фиксируем сразу после назначения display.
+  do
+    local played = {}
+    for _, p in ipairs(entries or {}) do
+      if p ~= nil and p.bot == true and p.display ~= nil and p.display ~= "" then
+        played[#played + 1] = p.display
+      end
+    end
+    FakeOnline.mark_pool_tournament_played(played, os.time())
+  end
 
   local T = {
     id = tid,

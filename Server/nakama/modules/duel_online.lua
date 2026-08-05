@@ -1,5 +1,13 @@
 local nk = require("nakama")
 
+local function runtime_lua_require(name_nested, name_root)
+  local ok, mod = pcall(require, name_nested)
+  if ok and mod ~= nil then return mod end
+  return require(name_root)
+end
+
+local FakeOnline = runtime_lua_require("modules.duel_fake_online", "duel_fake_online")
+
 -- In-memory online map for this Nakama node.
 -- Key: user_id, Value: unix timestamp when presence expires.
 local online_expire_at = {}
@@ -47,13 +55,23 @@ local function duel_online_ping_and_count(ctx, payload)
     online_expire_at[user_id] = ts + PRESENCE_TTL_SEC
     cleanup_expired(ts)
 
-    local count = 0
+    local real_count = 0
     for _, _ in pairs(online_expire_at) do
-      count = count + 1
+      real_count = real_count + 1
     end
 
+    local pad = FakeOnline.effective_pad(ts)
+    local count = real_count + pad
+
     local epoch = read_session_epoch(user_id)
-    return nk.json_encode({ ok = true, count = count, session_epoch = epoch })
+    return nk.json_encode({
+      ok = true,
+      count = count,
+      real_count = real_count,
+      fake_pad = pad,
+      fake_quiet = FakeOnline.is_quiet(ts),
+      session_epoch = epoch,
+    })
   end)
 
   if not ok then
@@ -132,7 +150,7 @@ local function read_player_level(user_id)
   return level
 end
 
--- Список онлайн: total + до 50 игроков (username + level) + все online_ids (для статуса друзей).
+-- Список онлайн: total (+fake) + до 50 реальных + фиктивные ники + все online_ids (только реальные).
 local function duel_online_list(ctx, payload)
   local ok, result = pcall(function()
     local caller_id = ctx and ctx.user_id or ""
@@ -160,7 +178,7 @@ local function duel_online_list(ctx, payload)
     end
     table.sort(ids)
 
-    local total = #ids
+    local real_total = #ids
     local batch = {}
     for i = 1, #ids do
       local uid = ids[i]
@@ -173,17 +191,31 @@ local function duel_online_list(ctx, payload)
     end
 
     local players = {}
+    local exclude_lower = {}
     for _, uid in ipairs(batch) do
+      local uname = read_username(uid)
       players[#players + 1] = {
         user_id = uid,
-        username = read_username(uid),
+        username = uname,
         level = read_player_level(uid),
       }
+      exclude_lower[string.lower(tostring(uname))] = true
+    end
+
+    local pad = FakeOnline.effective_pad(ts)
+    local fakes = pad > 0
+      and FakeOnline.build_players(FakeOnline.slot(ts), pad, exclude_lower)
+      or {}
+    for _, f in ipairs(fakes) do
+      players[#players + 1] = f
     end
 
     return nk.json_encode({
       ok = true,
-      total = total,
+      total = real_total + pad,
+      real_total = real_total,
+      fake_pad = pad,
+      fake_quiet = FakeOnline.is_quiet(ts),
       shown = #players,
       players = players,
       online_ids = ids,

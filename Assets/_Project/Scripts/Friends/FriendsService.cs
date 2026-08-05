@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Nakama;
+using Project.Utils;
 using UnityEngine;
 
 namespace Project.Friends
@@ -68,6 +69,10 @@ namespace Project.Friends
 
                     cursor = page?.Cursor;
                 } while (!string.IsNullOrEmpty(cursor) && !ct.IsCancellationRequested);
+
+                // PlayerPrefs только с main thread.
+                await MainThreadDispatcher.RunAsync(() => MergeDecorOutgoingInvites(collected))
+                    .ConfigureAwait(false);
 
                 collected.Sort((a, b) =>
                 {
@@ -179,9 +184,27 @@ namespace Project.Friends
                     return new FriendsMutationResult { Ok = true };
                 }
 
+                // Фиктивный онлайн-ник: локальная исходящая заявка, без Nakama AddFriends.
+                if (string.Equals(resolved.Err, "user_not_found", StringComparison.OrdinalIgnoreCase)
+                    && DecorOnlineBots.IsDecorUsername(name))
+                {
+                    var ownerId = NakamaBootstrap.Instance.Session?.UserId ?? string.Empty;
+                    await MainThreadDispatcher.RunAsync(() => DecorOnlineBots.AddOutgoingInvite(ownerId, name))
+                        .ConfigureAwait(false);
+                    return new FriendsMutationResult { Ok = true };
+                }
+
                 // RPC ещё не на сервере — пробуем точный username (как раньше).
                 if (!IsRpcUnavailable(resolved.Err))
                     return FailMutation(resolved.Err);
+
+                if (DecorOnlineBots.IsDecorUsername(name))
+                {
+                    var ownerId = NakamaBootstrap.Instance.Session?.UserId ?? string.Empty;
+                    await MainThreadDispatcher.RunAsync(() => DecorOnlineBots.AddOutgoingInvite(ownerId, name))
+                        .ConfigureAwait(false);
+                    return new FriendsMutationResult { Ok = true };
+                }
 
                 await NakamaBootstrap.Instance.Client.AddFriendsAsync(
                         NakamaBootstrap.Instance.Session,
@@ -253,6 +276,15 @@ namespace Project.Friends
 
             try
             {
+                if (DecorOnlineBots.IsDecorUserId(userId) || DecorOnlineBots.IsDecorUsername(username))
+                {
+                    var ownerId = NakamaBootstrap.Instance.Session?.UserId ?? string.Empty;
+                    var key = !string.IsNullOrWhiteSpace(userId) ? userId : username;
+                    await MainThreadDispatcher.RunAsync(() => DecorOnlineBots.RemoveOutgoingInvite(ownerId, key))
+                        .ConfigureAwait(false);
+                    return new FriendsMutationResult { Ok = true };
+                }
+
                 var ids = string.IsNullOrWhiteSpace(userId)
                     ? null
                     : new[] { userId.Trim() };
@@ -364,6 +396,42 @@ namespace Project.Friends
                     ? "Игрок не найден"
                     : "Ошибка: " + err,
             };
+        }
+
+        private static void MergeDecorOutgoingInvites(List<FriendListEntry> collected)
+        {
+            if (collected == null) return;
+            var ownerId = NakamaBootstrap.Instance?.Session?.UserId ?? string.Empty;
+            var decor = DecorOnlineBots.ListOutgoingAsFriends(ownerId);
+            if (decor.Count == 0) return;
+
+            for (var i = 0; i < decor.Count; i++)
+            {
+                var entry = decor[i];
+                if (entry == null) continue;
+                var exists = false;
+                for (var j = 0; j < collected.Count; j++)
+                {
+                    var cur = collected[j];
+                    if (cur == null) continue;
+                    if (!string.IsNullOrEmpty(entry.UserId)
+                        && string.Equals(cur.UserId, entry.UserId, StringComparison.Ordinal))
+                    {
+                        exists = true;
+                        break;
+                    }
+
+                    if (!string.IsNullOrEmpty(entry.Username)
+                        && string.Equals(cur.Username, entry.Username, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists)
+                    collected.Add(entry);
+            }
         }
 
         private static async Task<(bool Ok, string Err, string UserId, string Username)> ResolveUsernameAsync(
