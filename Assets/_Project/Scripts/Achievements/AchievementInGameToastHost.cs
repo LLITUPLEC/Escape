@@ -50,16 +50,60 @@ namespace Project.Achievements
         {
             AchievementLifecycle.OnAwaitingClaim -= Handle;
             SceneManager.activeSceneChanged -= HandleSceneChanged;
+            if (_instance == this)
+                _instance = null;
         }
 
         private void HandleSceneChanged(Scene prev, Scene next)
         {
-            // When entering a new scene, try to bind to external hierarchy again.
-            // If found, hide internal canvas (if any) to avoid duplicate toasts.
+            // DDOL-хост переживает смену сцены; внешний toast в старой сцене уничтожается.
+            // Останавливаем анимации, иначе корутины пишут в destroyed RectTransform/CanvasGroup.
+            StopToastAnimations();
+
             if (TryBindExternalHierarchy())
                 SetInternalVisible(false);
             else
+            {
+                EnsureInternalPanel();
                 SetInternalVisible(true);
+            }
+
+            if (_queue.Count > 0 && _routine == null && isActiveAndEnabled)
+                _routine = StartCoroutine(RunQueue());
+        }
+
+        private void StopToastAnimations()
+        {
+            StopAllCoroutines();
+            _routine = null;
+            if (_panelGroup != null)
+                _panelGroup.alpha = 0f;
+        }
+
+        private void EnsureInternalPanel()
+        {
+            if (_internalCanvas == null)
+            {
+                BuildUi();
+                return;
+            }
+
+            // После внешнего bind ссылки указывали на scene objects — вернуть internal.
+            if (_panelGroup == null || _panelRt == null)
+            {
+                var pan = transform.Find("ToastPanel");
+                if (pan != null)
+                {
+                    _panelGroup = pan.GetComponent<CanvasGroup>();
+                    _panelRt = pan.GetComponent<RectTransform>();
+                    _titleTmp = pan.Find("ToastTitle")?.GetComponent<TMP_Text>();
+                    _rewardTmp = pan.Find("ToastRewardLine")?.GetComponent<TMP_Text>();
+                }
+                else
+                {
+                    BuildUi();
+                }
+            }
         }
 
         private void SetInternalVisible(bool visible)
@@ -124,7 +168,11 @@ namespace Project.Achievements
             {
                 PlaySmallFeuxFx(_panelRt);
                 yield return StartCoroutine(CoAnimateSlideInPop());
+                if (_panelGroup == null || _panelRt == null)
+                    yield break;
                 yield return new WaitForSecondsRealtime(ShowSeconds);
+                if (_panelGroup == null || _panelRt == null)
+                    yield break;
                 yield return StartCoroutine(CoAnimateOut());
             }
             else
@@ -147,6 +195,8 @@ namespace Project.Achievements
             _panelRt.anchoredPosition = fromPos;
             while (t < dur)
             {
+                if (_panelGroup == null || _panelRt == null)
+                    yield break;
                 t += Time.unscaledDeltaTime;
                 var k = Mathf.Clamp01(t / dur);
                 var ease = 1f - Mathf.Pow(1f - k, 3f);
@@ -161,6 +211,8 @@ namespace Project.Achievements
                 yield return null;
             }
 
+            if (_panelGroup == null || _panelRt == null)
+                yield break;
             _panelGroup.alpha = 1f;
             _panelRt.anchoredPosition = toPos;
             _panelRt.localScale = Vector3.one;
@@ -177,6 +229,8 @@ namespace Project.Achievements
             const float dur = 0.28f;
             while (t < dur)
             {
+                if (_panelGroup == null || _panelRt == null)
+                    yield break;
                 t += Time.unscaledDeltaTime;
                 var k = Mathf.Clamp01(t / dur);
                 _panelGroup.alpha = 1f - k;
@@ -184,6 +238,8 @@ namespace Project.Achievements
                 yield return null;
             }
 
+            if (_panelGroup == null || _panelRt == null)
+                yield break;
             _panelGroup.alpha = 0f;
             _panelRt.anchoredPosition = fromPos - new Vector2(0f, SlidePixels);
             _panelRt.localScale = Vector3.one;
@@ -208,6 +264,7 @@ namespace Project.Achievements
             var sparks = Mathf.Clamp(UnityEngine.Random.Range(10, 16), 8, 20);
             for (var i = 0; i < sparks; i++)
             {
+                if (root == null) yield break;
                 var g = new GameObject("Spark", typeof(RectTransform), typeof(Image));
                 g.transform.SetParent(root, false);
                 var sr = g.GetComponent<RectTransform>();
@@ -239,7 +296,7 @@ namespace Project.Achievements
             }
 
             yield return new WaitForSecondsRealtime(2.2f);
-            if (root != null && root.gameObject != null)
+            if (root != null)
                 Destroy(root.gameObject);
         }
 
@@ -252,38 +309,58 @@ namespace Project.Achievements
             var start = sr.anchoredPosition;
             while (t < d)
             {
+                // parent FeuxBurst / scene toast может уничтожиться раньше конца анимации
+                if (sr == null) yield break;
                 t += Time.unscaledDeltaTime;
                 var k = Mathf.Clamp01(t / d);
                 sr.anchoredPosition = start + v * Mathf.SmoothStep(0f, 1f, k);
                 sr.localScale = Vector3.one * Mathf.Lerp(1.4f, 0.35f, k);
-                if (TryGet(sr, out var img))
+                if (TryGet(sr, out var img) && img != null)
                     img.color = new Color(img.color.r, img.color.g, img.color.b, 1f - k);
                 yield return null;
             }
 
-            Destroy(sr.gameObject);
+            if (sr != null)
+                Destroy(sr.gameObject);
         }
 
         private static bool TryGet(RectTransform r, out Image img)
         {
+            img = null;
+            if (r == null) return false;
             img = r.GetComponent<Image>();
             return img != null;
         }
 
         private void BuildUi()
         {
-            var canv = gameObject.AddComponent<Canvas>();
-            _internalCanvas = canv;
-            canv.renderMode = RenderMode.ScreenSpaceOverlay;
-            canv.overrideSorting = true;
-            canv.sortingOrder = 6200;
+            if (_internalCanvas == null)
+            {
+                var canv = gameObject.AddComponent<Canvas>();
+                _internalCanvas = canv;
+                canv.renderMode = RenderMode.ScreenSpaceOverlay;
+                canv.overrideSorting = true;
+                canv.sortingOrder = 6200;
 
-            var scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+                var scaler = gameObject.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920f, 1080f);
+                scaler.matchWidthOrHeight = 0.5f;
 
-            _internalRaycaster = gameObject.AddComponent<GraphicRaycaster>();
+                _internalRaycaster = gameObject.AddComponent<GraphicRaycaster>();
+            }
+
+            var existing = transform.Find("ToastPanel");
+            if (existing != null)
+            {
+                _panelGroup = existing.GetComponent<CanvasGroup>();
+                _panelRt = existing.GetComponent<RectTransform>();
+                _titleTmp = existing.Find("ToastTitle")?.GetComponent<TMP_Text>();
+                _rewardTmp = existing.Find("ToastRewardLine")?.GetComponent<TMP_Text>();
+                if (_panelGroup != null)
+                    _panelGroup.alpha = 0f;
+                return;
+            }
 
             var pan = new GameObject("ToastPanel", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
             pan.transform.SetParent(transform, false);
@@ -332,8 +409,8 @@ namespace Project.Achievements
                 subGo.transform.SetParent(_panelRt, false);
                 var rt2 = subGo.GetComponent<RectTransform>();
                 rt2.anchorMin = new Vector2(0f, 0f);
-                rt2.anchorMax = new Vector2(1f, 0f);
                 rt2.pivot = new Vector2(0.5f, 0f);
+                rt2.anchorMax = new Vector2(1f, 0f);
                 rt2.offsetMin = new Vector2(20f, 10f);
                 rt2.offsetMax = new Vector2(-20f, 44f);
 

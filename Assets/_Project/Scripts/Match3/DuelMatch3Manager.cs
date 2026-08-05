@@ -329,7 +329,7 @@ namespace Project.Match3
                 _myUserId = NakamaBootstrap.Instance.Session.UserId;
                 ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
                 if (_launchMode == Match3LaunchMode.Multiplayer &&
-                    Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out var arenaOppHint, out var arenaOppIsBot))
+                    Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out var arenaOppHint, out var arenaOppIsBot, out var arenaOppUserId))
                 {
                     _pvpProQueue = false;
                     _isArenaTournamentMatch = true;
@@ -349,6 +349,8 @@ namespace Project.Match3
                     }
 
                     Match3LaunchContext.ConsumeArenaJoinArm();
+                    if (!string.IsNullOrEmpty(arenaOppUserId) && arenaOppUserId != _myUserId)
+                        _opUserId = arenaOppUserId;
                     if (_match?.Presences != null)
                         foreach (var p in _match.Presences)
                             if (p.UserId != _myUserId)
@@ -1584,8 +1586,27 @@ namespace Project.Match3
                 {
                     foreach (var p in e.Joins)
                     {
-                        if (p.UserId != _myUserId && !string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId)
+                        if (p.UserId == _myUserId) continue;
+
+                        // Арена: часто входим первыми — соперник приходит позже. Без _opUserId
+                        // GetSortedIds() даёт amA=true всегда и HP/мана/CD маппятся на чужой слот.
+                        var learnedOpponent = false;
+                        if (string.IsNullOrEmpty(_opUserId))
+                        {
+                            _opUserId = p.UserId;
+                            if (string.IsNullOrWhiteSpace(_opDisplayName))
+                                _opDisplayName = ReadPresenceUsername(p);
+                            _opponentIsServerBot = _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal);
+                            learnedOpponent = true;
+                            Debug.Log($"[Match3] Opponent presence learned late: {_opUserId}");
+                        }
+
+                        if (!string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId)
+                        {
                             _searchingPanel?.Hide();
+                            if (learnedOpponent)
+                                RequestSnapshot();
+                        }
                     }
                 }
 

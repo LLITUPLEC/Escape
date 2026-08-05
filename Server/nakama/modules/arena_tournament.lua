@@ -299,16 +299,17 @@ local function arena_load_user_tid(user_id)
   return nil, nil
 end
 
+-- Каталог имён ботов (не мутировать). Уникальность — на уровне очереди/турнира, не через deplete.
 local ARENA_BOT_DISPLAY_NAMES = {
-  "Грейвен",
-  "Фестер",
+  "Player_eUIbGX83r3",
+  "_eby_kak_xo4y_",
   "Морозко",
   "Шипогрыз",
-  "Кремнебород",
-  "Пепельный",
+  "Player_qKwBIlSUfZ",
+  "Vanya_22",
   "Туманный",
   "Жнец",
-  "Осколок",
+  "Player_4e66fa56-",
   "Шутиха",
 }
 
@@ -316,6 +317,59 @@ local function arena_shuffle_inplace(arr)
   for i = #arr, 2, -1 do
     local j = math.random(i)
     arr[i], arr[j] = arr[j], arr[i]
+  end
+end
+
+local function arena_collect_used_displays(entries)
+  local used = {}
+  for _, e in ipairs(entries or {}) do
+    if e ~= nil and e.display ~= nil and e.display ~= "" then
+      used[tostring(e.display)] = true
+    end
+  end
+  return used
+end
+
+--- Имя бота, которого ещё нет среди display в текущей очереди/пачке (и людей тоже учитываем).
+local function arena_pick_bot_display(used)
+  used = used or {}
+  local free = {}
+  for i = 1, #ARENA_BOT_DISPLAY_NAMES do
+    local n = ARENA_BOT_DISPLAY_NAMES[i]
+    if used[n] ~= true then
+      free[#free + 1] = n
+    end
+  end
+  if #free > 0 then
+    local name = free[math.random(1, #free)]
+    used[name] = true
+    return name
+  end
+  -- Каталог исчерпан (другие очереди / >10 ботов) — гарантируем уникальность суффиксом.
+  for _ = 1, 32 do
+    local name = "Боец_" .. string.sub(nk.uuid_v4(), 1, 8)
+    if used[name] ~= true then
+      used[name] = true
+      return name
+    end
+  end
+  local fallback = "Боец_" .. tostring(os.time())
+  used[fallback] = true
+  return fallback
+end
+
+--- Страховка: перед стартом турнира у ботов не должно быть одинаковых display.
+local function arena_dedupe_bot_displays(entries)
+  local used = {}
+  for _, e in ipairs(entries or {}) do
+    if e ~= nil and e.bot ~= true and e.display ~= nil and e.display ~= "" then
+      used[tostring(e.display)] = true
+    end
+  end
+  for _, e in ipairs(entries or {}) do
+    if e ~= nil and e.bot == true then
+      e.display = arena_pick_bot_display(used)
+    end
   end
 end
 
@@ -346,23 +400,6 @@ local function arena_make_bot_uid()
   -- - winner_uid matches tournament participant uid
   -- - mirror_commit maps HP correctly for bot side
   return make_bot_user_id("arena_" .. nk.uuid_v4())
-end
-
-local function arena_random_bot_display()
-  local names = ARENA_BOT_DISPLAY_NAMES
-  local idx = math.random(1, #names)
-  local name = names[idx]
-  table.remove(names, idx) -- no duplicates within one tournament fill batch
-  if #names == 0 then
-    -- reset pool
-    for _, n in ipairs({
-      "Грейвен","Фестер","Морозко","Шипогрыз","Кремнебород",
-      "Пепельный","Туманный","Жнец","Осколок","Шутиха",
-    }) do
-      names[#names + 1] = n
-    end
-  end
-  return name
 end
 
 local function arena_uid_is_bot(T, uid)
@@ -1089,6 +1126,8 @@ local function arena_start_tournament_from_entries(kind, entries)
     return
   end
 
+  arena_dedupe_bot_displays(entries)
+
   local T = {
     id = tid,
     kind = k,
@@ -1178,9 +1217,10 @@ local function arena_maybe_fill_bot(kind, bet)
     return
   end
   bq.next_bot_at = now + math.random(5, 8)
+  local used = arena_collect_used_displays(q)
   q[#q + 1] = {
     uid = arena_make_bot_uid(),
-    display = arena_random_bot_display(),
+    display = arena_pick_bot_display(used),
     bot = true,
     bet_tier = bet_key,
   }

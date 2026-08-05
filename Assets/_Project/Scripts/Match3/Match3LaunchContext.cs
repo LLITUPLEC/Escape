@@ -20,6 +20,7 @@ namespace Project.Match3
         private static bool _arenaJoinPending;
         private static string _arenaJoinMatchId;
         private static string _arenaOpponentDisplayHint;
+        private static string _arenaOpponentUserId;
         private static bool _arenaJoinOpponentIsBot;
 
         /// <summary>После автовыхода из боя 1/4–1/2: арена показывает блокер до первого poll с активной сеткой.</summary>
@@ -73,20 +74,30 @@ namespace Project.Match3
         }
 
         /// <summary>Вызвать перед загрузкой сцены DuelMatch3 для боя турнира арены.</summary>
-        public static void ArmArenaJoin(string matchId, string opponentDisplayHint = null, bool opponentIsBot = false)
+        public static void ArmArenaJoin(
+            string matchId,
+            string opponentDisplayHint = null,
+            bool opponentIsBot = false,
+            string opponentUserId = null)
         {
             _arenaJoinMatchId = string.IsNullOrWhiteSpace(matchId) ? null : matchId.Trim();
             _arenaJoinPending = !string.IsNullOrEmpty(_arenaJoinMatchId);
             _arenaOpponentDisplayHint = string.IsNullOrWhiteSpace(opponentDisplayHint) ? null : opponentDisplayHint.Trim();
+            _arenaOpponentUserId = string.IsNullOrWhiteSpace(opponentUserId) ? null : opponentUserId.Trim();
             _arenaJoinOpponentIsBot = opponentIsBot;
         }
 
         /// <summary>Проверка без сброса (до успешного JoinMatchAsync).</summary>
-        public static bool TryPeekArenaJoin(out string matchId, out string opponentDisplayHint, out bool opponentIsBot)
+        public static bool TryPeekArenaJoin(
+            out string matchId,
+            out string opponentDisplayHint,
+            out bool opponentIsBot,
+            out string opponentUserId)
         {
             matchId = _arenaJoinMatchId;
             opponentDisplayHint = _arenaOpponentDisplayHint;
             opponentIsBot = _arenaJoinOpponentIsBot;
+            opponentUserId = _arenaOpponentUserId;
             return _arenaJoinPending && !string.IsNullOrEmpty(matchId);
         }
 
@@ -96,6 +107,7 @@ namespace Project.Match3
             _arenaJoinPending = false;
             _arenaJoinMatchId = null;
             _arenaOpponentDisplayHint = null;
+            _arenaOpponentUserId = null;
             _arenaJoinOpponentIsBot = false;
         }
 
@@ -105,6 +117,7 @@ namespace Project.Match3
             _arenaJoinPending = false;
             _arenaJoinMatchId = null;
             _arenaOpponentDisplayHint = null;
+            _arenaOpponentUserId = null;
             _arenaJoinOpponentIsBot = false;
         }
 

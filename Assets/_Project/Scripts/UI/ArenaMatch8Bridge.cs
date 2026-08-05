@@ -928,7 +928,8 @@ namespace Project.UI
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
             var myUid = NakamaBootstrap.Instance?.Session?.UserId;
             var oppHint = ResolveArenaOpponentDisplay(t, myUid);
-            Match3LaunchContext.ArmArenaJoin(t.join_match_id, oppHint, t.join_opponent_is_bot);
+            var oppUid = ResolveArenaOpponentUserId(t, myUid);
+            Match3LaunchContext.ArmArenaJoin(t.join_match_id, oppHint, t.join_opponent_is_bot, oppUid);
 
             if (!string.IsNullOrEmpty(duelMatch3SceneName))
             {
@@ -954,6 +955,16 @@ namespace Project.UI
             return string.IsNullOrWhiteSpace(h) ? null : h.Trim();
         }
 
+        private static string ResolveArenaOpponentUserId(ArenaTournamentState t, string myUserId)
+        {
+            if (t == null || string.IsNullOrEmpty(t.join_match_id) || string.IsNullOrEmpty(myUserId))
+                return null;
+            var mid = t.join_match_id.Trim();
+            return ScanArenaRowsForOpponentUid(t.qf, mid, myUserId)
+                   ?? ScanArenaRowsForOpponentUid(t.sf, mid, myUserId)
+                   ?? ScanArenaRowsForOpponentUid(t.final_pairs, mid, myUserId);
+        }
+
         private static string ScanArenaRowsForOpponent(ArenaPairRow[] rows, string matchId, string myUid)
         {
             if (rows == null || rows.Length == 0) return null;
@@ -966,6 +977,23 @@ namespace Project.UI
                     return pr.display_b;
                 if (string.Equals(pr.uid_b, myUid, StringComparison.Ordinal))
                     return pr.display_a;
+            }
+
+            return null;
+        }
+
+        private static string ScanArenaRowsForOpponentUid(ArenaPairRow[] rows, string matchId, string myUid)
+        {
+            if (rows == null || rows.Length == 0) return null;
+            foreach (var pr in rows)
+            {
+                if (pr == null || string.IsNullOrEmpty(pr.match_id)) continue;
+                if (!string.Equals(pr.match_id.Trim(), matchId, StringComparison.Ordinal)) continue;
+
+                if (string.Equals(pr.uid_a, myUid, StringComparison.Ordinal))
+                    return string.IsNullOrWhiteSpace(pr.uid_b) ? null : pr.uid_b.Trim();
+                if (string.Equals(pr.uid_b, myUid, StringComparison.Ordinal))
+                    return string.IsNullOrWhiteSpace(pr.uid_a) ? null : pr.uid_a.Trim();
             }
 
             return null;
