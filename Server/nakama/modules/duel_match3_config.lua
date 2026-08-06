@@ -18,6 +18,13 @@ local CFG = {  SIZE = 6,
   --  1 = учитывать 6x7 (y=1..7),
   --  2 = только активная зона 6x6 (y=2..7).
   BOT_SIM_QUALITY_Y_MIN = 2,
+  --- Бот: режим выживания (щит + мана/хил), пока HP не восстановится.
+  BOT_SURVIVAL_HP_ENTER = 30,
+  BOT_SURVIVAL_HP_EXIT = 75,
+  --- В выживании: сколько маны можно «пожертвовать» ради лечения способностью vs свап без хила.
+  BOT_SURVIVAL_HEAL_MANA_SLACK = 5,
+  --- Минимальная мана, с которой бот оценивает комбо ярость→петарда→линия бомб.
+  BOT_FURY_FINISH_MIN_MANA = 60,
   CROSS_ABILITY_COST = 20,
   SQUARE_ABILITY_COST = 20,
   PETARD_ABILITY_COST = 30,

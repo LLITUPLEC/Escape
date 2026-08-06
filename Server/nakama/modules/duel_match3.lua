@@ -874,6 +874,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     local c = cnt(5)
     if c > 0 then
       state._action_ankh_count = (state._action_ankh_count or 0) + c
+      if sim ~= nil then sim.ankh = (sim.ankh or 0) + c end
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2) * c
         opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
@@ -1163,6 +1164,9 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     Ach.clear_five_plus_streak(state, actor)
     state.active_user_id = opponent
     tick_cooldowns(state.stats[opponent])
+    if state.mode == "pve" and actor == state.bot_user_id then
+      state.bot_kill_plan = nil
+    end
     if state.mode == "pve" and opponent == state.owner_user_id then
       state.bot_fury_open_mana = nil
     end
@@ -1294,6 +1298,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
       end
     elseif t == 5 then
       state._action_ankh_count = (state._action_ankh_count or 0) + 1
+      if sim ~= nil then sim.ankh = (sim.ankh or 0) + 1 end
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2)
         opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
@@ -4233,7 +4238,7 @@ local function simulate_and_score_action(state, bot_user_id, player_user_id, act
       [bot_user_id] = sim_bot,
       [player_user_id] = sim_player,
     },
-    _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0 },
+    _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 },
     _sim_quality_y_min = (tonumber(CFG.BOT_SIM_QUALITY_Y_MIN) or CFG.ACTIVE_Y_MIN),
   }
 
@@ -4245,13 +4250,22 @@ local function simulate_and_score_action(state, bot_user_id, player_user_id, act
   local ok, _, extra_turn, _, _ = resolve_action(sim_state, action, bot_user_id, player_user_id)
   if not ok then return nil end
 
-  local m = sim_state._sim_metrics or { extra_turn = false, red = 0, yellow = 0, green = 0 }
+  local m = sim_state._sim_metrics or { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 }
+  local red = m.red or 0
+  local yellow = m.yellow or 0
+  local green = m.green or 0
+  local ankh = m.ankh or 0
   local score = {
     extra_turn = (extra_turn == true) or (m.extra_turn == true),
     damage = math.max(0, before_hp - sim_player.hp),
-    red = m.red or 0,
-    yellow = m.yellow or 0,
-    green = m.green or 0,
+    red = red,
+    yellow = yellow,
+    green = green,
+    ankh = ankh,
+    -- Грязный прирост маны с камней (без учёта стоимости способности).
+    mana_value = red * (CFG.GEM_MANA[1] or 5) + yellow * (CFG.GEM_MANA[2] or 3) + green * (CFG.GEM_MANA[3] or 1),
+    -- Фактическая мана после хода (траты способности уже вычтены) — ключ для удержания щита.
+    mana_after = math.max(0, tonumber(sim_bot.mana) or 0),
   }
   return score
 end
@@ -4263,6 +4277,37 @@ local function is_better_score(a, b)
   if a.red ~= b.red then return a.red > b.red end
   if a.yellow ~= b.yellow then return a.yellow > b.yellow end
   if a.green ~= b.green then return a.green > b.green end
+  return false
+end
+
+--- Выживание: сначала порог маны на щит, затем мана; хил может «купить» slack маны у свапа без анкха.
+local function is_better_survival_score(a, b, shield_need)
+  if b == nil then return true end
+  local need = tonumber(shield_need) or CFG.SHIELD_ABILITY_COST or 40
+  local slack = tonumber(CFG.BOT_SURVIVAL_HEAL_MANA_SLACK) or 5
+
+  local am = tonumber(a.mana_after) or 0
+  local bm = tonumber(b.mana_after) or 0
+  local a_ok = am >= need
+  local b_ok = bm >= need
+  if a_ok ~= b_ok then return a_ok end
+
+  local ah = a.ankh or 0
+  local bh = b.ankh or 0
+  -- Способность с лечением vs свап без: можно уступить до slack маны.
+  if ah > 0 and bh <= 0 then
+    if am >= bm - slack then return true end
+    return false
+  end
+  if bh > 0 and ah <= 0 then
+    if bm >= am - slack then return false end
+    return true
+  end
+
+  if am ~= bm then return am > bm end
+  if ah ~= bh then return ah > bh end
+  if a.extra_turn ~= b.extra_turn then return a.extra_turn end
+  if a.damage ~= b.damage then return a.damage > b.damage end
   return false
 end
 
@@ -4292,6 +4337,23 @@ local function match_has_five_plus_skull(matches)
   return false
 end
 
+local function match_has_skull_line(matches, min_count)
+  local need = tonumber(min_count) or 3
+  if not matches then return false end
+  for _, m in ipairs(matches) do
+    if m.type == 4 and (tonumber(m.count) or 0) >= need then return true end
+  end
+  return false
+end
+
+--- Оценка урона одного удара (без крита) с учётом брони цели.
+local function estimate_hit_damage(raw_base, attacker_stats, fury_bonus, target_stats)
+  local raw = math.max(0, tonumber(raw_base) or 0)
+  raw = raw + math.max(0, tonumber(attacker_stats and attacker_stats.base_damage) or 0)
+  raw = raw + math.max(0, tonumber(fury_bonus) or 0)
+  return math.max(0, raw - get_armor(target_stats))
+end
+
 local function choose_bot_action(state, bot_user_id, player_user_id)
   local stats = state.stats[bot_user_id]
   if stats == nil then return nil end
@@ -4299,36 +4361,206 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local cross_cost = action_mana_cost(state, 2)
   local square_cost = action_mana_cost(state, 3)
   local petard_cost = action_mana_cost(state, 4)
+  local shield_cost = action_mana_cost(state, 5)
   local fury_cost = action_mana_cost(state, 6)
   local can_cross = stats.mana >= cross_cost and stats.cross_cd <= 0
   local can_square = stats.mana >= square_cost and stats.square_cd <= 0
   local can_petard = stats.mana >= petard_cost and stats.petard_cd <= 0
-  local can_fury = stats.mana >= fury_cost and stats.fury_cd <= 0
+  local can_shield = stats.mana >= shield_cost and (stats.shield_cd or 0) <= 0
+  local can_fury = stats.mana >= fury_cost and (stats.fury_cd or 0) <= 0
 
   local player_stats = state.stats[player_user_id] or {}
   local player_hp = tonumber(player_stats.hp) or CFG.MAX_HP
+  local bot_hp = tonumber(stats.hp) or CFG.MAX_HP
   local mana = tonumber(stats.mana) or 0
   local frozen = has_affix(state, "frozen")
 
+  local enter_hp = tonumber(CFG.BOT_SURVIVAL_HP_ENTER) or 30
+  local exit_hp = tonumber(CFG.BOT_SURVIVAL_HP_EXIT) or 75
+  if bot_hp >= exit_hp then
+    state.bot_survival_mode = false
+  elseif bot_hp < enter_hp and bot_hp < player_hp then
+    state.bot_survival_mode = true
+  end
+  local survival = state.bot_survival_mode == true
+
+  -- Один проход по свапам: урон / доп.ход / линия бомб / выживание (скоры кэшируем).
   local swaps = enumerate_valid_swaps(state.board)
+  local swap_scores = {}
   local best_extra_swap = nil
   local best_extra_score = nil
+  local best_damage_swap = nil
+  local best_damage_score = nil
+  local best_bomb_swap = nil
+  local best_bomb_score = nil
+  local best_survival_swap = nil
+  local best_survival_score = nil
   local max_swap_damage = 0
-  for _, action in ipairs(swaps) do
+  local max_bomb_swap_damage = 0
+
+  for i, action in ipairs(swaps) do
     local score = simulate_and_score_action(state, bot_user_id, player_user_id, action)
+    swap_scores[i] = score
     if score ~= nil then
-      if score.damage ~= nil and score.damage > max_swap_damage then max_swap_damage = score.damage end
+      local dmg = score.damage or 0
+      if dmg > max_swap_damage then max_swap_damage = dmg end
+      if best_damage_score == nil or dmg > (best_damage_score.damage or 0) then
+        best_damage_score = score
+        best_damage_swap = action
+      elseif dmg == (best_damage_score.damage or 0) and is_better_score(score, best_damage_score) then
+        best_damage_score = score
+        best_damage_swap = action
+      end
       if score.extra_turn and is_better_score(score, best_extra_score) then
         best_extra_score = score
         best_extra_swap = action
       end
+      if is_better_survival_score(score, best_survival_score, shield_cost) then
+        best_survival_score = score
+        best_survival_swap = action
+      end
+      -- Линия бомб: доп. clone+try_swap только если есть урон (черепа бьют).
+      if dmg > 0 then
+        local init_m = swap_initial_matches_for_action(state, action)
+        if match_has_skull_line(init_m, 3) then
+          if dmg > max_bomb_swap_damage then
+            max_bomb_swap_damage = dmg
+            best_bomb_score = score
+            best_bomb_swap = action
+          elseif dmg == max_bomb_swap_damage and is_better_score(score, best_bomb_score) then
+            best_bomb_score = score
+            best_bomb_swap = action
+          end
+        end
+      end
     end
+  end
+
+  local bombs_on_board = count_skulls(state.board)
+  local fury_bonus_now = (stats.fury_active == true) and math.max(0, tonumber(stats.fury_bomb_bonus) or 0) or 0
+  local petard_dmg_now = can_petard
+    and estimate_hit_damage(CFG.PETARD_DAMAGE, stats, fury_bonus_now, player_stats)
+    or 0
+  -- 2+ щита у соперника: петарда почти бесполезна (15 − 8/12 брони), кроме добивания.
+  local opp_shield_stacks = get_shield_stacks(player_stats)
+  local function petard_is_finisher()
+    if not can_petard then return false end
+    if petard_dmg_now >= player_hp then return true end
+    if max_swap_damage > 0 and (petard_dmg_now + max_swap_damage) >= player_hp then return true end
+    if best_bomb_swap ~= nil and (petard_dmg_now + max_bomb_swap_damage) >= player_hp then return true end
+    return false
+  end
+  local function can_spend_petard()
+    return can_petard and (opp_shield_stacks < 2 or petard_is_finisher())
+  end
+
+  local function clear_kill_plan()
+    state.bot_kill_plan = nil
+  end
+
+  --- Добивание петардой / петарда+бомбы / свап (дешёвые оценки, без новых симов).
+  local function try_finish_actions(use_bomb_line)
+    if can_petard and petard_dmg_now >= player_hp then
+      clear_kill_plan()
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+    local swap_dmg = use_bomb_line and max_bomb_swap_damage or max_swap_damage
+    local swap_act = use_bomb_line and best_bomb_swap or best_damage_swap
+    if can_petard and swap_act ~= nil and (petard_dmg_now + swap_dmg) >= player_hp then
+      -- Петарда сохраняет ход → следующим тиком добьём свапом.
+      state.bot_kill_plan = use_bomb_line and "bomb_swap" or "damage_swap"
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+    if swap_act ~= nil and swap_dmg >= player_hp then
+      clear_kill_plan()
+      return swap_act
+    end
+    return nil
+  end
+
+  -- Продолжение плана добивания после ярости/петарды.
+  if state.bot_kill_plan == "petard" then
+    if can_petard then
+      state.bot_kill_plan = (best_bomb_swap ~= nil) and "bomb_swap" or "damage_swap"
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+    clear_kill_plan()
+  end
+  if state.bot_kill_plan == "bomb_swap" then
+    clear_kill_plan()
+    if best_bomb_swap ~= nil then return best_bomb_swap end
+    if best_damage_swap ~= nil then return best_damage_swap end
+  end
+  if state.bot_kill_plan == "damage_swap" then
+    clear_kill_plan()
+    if best_damage_swap ~= nil then return best_damage_swap end
+  end
+
+  -- Всегда: если можно добить сейчас — бьём (даже в выживании).
+  do
+    local finish = try_finish_actions(false)
+    if finish ~= nil then return finish end
+    -- При нехватке маны на «просто петарду+любой урон» — только линия бомб.
+    if can_petard and best_bomb_swap ~= nil and (petard_dmg_now + max_bomb_swap_damage) >= player_hp then
+      state.bot_kill_plan = "bomb_swap"
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+  end
+
+  -- Ярость → петарда → линия бомб, если маны хватает и оценка покрывает HP игрока.
+  local fury_finish_min = tonumber(CFG.BOT_FURY_FINISH_MIN_MANA) or 60
+  if not stats.fury_active and can_fury and can_petard
+      and mana >= fury_finish_min
+      and mana >= (fury_cost + petard_cost)
+      and best_bomb_swap ~= nil then
+    local bonus = bombs_on_board
+    local petard_fury = estimate_hit_damage(CFG.PETARD_DAMAGE, stats, bonus, player_stats)
+    -- Симулированный урон свапа уже с бронёй; бонус ярости добавляется к raw ≈ +bonus к HP-урону.
+    local bomb_fury = max_bomb_swap_damage + bonus
+    if (petard_fury + bomb_fury) >= player_hp then
+      state.bot_kill_plan = "petard"
+      return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+  end
+
+  -- Режим выживания / критическое HP без килла: щит, затем удержание порога маны на щит.
+  local critical_hp = bot_hp < enter_hp
+  if survival or critical_hp then
+    if can_shield then
+      return { actionType = 5, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+
+    -- Выбор хода: mana_after >= стоимость щита важнее хила/«грязной» маны с способности.
+    local best_sc = best_survival_score
+    local best_act = best_survival_swap
+
+    local function consider_ability(action_type)
+      for y = 0, CFG.SIZE - 1 do
+        for x = 0, CFG.SIZE - 1 do
+          local ac = {
+            actionType = action_type,
+            fromX = -1, fromY = -1, toX = -1, toY = -1,
+            cx = x, cy = y,
+          }
+          local sc = simulate_and_score_action(state, bot_user_id, player_user_id, ac)
+          if sc ~= nil and is_better_survival_score(sc, best_sc, shield_cost) then
+            best_sc = sc
+            best_act = ac
+          end
+        end
+      end
+    end
+    if can_cross then consider_ability(2) end
+    if can_square then consider_ability(3) end
+    if best_act ~= nil then return best_act end
+    if best_damage_swap ~= nil then return best_damage_swap end
+    return nil
   end
 
   -- в) Цепочка после ярости при старте с маны >= 80 (петарда + способность; при frozen — только петарда).
   local open_m = state.bot_fury_open_mana
   if stats.fury_active and open_m ~= nil and open_m >= 80 then
-    if can_petard then
+    if can_spend_petard() then
       return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
     end
     if not frozen then
@@ -4399,7 +4631,8 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   end
 
   -- в) Открытие цепочки: мана >= 80 и хватает на ярость + петарду (+ способность без frozen).
-  if not stats.fury_active and can_fury and can_petard then
+  -- Не открываем, если петарда упрётся в 2+ щита и не добивает.
+  if not stats.fury_active and can_fury and can_spend_petard() then
     if frozen then
       if mana >= 80 and mana >= fury_cost + petard_cost then
         return { actionType = 6, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
@@ -4415,13 +4648,18 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   end
 
   -- “Молния/петарда” приоритетна, если:
-  --  • маны > 50 (как и раньше),
-  --  • либо маны >= 30 и петарда добивает прямо сейчас,
-  --  • либо петарда + лучший свап по урону добивают (петарда сохраняет ход).
+  --  • добивает (одна или с свапом),
+  --  • либо маны > 50 и у соперника меньше 2 щитов (иначе 15 урона съедается бронёй).
   if can_petard then
-    if mana > 50
-      or (mana >= petard_cost and CFG.PETARD_DAMAGE >= player_hp)
-      or (mana >= petard_cost and (CFG.PETARD_DAMAGE + max_swap_damage) >= player_hp) then
+    if petard_is_finisher() then
+      if petard_dmg_now < player_hp then
+        state.bot_kill_plan = (best_bomb_swap ~= nil) and "bomb_swap" or "damage_swap"
+      else
+        clear_kill_plan()
+      end
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    elseif mana > 50 and opp_shield_stacks < 2 then
+      clear_kill_plan()
       return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
     end
   end
@@ -4431,37 +4669,46 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
     return best_extra_swap
   end
 
-  local candidates = swaps
+  local best_action = best_damage_swap
+  local best_score = best_damage_score
+
+  local function consider_candidate(action)
+    local score = simulate_and_score_action(state, bot_user_id, player_user_id, action)
+    if score ~= nil and is_better_score(score, best_score) then
+      best_score = score
+      best_action = action
+    end
+  end
+
   if can_cross then
     for y = 0, CFG.SIZE - 1 do
       for x = 0, CFG.SIZE - 1 do
-        candidates[#candidates + 1] = {
+        consider_candidate({
           actionType = 2,
           fromX = -1, fromY = -1, toX = -1, toY = -1,
           cx = x, cy = y,
-        }
+        })
       end
     end
   end
   if can_square then
     for y = 0, CFG.SIZE - 1 do
       for x = 0, CFG.SIZE - 1 do
-        candidates[#candidates + 1] = {
+        consider_candidate({
           actionType = 3,
           fromX = -1, fromY = -1, toX = -1, toY = -1,
           cx = x, cy = y,
-        }
+        })
       end
     end
   end
-  if can_petard then
-    candidates[#candidates + 1] = { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+  if can_petard and (opp_shield_stacks < 2 or petard_is_finisher()) then
+    consider_candidate({ actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 })
   end
 
-  local best_action = nil
-  local best_score = nil
-  for _, action in ipairs(candidates) do
-    local score = simulate_and_score_action(state, bot_user_id, player_user_id, action)
+  -- Свапы уже симулированы: выбираем лучший по кэшу без повторного resolve.
+  for i, action in ipairs(swaps) do
+    local score = swap_scores[i]
     if score ~= nil and is_better_score(score, best_score) then
       best_score = score
       best_action = action
@@ -4505,6 +4752,8 @@ local function match_init(context, params)
     bot_turn_ready_tick = 0,
     bot_long_think_next = true,
     bot_fury_open_mana = nil,
+    bot_survival_mode = false,
+    bot_kill_plan = nil,
     _bot_pre_mana = nil,
     pve_run = params and params.pve_run or nil,
     arena_mirror = params and params.arena_mirror or nil,
