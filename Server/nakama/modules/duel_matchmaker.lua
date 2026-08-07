@@ -48,15 +48,8 @@ local function on_matchmaker_matched(context, matched_users)
     error("cannot create match3 authoritative handler (duel_match3)")
   end
 
-  -- Default fallback for non-match3.
-  local match_id = try_create(setup, { "duel_relay", "modules/duel_relay", "modules.duel_relay" })
-  if match_id then return match_id end
-
-  nk.logger_warn("duel_matchmaker: duel_relay not found, fallback to duel_match3")
-  match_id = try_create(setup, { "duel_match3", "modules/duel_match3" })
-  if match_id then return match_id end
-
-  error("cannot create any match handler (duel_relay / duel_match3)")
+  nk.logger_warn("duel_matchmaker: unsupported mode='" .. tostring(mode) .. "' (only match3 is supported)")
+  error("unsupported matchmaker mode: " .. tostring(mode))
 end
 
 nk.register_matchmaker_matched(on_matchmaker_matched)

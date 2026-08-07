@@ -10,7 +10,6 @@ namespace Project.UI
     public sealed class ArenaMenuModePanelBinder : MonoBehaviour
     {
         [Header("Paths (relative to scene)")]
-        [SerializeField] private string duelButtonPath = "ArenaMenuWorld/Background2D/ModePanel/DuelButton";
         [SerializeField] private string match3ButtonPath = "ArenaMenuWorld/Background2D/ModePanel/match3Button";
         [Tooltip("Опционально. Если пусто — ищется кнопка с именем match3ProButton. §14 PvP Pro.")]
         [SerializeField] private string match3ProButtonPath = "";
@@ -19,11 +18,9 @@ namespace Project.UI
 
         [Header("Scenes")]
         [SerializeField] private string mainMenuSceneName = "MainMenu";
-        [SerializeField] private string duelSceneName = "DuelRoom";
         [SerializeField] private string match3SceneName = "DuelMatch3";
         [SerializeField] private bool hideBotsButton = true;
 
-        private Button _duel;
         private Button _match3;
         private Button _match3Pro;
         private Button _bots;
@@ -35,7 +32,6 @@ namespace Project.UI
 
         private void Awake()
         {
-            _duel = FindButton(duelButtonPath, "DuelButton");
             _match3 = FindButton(match3ButtonPath, "match3Button");
             _match3Pro = string.IsNullOrWhiteSpace(match3ProButtonPath)
                 ? FindButton("", "match3ProButton")
@@ -50,7 +46,6 @@ namespace Project.UI
                 _bots = null;
             }
 
-            if (_duel != null) _duel.onClick.AddListener(GoDuel);
             if (_match3 != null) _match3.onClick.AddListener(GoMatch3);
             if (_match3Pro != null) _match3Pro.onClick.AddListener(GoMatch3Pro);
             if (_bots != null) _bots.onClick.AddListener(GoBots);
@@ -67,17 +62,10 @@ namespace Project.UI
 
         private void OnDestroy()
         {
-            if (_duel != null) _duel.onClick.RemoveListener(GoDuel);
             if (_match3 != null) _match3.onClick.RemoveListener(GoMatch3);
             if (_match3Pro != null) _match3Pro.onClick.RemoveListener(GoMatch3Pro);
             if (_bots != null) _bots.onClick.RemoveListener(GoBots);
             if (_back != null) _back.onClick.RemoveListener(BackToMainMenu);
-        }
-
-        private void GoDuel()
-        {
-            if (string.IsNullOrWhiteSpace(duelSceneName)) return;
-            SceneManager.LoadScene(duelSceneName);
         }
 
         private void GoMatch3()
@@ -152,4 +140,3 @@ namespace Project.UI
 
     }
 }
-

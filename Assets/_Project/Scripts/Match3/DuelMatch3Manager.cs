@@ -38,7 +38,6 @@ namespace Project.Match3
     ///  • The active player runs timer + calculations locally, then sends
     ///    the full board state + both players' stats to the opponent via
     ///    Nakama match-state messages.
-    ///  • This mirrors the existing DuelRoom pattern.
     /// </summary>
     public sealed class DuelMatch3Manager : MonoBehaviour
     {
@@ -103,7 +102,7 @@ namespace Project.Match3
         [Tooltip("Optional prefab for the overlay cells container (CheatRowsOverlayCells). If null, created at runtime.")]
         [SerializeField] private Transform cheatRowsOverlayCellsPrefab;
 
-        // ─── OpCodes (match-3 specific, 10+ to avoid collision with DuelRoom) ─────
+        // ─── OpCodes (match-3) ─────
         private static class M3Op
         {
             public const long BoardSync     = 10;
