@@ -69,6 +69,7 @@ namespace Project.Match3
         public int aBaseHeal;
         public int aShieldT1, aShieldT2, aShieldT3, aFuryTurns, aFuryBonus;
         public int aLevel;
+        public int aMaxMana;
 
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
@@ -78,6 +79,12 @@ namespace Project.Match3
         public int bBaseHeal;
         public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
         public int bLevel;
+        public int bMaxMana;
+
+        /// <summary>Сколько маны списано у цели за этот ход (Race: черепа/петарда).</summary>
+        public int manaDrain;
+        /// <summary>Режим «Спуск» (PvP Race).</summary>
+        public bool pvpRace;
 
         public bool extraTurn;      // active player gets another turn
         /// <summary>Кому принадлежит текущий ход после применения этого синка.</summary>
@@ -115,6 +122,7 @@ namespace Project.Match3
     public class M3GameOverMsg
     {
         public string winnerUserId;
+        public bool isDraw;
         public int rewardXp;
         public int rewardGold;
         public int rewardOre;

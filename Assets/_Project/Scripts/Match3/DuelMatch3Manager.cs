@@ -140,6 +140,8 @@ namespace Project.Match3
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
         private const int   MaxMana         = 100;
+        private const int   RaceMaxMana     = 350;
+        private const int   RaceGoalMana    = 300;
         private const float TurnDuration    = 30f;
         private const int   CrossAbilityCost  = 20;
         private const int   SquareAbilityCost = 20;
@@ -226,6 +228,9 @@ namespace Project.Match3
         private int _line6ThisAction;
         private Match3LaunchMode _launchMode = Match3LaunchMode.Multiplayer;
         private bool _pvpProQueue;
+        private bool _pvpRaceQueue;
+        private bool _raceHudApplied;
+        private bool _pendingGameOverDraw;
         private bool _isSoloBotMode;
         private bool _useLocalBotSimulation;
         private System.Random _botRandom;
@@ -291,6 +296,8 @@ namespace Project.Match3
             _launchMode = Match3LaunchContext.ConsumeMode();
             _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
             _pvpProQueue = !_isSoloBotMode && Match3LaunchContext.ConsumePvpPro();
+            _pvpRaceQueue = !_isSoloBotMode && Match3LaunchContext.ConsumePvpRace();
+            if (_pvpRaceQueue) _pvpProQueue = false;
             Match3LaunchContext.ConsumeSoloMine(out _preferredSoloBotId, out _preferredSoloFloor, out _preferredSoloDifficulty, out _autoStartPreferredSolo);
             _useLocalBotSimulation = false;
             _botRandom = new System.Random(Environment.TickCount);
@@ -304,7 +311,7 @@ namespace Project.Match3
             TryAutoAssignSfxInEditor();
             _searchingPanel?.Show(_isSoloBotMode
                 ? "Подготовка боя с ботом…"
-                : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…"));
+                : (_pvpRaceQueue ? "Поиск соперника (Спуск)…" : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…")));
 
             if (_isSoloBotMode)
             {
@@ -331,6 +338,7 @@ namespace Project.Match3
                     Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out var arenaOppHint, out var arenaOppIsBot, out var arenaOppUserId))
                 {
                     _pvpProQueue = false;
+                    _pvpRaceQueue = false;
                     _isArenaTournamentMatch = true;
                     _mmTcs?.TrySetCanceled();
                     await CancelMatchmakerTicketAsync();
@@ -614,8 +622,8 @@ namespace Project.Match3
             ct.ThrowIfCancellationRequested();
             await CancelMatchmakerTicketAsync();
 
-            // Разные очереди: классика (150 HP, без экипа в статах) vs Pro (уровень+экип на сервере, §14 фаза 5).
-            var rules = _pvpProQueue ? "pro" : "classic";
+            // Очереди: classic / pro / race («Спуск») — не смешиваются.
+            var rules = _pvpRaceQueue ? "race" : (_pvpProQueue ? "pro" : "classic");
             var query = $"+properties.mode:match3 +properties.rules:{rules}";
             var ticket = await NakamaBootstrap.Instance.Socket.AddMatchmakerAsync(
                 query: query,
@@ -650,6 +658,7 @@ namespace Project.Match3
         private void OnMatchFound()
         {
             _searchingPanel?.Hide();
+            EnsureRaceHudApplied();
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
             _resultRecorded = false;
@@ -830,10 +839,11 @@ namespace Project.Match3
             _pendingBoardSyncs.Clear();
             _pendingGameOver = false;
             _pendingGameOverWon = false;
+            _pendingGameOverDraw = false;
             _remoteSelX = _remoteSelY = -1;
             _boardView?.RefreshAll(_board);
             RefreshStatsUI();
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+            RefreshAbilityUi(false, _gameEnded);
             _hud?.SetTurn("Ожидание синхронизации…");
             _hud?.SetTimer("—", -1f);
             _turnEndsAtUnixMs = 0;
@@ -873,7 +883,7 @@ namespace Project.Match3
             UpdateAffixHud();
             _boardView?.SetDimmed(false);
 
-            _abilityPanel?.Refresh(_myStats, true, false, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+            RefreshAbilityUi(true, false);
         }
 
         private void BeginOpponentTurn()
@@ -894,7 +904,7 @@ namespace Project.Match3
             _hud?.SetTurn("Ход соперника…");
             UpdateAffixHud();
             _boardView?.SetDimmed(true);
-            _abilityPanel?.Refresh(_myStats, false, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+            RefreshAbilityUi(false, _gameEnded);
 
             if (_useLocalBotSimulation && !_gameEnded)
             {
@@ -990,7 +1000,7 @@ namespace Project.Match3
 
             if (!IsAbilityAvailable(ability))
             {
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, false, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+                RefreshAbilityUi(_isMyTurn, false);
                 return;
             }
 
@@ -1364,13 +1374,16 @@ namespace Project.Match3
 
         private void ShowGameOver(bool won)
         {
+            var isDraw = _pendingGameOverDraw;
             if (!_resultRecorded)
             {
                 _resultRecorded = true;
-                _ = RecordMatch3ResultServerAsync(won);
+                if (!isDraw)
+                    _ = RecordMatch3ResultServerAsync(won);
             }
 
-            ReportAchievementProgressAfterGameOver(won);
+            if (!isDraw)
+                ReportAchievementProgressAfterGameOver(won);
 
             if (_match != null)
                 _ = PullAchievementsAuthoritativeSyncAsync();
@@ -1378,9 +1391,11 @@ namespace Project.Match3
             _isMyTurn    = false;
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
-            PlaySfx(won ? sfxVictory : sfxDefeat);
+            PlaySfx(isDraw ? sfxVictory : (won ? sfxVictory : sfxDefeat));
             string arenaTitle = null;
-            if (_isArenaTournamentMatch)
+            if (isDraw)
+                arenaTitle = "Ничья!";
+            else if (_isArenaTournamentMatch)
             {
                 if (!won)
                     arenaTitle = "Вы выбыли из турнира";
@@ -1388,7 +1403,7 @@ namespace Project.Match3
                     arenaTitle = "Победа в турнире!";
             }
             _gameOverPanel?.Show(won, null, arenaTitle);
-            RefreshGameOverRewardRows(won);
+            RefreshGameOverRewardRows(won && !isDraw);
         }
 
         private void ReportAchievementProgressAfterGameOver(bool won)
@@ -1418,6 +1433,7 @@ namespace Project.Match3
 
             var countSlaughterDuelChains =
                 !soloPvEMineVersusBots &&
+                !_pvpRaceQueue &&
                 (_isArenaTournamentMatch || (_match != null && !_opponentIsServerBot));
 
             if (countSlaughterDuelChains)
@@ -1676,14 +1692,15 @@ namespace Project.Match3
                         _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
                     }
                     else if (!_isSoloBotMode &&
-                             string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal))
+                             (msg.isDraw || string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal)))
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
                         var rgold = Mathf.Max(0, msg.rewardGold);
+                        var rmatter = Mathf.Max(0, msg.rewardMatter);
                         _lastRewardXp = rxp;
                         _lastRewardGold = rgold;
                         _lastRewardOre = 0;
-                        _lastRewardMatter = 0;
+                        _lastRewardMatter = rmatter;
                         _lastRewardIngots = 0;
                         _lastRewardKeyAmount = 0;
                         _lastRewardKeyId = string.Empty;
@@ -1692,10 +1709,11 @@ namespace Project.Match3
                         _lastRewardTesseract = 0;
                         if (msg.newLevel > 0)
                             _myProgressionLevel = msg.newLevel;
-                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, 0, 0, 0, "", 0, "", "", 0);
+                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, 0, rmatter, 0, "", 0, "", "", 0);
                     }
                     _pendingGameOver = true;
-                    _pendingGameOverWon = msg.winnerUserId == _myUserId;
+                    _pendingGameOverDraw = msg.isDraw;
+                    _pendingGameOverWon = !msg.isDraw && msg.winnerUserId == _myUserId;
                     _arenaGameOverRound = msg.arenaRound ?? string.Empty;
                     _arenaGameOverBetTier = msg.arenaBetTier ?? string.Empty;
                     _arenaGameOverKind = msg.arenaKind ?? string.Empty;
@@ -1743,7 +1761,7 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+                    RefreshAbilityUi(_isMyTurn, _gameEnded);
                     if (!string.IsNullOrEmpty(msg.reason))
                         Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
                 });
@@ -1869,6 +1887,13 @@ namespace Project.Match3
 
         private IEnumerator ApplyRemoteBoardSync(M3BoardSyncMsg msg)
         {
+            if (msg.pvpRace && !_pvpRaceQueue)
+            {
+                _pvpRaceQueue = true;
+                _pvpProQueue = false;
+            }
+            EnsureRaceHudApplied();
+
             var beforeBoard = _board.ToArray();
             int[] currentBoard = beforeBoard;
             int prevMyHp = _myStats.hp;
@@ -2010,13 +2035,39 @@ namespace Project.Match3
             if (!string.IsNullOrWhiteSpace(msg.boardPopup) && _boardView != null)
                 _boardView.ShowCenterAnnouncement(msg.boardPopup, new Color(0.75f, 0.9f, 1f), 2.2f);
 
-            // Damage popups (computed by HP delta). Both clients see it on the damaged side.
-            var myDamageTaken = Mathf.Max(0, prevMyHp - _myStats.hp);
-            var opDamageTaken = Mathf.Max(0, prevOpHp - _opStats.hp);
-            if (myDamageTaken > 0 && _myPanel != null)
-                _myPanel.ShowDamagePopup(myDamageTaken, msg.critTriggered && opDamageTaken == 0);
-            if (opDamageTaken > 0 && _opPanel != null)
-                _opPanel.ShowDamagePopup(opDamageTaken, msg.critTriggered && myDamageTaken == 0);
+            // Damage / mana-drain popups.
+            if (_pvpRaceQueue || msg.pvpRace)
+            {
+                EnsureRaceHudApplied();
+                var drain = Mathf.Max(0, msg.manaDrain);
+                if (drain <= 0)
+                {
+                    var myLoss = Mathf.Max(0, prevMyMana - _myStats.mana - AbilityManaSpentForUser(msg, _myUserId));
+                    var opLoss = Mathf.Max(0, prevOpMana - _opStats.mana - AbilityManaSpentForUser(msg, _opUserId));
+                    if (myLoss > 0) _myPanel?.ShowDamagePopup(myLoss, false, true);
+                    if (opLoss > 0) _opPanel?.ShowDamagePopup(opLoss, false, true);
+                }
+                else if (!string.IsNullOrEmpty(msg.actionActorUserId) && msg.actionActorUserId == _myUserId)
+                    _opPanel?.ShowDamagePopup(drain, false, true);
+                else if (!string.IsNullOrEmpty(msg.actionActorUserId) && msg.actionActorUserId == _opUserId)
+                    _myPanel?.ShowDamagePopup(drain, false, true);
+                else
+                {
+                    var myLoss = Mathf.Max(0, prevMyMana - _myStats.mana);
+                    var opLoss = Mathf.Max(0, prevOpMana - _opStats.mana);
+                    if (myLoss > 0) _myPanel?.ShowDamagePopup(Mathf.Max(drain, myLoss), false, true);
+                    else if (opLoss > 0) _opPanel?.ShowDamagePopup(Mathf.Max(drain, opLoss), false, true);
+                }
+            }
+            else
+            {
+                var myDamageTaken = Mathf.Max(0, prevMyHp - _myStats.hp);
+                var opDamageTaken = Mathf.Max(0, prevOpHp - _opStats.hp);
+                if (myDamageTaken > 0 && _myPanel != null)
+                    _myPanel.ShowDamagePopup(myDamageTaken, msg.critTriggered && opDamageTaken == 0);
+                if (opDamageTaken > 0 && _opPanel != null)
+                    _opPanel.ShowDamagePopup(opDamageTaken, msg.critTriggered && myDamageTaken == 0);
+            }
 
             // Heal / mana gain popups (net positive). Для способностей стоимость маны
             // вычитается до каскадов — возвращаем её в расчёт, иначе «полученная» мана пропадает.
@@ -2049,7 +2100,7 @@ namespace Project.Match3
             if (keepTurnWithoutTimerReset)
             {
                 _inputBlocked = !_isMyTurn;
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+                RefreshAbilityUi(_isMyTurn, _gameEnded);
                 if (_useLocalBotSimulation && !_isMyTurn && !_gameEnded)
                 {
                     if (_botTurnRoutine != null) StopCoroutine(_botTurnRoutine);
@@ -2215,7 +2266,7 @@ namespace Project.Match3
                 if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
                 {
                     _inputBlocked = false;
-                    _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+                    RefreshAbilityUi(_isMyTurn, _gameEnded);
                 }
                 return;
             }
@@ -2431,7 +2482,7 @@ namespace Project.Match3
                     _line6ThisAction++;
                 if (match.type == PieceType.GemRed || match.type == PieceType.GemYellow || match.type == PieceType.GemGreen)
                 {
-                    actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(match.type) * match.count);
+                    actorStats.mana = Mathf.Min(EffectiveMaxMana(), actorStats.mana + GetManaByGemType(match.type) * match.count);
                 }
                 else if (match.type == PieceType.Skull)
                 {
@@ -2441,7 +2492,7 @@ namespace Project.Match3
                 {
                     _localPendingAnkhCount += match.count;
                     if (HasAffix("mana_vampire") && oppStats != null)
-                        oppStats.mana = Mathf.Min(MaxMana, oppStats.mana + GetManaByGemType(PieceType.GemYellow) * match.count);
+                        oppStats.mana = Mathf.Min(EffectiveMaxMana(), oppStats.mana + GetManaByGemType(PieceType.GemYellow) * match.count);
                 }
             }
 
@@ -2456,12 +2507,12 @@ namespace Project.Match3
             {
                 var type = board[x, y];
                 if (type == PieceType.GemRed || type == PieceType.GemYellow || type == PieceType.GemGreen)
-                    actorStats.mana = Mathf.Min(MaxMana, actorStats.mana + GetManaByGemType(type));
+                    actorStats.mana = Mathf.Min(EffectiveMaxMana(), actorStats.mana + GetManaByGemType(type));
                 else if (type == PieceType.Ankh)
                 {
                     _localPendingAnkhCount++;
                     if (HasAffix("mana_vampire") && oppStats != null)
-                        oppStats.mana = Mathf.Min(MaxMana, oppStats.mana + GetManaByGemType(PieceType.GemYellow));
+                        oppStats.mana = Mathf.Min(EffectiveMaxMana(), oppStats.mana + GetManaByGemType(PieceType.GemYellow));
                 }
                 else if (type == PieceType.Skull)
                     skulls++;
@@ -2545,8 +2596,8 @@ namespace Project.Match3
                 AbilityType.Petard => stats.mana >= GetPetardAbilityCost() && stats.petardCooldown <= 0,
                 AbilityType.Cross => stats.mana >= GetCrossAbilityCost() && stats.crossCooldown <= 0,
                 AbilityType.Square => stats.mana >= GetSquareAbilityCost() && stats.squareCooldown <= 0,
-                AbilityType.Shield => stats.mana >= GetShieldAbilityCost() && stats.shieldCooldown <= 0,
-                AbilityType.Fury => stats.mana >= GetFuryAbilityCost() && stats.furyCooldown <= 0,
+                AbilityType.Shield => !_pvpRaceQueue && stats.mana >= GetShieldAbilityCost() && stats.shieldCooldown <= 0,
+                AbilityType.Fury => !_pvpRaceQueue && stats.mana >= GetFuryAbilityCost() && stats.furyCooldown <= 0,
                 _ => false,
             };
         }
@@ -2739,12 +2790,42 @@ namespace Project.Match3
             return ids;
         }
 
+        private void EnsureRaceHudApplied()
+        {
+            if (!_pvpRaceQueue || _raceHudApplied) return;
+            _raceHudApplied = true;
+            _myPanel?.SetRaceHudMode(true);
+            _opPanel?.SetRaceHudMode(true);
+            _myStats.maxMana = RaceMaxMana;
+            _opStats.maxMana = RaceMaxMana;
+        }
+
+        private int EffectiveMaxMana()
+            => _pvpRaceQueue ? RaceMaxMana : MaxMana;
+
+        private void RefreshAbilityUi(bool isMyTurn, bool gameEnded)
+        {
+            _abilityPanel?.Refresh(
+                _myStats,
+                isMyTurn,
+                gameEnded,
+                GetCrossAbilityCost(),
+                GetSquareAbilityCost(),
+                GetPetardAbilityCost(),
+                GetShieldAbilityCost(),
+                GetFuryAbilityCost(),
+                _pvpRaceQueue);
+        }
+
         private void RefreshStatsUI()
         {
-            _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, MaxMana);
-            _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, MaxMana);
+            EnsureRaceHudApplied();
+            var maxMana = EffectiveMaxMana();
+            _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, maxMana);
+            _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, maxMana);
             RefreshAvatarLevelUI();
-            RefreshCombatStatsUI();
+            if (!_pvpRaceQueue)
+                RefreshCombatStatsUI();
         }
 
         private void RefreshAvatarLevelUI()
@@ -4468,7 +4549,7 @@ namespace Project.Match3
                 _pendingAbility = null;
                 _abilityPanel?.SetSelectedAbility(null);
                 _abilityPanel?.ShowHint(false);
-                _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+                RefreshAbilityUi(_isMyTurn, _gameEnded);
                 return;
             }
 
@@ -4479,7 +4560,7 @@ namespace Project.Match3
             _selX = _selY = -1;
             _boardView?.ClearSelections();
             _abilityPanel?.ShowHint(true);
-            _abilityPanel?.Refresh(_myStats, _isMyTurn, _gameEnded, GetCrossAbilityCost(), GetSquareAbilityCost(), GetPetardAbilityCost(), GetShieldAbilityCost(), GetFuryAbilityCost());
+            RefreshAbilityUi(_isMyTurn, _gameEnded);
         }
 
         private void OnPetardClicked()

@@ -90,7 +90,8 @@ namespace Project.Match3
             int squareCost,
             int petardCost,
             int shieldCost,
-            int furyCost)
+            int furyCost,
+            bool disableShieldAndFury = false)
         {
             BindButtonListeners();
 
@@ -109,8 +110,8 @@ namespace Project.Match3
             bool petardSelectable = active && !petardCooldown && petardHasMana;
             bool crossSelectable = active && !crossCooldown && crossHasMana;
             bool squareSelectable = active && !squareCooldown && squareHasMana;
-            bool shieldSelectable = active && !shieldCooldown && shieldHasMana;
-            bool furySelectable = active && !furyCooldown && furyHasMana;
+            bool shieldSelectable = active && !disableShieldAndFury && !shieldCooldown && shieldHasMana;
+            bool furySelectable = active && !disableShieldAndFury && !furyCooldown && furyHasMana;
 
             if (petardButton != null) petardButton.interactable = petardSelectable;
             if (crossButton != null) crossButton.interactable = crossSelectable || _selectedAbility == AbilityType.Cross;
@@ -127,8 +128,8 @@ namespace Project.Match3
             bool petardDimmed = !active || petardCooldown || !petardHasMana;
             bool crossDimmed = !active || crossCooldown || !crossHasMana;
             bool squareDimmed = !active || squareCooldown || !squareHasMana;
-            bool shieldDimmed = !active || shieldCooldown || !shieldHasMana;
-            bool furyDimmed = !active || furyCooldown || !furyHasMana;
+            bool shieldDimmed = disableShieldAndFury || !active || shieldCooldown || !shieldHasMana;
+            bool furyDimmed = disableShieldAndFury || !active || furyCooldown || !furyHasMana;
 
             StripLegacyOutline(petardButton);
             StripLegacyOutline(crossButton);
@@ -144,7 +145,7 @@ namespace Project.Match3
 
             ApplyCooldownOverlayRow(crossButton, crossCooldown, stats.crossCooldown);
             ApplyCooldownOverlayRow(squareButton, squareCooldown, stats.squareCooldown);
-            ApplyCooldownOverlayRow(furyButton, furyCooldown, stats.furyCooldown);
+            ApplyCooldownOverlayRow(furyButton, !disableShieldAndFury && furyCooldown, stats.furyCooldown);
 
             ApplyAdaptiveButtonLayout();
         }

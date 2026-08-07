@@ -49,6 +49,12 @@ namespace Project.Match3
 
         public void Play(int damageAmount, bool isCrit)
         {
+            Play(damageAmount, isCrit, false);
+        }
+
+        /// <param name="manaDrainStyle">Race: синий попап списания маны (петарда/черепа).</param>
+        public void Play(int damageAmount, bool isCrit, bool manaDrainStyle)
+        {
             if (damageAmount <= 0) return;
             // Keep the object active permanently; hide via CanvasGroup to avoid
             // "Coroutine couldn't be started ... object is inactive".
@@ -56,11 +62,21 @@ namespace Project.Match3
             if (valueText != null)
             {
                 valueText.text = "-" + damageAmount;
-                valueText.color = isCrit ? critColor : normalColor;
-                valueText.fontSize = isCrit ? critFontSize : normalFontSize;
-                valueText.fontStyle = isCrit ? FontStyles.Bold : FontStyles.Normal;
+                if (manaDrainStyle)
+                {
+                    var blue = new Color(0.25f, 0.55f, 1f, 1f);
+                    valueText.color = blue;
+                    valueText.fontSize = isCrit ? critFontSize : normalFontSize;
+                    valueText.fontStyle = isCrit ? FontStyles.Bold : FontStyles.Normal;
+                }
+                else
+                {
+                    valueText.color = isCrit ? critColor : normalColor;
+                    valueText.fontSize = isCrit ? critFontSize : normalFontSize;
+                    valueText.fontStyle = isCrit ? FontStyles.Bold : FontStyles.Normal;
+                }
             }
-            if (critBackground != null) critBackground.enabled = isCrit;
+            if (critBackground != null) critBackground.enabled = isCrit && !manaDrainStyle;
 
             if (_routine != null) StopCoroutine(_routine);
             _routine = StartCoroutine(Animate(isCrit));

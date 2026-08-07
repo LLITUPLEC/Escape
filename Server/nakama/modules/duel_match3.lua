@@ -260,6 +260,42 @@ local function truthy_match_param(v)
   return false
 end
 
+local function is_pvp_race(state)
+  return state ~= nil and state.pvp_race == true
+end
+
+local function max_mana_for_state(state)
+  if is_pvp_race(state) then
+    return tonumber(CFG.RACE_MAX_MANA) or 350
+  end
+  return CFG.MAX_MANA
+end
+
+local function race_goal_mana()
+  return tonumber(CFG.RACE_GOAL_MANA) or 300
+end
+
+--- Списывает ману цели (не ниже 0). Возвращает фактически списанное.
+local function race_drain_mana(state, target, amount)
+  if target == nil then return 0 end
+  local before = math.max(0, tonumber(target.mana) or 0)
+  local want = math.max(0, tonumber(amount) or 0)
+  local after = math.max(0, before - want)
+  target.mana = after
+  local drained = before - after
+  if drained > 0 then
+    state._action_mana_drain = (state._action_mana_drain or 0) + drained
+  end
+  return drained
+end
+
+local function add_mana_capped(state, st, gain)
+  if st == nil then return end
+  local g = math.max(0, tonumber(gain) or 0)
+  if g <= 0 then return end
+  st.mana = math.min(max_mana_for_state(state), (tonumber(st.mana) or 0) + g)
+end
+
 local function new_stats()
   return {
     hp = CFG.MAX_HP,
@@ -869,7 +905,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
     local c = cnt(t)
     if c > 0 then
       local gain = mana_gain_per_object(state, CFG.GEM_MANA[t] or 0) * c
-      actor.mana = math.min(CFG.MAX_MANA, actor.mana + gain)
+      add_mana_capped(state, actor, gain)
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + c
         elseif t == 2 then sim.yellow = sim.yellow + c
@@ -882,7 +918,12 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   do
     local c = cnt(4)
     if c > 0 then
-      if affix == "energy_block" then
+      if is_pvp_race(state) then
+        -- «Спуск»: черепа не дают ману атакующему; −2 маны сопернику за каждый.
+        if opp ~= nil then
+          race_drain_mana(state, opp, (tonumber(CFG.RACE_SKULL_MANA_DRAIN) or 2) * c)
+        end
+      elseif affix == "energy_block" then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5 * c
       else
         -- Весь урон от черепов за ход (все каскады) + база персонажа — один бросок в конце resolve_action.
@@ -895,14 +936,15 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   end
 
   -- Ankhs (5): суммируем за весь resolve_action, одно лечение в конце хода (не по каждому каскаду).
+  -- В race анхи участвуют на поле, но эффектов не дают.
   do
     local c = cnt(5)
-    if c > 0 then
+    if c > 0 and not is_pvp_race(state) then
       state._action_ankh_count = (state._action_ankh_count or 0) + c
       if sim ~= nil then sim.ankh = (sim.ankh or 0) + c end
       if affix == "mana_vampire" and opp ~= nil then
         local vamp_gain = mana_gain_per_object(state, 2) * c
-        opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
+        add_mana_capped(state, opp, vamp_gain)
       end
     end
   end
@@ -983,6 +1025,10 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bFuryTurns = b.fury_active == true and 1 or 0,
     bFuryBonus = (b.fury_active == true) and math.max(0, tonumber(b.fury_bomb_bonus) or 0) or 0,
     bLevel = (state.player_levels and state.player_levels[b_id]) or 1,
+    aMaxMana = max_mana_for_state(state),
+    bMaxMana = max_mana_for_state(state),
+    manaDrain = math.max(0, tonumber(state._action_mana_drain) or 0),
+    pvpRace = is_pvp_race(state),
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     actionActorUserId = sync_action_actor_uid or "",
@@ -1054,6 +1100,99 @@ local function send_reject(dispatcher, presence, reason)
   dispatcher.broadcast_message(CFG.OP_ACTION_REJECT, payload, { presence }, nil)
 end
 
+local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponent, action_type, is_draw)
+  local game_over_payload = {
+    winnerUserId = winner or "",
+    isDraw = is_draw == true,
+  }
+  if is_draw ~= true and winner ~= nil and winner ~= "" then
+    Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+  else
+    game_over_payload.rewardXp = 0
+    game_over_payload.rewardGold = 0
+    game_over_payload.rewardOre = 0
+    game_over_payload.rewardMatter = 0
+  end
+  if is_pvp_race(state) ~= true then
+    local ok_achi, err_achi = pcall(function()
+      Ach.flush_match_finish(state, winner, actor, opponent, action_type)
+    end)
+    if not ok_achi then
+      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
+    end
+  end
+  dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+end
+
+--- Race («Спуск»): проверка цели по мане + last-turn для первого хода.
+--- Возвращает true, если матч уже завершён или ход принудительно передан на last-turn.
+local function try_finish_race_after_action(dispatcher, state, actor, opponent, action, extra_turn, keep_turn, tick, tick_rate, anim_steps, sync_action_actor_uid)
+  if not is_pvp_race(state) or state.ended or actor == nil or opponent == nil then
+    return false
+  end
+
+  local goal = race_goal_mana()
+  local actor_mana = tonumber(state.stats[actor] and state.stats[actor].mana) or 0
+  local opp_mana = tonumber(state.stats[opponent] and state.stats[opponent].mana) or 0
+  local first = state.race_first_user_id
+  local action_type = action and tonumber(action.actionType) or 0
+  local turn_segment_done = (keep_turn ~= true) and (extra_turn ~= true)
+
+  local function end_race(winner, is_draw)
+    state.ended = true
+    broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
+    broadcast_pvp_game_over(dispatcher, state, winner, actor, opponent, action_type, is_draw)
+    return true
+  end
+
+  local function pass_to_last_turn()
+    state.race_threshold_user_id = actor
+    state.race_last_turn_user_id = opponent
+    tick_buffs_end_turn(state.stats[actor])
+    Ach.clear_five_plus_streak(state, actor)
+    state.active_user_id = opponent
+    tick_cooldowns(state.stats[opponent])
+    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+    broadcast_sync(dispatcher, state, action, false, anim_steps, tick, sync_action_actor_uid)
+    state._action_mana_drain = 0
+    return true
+  end
+
+  -- Конец «последнего хода» второго игрока: сравниваем / отдаём победу первому.
+  if state.race_last_turn_user_id == actor and turn_segment_done then
+    if actor_mana >= goal then
+      if actor_mana > opp_mana then
+        return end_race(actor, false)
+      elseif opp_mana > actor_mana then
+        return end_race(opponent, false)
+      else
+        return end_race("", true)
+      end
+    end
+    return end_race(state.race_threshold_user_id or opponent, false)
+  end
+
+  if actor_mana < goal then
+    return false
+  end
+
+  -- Первый игрок набрал 300+: даём last-turn сопернику.
+  if first ~= nil and actor == first then
+    if state.race_last_turn_user_id == nil then
+      return pass_to_last_turn()
+    end
+    return false
+  end
+
+  -- Второй игрок набрал 300+ вне last-turn → сразу победа.
+  if state.race_last_turn_user_id == nil then
+    return end_race(actor, false)
+  end
+
+  -- На last-turn продолжаем сегмент (keep/extra), финал — когда ход закончится.
+  return false
+end
+
 local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, tick_rate, anim_steps)
   local actor = state.active_user_id
   local opponent = other_player_id(state, actor)
@@ -1075,6 +1214,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   end
 
   Ach.snapshot_hp_was_exactly_one(state)
+
+  if try_finish_race_after_action(dispatcher, state, actor, opponent, action, extra_turn, keep_turn, tick, tick_rate, anim_steps, sync_action_actor_uid) then
+    return
+  end
 
   if state.stats[actor].hp <= 0 or state.stats[opponent].hp <= 0 then
     local winner = state.stats[actor].hp > 0 and actor or opponent
@@ -1261,6 +1404,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     end
   end
   broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
+  state._action_mana_drain = 0
 end
 
 local function clone_step(board, phase)
@@ -1304,6 +1448,10 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local sim = state._sim_metrics
   local affix = current_affix_id(state)
   if action_type == 4 then
+    if is_pvp_race(state) then
+      race_drain_mana(state, opp, tonumber(CFG.RACE_PETARD_MANA_DRAIN) or 40)
+      return false
+    end
     local crit = deal_damage(state, state.board, actor, opp, CFG.PETARD_DAMAGE)
     return crit
   end
@@ -1315,21 +1463,25 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
     if t == 1 or t == 2 or t == 3 then
-      actor.mana = math.min(CFG.MAX_MANA, actor.mana + mana_gain_per_object(state, CFG.GEM_MANA[t] or 0))
+      add_mana_capped(state, actor, mana_gain_per_object(state, CFG.GEM_MANA[t] or 0))
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + 1
         elseif t == 2 then sim.yellow = sim.yellow + 1
         elseif t == 3 then sim.green = sim.green + 1 end
       end
     elseif t == 5 then
-      state._action_ankh_count = (state._action_ankh_count or 0) + 1
-      if sim ~= nil then sim.ankh = (sim.ankh or 0) + 1 end
-      if affix == "mana_vampire" and opp ~= nil then
-        local vamp_gain = mana_gain_per_object(state, 2)
-        opp.mana = math.min(CFG.MAX_MANA, (tonumber(opp.mana) or 0) + vamp_gain)
+      if not is_pvp_race(state) then
+        state._action_ankh_count = (state._action_ankh_count or 0) + 1
+        if sim ~= nil then sim.ankh = (sim.ankh or 0) + 1 end
+        if affix == "mana_vampire" and opp ~= nil then
+          local vamp_gain = mana_gain_per_object(state, 2)
+          add_mana_capped(state, opp, vamp_gain)
+        end
       end
     elseif t == 4 then
-      if affix == "energy_block" then
+      if is_pvp_race(state) then
+        skulls = skulls + 1
+      elseif affix == "energy_block" then
         actor.base_damage = math.max(0, tonumber(actor.base_damage) or 0) + 5
       else
         skulls = skulls + 1
@@ -1338,6 +1490,13 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
         monster_rage_bombs = monster_rage_bombs + 1
       end
     end
+  end
+
+  if is_pvp_race(state) then
+    if skulls > 0 and opp ~= nil then
+      race_drain_mana(state, opp, (tonumber(CFG.RACE_SKULL_MANA_DRAIN) or 2) * skulls)
+    end
+    return false
   end
 
   -- Урон от способности + бомбы в зоне — в общий пул на ход; один deal_damage в конце resolve_action.
@@ -1353,6 +1512,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   state._action_damage_flat = 0
   state._action_ankh_count = 0
   state._monster_rage_bombs_action = 0
+  state._action_mana_drain = 0
   state._sync_popup = nil
   local initial_matches = {}
   local anim_steps = {}
@@ -1446,7 +1606,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   do
     local ac = tonumber(state._action_ankh_count) or 0
     state._action_ankh_count = 0
-    if ac > 0 then
+    if ac > 0 and not is_pvp_race(state) then
       local act = state.stats[actor_id]
       if act ~= nil then
         local add = CFG.ANKH_HEAL * ac + get_turn_heal_flat_bonus(state, act)
@@ -1456,7 +1616,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
   end
 
   -- Один расчёт урона за ход: сумма бомб (все каскады) + урон способности (если был); base_damage персонажа и крит — в roll_outgoing_damage.
-  if (state._action_damage_flat or 0) > 0 then
+  if not is_pvp_race(state) and (state._action_damage_flat or 0) > 0 then
     if deal_damage(state, state.board, state.stats[actor_id], state.stats[opponent_id], state._action_damage_flat) then
       crit_triggered = true
     end
@@ -4177,6 +4337,9 @@ local function validate_action_basic(state, sender_id, action)
   end
 
   if action.actionType == 5 or action.actionType == 6 then
+    if is_pvp_race(state) then
+      return false, "ability_disabled"
+    end
     local st = state.stats[sender_id]
     local need_mana = action_mana_cost(state, action.actionType)
     if st.mana < need_mana then return false, "not_enough_mana" end
@@ -4754,6 +4917,7 @@ local function match_init(context, params)
     invited = invited,
     mode = params and tostring(params.mode or "pvp") or "pvp",
     pvp_pro = truthy_match_param(params and params.pvp_pro),
+    pvp_race = truthy_match_param(params and params.pvp_race),
     owner_user_id = params and params.owner_user_id or nil,
     owner_session_epoch = tonumber(params and params.owner_session_epoch or 0) or 0,
     bot_id = params and params.bot_id or mine_bot_id_for_floor(1),
@@ -5019,6 +5183,12 @@ local function match_join(context, dispatcher, tick, state, presences)
     end
 
     state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
+    if state.pvp_race == true then
+      state.race_first_user_id = state.active_user_id
+      state.race_last_turn_user_id = nil
+      state.race_threshold_user_id = nil
+      nk.logger_info("duel_match3: PvP Race (Спуск) — first=" .. tostring(state.race_first_user_id))
+    end
 
     tick_cooldowns(state.stats[state.active_user_id])
     state.turn_deadline_paused = true

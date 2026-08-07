@@ -13,6 +13,8 @@ namespace Project.UI
         [SerializeField] private string match3ButtonPath = "ArenaMenuWorld/Background2D/ModePanel/match3Button";
         [Tooltip("Опционально. Если пусто — ищется кнопка с именем match3ProButton. §14 PvP Pro.")]
         [SerializeField] private string match3ProButtonPath = "";
+        [Tooltip("Опционально. Если пусто — ищется кнопка match3Arena_Race («Спуск»).")]
+        [SerializeField] private string match3RaceButtonPath = "";
         [SerializeField] private string botsButtonPath = "ArenaMenuWorld/Background2D/ModePanel/BotsButton";
         [SerializeField] private string backButtonPath = "ArenaMenuWorld/Background2D/BackButton";
 
@@ -23,6 +25,7 @@ namespace Project.UI
 
         private Button _match3;
         private Button _match3Pro;
+        private Button _match3Race;
         private Button _bots;
         private Button _back;
         private Text _botsLabelText;
@@ -36,6 +39,9 @@ namespace Project.UI
             _match3Pro = string.IsNullOrWhiteSpace(match3ProButtonPath)
                 ? FindButton("", "match3ProButton")
                 : FindButton(match3ProButtonPath, "match3ProButton");
+            _match3Race = string.IsNullOrWhiteSpace(match3RaceButtonPath)
+                ? FindButton("", "match3Arena_Race")
+                : FindButton(match3RaceButtonPath, "match3Arena_Race");
             _bots = FindButton(botsButtonPath, "BotsButton");
             _back = FindButton(backButtonPath, "BackButton");
             CacheBotsButtonLabel();
@@ -48,6 +54,7 @@ namespace Project.UI
 
             if (_match3 != null) _match3.onClick.AddListener(GoMatch3);
             if (_match3Pro != null) _match3Pro.onClick.AddListener(GoMatch3Pro);
+            if (_match3Race != null) _match3Race.onClick.AddListener(GoMatch3Race);
             if (_bots != null) _bots.onClick.AddListener(GoBots);
             if (_back != null) _back.onClick.AddListener(BackToMainMenu);
         }
@@ -64,12 +71,14 @@ namespace Project.UI
         {
             if (_match3 != null) _match3.onClick.RemoveListener(GoMatch3);
             if (_match3Pro != null) _match3Pro.onClick.RemoveListener(GoMatch3Pro);
+            if (_match3Race != null) _match3Race.onClick.RemoveListener(GoMatch3Race);
             if (_bots != null) _bots.onClick.RemoveListener(GoBots);
             if (_back != null) _back.onClick.RemoveListener(BackToMainMenu);
         }
 
         private void GoMatch3()
         {
+            Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
             if (string.IsNullOrWhiteSpace(match3SceneName)) return;
@@ -78,7 +87,17 @@ namespace Project.UI
 
         private void GoMatch3Pro()
         {
+            Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(true);
+            Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
+            if (string.IsNullOrWhiteSpace(match3SceneName)) return;
+            SceneManager.LoadScene(match3SceneName);
+        }
+
+        private void GoMatch3Race()
+        {
+            Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
+            Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(true);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
             if (string.IsNullOrWhiteSpace(match3SceneName)) return;
             SceneManager.LoadScene(match3SceneName);

@@ -270,14 +270,85 @@ namespace Project.Match3
 
         public void ShowDamagePopup(int damageAmount, bool isCrit)
         {
-            if (damagePopup == null) return;
-            damagePopup.Play(damageAmount, isCrit);
+            ShowDamagePopup(damageAmount, isCrit, false);
         }
 
-        public void ShowGainPopup(int amount, GainPopupView.GainKind kind)
+        public void ShowDamagePopup(int damageAmount, bool isCrit, bool manaDrainStyle)
         {
-            if (gainPopup == null || amount <= 0) return;
-            gainPopup.Play(amount, kind);
+            if (damagePopup == null) return;
+            damagePopup.Play(damageAmount, isCrit, manaDrainStyle);
+        }
+
+        /// <summary>
+        /// Режим «Спуск»: скрыть HP и обычные MP-бары, показать Mp*_Race и привязать manaFill/manaText к ним.
+        /// </summary>
+        public void SetRaceHudMode(bool enabled)
+        {
+            ResolveReferences();
+
+            var hpTrack = FindNamedTransform("HpBarTrack");
+            var hpValue = FindNamedTransform("HpValue") ?? FindNamedTransform("HpVal");
+            var hpLabel = FindNamedTransform("HpLabel");
+            var mpTrack = FindNamedTransform("MpBarTrack");
+            var mpValue = FindNamedTransform("MpValue") ?? FindNamedTransform("MpVal");
+            var mpLabel = FindNamedTransform("MpLabel");
+            var raceTrack = FindNamedTransform("MpBarTrack_Race");
+            var raceValue = FindNamedTransform("MpValue_Race");
+
+            SetActiveSafe(hpTrack, !enabled);
+            SetActiveSafe(hpValue, !enabled);
+            SetActiveSafe(hpLabel, !enabled);
+            SetActiveSafe(mpTrack, !enabled);
+            SetActiveSafe(mpValue, !enabled);
+            SetActiveSafe(mpLabel, !enabled);
+            SetActiveSafe(raceTrack, enabled);
+            SetActiveSafe(raceValue, enabled);
+
+            if (enabled)
+            {
+                if (raceTrack != null)
+                {
+                    var fill = raceTrack.Find("MpBarFill")?.GetComponent<Image>()
+                               ?? raceTrack.GetComponentInChildren<Image>(true);
+                    // Prefer child fill, not the track background itself.
+                    if (fill != null && fill.transform == raceTrack)
+                        fill = null;
+                    foreach (var img in raceTrack.GetComponentsInChildren<Image>(true))
+                    {
+                        if (img != null && img.gameObject.name == "MpBarFill")
+                        {
+                            fill = img;
+                            break;
+                        }
+                    }
+                    if (fill != null) manaFill = fill;
+                }
+                if (raceValue != null)
+                    manaText = raceValue.GetComponent<TMP_Text>();
+
+                if (combatStatsName != null) combatStatsName.gameObject.SetActive(false);
+                if (combatStatsValue != null) combatStatsValue.gameObject.SetActive(false);
+                if (buffStateText != null) buffStateText.gameObject.SetActive(false);
+
+                SetupBarValueText(manaFill, manaText);
+                ApplyBarCornerCuts(manaFill, RightCornerCutEffect.CutCorner.BottomRight);
+            }
+        }
+
+        private Transform FindNamedTransform(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName)) return null;
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t != null && t.gameObject.name == objectName)
+                    return t;
+            }
+            return null;
+        }
+
+        private static void SetActiveSafe(Transform t, bool active)
+        {
+            if (t != null) t.gameObject.SetActive(active);
         }
 
         /// <summary>

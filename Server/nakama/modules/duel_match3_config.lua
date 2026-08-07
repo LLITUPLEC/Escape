@@ -165,6 +165,13 @@ local CFG = {  SIZE = 6,
   --- Награда за победу в обычном PvP (не арена-турнир, не PvE).
   PVP_WIN_XP = 50,
   PVP_WIN_GOLD = 75,
+  --- PvP «Спуск» (race): гонка по мане, без урона по HP.
+  RACE_GOAL_MANA = 300,
+  RACE_MAX_MANA = 350,
+  RACE_SKULL_MANA_DRAIN = 2,
+  RACE_PETARD_MANA_DRAIN = 40,
+  RACE_WIN_XP = 200,
+  RACE_WIN_MATTER = 10,
 }
 
 function CFG.clamp_int(v, lo, hi)

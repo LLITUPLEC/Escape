@@ -11,6 +11,8 @@ namespace Project.Match3
         private static Match3LaunchMode _nextMode = Match3LaunchMode.Multiplayer;
         /// <summary>§14 фаза 5: следующий мультиплеерный матч — очередь PvP Pro (уровень+экип на сервере).</summary>
         private static bool _nextPvpPro;
+        /// <summary>Очередь «Спуск» (Race): rules=race, отдельная от classic/pro.</summary>
+        private static bool _nextPvpRace;
         private static string _preferredBotId;
         private static int _preferredFloor;
         private static string _preferredDifficulty;
@@ -42,12 +44,27 @@ namespace Project.Match3
         public static void SetPvpProForNextMultiplayerMatch(bool pvpPro)
         {
             _nextPvpPro = pvpPro;
+            if (pvpPro) _nextPvpRace = false;
         }
 
         public static bool ConsumePvpPro()
         {
             var v = _nextPvpPro;
             _nextPvpPro = false;
+            return v;
+        }
+
+        /// <summary>Очередь «Спуск» (Race). Взаимоисключает Pro.</summary>
+        public static void SetPvpRaceForNextMultiplayerMatch(bool pvpRace)
+        {
+            _nextPvpRace = pvpRace;
+            if (pvpRace) _nextPvpPro = false;
+        }
+
+        public static bool ConsumePvpRace()
+        {
+            var v = _nextPvpRace;
+            _nextPvpRace = false;
             return v;
         }
 

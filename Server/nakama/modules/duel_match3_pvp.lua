@@ -40,14 +40,17 @@ return function(deps)
     end
   end
 
-  function P.award_victory(user_id)
-    local win_xp = tonumber(CFG.PVP_WIN_XP) or 50
-    local win_gold = tonumber(CFG.PVP_WIN_GOLD) or 75
+  function P.award_victory(user_id, opts)
+    opts = opts or {}
+    local win_xp = tonumber(opts.xp) or tonumber(CFG.PVP_WIN_XP) or 50
+    local win_gold = tonumber(opts.gold) or tonumber(CFG.PVP_WIN_GOLD) or 75
+    local win_matter = tonumber(opts.matter) or 0
     local max_retries = 5
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)
       progress.xp = math.max(0, tonumber(progress.xp) or 0) + win_xp
       progress.gold = math.max(0, tonumber(progress.gold) or 0) + win_gold
+      progress.matter = math.max(0, tonumber(progress.matter) or 0) + win_matter
       progress.level = current_level_from_xp(progress.xp)
       local ok, err = pcall(function()
         write_pve_progress(user_id, progress, version)
@@ -57,7 +60,7 @@ return function(deps)
           reward_xp = win_xp,
           reward_gold = win_gold,
           reward_ore = 0,
-          reward_matter = 0,
+          reward_matter = win_matter,
           level = progress.level or 1,
           xp = progress.xp or 0,
           gold = progress.gold or 0,
@@ -74,7 +77,7 @@ return function(deps)
       reward_xp = win_xp,
       reward_gold = win_gold,
       reward_ore = 0,
-      reward_matter = 0,
+      reward_matter = win_matter,
       level = 1,
       xp = 0,
       gold = 0,
@@ -82,15 +85,23 @@ return function(deps)
   end
 
   function P.apply_game_over_rewards(state, winner, game_over_payload)
-    if state == nil or state.mode == "pve" or state.arena_mirror ~= nil or winner == nil then
+    if state == nil or state.mode == "pve" or state.arena_mirror ~= nil or winner == nil or winner == "" then
       return
     end
     if P.is_human_duelist_uid(state, winner) then
-      state.last_reward = P.award_victory(winner)
+      local opts = nil
+      if state.pvp_race == true then
+        opts = {
+          xp = tonumber(CFG.RACE_WIN_XP) or 200,
+          gold = 0,
+          matter = tonumber(CFG.RACE_WIN_MATTER) or 10,
+        }
+      end
+      state.last_reward = P.award_victory(winner, opts)
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
       game_over_payload.rewardOre = 0
-      game_over_payload.rewardMatter = 0
+      game_over_payload.rewardMatter = state.last_reward.reward_matter or 0
       game_over_payload.newLevel = state.last_reward.level or 1
     end
     if type(award_pve_defeat) ~= "function" then return end

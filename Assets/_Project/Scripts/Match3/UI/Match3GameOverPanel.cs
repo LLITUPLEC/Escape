@@ -49,9 +49,13 @@ namespace Project.Match3
                 titleText.text = !string.IsNullOrWhiteSpace(customTitle)
                     ? customTitle
                     : (won ? "Победа!" : "Поражение!");
-                titleText.color = won
-                    ? new Color(1f, 0.90f, 0.25f)
-                    : new Color(0.85f, 0.35f, 0.35f);
+                if (!string.IsNullOrWhiteSpace(customTitle) &&
+                    customTitle.IndexOf("Ничья", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    titleText.color = new Color(0.75f, 0.85f, 1f);
+                else
+                    titleText.color = won
+                        ? new Color(1f, 0.90f, 0.25f)
+                        : new Color(0.85f, 0.35f, 0.35f);
             }
 
             if (rewardText != null)
