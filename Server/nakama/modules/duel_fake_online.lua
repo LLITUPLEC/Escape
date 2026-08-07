@@ -29,6 +29,16 @@ M.ONLINE_POOL_NAMES = {
   "Player_4e66fa56-",
 }
 
+local ONLINE_POOL_LOOKUP = {}
+for i = 1, #M.ONLINE_POOL_NAMES do
+  ONLINE_POOL_LOOKUP[string.lower(M.ONLINE_POOL_NAMES[i])] = true
+end
+
+function M.is_online_pool_name(name)
+  if name == nil or name == "" then return false end
+  return ONLINE_POOL_LOOKUP[string.lower(tostring(name))] == true
+end
+
 --- Всегда доступны для пар турнира (не зависят от фиктивного онлайна).
 M.ARENA_ALWAYS_NAMES = {
   "Морозко",

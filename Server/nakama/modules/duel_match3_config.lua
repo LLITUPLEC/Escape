@@ -13,11 +13,16 @@ local CFG = {  SIZE = 6,
   -- Задержка между ходами бота в одном «сегменте» (доп. ход, петарда и т.д.), после анимаций (OP 17).
   BOT_THINK_SECONDS_FAST = 2.5,
   BOT_THINK_TICKS_FAST = math.max(1, math.floor(2.5 * 6 + 0.5)),
+  --- «Человекоподобные» боты из ONLINE_POOL_NAMES: долгий think случайный в [min..max] сек.
+  BOT_THINK_SECONDS_HUMAN_LIKE_MIN = 7,
+  BOT_THINK_SECONDS_HUMAN_LIKE_MAX = 22,
   --- С какой server-y строки бот учитывает поле при симуляции "качества" хода.
   --  0 = как раньше (качество по всей 6x8, с preview-строками),
   --  1 = учитывать 6x7 (y=1..7),
   --  2 = только активная зона 6x6 (y=2..7).
   BOT_SIM_QUALITY_Y_MIN = 2,
+  --- ONLINE_POOL-бот в финале арены: чуть шире «зрение» симуляции (6x7).
+  BOT_SIM_QUALITY_Y_MIN_HUMAN_LIKE_FINAL = 1,
   --- Бот: режим выживания (щит + мана/хил), пока HP не восстановится.
   BOT_SURVIVAL_HP_ENTER = 30,
   BOT_SURVIVAL_HP_EXIT = 75,

@@ -880,6 +880,7 @@ local function arena_spawn_round_if_pending(T, rk)
       local human_uid = pr.bot_a and pr.uid_b or pr.uid_a
       local epoch = guard_read_metadata_epoch(human_uid)
       local bot_uid = pr.bot_a and pr.uid_a or pr.uid_b
+      local bot_display = pr.bot_a and pr.display_a or pr.display_b
       local mid = try_match_create({
         mode = "pve",
         owner_user_id = human_uid,
@@ -888,6 +889,8 @@ local function arena_spawn_round_if_pending(T, rk)
         owner_level = 1,
         owner_session_epoch = epoch,
         arena_pvp_style = true,
+        -- Боты из ONLINE_POOL_NAMES думают дольше (случайные 7–22с).
+        arena_human_like_bot = FakeOnline.is_online_pool_name(bot_display),
         pve_run = {
           floor = 1,
           difficulty = "easy",

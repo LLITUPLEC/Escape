@@ -2343,7 +2343,7 @@ namespace Project.Match3
                     var crit = DealDamage(board, actorStats, oppStats, PetardDamage);
                     if (crit && _boardView != null) _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
                     keepTurn = true;
-                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
+                    // Ярость/петарда/щит не считаются ходом для dnn.triple_extra (сервер так же).
                     return true;
                 }
 
@@ -2352,7 +2352,6 @@ namespace Project.Match3
                     ApplyShield(actorStats);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
                     keepTurn = true;
-                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                     return true;
                 }
 
@@ -2362,7 +2361,6 @@ namespace Project.Match3
                     keepTurn = true;
                     PlaySfx(sfxAbilityFury);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
-                    NotifyLineAndStreakAchievementsIfEligible(achievementActorId);
                     return true;
                 }
 

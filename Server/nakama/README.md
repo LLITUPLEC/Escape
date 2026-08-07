@@ -58,7 +58,8 @@
   - `view_id`: `tournament_ore` | `tournament_gold` | `tournament_smith` | `duel_skirmish` | `duel_arena` | `mine_floor_1` … `mine_floor_12`
   - ответ: `{ ok, entries[], self_entry, rewards[] }`
   - `score` — число побед за выбранный период (authoritative leaderboard, `operator=incr`)
-  - периоды по МСК: день (`00:00–23:59:59`), неделя (пн–вс), месяц (1-е — последнее число), `all` — за всё время
+  - периоды по МСК (UTC+3): день (`00:00–23:59:59`), неделя (**пн–вс**, bucket = дата понедельника `YYYYMMDD`), месяц (1-е — последнее число), `all` — за всё время
+  - устаревшие `lb_*_d_*` / `_w_*` / `_m_*` удаляются автоматически при записи/чтении рейтинга (не чаще раза в час); `*_all` сохраняются
   - `duel_skirmish` — PvP Pro (`match3ProButton`, `pvp_pro=true`)
   - `duel_arena` — классическая 1v1 дуэль (`match3Button`)
   - победы пишутся в `duel_match3_achievements.lua` → `duel_leaderboard_scores.lua`

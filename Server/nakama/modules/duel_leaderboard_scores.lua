@@ -1,5 +1,6 @@
 -- Счёт побед в Nakama Leaderboards (authoritative, operator=incr).
 -- Периоды привязаны к МСК через bucket-ID (день/неделя/месяц), без cron-reset.
+-- Устаревшие lb_*_d/w/m удаляются автоматически; *_all сохраняются.
 local nk = require("nakama")
 
 local function runtime_lua_require(name_nested, name_root)
@@ -13,14 +14,19 @@ local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_confi
 local MSK_OFFSET = 3 * 3600
 local PERIODS = { "day", "week", "month", "all" }
 local PVE_MAX_LEVEL = 12
+--- Не чаще раза в час гоняем SQL-чистку устаревших периодных LB.
+local PURGE_INTERVAL_SEC = 3600
 
 local M = {}
+local ensured = {}
+local last_purge_ts = 0
 
 function M.is_human(uid)
   if uid == nil or uid == "" then return false end
   return string.sub(uid, 1, 7) ~= CFG.BOT_USER_ID_PREFIX
 end
 
+--- Unix-время, сдвинутое так, что os.date("!...") даёт календарь МСК.
 local function msk_unix(ts)
   return (tonumber(ts) or os.time()) + MSK_OFFSET
 end
@@ -33,38 +39,14 @@ local function month_bucket(ts)
   return os.date("!%Y%m", msk_unix(ts))
 end
 
-local function is_leap_year(y)
-  return (y % 4 == 0) and (y % 100 ~= 0 or y % 400 == 0)
-end
-
-local function days_in_month(y, m)
-  local days = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
-  if m == 2 and is_leap_year(y) then return 29 end
-  return days[m]
-end
-
-local function shift_ymd(y, m, d, delta)
-  d = d + delta
-  while d < 1 do
-    m = m - 1
-    if m < 1 then m, y = 12, y - 1 end
-    d = d + days_in_month(y, m)
-  end
-  while d > days_in_month(y, m) do
-    d = d - days_in_month(y, m)
-    m = m + 1
-    if m > 12 then m, y = 1, y + 1 end
-  end
-  return y, m, d
-end
-
--- Понедельник текущей недели (МСК) — bucket для period=week (Lua 5.1 не поддерживает %G/%V).
+-- Понедельник текущей недели (МСК) — bucket для period=week.
+-- Считаем через day-index, без os.date().wday: в части runtime wday ≠-- оказывается «пн=1», из‑за чего неделя ошибочно стартовала со вторника.
 local function week_bucket(ts)
-  local t = os.date("!*t", msk_unix(ts))
-  local wday = t.wday -- 1=вс
-  local iso = (wday == 1) and 7 or (wday - 1) -- 1=пн … 7=вс
-  local y, m, d = shift_ymd(t.year, t.month, t.day, -(iso - 1))
-  return string.format("%04d%02d%02d", y, m, d)
+  local day_index = math.floor(msk_unix(ts) / 86400)
+  -- 1970-01-01 = четверг; (day_index + 3) % 7 == 0 → понедельник.
+  local days_since_monday = (day_index + 3) % 7
+  local monday_index = day_index - days_since_monday
+  return os.date("!%Y%m%d", monday_index * 86400)
 end
 
 function M.leaderboard_id(view_id, period, ts)
@@ -104,8 +86,6 @@ local function read_username(user_id)
   return "Survivor"
 end
 
-local ensured = {}
-
 function M.ensure_leaderboard(lb_id)
   if ensured[lb_id] then return end
   local ok, err = pcall(function()
@@ -119,6 +99,79 @@ function M.ensure_leaderboard(lb_id)
     end
   end
   ensured[lb_id] = true
+end
+
+local function delete_leaderboard_silent(lb_id)
+  if lb_id == nil or lb_id == "" then return false end
+  local ok, err = pcall(function()
+    nk.leaderboard_delete(lb_id)
+  end)
+  if ok then
+    ensured[lb_id] = nil
+    return true
+  end
+  local msg = tostring(err or "")
+  if not string.find(msg, "not found", 1, true)
+      and not string.find(msg, "NotFound", 1, true) then
+    nk.logger_warn("leaderboard_delete " .. tostring(lb_id) .. ": " .. msg)
+  end
+  return false
+end
+
+local function row_id(row)
+  if row == nil then return nil end
+  return row.id or row[1] or row["id"]
+end
+
+--- Удаляет lb_*_d/w/m с bucket старше текущего (МСК). *_all не трогает.
+function M.purge_stale_leaderboards(ts)
+  local now = tonumber(ts) or os.time()
+  local cur_d = day_bucket(now)
+  local cur_w = week_bucket(now)
+  local cur_m = month_bucket(now)
+
+  local ok, rows = pcall(function()
+    return nk.sql_query([[SELECT id FROM leaderboard WHERE id LIKE 'lb\_%' ESCAPE '\']])
+  end)
+  if not ok or rows == nil then
+    nk.logger_warn("leaderboard_purge sql_query: " .. tostring(rows))
+    return 0
+  end
+
+  local deleted = 0
+  for _, row in ipairs(rows) do
+    local id = tostring(row_id(row) or "")
+    if id ~= "" and not string.match(id, "_all$") then
+      local kind, bucket = string.match(id, "_([dwm])_(%d+)$")
+      local stale = false
+      if kind == "d" and bucket ~= nil and bucket < cur_d then
+        stale = true
+      elseif kind == "w" and bucket ~= nil and bucket < cur_w then
+        stale = true
+      elseif kind == "m" and bucket ~= nil and bucket < cur_m then
+        stale = true
+      end
+      if stale and delete_leaderboard_silent(id) then
+        deleted = deleted + 1
+      end
+    end
+  end
+  if deleted > 0 then
+    nk.logger_info("leaderboard_purge stale deleted=" .. tostring(deleted)
+      .. " cur_d=" .. cur_d .. " cur_w=" .. cur_w .. " cur_m=" .. cur_m)
+  end
+  return deleted
+end
+
+local function maybe_purge_stale(ts)
+  local now = tonumber(ts) or os.time()
+  if (now - last_purge_ts) < PURGE_INTERVAL_SEC then
+    return
+  end
+  last_purge_ts = now
+  pcall(function()
+    M.purge_stale_leaderboards(now)
+  end)
 end
 
 local function unwrap_records(list_result)
@@ -188,6 +241,7 @@ function M.inc_win(user_id, view_id, username, ts)
   if name == nil or name == "" then
     name = read_username(user_id)
   end
+  maybe_purge_stale(ts)
   for _, period in ipairs(PERIODS) do
     local lb_id = M.leaderboard_id(view_id, period, ts)
     M.ensure_leaderboard(lb_id)
@@ -212,6 +266,7 @@ end
 
 function M.list(period, view_id, caller_user_id, limit)
   limit = math.max(1, math.min(tonumber(limit) or 100, 100))
+  maybe_purge_stale(os.time())
   local lb_id = M.leaderboard_id(view_id, period)
   M.ensure_leaderboard(lb_id)
 

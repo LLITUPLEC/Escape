@@ -631,8 +631,10 @@ function M.stat_key_perfect_bets()
   return ACH_STAT_PERFECT_BETS
 end
 
---- Серия подряд своих ходов (без передачи сопернику): при 3 подряд +1 к dnn.three_five_plus_streak и сброс.
---- Обычно для 3 ходов подряд достаточно двух 5+ (два доп. хода). got_five_plus игнорируется — каждый action актёра = ход.
+--- Серия подряд своих «игровых» ходов (свап / крест / квадрат) без передачи сопернику.
+--- Ярость / петарда / щит ход не считают (keep_turn без смены активного игрока).
+--- Для 3 ходов подряд обычно нужны два 5+ (два доп. хода). При 3 подряд — +1 к
+--- dnn.three_five_plus_streak и сброс счётчика серии.
 function M.note_five_plus_streak(state, uid, _)
   if state == nil or not M.is_human(uid) then return end
   if state._ach_five_plus_streak == nil then

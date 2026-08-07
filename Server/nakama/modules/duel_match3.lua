@@ -424,6 +424,31 @@ function turn_seconds_for_state(state)
   return CFG.TURN_SECONDS
 end
 
+--- Задержка «думалки» бота в тиках. Для ONLINE_POOL (arena_human_like_bot) long-think = random [7..22]с.
+local function bot_think_delay_ticks(state, long_think)
+  if state ~= nil and state.arena_human_like_bot == true and long_think == true then
+    local lo = tonumber(CFG.BOT_THINK_SECONDS_HUMAN_LIKE_MIN) or 7
+    local hi = tonumber(CFG.BOT_THINK_SECONDS_HUMAN_LIKE_MAX) or 22
+    if hi < lo then hi = lo end
+    local sec = lo + math.random(0, hi - lo)
+    return math.max(1, math.floor(sec * CFG.TICK_RATE + 0.5))
+  end
+  if long_think == true then
+    return CFG.BOT_THINK_TICKS
+  end
+  return CFG.BOT_THINK_TICKS_FAST
+end
+
+--- Y_MIN для симуляции качества хода бота (ONLINE_POOL в финале → 1, иначе CFG).
+local function bot_sim_quality_y_min(state)
+  local am = state and state.arena_mirror or nil
+  if state ~= nil and state.arena_human_like_bot == true
+      and am ~= nil and tostring(am.round or "") == "final" then
+    return tonumber(CFG.BOT_SIM_QUALITY_Y_MIN_HUMAN_LIKE_FINAL) or 1
+  end
+  return tonumber(CFG.BOT_SIM_QUALITY_Y_MIN) or CFG.ACTIVE_Y_MIN
+end
+
 -- extra_turn: true — после хода игрок получил доп. ход за 5+ в ряд (не считается отдельным «ходом» для stone_skin).
 local function apply_turn_end_affix_effects(state, actor_id, opponent_id, extra_turn)
   if state == nil or state.mode ~= "pve" then return end
@@ -1220,7 +1245,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       if state.turn_deadline_paused then
         state.bot_turn_ready_tick = 0
       else
-        state.bot_turn_ready_tick = tick + (state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST)
+        state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, state.bot_long_think_next == true)
       end
     else
       state.bot_turn_pending = false
@@ -1359,13 +1384,12 @@ local function resolve_action(state, action, actor_id, opponent_id)
     if apply_ability_rewards(state, actor_id, opponent_id, action.actionType, -1, -1) then crit_triggered = true end
     keep_turn = true
     state.last_crit = crit_triggered
-    Ach.note_five_plus_streak(state, actor_id, false)
+    -- keep_turn-способности не считаются «ходом» для dnn.triple_extra
     return true, nil, false, true, anim_steps
   elseif action.actionType == 5 then
     apply_shield_stack(state.stats[actor_id])
     keep_turn = true
     state.last_crit = false
-    Ach.note_five_plus_streak(state, actor_id, false)
     return true, nil, false, true, anim_steps
   elseif action.actionType == 6 then
     local fus = state.stats[actor_id]
@@ -1373,7 +1397,6 @@ local function resolve_action(state, action, actor_id, opponent_id)
     fus.fury_bomb_bonus = count_skulls(state.board)
     keep_turn = true
     state.last_crit = false
-    Ach.note_five_plus_streak(state, actor_id, false)
     return true, nil, false, true, anim_steps
   else
     local sy = client_to_server_y(action.cy)
@@ -1472,7 +1495,7 @@ local function on_pve_owner_socket_gone(state, tick)
     if state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
       state.bot_long_think_next = false
-      state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS_FAST
+      state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, false)
     end
   end
 end
@@ -4239,7 +4262,7 @@ local function simulate_and_score_action(state, bot_user_id, player_user_id, act
       [player_user_id] = sim_player,
     },
     _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 },
-    _sim_quality_y_min = (tonumber(CFG.BOT_SIM_QUALITY_Y_MIN) or CFG.ACTIVE_Y_MIN),
+    _sim_quality_y_min = bot_sim_quality_y_min(state),
   }
 
   if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
@@ -4759,6 +4782,8 @@ local function match_init(context, params)
     arena_mirror = params and params.arena_mirror or nil,
     --- Арена человек×бот: те же базовые статы, что у классического PvP (150 HP и т.д.), без шахты.
     arena_pvp_style = truthy_match_param(params and params.arena_pvp_style),
+    --- Бот с ником из ONLINE_POOL_NAMES: замедленная «думалка» 7–22с.
+    arena_human_like_bot = truthy_match_param(params and params.arena_human_like_bot),
     reconnect_grace_for_user_id = nil,
     reconnect_deadline_tick = nil,
     player_levels = {},
@@ -5180,8 +5205,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
           if state.mode == "pve" and state.active_user_id == state.bot_user_id then
             state.bot_turn_pending = true
-            local think = state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST
-            state.bot_turn_ready_tick = tick + think
+            state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, state.bot_long_think_next == true)
             state.bot_long_think_next = false
           end
           broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
@@ -5282,7 +5306,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     if state.mode == "pve" and state.active_user_id == state.bot_user_id then
       state.bot_turn_pending = true
       state.bot_long_think_next = true
-      state.bot_turn_ready_tick = tick + CFG.BOT_THINK_TICKS
+      state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, true)
     end
     broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
   end
@@ -5293,6 +5317,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     local next_player = other_player_id(state, current)
     if next_player then
       tick_buffs_end_turn(state.stats[current])
+      Ach.clear_five_plus_streak(state, current)
       state.active_user_id = next_player
       tick_cooldowns(state.stats[next_player])
       local need_ack = next_player ~= nil
@@ -5311,7 +5336,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           if state.turn_deadline_paused then
             state.bot_turn_ready_tick = 0
           else
-            state.bot_turn_ready_tick = tick + (state.bot_long_think_next and CFG.BOT_THINK_TICKS or CFG.BOT_THINK_TICKS_FAST)
+            state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, state.bot_long_think_next == true)
           end
         else
           state.bot_turn_pending = false
