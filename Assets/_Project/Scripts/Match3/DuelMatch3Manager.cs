@@ -2239,6 +2239,9 @@ namespace Project.Match3
             {
                 if (!extraTurn)
                 {
+                    // Серия «3 хода подряд» сбрасывается при передаче хода сопернику.
+                    if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
+                        AchievementTracker.ClearFivePlusStreak();
                     SwitchActiveUser();
                     TickEndOfTurnForActive();
                 }
@@ -2400,7 +2403,7 @@ namespace Project.Match3
             if (_line5ThisAction > 0 || _line6ThisAction > 0)
                 AchievementTracker.NotifyLineMatches(_line5ThisAction, _line6ThisAction);
 
-            AchievementTracker.NotifyFivePlusStreakTurn(_fivePlusLinesThisAction >= 1);
+            AchievementTracker.NotifyConsecutiveOwnTurn();
         }
 
         private void ResolveCascades(Match3BoardLogic board, PlayerStats actorStats, PlayerStats oppStats, M3BoardSyncMsg msg, ref bool extraTurn)
@@ -2688,6 +2691,8 @@ namespace Project.Match3
                 TickBuffDurations(actorStats);
                 RecalcDerivedBuffs(actorStats);
             }
+            if (string.Equals(actorId, _myUserId, StringComparison.Ordinal))
+                AchievementTracker.ClearFivePlusStreak();
             SwitchActiveUser();
             var nextStats = GetActiveStats();
             if (nextStats != null)

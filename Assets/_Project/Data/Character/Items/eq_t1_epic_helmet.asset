@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_rare_helmet
   craftMinutes: 180
   salePrice: 100
-  icon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  icon: {fileID: 21300000, guid: 55ac7336effd49648a62de26aa40ca34, type: 3}
   equippable: 1
   slot: 0
   modifiers: []

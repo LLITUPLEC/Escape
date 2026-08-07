@@ -240,7 +240,7 @@
         { "threshold_delta": 5, "description_ru": "Собрать 6 камней в линию 5 раз", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] },
         { "threshold_delta": 25, "description_ru": "Собрать 6 камней в линию 25 раз", "reward_text_ru": "Награда: +2% к урону", "rewards": [{ "type": "damage_pct", "value": 0.02 }] },
         { "threshold_delta": 100, "description_ru": "Собрать 6 камней в линию 100 раз", "reward_text_ru": "Награда: +3% к урону", "rewards": [{ "type": "damage_pct", "value": 0.03 }] },
-        { "threshold_delta": 500, "description_ru": "Собрать 6 камней в линию 500 раз", "reward_text_ru": "Награда: +4% к урону", "rewards": [{ "type": "damage_pct", "value": 0.04 }] }
+        { "threshold_delta": 300, "description_ru": "Собрать 6 камней в линию 300 раз", "reward_text_ru": "Награда: +4% к урону", "rewards": [{ "type": "damage_pct", "value": 0.04 }] }
       ]
     },
     {
@@ -305,7 +305,7 @@
       "title_ru": "Твой ход? Не, не слышал",
       "counter_key": "dnn.three_five_plus_streak",
       "threshold_mode": "cumulative_delta",
-      "event": { "primitive": "five_plus_streak", "streak": 3 },
+      "event": { "primitive": "consecutive_own_turns", "streak": 3 },
       "steps": [
         { "threshold_delta": 1, "description_ru": "Сделать 3 хода подряд", "reward_text_ru": "Награда: +1000 здоровья", "rewards": [{ "type": "hp_flat", "value": 1000 }] },
         { "threshold_delta": 5, "description_ru": "Сделать 3 хода подряд", "reward_text_ru": "Награда: +300 брони", "rewards": [{ "type": "armor_flat", "value": 300 }] },

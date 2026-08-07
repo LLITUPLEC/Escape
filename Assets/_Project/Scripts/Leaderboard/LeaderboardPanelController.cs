@@ -51,6 +51,7 @@ namespace Project.Leaderboard
         private bool _refreshInFlight;
         private CancellationTokenSource _refreshCts;
         private readonly List<LeaderboardRowView> _spawnedRows = new List<LeaderboardRowView>();
+        private readonly Dictionary<Toggle, Sprite> _periodTabNormalSprites = new Dictionary<Toggle, Sprite>();
 
         private static LeaderboardPanelController s_buttonOwner;
 
@@ -303,6 +304,26 @@ namespace Project.Leaderboard
         {
             if (t == null)
                 return;
+
+            // Selected Sprite у Selectable = фокус EventSystem, а не isOn: клик мимо снимает спрайт.
+            // Держим визуал от isOn/_currentPeriod сами, Transition.None чтобы Unity не перетирал Image.
+            t.transition = Selectable.Transition.None;
+            var img = t.targetGraphic as Image ?? t.GetComponent<Image>();
+            if (img != null)
+            {
+                var onSprite = t.spriteState.selectedSprite;
+                if (!_periodTabNormalSprites.TryGetValue(t, out var normalSprite) || normalSprite == null)
+                {
+                    // Не закэшировать Selected Sprite как «обычный», если он уже был применён.
+                    normalSprite = onSprite != null && img.sprite == onSprite ? null : img.sprite;
+                    if (normalSprite != null)
+                        _periodTabNormalSprites[t] = normalSprite;
+                }
+
+                if (onSprite != null && normalSprite != null)
+                    img.sprite = muted ? normalSprite : onSprite;
+            }
+
             var cg = t.GetComponent<CanvasGroup>();
             if (cg == null)
                 cg = t.gameObject.AddComponent<CanvasGroup>();

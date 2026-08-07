@@ -631,22 +631,19 @@ function M.stat_key_perfect_bets()
   return ACH_STAT_PERFECT_BETS
 end
 
---- Серия ходов с линией 5+: при 3 подряд +1 к dnn.three_five_plus_streak и сброс.
-function M.note_five_plus_streak(state, uid, got_five_plus)
+--- Серия подряд своих ходов (без передачи сопернику): при 3 подряд +1 к dnn.three_five_plus_streak и сброс.
+--- Обычно для 3 ходов подряд достаточно двух 5+ (два доп. хода). got_five_plus игнорируется — каждый action актёра = ход.
+function M.note_five_plus_streak(state, uid, _)
   if state == nil or not M.is_human(uid) then return end
   if state._ach_five_plus_streak == nil then
     state._ach_five_plus_streak = {}
   end
-  if got_five_plus then
-    local s = (tonumber(state._ach_five_plus_streak[uid]) or 0) + 1
-    if s >= 3 then
-      M.inc_session(state, uid, ACH_STAT_THREE_STREAK, 1)
-      s = 0
-    end
-    state._ach_five_plus_streak[uid] = s
-  else
-    state._ach_five_plus_streak[uid] = 0
+  local s = (tonumber(state._ach_five_plus_streak[uid]) or 0) + 1
+  if s >= 3 then
+    M.inc_session(state, uid, ACH_STAT_THREE_STREAK, 1)
+    s = 0
   end
+  state._ach_five_plus_streak[uid] = s
 end
 
 --- Сброс серии при передаче хода сопернику.

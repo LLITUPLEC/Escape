@@ -315,21 +315,19 @@ namespace Project.Achievements
                 AddStat(AchievementStatKeys.Line6, line6Count);
         }
 
-        public static void NotifyFivePlusStreakTurn(bool gotFivePlus)
+        /// <summary>
+        /// Локальный офлайн-трек серии подряд своих ходов (без передачи сопернику).
+        /// При 3 подряд — +1 к <see cref="AchievementStatKeys.DnnThreeFivePlusStreak"/>.
+        /// Сервер авторитетен в сетевом матче; сброс — <see cref="ClearFivePlusStreak"/>.
+        /// </summary>
+        public static void NotifyConsecutiveOwnTurn()
         {
-            // Локальный офлайн-трек; сервер авторитетен в сетевом матче.
-            if (!gotFivePlus)
-            {
-                _localFivePlusStreak = 0;
-                return;
-            }
-
             _localFivePlusStreak++;
-            if (_localFivePlusStreak >= 3)
-            {
-                AddStat(AchievementStatKeys.DnnThreeFivePlusStreak);
-                _localFivePlusStreak = 0;
-            }
+            if (_localFivePlusStreak < 3)
+                return;
+
+            AddStat(AchievementStatKeys.DnnThreeFivePlusStreak);
+            _localFivePlusStreak = 0;
         }
 
         public static void ClearFivePlusStreak()
