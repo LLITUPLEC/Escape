@@ -57,6 +57,10 @@ namespace Project.UI
         [SerializeField] private Sprite iconTesseract;
         [SerializeField] private Sprite iconEnergy;
 
+        [Header("Race modal buttons (нужны для APK — AssetDatabase в билде недоступен)")]
+        [SerializeField] private Sprite raceConfirmYesButtonSprite;
+        [SerializeField] private Sprite raceConfirmNoButtonSprite;
+
         private Button _match3;
         private Button _match3Pro;
         private Button _match3Race;
@@ -84,6 +88,7 @@ namespace Project.UI
         private void OnValidate()
         {
             EnsureRaceIcons();
+            EnsureRaceButtonSprites();
         }
 #endif
 
@@ -437,18 +442,19 @@ namespace Project.UI
             h.childControlHeight = true;
             h.childForceExpandWidth = true;
 
+            EnsureRaceButtonSprites();
             AddModalBtn(
                 yn.transform,
                 "Чёрт с ним, паэхали",
                 ConfirmRaceEnterAndGo,
                 new Color(0x74 / 255f, 0xF9 / 255f, 0x23 / 255f, 1f),
-                LoadHudSprite(BtnYesBgPath));
+                raceConfirmYesButtonSprite);
             AddModalBtn(
                 yn.transform,
                 "Сами ебитесь",
                 HideRaceConfirm,
                 new Color(0xFF / 255f, 0x8B / 255f, 0x80 / 255f, 1f),
-                LoadHudSprite(BtnNoBgPath));
+                raceConfirmNoButtonSprite);
 
             _raceConfirmRoot.SetActive(false);
         }
@@ -555,6 +561,14 @@ namespace Project.UI
             if (iconBlueprint == null) iconBlueprint = LoadHudSprite(IconBlueprintPath);
             if (iconTesseract == null) iconTesseract = LoadHudSprite(IconTesseractPath);
             if (iconEnergy == null) iconEnergy = LoadHudSprite(IconEnergyPath);
+        }
+
+        private void EnsureRaceButtonSprites()
+        {
+            if (raceConfirmYesButtonSprite == null)
+                raceConfirmYesButtonSprite = LoadHudSprite(BtnYesBgPath);
+            if (raceConfirmNoButtonSprite == null)
+                raceConfirmNoButtonSprite = LoadHudSprite(BtnNoBgPath);
         }
 
         private static Sprite LoadHudSprite(string assetPath)

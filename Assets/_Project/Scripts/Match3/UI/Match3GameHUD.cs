@@ -128,37 +128,45 @@ namespace Project.Match3
             {
                 var go = new GameObject("RaceManaBonusText", typeof(RectTransform));
                 var rt = go.GetComponent<RectTransform>();
-                if (timerText != null)
-                {
-                    rt.SetParent(timerText.transform.parent != null ? timerText.transform.parent : transform, false);
-                    var tr = timerText.rectTransform;
-                    rt.anchorMin = tr.anchorMin;
-                    rt.anchorMax = tr.anchorMax;
-                    rt.pivot = tr.pivot;
-                    rt.sizeDelta = new Vector2(Mathf.Max(160f, tr.rect.width), 36f);
-                    rt.anchoredPosition = tr.anchoredPosition + new Vector2(0f, 42f);
-                }
-                else
-                {
-                    rt.SetParent(transform, false);
-                    rt.anchorMin = new Vector2(0.52f, 0.55f);
-                    rt.anchorMax = new Vector2(0.78f, 0.95f);
-                    rt.offsetMin = Vector2.zero;
-                    rt.offsetMax = Vector2.zero;
-                }
+                var parent = timerText != null && timerText.transform.parent != null
+                    ? timerText.transform.parent
+                    : transform;
+                rt.SetParent(parent, false);
+                ApplyRaceManaBonusLayout(rt);
 
                 raceManaBonusText = go.AddComponent<TextMeshProUGUI>();
                 raceManaBonusText.font = TMP_Settings.defaultFontAsset;
-                raceManaBonusText.fontSize = 20;
                 raceManaBonusText.fontStyle = FontStyles.Bold;
                 raceManaBonusText.alignment = TextAlignmentOptions.Center;
                 raceManaBonusText.color = new Color(0.45f, 0.9f, 1f, 1f);
                 raceManaBonusText.outlineWidth = 0.18f;
                 raceManaBonusText.outlineColor = new Color32(0, 0, 0, 210);
                 raceManaBonusText.raycastTarget = false;
+                raceManaBonusText.enableAutoSizing = true;
+                raceManaBonusText.fontSizeMin = 18f;
+                raceManaBonusText.fontSizeMax = 72f;
                 raceManaBonusText.text = string.Empty;
                 go.SetActive(false);
             }
+            else
+            {
+                ApplyRaceManaBonusLayout(raceManaBonusText.rectTransform);
+                raceManaBonusText.enableAutoSizing = true;
+                raceManaBonusText.fontSizeMin = 18f;
+                raceManaBonusText.fontSizeMax = 72f;
+                raceManaBonusText.alignment = TextAlignmentOptions.Center;
+            }
+        }
+
+        private static void ApplyRaceManaBonusLayout(RectTransform rt)
+        {
+            if (rt == null) return;
+            // middle-stretch, height 50, Pos Y 100, left 10
+            rt.anchorMin = new Vector2(0f, 0.5f);
+            rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(10f, 100f);
+            rt.sizeDelta = new Vector2(-10f, 50f);
         }
 
         public void SetRaceLastTurnBanner(bool show, string text)
@@ -186,6 +194,10 @@ namespace Project.Match3
                 raceManaBonusText.gameObject.SetActive(false);
                 return;
             }
+            ApplyRaceManaBonusLayout(raceManaBonusText.rectTransform);
+            raceManaBonusText.enableAutoSizing = true;
+            raceManaBonusText.fontSizeMin = 18f;
+            raceManaBonusText.fontSizeMax = 72f;
             raceManaBonusText.text = text;
             raceManaBonusText.gameObject.SetActive(true);
         }

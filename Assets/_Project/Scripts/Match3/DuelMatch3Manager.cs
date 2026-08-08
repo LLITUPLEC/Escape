@@ -2921,10 +2921,7 @@ namespace Project.Match3
             // После записанных actions бонус уже «включён», когда actions >= every.
             var bonus = actions / every;
             if (bonus > 0)
-            {
-                var who = activeIsMe ? "ваш" : "соперника";
-                _hud.SetRaceManaBonusBanner(true, $"+{bonus} к мане с камней ({who})");
-            }
+                _hud.SetRaceManaBonusBanner(true, $"+{bonus} к мане с камней");
             else
                 _hud.SetRaceManaBonusBanner(false, null);
         }
