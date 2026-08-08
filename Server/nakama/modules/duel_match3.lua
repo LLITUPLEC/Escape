@@ -18,6 +18,7 @@ local Guard = build_session_guard({ nk = nk, CFG = CFG })
 local Pvp
 local MineBarriers
 local EconomyRpc
+local ContestGoals
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -261,18 +262,91 @@ local function truthy_match_param(v)
 end
 
 local function is_pvp_race(state)
-  return state ~= nil and state.pvp_race == true
+  return type(state) == "table" and state.pvp_race == true
+end
+
+local function race_goal_from_config()
+  local n = tonumber(CFG and CFG.RACE_GOAL_MANA)
+  if type(n) == "number" and n >= 1 then
+    return math.floor(n)
+  end
+  return 200
+end
+
+local function race_max_from_goal(goal)
+  local g = tonumber(goal)
+  if type(g) ~= "number" or g < 1 then
+    g = race_goal_from_config()
+  else
+    g = math.floor(g)
+  end
+  local mult = tonumber(CFG and CFG.RACE_MAX_MANA_MULT)
+  if type(mult) ~= "number" or mult < 1 then
+    mult = 1.1
+  end
+  return math.max(g, math.floor(g * mult + 1e-9))
+end
+
+local function race_goal_mana(state)
+  if type(state) == "table" then
+    local frozen = tonumber(state.race_goal_mana)
+    if type(frozen) == "number" and frozen >= 1 then
+      return math.floor(frozen)
+    end
+  end
+  if type(ContestGoals) == "table" and type(ContestGoals.race_goal_mana) == "function" then
+    local ok, g = pcall(ContestGoals.race_goal_mana)
+    if ok then
+      local n = tonumber(g)
+      if type(n) == "number" and n >= 1 then
+        return math.floor(n)
+      end
+    else
+      nk.logger_warn("race_goal_mana ContestGoals failed: " .. tostring(g))
+    end
+  end
+  return race_goal_from_config()
 end
 
 local function max_mana_for_state(state)
-  if is_pvp_race(state) then
-    return tonumber(CFG.RACE_MAX_MANA) or 350
+  if not is_pvp_race(state) then
+    return CFG.MAX_MANA
   end
-  return CFG.MAX_MANA
+  if type(state) == "table" then
+    local frozen = tonumber(state.race_max_mana)
+    if type(frozen) == "number" and frozen >= 1 then
+      return math.floor(frozen)
+    end
+  end
+  return race_max_from_goal(race_goal_mana(state))
 end
 
-local function race_goal_mana()
-  return tonumber(CFG.RACE_GOAL_MANA) or 300
+local function race_petard_bank_cap()
+  return math.max(0, math.floor(tonumber(CFG.RACE_PETARD_BANK_CAP) or 50))
+end
+
+local function race_add_petard_bank(actor, amount)
+  if actor == nil then return end
+  local add = math.max(0, math.floor(tonumber(amount) or 0))
+  if add <= 0 then return end
+  local cap = race_petard_bank_cap()
+  local cur = math.max(0, tonumber(actor.race_petard_bank) or 0)
+  actor.race_petard_bank = math.min(cap, cur + add)
+end
+
+local function race_mana_bonus_for_actor(state, actor_id)
+  if not is_pvp_race(state) or actor_id == nil then return 0 end
+  local every = math.max(1, math.floor(tonumber(CFG.RACE_MANA_BONUS_EVERY_ACTIONS) or 5))
+  local turns = 0
+  if state.race_actions ~= nil then
+    turns = math.max(0, tonumber(state.race_actions[actor_id]) or 0)
+  end
+  -- В реальном ходе текущий action уже «идёт» (ещё не записан в race_actions).
+  -- В симуляции бота (_sim_metrics) не прибавляем — иначе завышаем бонус.
+  if state._sim_metrics == nil then
+    turns = turns + 1
+  end
+  return math.floor(turns / every)
 end
 
 --- Списывает ману цели (не ниже 0). Возвращает фактически списанное.
@@ -300,6 +374,7 @@ local function new_stats()
   return {
     hp = CFG.MAX_HP,
     mana = 0,
+    race_petard_bank = 0,
     cross_cd = 0,
     square_cd = 0,
     petard_cd = 0,
@@ -445,11 +520,15 @@ local function action_mana_cost(state, action_type)
   return base
 end
 
-function mana_gain_per_object(state, base_gain)
+--- base_gain с камня; actor_id — для бонуса «Спуск» (+1 маны за камень каждые 5 ходов игрока).
+function mana_gain_per_object(state, base_gain, actor_id)
   local g = math.max(0, tonumber(base_gain) or 0)
   if g <= 0 then return 0 end
   if has_affix(state, "bare_current") then return 0 end
   if has_affix(state, "overload") then return 1 end
+  if is_pvp_race(state) then
+    g = g + race_mana_bonus_for_actor(state, actor_id)
+  end
   return g
 end
 
@@ -904,7 +983,7 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   for t = 1, 3 do
     local c = cnt(t)
     if c > 0 then
-      local gain = mana_gain_per_object(state, CFG.GEM_MANA[t] or 0) * c
+      local gain = mana_gain_per_object(state, CFG.GEM_MANA[t] or 0, actor_id) * c
       add_mana_capped(state, actor, gain)
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + c
@@ -936,15 +1015,20 @@ local function apply_match_effects(state, actor_id, opponent_id, matches, extra_
   end
 
   -- Ankhs (5): суммируем за весь resolve_action, одно лечение в конце хода (не по каждому каскаду).
-  -- В race анхи участвуют на поле, но эффектов не дают.
+  -- В race: вместо хила копятся заряды петарды (списание маны сопернику).
   do
     local c = cnt(5)
-    if c > 0 and not is_pvp_race(state) then
-      state._action_ankh_count = (state._action_ankh_count or 0) + c
-      if sim ~= nil then sim.ankh = (sim.ankh or 0) + c end
-      if affix == "mana_vampire" and opp ~= nil then
-        local vamp_gain = mana_gain_per_object(state, 2) * c
-        add_mana_capped(state, opp, vamp_gain)
+    if c > 0 then
+      if is_pvp_race(state) then
+        race_add_petard_bank(actor, c)
+        if sim ~= nil then sim.ankh = (sim.ankh or 0) + c end
+      else
+        state._action_ankh_count = (state._action_ankh_count or 0) + c
+        if sim ~= nil then sim.ankh = (sim.ankh or 0) + c end
+        if affix == "mana_vampire" and opp ~= nil then
+          local vamp_gain = mana_gain_per_object(state, 2, opponent_id) * c
+          add_mana_capped(state, opp, vamp_gain)
+        end
       end
     end
   end
@@ -1027,6 +1111,15 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bLevel = (state.player_levels and state.player_levels[b_id]) or 1,
     aMaxMana = max_mana_for_state(state),
     bMaxMana = max_mana_for_state(state),
+    aPetardBank = math.max(0, tonumber(a.race_petard_bank) or 0),
+    bPetardBank = math.max(0, tonumber(b.race_petard_bank) or 0),
+    aRaceActions = (state.race_actions and tonumber(state.race_actions[a_id])) or 0,
+    bRaceActions = (state.race_actions and tonumber(state.race_actions[b_id])) or 0,
+    raceGoalMana = is_pvp_race(state) and race_goal_mana(state) or 0,
+    raceLastTurnUserId = (is_pvp_race(state) and state.race_last_turn_user_id) or "",
+    raceManaBonusEvery = is_pvp_race(state)
+      and math.max(1, math.floor(tonumber(CFG.RACE_MANA_BONUS_EVERY_ACTIONS) or 5))
+      or 0,
     manaDrain = math.max(0, tonumber(state._action_mana_drain) or 0),
     pvpRace = is_pvp_race(state),
     extraTurn = extra_turn or false,
@@ -1131,7 +1224,7 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
     return false
   end
 
-  local goal = race_goal_mana()
+  local goal = race_goal_mana(state)
   local actor_mana = tonumber(state.stats[actor] and state.stats[actor].mana) or 0
   local opp_mana = tonumber(state.stats[opponent] and state.stats[opponent].mana) or 0
   local first = state.race_first_user_id
@@ -1176,7 +1269,7 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
     return false
   end
 
-  -- Первый игрок набрал 300+: даём last-turn сопернику.
+  -- Первый игрок набрал цель: даём last-turn сопернику.
   if first ~= nil and actor == first then
     if state.race_last_turn_user_id == nil then
       return pass_to_last_turn()
@@ -1184,7 +1277,7 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
     return false
   end
 
-  -- Второй игрок набрал 300+ вне last-turn → сразу победа.
+  -- Второй игрок набрал цель вне last-turn → сразу победа.
   if state.race_last_turn_user_id == nil then
     return end_race(actor, false)
   end
@@ -1204,6 +1297,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     local ask = Ach.map_action_to_stat(action.actionType)
     if ask ~= nil then
       Ach.inc_session(state, actor, ask, 1)
+    end
+    if is_pvp_race(state) then
+      if state.race_actions == nil then state.race_actions = {} end
+      state.race_actions[actor] = (tonumber(state.race_actions[actor]) or 0) + 1
     end
   end
 
@@ -1449,7 +1546,14 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   local affix = current_affix_id(state)
   if action_type == 4 then
     if is_pvp_race(state) then
-      race_drain_mana(state, opp, tonumber(CFG.RACE_PETARD_MANA_DRAIN) or 40)
+      local bank = math.max(0, tonumber(actor and actor.race_petard_bank) or 0)
+      bank = math.min(race_petard_bank_cap(), math.floor(bank))
+      if bank > 0 and opp ~= nil then
+        race_drain_mana(state, opp, bank)
+      end
+      if actor ~= nil then
+        actor.race_petard_bank = 0
+      end
       return false
     end
     local crit = deal_damage(state, state.board, actor, opp, CFG.PETARD_DAMAGE)
@@ -1463,18 +1567,21 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
   for _, c in ipairs(cells) do
     local t = bget(state.board, c.x, c.y)
     if t == 1 or t == 2 or t == 3 then
-      add_mana_capped(state, actor, mana_gain_per_object(state, CFG.GEM_MANA[t] or 0))
+      add_mana_capped(state, actor, mana_gain_per_object(state, CFG.GEM_MANA[t] or 0, actor_id))
       if sim ~= nil then
         if t == 1 then sim.red = sim.red + 1
         elseif t == 2 then sim.yellow = sim.yellow + 1
         elseif t == 3 then sim.green = sim.green + 1 end
       end
     elseif t == 5 then
-      if not is_pvp_race(state) then
+      if is_pvp_race(state) then
+        race_add_petard_bank(actor, 1)
+        if sim ~= nil then sim.ankh = (sim.ankh or 0) + 1 end
+      else
         state._action_ankh_count = (state._action_ankh_count or 0) + 1
         if sim ~= nil then sim.ankh = (sim.ankh or 0) + 1 end
         if affix == "mana_vampire" and opp ~= nil then
-          local vamp_gain = mana_gain_per_object(state, 2)
+          local vamp_gain = mana_gain_per_object(state, 2, opponent_id)
           add_mana_capped(state, opp, vamp_gain)
         end
       end
@@ -1702,159 +1809,19 @@ local function decode_storage_value(obj)
   return nil
 end
 
--- ═══ Глобальная аномалия сервера (Storage → бафы PvE match3) ═══
+-- Global server aura (extracted: duel_match3_server_aura.lua)
+local ServerAura = runtime_lua_require("modules.duel_match3_server_aura", "duel_match3_server_aura")({
+  nk = nk,
+  CFG = CFG,
+  decode_storage_value = decode_storage_value,
+})
 
-local function storage_row_time_unix(row)
-  if row == nil then return nil end
-  local u = row.update_time or row.UpdateTime or row.create_time or row.CreateTime
-  if u == nil then return nil end
-  if type(u) == "number" then
-    if u > 20000000000 then return math.floor(u / 1000) end
-    if u > 1000000000000 then return math.floor(u / 1000000) end
-    return math.floor(u)
-  end
-  if type(u) == "string" then
-    local y, mo, d, h, mi, se = u:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)[T ](%d%d):(%d%d):(%d%d)")
-    if y then
-      return os.time({
-        year = tonumber(y), month = tonumber(mo), day = tonumber(d),
-        hour = tonumber(h), min = tonumber(mi), sec = tonumber(se),
-        isdst = false
-      })
-    end
-  end
-  return nil
-end
-
-local function compute_aura_expiry_unix(doc, row)
-  if doc == nil then return nil end
-  local e = tonumber(doc.ends_at_unix) or tonumber(doc.ends_at)
-  if e ~= nil and e > 0 then return math.floor(e) end
-  local dur_h = tonumber(doc.duration_hours)
-  if dur_h == nil or dur_h <= 0 then return nil end
-  local start_u = tonumber(doc.started_at_unix) or tonumber(doc.anchor_unix) or storage_row_time_unix(row) or os.time()
-  return math.floor(start_u + dur_h * 3600 + 0.5)
-end
-
-local _server_aura_cache_doc = nil
-local _server_aura_cache_expiry = nil
-local _server_aura_cache_t = 0
-
-local function get_active_server_aura()
-  local now = os.time()
-  local ttl = math.max(5, tonumber(CFG.SERVER_AURA_CACHE_TTL_SECONDS) or 30)
-  if _server_aura_cache_doc ~= nil and (now - _server_aura_cache_t) < ttl then
-    if _server_aura_cache_expiry ~= nil and now > _server_aura_cache_expiry then
-      return nil
-    end
-    return _server_aura_cache_doc
-  end
-
-  local ok_read, rows = pcall(function()
-    return nk.storage_read({
-      {
-        collection = CFG.SERVER_AURA_COLLECTION,
-        key = CFG.SERVER_AURA_KEY,
-        user_id = CFG.SERVER_AURA_STORAGE_USER_ID,
-      },
-    })
-  end)
-  _server_aura_cache_t = now
-  _server_aura_cache_doc = nil
-  _server_aura_cache_expiry = nil
-
-  if not ok_read or rows == nil or #rows == 0 then
-    return nil
-  end
-
-  local row = rows[1]
-  local doc = decode_storage_value(row) or {}
-  if doc.active == false or doc.enabled == false then
-    return nil
-  end
-
-  local exp = compute_aura_expiry_unix(doc, row)
-  if exp ~= nil and now > exp then
-    return nil
-  end
-
-  _server_aura_cache_expiry = exp
-  _server_aura_cache_doc = doc
-  return doc
-end
-
-local function aura_xp_multiplier(aura)
-  if aura == nil then return 1 end
-  local p = tonumber(aura.xp_bonus_pct) or tonumber(aura.xp_pct) or 0
-  return math.max(0, 1 + p / 100)
-end
-
-local function aura_apply_to_pve_reward_xp(reward_xp, aura)
-  local m = aura_xp_multiplier(aura)
-  if m == 1 then return reward_xp end
-  return math.max(0, math.ceil((tonumber(reward_xp) or 0) * m))
-end
-
---- mine_respawn_wait_pct: +50 → таймер короче в 2 раза (10→5 мин); −50 → длиннее (10→15 мин).
-local function aura_mine_respawn_duration_seconds(base_seconds, aura)
-  local b = math.max(1, math.floor(tonumber(base_seconds) or 600))
-  if aura == nil then return b end
-  local p = tonumber(aura.mine_respawn_wait_pct) or tonumber(aura.mine_respawn_pct) or 0
-  if p == 0 then return b end
-  local mult = 1 - p / 100
-  mult = math.max(0.05, math.min(20, mult))
-  return math.max(10, math.floor(b * mult + 0.5))
-end
-
---- crit_pct: аддитивные пункты шанса крита (15 → +0.15 к base_crit, в UI «+15%»).
---- Остальные *_pct — множители: 20 → ×1.20.
-local function aura_apply_to_pve_player_stats(stats, aura)
-  if stats == nil or aura == nil then return end
-  local function pct_mul(p)
-    p = tonumber(p) or 0
-    return math.max(-0.95, 1 + p / 100)
-  end
-  local all_ex_crit = pct_mul(aura.all_stats_pct or aura.stats_bonus_pct)
-  local m_hp = all_ex_crit * pct_mul(aura.hp_pct)
-  local m_dmg = all_ex_crit * pct_mul(aura.damage_pct)
-  local m_arm = all_ex_crit * pct_mul(aura.armor_pct)
-  local m_heal = all_ex_crit * pct_mul(aura.healing_pct)
-  local crit_add = (tonumber(aura.crit_pct) or 0) / 100
-
-  local max_hp = math.max(1, math.floor((tonumber(stats.max_hp) or CFG.MAX_HP) * m_hp + 0.5))
-  local hp = math.floor((tonumber(stats.hp) or max_hp) * m_hp + 0.5)
-  stats.max_hp = max_hp
-  stats.hp = math.min(max_hp, math.max(1, hp))
-  stats.base_damage = math.max(0, math.floor((tonumber(stats.base_damage) or 0) * m_dmg + 0.5))
-  stats.base_armor = math.max(0, math.floor((tonumber(stats.base_armor) or 0) * m_arm + 0.5))
-  stats.base_heal = math.floor((tonumber(stats.base_heal) or 0) * m_heal + 0.5)
-  stats.base_crit = math.max(0, math.min(1, (tonumber(stats.base_crit) or 0) + crit_add))
-  stats.initial_hp = stats.max_hp
-end
-
-local function duel_match3_server_aura_get(ctx, payload)
-  local aura = get_active_server_aura()
-  if aura == nil then
-    return nk.json_encode({ ok = true, active = false })
-  end
-  local exp = _server_aura_cache_expiry
-  return nk.json_encode({
-    ok = true,
-    active = true,
-    title = tostring(aura.title or ""),
-    description = tostring(aura.description or ""),
-    endsAtUnix = exp or 0,
-    allStatsPct = tonumber(aura.all_stats_pct) or tonumber(aura.stats_bonus_pct) or 0,
-    critPct = tonumber(aura.crit_pct) or 0,
-    hpPct = tonumber(aura.hp_pct) or 0,
-    damagePct = tonumber(aura.damage_pct) or 0,
-    armorPct = tonumber(aura.armor_pct) or 0,
-    healingPct = tonumber(aura.healing_pct) or 0,
-    xpBonusPct = tonumber(aura.xp_bonus_pct) or tonumber(aura.xp_pct) or 0,
-    mineRespawnWaitPct = tonumber(aura.mine_respawn_wait_pct) or tonumber(aura.mine_respawn_pct) or 0,
-    durationHours = tonumber(aura.duration_hours) or 0,
-  })
-end
+-- Цели состязаний (Спуск / future): Storage duel_match3_contest_goals.
+ContestGoals = runtime_lua_require("modules.duel_match3_contest_goals", "duel_match3_contest_goals")({
+  nk = nk,
+  CFG = CFG,
+  decode_storage_value = decode_storage_value,
+})
 
 -- Equipment slot order must match client enum EquipmentSlotId (0..7).
 local EQUIP_ORDER = {
@@ -3285,7 +3252,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   local reward_mul = mine_reward_multiplier(diff)
   local is_boss = bot.is_boss == true or is_boss_floor(floor)
   local reward_xp = math.ceil((tonumber(bot.reward_xp) or 0) * reward_mul)
-  reward_xp = aura_apply_to_pve_reward_xp(reward_xp, get_active_server_aura())
+  reward_xp = ServerAura.apply_to_pve_reward_xp(reward_xp, ServerAura.get_active())
   local reward_gold = math.ceil((tonumber(bot.reward_gold) or 0) * reward_mul)
   local reward_ore = math.ceil((tonumber(bot.reward_ore) or 0) * reward_mul)
   -- Материя только из каталога бота (min/max); отдельного «рандомного» дропа с обычных нет.
@@ -3346,7 +3313,7 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
     do
       local base_resp = is_boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS
-      local respawn_sec = aura_mine_respawn_duration_seconds(base_resp, get_active_server_aura())
+      local respawn_sec = ServerAura.mine_respawn_duration_seconds(base_resp, ServerAura.get_active())
       cur_state.next_spawn_at = os.time() + respawn_sec
     end
     local fought_affix = tostring((run_meta and run_meta.affix) or "")
@@ -3469,7 +3436,7 @@ end
 
 award_pve_defeat = function(user_id, match_epoch_snapshot)
   local snap = tonumber(match_epoch_snapshot) or 0
-  local defeat_xp = aura_apply_to_pve_reward_xp(10, get_active_server_aura())
+  local defeat_xp = ServerAura.apply_to_pve_reward_xp(10, ServerAura.get_active())
   if Guard.is_epoch_stale_for_match(user_id, snap) then
     local progress = read_pve_progress(user_id)
     return {
@@ -3539,6 +3506,9 @@ Pvp = build_pvp({
   normalize_mine_difficulty = normalize_mine_difficulty,
   award_pve_defeat = award_pve_defeat,
   other_player_id = other_player_id,
+  ContestGoals = ContestGoals,
+  add_blueprint = add_blueprint,
+  empty_key_items = empty_key_items,
 })
 
 local function read_match3_stats(user_id)
@@ -4069,6 +4039,201 @@ local function duel_match3_pve_create(ctx, payload)
   return result
 end
 
+local function race_progress_balance(progress, resource)
+  local r = string.lower(tostring(resource or ""))
+  if r == "matter" then return math.max(0, tonumber(progress.matter) or 0) end
+  if r == "gold" then return math.max(0, tonumber(progress.gold) or 0) end
+  if r == "ore" then return math.max(0, tonumber(progress.ore) or 0) end
+  if r == "ingots" then return math.max(0, tonumber(progress.ingots) or 0) end
+  if r == "energy" then return math.max(0, tonumber(progress.energy) or 0) end
+  return nil
+end
+
+local function race_progress_spend(progress, resource, amount)
+  local r = string.lower(tostring(resource or ""))
+  local need = math.max(0, math.floor(tonumber(amount) or 0))
+  if need <= 0 then return true end
+  if r == "matter" then
+    progress.matter = math.max(0, (tonumber(progress.matter) or 0) - need)
+    return true
+  end
+  if r == "gold" then
+    progress.gold = math.max(0, (tonumber(progress.gold) or 0) - need)
+    return true
+  end
+  if r == "ore" then
+    progress.ore = math.max(0, (tonumber(progress.ore) or 0) - need)
+    return true
+  end
+  if r == "ingots" then
+    progress.ingots = math.max(0, (tonumber(progress.ingots) or 0) - need)
+    return true
+  end
+  if r == "energy" then
+    progress.energy = math.max(0, (tonumber(progress.energy) or 0) - need)
+    return true
+  end
+  return false
+end
+
+--- «Спуск»: публичный конфиг (цель / вход / награды) для модалки.
+local function duel_match3_race_info(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+    local cfg = ContestGoals.race_public_config()
+    return nk.json_encode({
+      ok = true,
+      goal_mana = cfg.goal_mana,
+      mana_bonus_every = cfg.mana_bonus_every,
+      entry = cfg.entry,
+      rewards = cfg.rewards,
+    })
+  end)
+  if not ok then
+    nk.logger_error("duel_match3_race_info: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+--- «Спуск»: списать стоимость входа (из Storage contest_goals) перед очередью / матчем.
+local function duel_match3_race_enter(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local costs = ContestGoals.race_entry_costs()
+    if type(costs) ~= "table" or #costs == 0 then
+      costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
+    end
+
+    local max_retries = 5
+    for i = 1, max_retries do
+      local progress, version = read_pve_progress(user_id)
+      for _, line in ipairs(costs) do
+        local res = tostring(line.resource or "")
+        local need = math.max(0, math.floor(tonumber(line.amount) or 0))
+        local have = race_progress_balance(progress, res)
+        if have == nil then
+          return nk.json_encode({ ok = false, err = "unsupported_entry_resource", resource = res })
+        end
+        if have < need then
+          local resources = build_resource_payload(progress, user_id)
+          resources.ok = false
+          resources.err = "not_enough_" .. res
+          resources.required = need
+          resources.resource = res
+          resources.reason = "race_enter"
+          resources.entry = costs
+          return nk.json_encode(resources)
+        end
+      end
+
+      for _, line in ipairs(costs) do
+        race_progress_spend(progress, line.resource, line.amount)
+      end
+
+      local write_ok, write_err = pcall(function()
+        write_pve_progress(user_id, progress, version)
+      end)
+      if write_ok then
+        local resources = build_resource_payload(progress, user_id)
+        resources.ok = true
+        resources.reason = "race_enter"
+        resources.entry = costs
+        resources.spent = costs[1] and costs[1].amount or 0
+        resources.resource = costs[1] and costs[1].resource or ""
+        return nk.json_encode(resources)
+      end
+
+      local err_text = tostring(write_err)
+      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
+        error(write_err)
+      end
+    end
+
+    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_race_enter: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
+--- «Спуск»: матч против серверного бота (когда matchmaker не нашёл человека).
+local function duel_match3_race_create(ctx, payload)
+  local ok, result = pcall(function()
+    local user_id = ctx and ctx.user_id or ""
+    if user_id == nil or user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
+    end
+
+    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
+    if not ok_epoch then
+      return nk.json_encode({ ok = false, err = err_epoch })
+    end
+
+    local owner_epoch = Guard.read_metadata_epoch(user_id)
+    local bot_id = "race_bot"
+    local bot_user_id = make_bot_user_id(bot_id)
+    local bot_names = { "Странник", "Тень", "Путник", "Эхо", "Скиталец" }
+    local bot_name = bot_names[math.random(1, #bot_names)]
+
+    local match_id = try_match_create({
+      mode = "pve",
+      pvp_race = true,
+      arena_pvp_style = true,
+      owner_user_id = user_id,
+      bot_id = bot_id,
+      bot_user_id = bot_user_id,
+      owner_level = 1,
+      owner_session_epoch = owner_epoch,
+      pve_run = {
+        floor = 1,
+        difficulty = "easy",
+        affix = "",
+        stat_mul = 1,
+        reward_mul = 0,
+        arena_suppress_all = true,
+      },
+    })
+    if match_id == nil or match_id == "" then
+      return nk.json_encode({ ok = false, err = "match_create_failed" })
+    end
+
+    nk.logger_info("duel_match3_race_create: user=" .. tostring(user_id)
+      .. " match=" .. tostring(match_id)
+      .. " bot=" .. tostring(bot_name))
+
+    return nk.json_encode({
+      ok = true,
+      match_id = match_id,
+      bot_id = bot_id,
+      bot_name = bot_name,
+      bot_user_id = bot_user_id,
+      race_goal_mana = race_goal_mana(nil),
+    })
+  end)
+
+  if not ok then
+    nk.logger_error("duel_match3_race_create: " .. tostring(result))
+    return nk.json_encode({ ok = false, err = "server_error" })
+  end
+  return result
+end
+
 local function duel_mine_summon(ctx, payload)
   local ok, result = pcall(function()
     local user_id = ctx and ctx.user_id or ""
@@ -4370,177 +4535,178 @@ enumerate_valid_swaps = function(board)
   return swaps
 end
 
-local function copy_stats(src)
-  return {
-    hp = src.hp or CFG.MAX_HP,
-    mana = src.mana or 0,
-    cross_cd = src.cross_cd or 0,
-    square_cd = src.square_cd or 0,
-    petard_cd = src.petard_cd or 0,
-    shield_cd = src.shield_cd or 0,
-    fury_cd = src.fury_cd or 0,
-    shield_t1 = src.shield_t1 or 0,
-    shield_t2 = src.shield_t2 or 0,
-    shield_t3 = src.shield_t3 or 0,
-    fury_active = src.fury_active == true,
-    fury_bomb_bonus = math.max(0, tonumber(src.fury_bomb_bonus) or 0),
-    max_hp = src.max_hp or CFG.MAX_HP,
-    initial_hp = src.initial_hp or src.max_hp or CFG.MAX_HP,
-    base_damage = src.base_damage or 0,
-    base_armor = src.base_armor or 0,
-    base_crit = src.base_crit or 0,
-    base_heal = src.base_heal or 0,
-  }
-end
-
-local function spend_ability_for_sim(state, stats, action_type)
-  if action_type == 2 then
-    stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.cross_cd = CFG.CROSS_ABILITY_COOLDOWN
-  elseif action_type == 3 then
-    stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.square_cd = CFG.SQUARE_ABILITY_COOLDOWN
-  elseif action_type == 4 then
-    stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.petard_cd = CFG.PETARD_ABILITY_COOLDOWN
-  elseif action_type == 5 then
-    stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.shield_cd = CFG.SHIELD_ABILITY_COOLDOWN
-    apply_shield_stack(stats)
-  elseif action_type == 6 then
-    stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
-    stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN
-    stats.fury_active = true
-    -- fury_bomb_bonus выставляет resolve_action по board симуляции
-  end
-end
-
-local function simulate_and_score_action(state, bot_user_id, player_user_id, action)
-  local sim_bot = copy_stats(state.stats[bot_user_id] or {})
-  local sim_player = copy_stats(state.stats[player_user_id] or {})
-  local sim_state = {
-    board = clone_board(state.board),
-    stats = {
-      [bot_user_id] = sim_bot,
-      [player_user_id] = sim_player,
-    },
-    _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 },
-    _sim_quality_y_min = bot_sim_quality_y_min(state),
-  }
-
-  if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
-    spend_ability_for_sim(state, sim_bot, action.actionType)
+local function choose_bot_action(state, bot_user_id, player_user_id)
+  local function copy_stats(src)
+    return {
+      hp = src.hp or CFG.MAX_HP,
+      mana = src.mana or 0,
+      race_petard_bank = math.max(0, tonumber(src.race_petard_bank) or 0),
+      cross_cd = src.cross_cd or 0,
+      square_cd = src.square_cd or 0,
+      petard_cd = src.petard_cd or 0,
+      shield_cd = src.shield_cd or 0,
+      fury_cd = src.fury_cd or 0,
+      shield_t1 = src.shield_t1 or 0,
+      shield_t2 = src.shield_t2 or 0,
+      shield_t3 = src.shield_t3 or 0,
+      fury_active = src.fury_active == true,
+      fury_bomb_bonus = math.max(0, tonumber(src.fury_bomb_bonus) or 0),
+      max_hp = src.max_hp or CFG.MAX_HP,
+      initial_hp = src.initial_hp or src.max_hp or CFG.MAX_HP,
+      base_damage = src.base_damage or 0,
+      base_armor = src.base_armor or 0,
+      base_crit = src.base_crit or 0,
+      base_heal = src.base_heal or 0,
+    }
   end
 
-  local before_hp = sim_player.hp
-  local ok, _, extra_turn, _, _ = resolve_action(sim_state, action, bot_user_id, player_user_id)
-  if not ok then return nil end
+  local function spend_ability_for_sim(state, stats, action_type)
+    if action_type == 2 then
+      stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
+      stats.cross_cd = CFG.CROSS_ABILITY_COOLDOWN
+    elseif action_type == 3 then
+      stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
+      stats.square_cd = CFG.SQUARE_ABILITY_COOLDOWN
+    elseif action_type == 4 then
+      stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
+      stats.petard_cd = CFG.PETARD_ABILITY_COOLDOWN
+    elseif action_type == 5 then
+      stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
+      stats.shield_cd = CFG.SHIELD_ABILITY_COOLDOWN
+      apply_shield_stack(stats)
+    elseif action_type == 6 then
+      stats.mana = math.max(0, stats.mana - action_mana_cost(state, action_type))
+      stats.fury_cd = CFG.FURY_ABILITY_COOLDOWN
+      stats.fury_active = true
+      -- fury_bomb_bonus выставляет resolve_action по board симуляции
+    end
+  end
 
-  local m = sim_state._sim_metrics or { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 }
-  local red = m.red or 0
-  local yellow = m.yellow or 0
-  local green = m.green or 0
-  local ankh = m.ankh or 0
-  local score = {
-    extra_turn = (extra_turn == true) or (m.extra_turn == true),
-    damage = math.max(0, before_hp - sim_player.hp),
-    red = red,
-    yellow = yellow,
-    green = green,
-    ankh = ankh,
-    -- Грязный прирост маны с камней (без учёта стоимости способности).
-    mana_value = red * (CFG.GEM_MANA[1] or 5) + yellow * (CFG.GEM_MANA[2] or 3) + green * (CFG.GEM_MANA[3] or 1),
-    -- Фактическая мана после хода (траты способности уже вычтены) — ключ для удержания щита.
-    mana_after = math.max(0, tonumber(sim_bot.mana) or 0),
-  }
-  return score
-end
+  local function simulate_and_score_action(state, bot_user_id, player_user_id, action)
+    local sim_bot = copy_stats(state.stats[bot_user_id] or {})
+    local sim_player = copy_stats(state.stats[player_user_id] or {})
+    local sim_state = {
+      board = clone_board(state.board),
+      stats = {
+        [bot_user_id] = sim_bot,
+        [player_user_id] = sim_player,
+      },
+      _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 },
+      _sim_quality_y_min = bot_sim_quality_y_min(state),
+    }
 
-local function is_better_score(a, b)
-  if b == nil then return true end
-  if a.extra_turn ~= b.extra_turn then return a.extra_turn end
-  if a.damage ~= b.damage then return a.damage > b.damage end
-  if a.red ~= b.red then return a.red > b.red end
-  if a.yellow ~= b.yellow then return a.yellow > b.yellow end
-  if a.green ~= b.green then return a.green > b.green end
-  return false
-end
+    if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
+      spend_ability_for_sim(state, sim_bot, action.actionType)
+    end
 
---- Выживание: сначала порог маны на щит, затем мана; хил может «купить» slack маны у свапа без анкха.
-local function is_better_survival_score(a, b, shield_need)
-  if b == nil then return true end
-  local need = tonumber(shield_need) or CFG.SHIELD_ABILITY_COST or 40
-  local slack = tonumber(CFG.BOT_SURVIVAL_HEAL_MANA_SLACK) or 5
+    local before_hp = sim_player.hp
+    local ok, _, extra_turn, _, _ = resolve_action(sim_state, action, bot_user_id, player_user_id)
+    if not ok then return nil end
 
-  local am = tonumber(a.mana_after) or 0
-  local bm = tonumber(b.mana_after) or 0
-  local a_ok = am >= need
-  local b_ok = bm >= need
-  if a_ok ~= b_ok then return a_ok end
+    local m = sim_state._sim_metrics or { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 }
+    local red = m.red or 0
+    local yellow = m.yellow or 0
+    local green = m.green or 0
+    local ankh = m.ankh or 0
+    local score = {
+      extra_turn = (extra_turn == true) or (m.extra_turn == true),
+      damage = math.max(0, before_hp - sim_player.hp),
+      red = red,
+      yellow = yellow,
+      green = green,
+      ankh = ankh,
+      -- Грязный прирост маны с камней (без учёта стоимости способности).
+      mana_value = red * (CFG.GEM_MANA[1] or 5) + yellow * (CFG.GEM_MANA[2] or 3) + green * (CFG.GEM_MANA[3] or 1),
+      -- Фактическая мана после хода (траты способности уже вычтены) — ключ для удержания щита.
+      mana_after = math.max(0, tonumber(sim_bot.mana) or 0),
+    }
+    return score
+  end
 
-  local ah = a.ankh or 0
-  local bh = b.ankh or 0
-  -- Способность с лечением vs свап без: можно уступить до slack маны.
-  if ah > 0 and bh <= 0 then
-    if am >= bm - slack then return true end
+  local function is_better_score(a, b)
+    if b == nil then return true end
+    if a.extra_turn ~= b.extra_turn then return a.extra_turn end
+    if a.damage ~= b.damage then return a.damage > b.damage end
+    if a.red ~= b.red then return a.red > b.red end
+    if a.yellow ~= b.yellow then return a.yellow > b.yellow end
+    if a.green ~= b.green then return a.green > b.green end
     return false
   end
-  if bh > 0 and ah <= 0 then
-    if bm >= am - slack then return false end
-    return true
+
+  --- Выживание: сначала порог маны на щит, затем мана; хил может «купить» slack маны у свапа без анкха.
+  local function is_better_survival_score(a, b, shield_need)
+    if b == nil then return true end
+    local need = tonumber(shield_need) or CFG.SHIELD_ABILITY_COST or 40
+    local slack = tonumber(CFG.BOT_SURVIVAL_HEAL_MANA_SLACK) or 5
+
+    local am = tonumber(a.mana_after) or 0
+    local bm = tonumber(b.mana_after) or 0
+    local a_ok = am >= need
+    local b_ok = bm >= need
+    if a_ok ~= b_ok then return a_ok end
+
+    local ah = a.ankh or 0
+    local bh = b.ankh or 0
+    -- Способность с лечением vs свап без: можно уступить до slack маны.
+    if ah > 0 and bh <= 0 then
+      if am >= bm - slack then return true end
+      return false
+    end
+    if bh > 0 and ah <= 0 then
+      if bm >= am - slack then return false end
+      return true
+    end
+
+    if am ~= bm then return am > bm end
+    if ah ~= bh then return ah > bh end
+    if a.extra_turn ~= b.extra_turn then return a.extra_turn end
+    if a.damage ~= b.damage then return a.damage > b.damage end
+    return false
   end
 
-  if am ~= bm then return am > bm end
-  if ah ~= bh then return ah > bh end
-  if a.extra_turn ~= b.extra_turn then return a.extra_turn end
-  if a.damage ~= b.damage then return a.damage > b.damage end
-  return false
-end
-
-local function swap_initial_matches_for_action(state, action)
-  if action == nil or action.actionType ~= 1 then return nil end
-  local board = clone_board(state.board)
-  local fy = client_to_server_y(action.fromY)
-  local ty = client_to_server_y(action.toY)
-  local ok, matches = try_swap(board, action.fromX, fy, action.toX, ty)
-  if not ok then return nil end
-  return matches
-end
-
-local function match_has_five_plus_line(matches)
-  if not matches then return false end
-  for _, m in ipairs(matches) do
-    if m.count >= 5 then return true end
+  local function swap_initial_matches_for_action(state, action)
+    if action == nil or action.actionType ~= 1 then return nil end
+    local board = clone_board(state.board)
+    local fy = client_to_server_y(action.fromY)
+    local ty = client_to_server_y(action.toY)
+    local ok, matches = try_swap(board, action.fromX, fy, action.toX, ty)
+    if not ok then return nil end
+    return matches
   end
-  return false
-end
 
-local function match_has_five_plus_skull(matches)
-  if not matches then return false end
-  for _, m in ipairs(matches) do
-    if m.count >= 5 and m.type == 4 then return true end
+  local function match_has_five_plus_line(matches)
+    if not matches then return false end
+    for _, m in ipairs(matches) do
+      if m.count >= 5 then return true end
+    end
+    return false
   end
-  return false
-end
 
-local function match_has_skull_line(matches, min_count)
-  local need = tonumber(min_count) or 3
-  if not matches then return false end
-  for _, m in ipairs(matches) do
-    if m.type == 4 and (tonumber(m.count) or 0) >= need then return true end
+  local function match_has_five_plus_skull(matches)
+    if not matches then return false end
+    for _, m in ipairs(matches) do
+      if m.count >= 5 and m.type == 4 then return true end
+    end
+    return false
   end
-  return false
-end
 
---- Оценка урона одного удара (без крита) с учётом брони цели.
-local function estimate_hit_damage(raw_base, attacker_stats, fury_bonus, target_stats)
-  local raw = math.max(0, tonumber(raw_base) or 0)
-  raw = raw + math.max(0, tonumber(attacker_stats and attacker_stats.base_damage) or 0)
-  raw = raw + math.max(0, tonumber(fury_bonus) or 0)
-  return math.max(0, raw - get_armor(target_stats))
-end
+  local function match_has_skull_line(matches, min_count)
+    local need = tonumber(min_count) or 3
+    if not matches then return false end
+    for _, m in ipairs(matches) do
+      if m.type == 4 and (tonumber(m.count) or 0) >= need then return true end
+    end
+    return false
+  end
 
-local function choose_bot_action(state, bot_user_id, player_user_id)
+  --- Оценка урона одного удара (без крита) с учётом брони цели.
+  local function estimate_hit_damage(raw_base, attacker_stats, fury_bonus, target_stats)
+    local raw = math.max(0, tonumber(raw_base) or 0)
+    raw = raw + math.max(0, tonumber(attacker_stats and attacker_stats.base_damage) or 0)
+    raw = raw + math.max(0, tonumber(fury_bonus) or 0)
+    return math.max(0, raw - get_armor(target_stats))
+  end
+
   local stats = state.stats[bot_user_id]
   if stats == nil then return nil end
 
@@ -4554,6 +4720,11 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local can_petard = stats.mana >= petard_cost and stats.petard_cd <= 0
   local can_shield = stats.mana >= shield_cost and (stats.shield_cd or 0) <= 0
   local can_fury = stats.mana >= fury_cost and (stats.fury_cd or 0) <= 0
+  -- «Спуск»: щит/ярость выключены — бот не выбирает их (иначе validate отклонит ход).
+  if is_pvp_race(state) then
+    can_shield = false
+    can_fury = false
+  end
 
   local player_stats = state.stats[player_user_id] or {}
   local player_hp = tonumber(player_stats.hp) or CFG.MAX_HP
@@ -4620,6 +4791,85 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
         end
       end
     end
+  end
+
+  -- ─── «Спуск»: мана/банк петарды; щит/ярость уже выключены выше ───
+  if is_pvp_race(state) then
+    local function race_better(a, b)
+      if b == nil then return true end
+      if a == nil then return false end
+      if a.extra_turn ~= b.extra_turn then return a.extra_turn == true end
+      local ama = tonumber(a.mana_after) or 0
+      local bma = tonumber(b.mana_after) or 0
+      if ama ~= bma then return ama > bma end
+      local av = tonumber(a.mana_value) or 0
+      local bv = tonumber(b.mana_value) or 0
+      if av ~= bv then return av > bv end
+      return (tonumber(a.ankh) or 0) > (tonumber(b.ankh) or 0)
+    end
+
+    -- Свободный 5+ свап всегда предпочтительнее платной способности.
+    if best_extra_swap ~= nil then
+      return best_extra_swap
+    end
+
+    local best_act = nil
+    local best_sc = nil
+    for i, action in ipairs(swaps) do
+      local sc = swap_scores[i]
+      if sc ~= nil and race_better(sc, best_sc) then
+        best_sc = sc
+        best_act = action
+      end
+    end
+
+    local function consider_race_ability(action_type, five_plus_only)
+      for y = 0, CFG.SIZE - 1 do
+        for x = 0, CFG.SIZE - 1 do
+          local ac = {
+            actionType = action_type,
+            fromX = -1, fromY = -1, toX = -1, toY = -1,
+            cx = x, cy = y,
+          }
+          local sc = simulate_and_score_action(state, bot_user_id, player_user_id, ac)
+          if sc ~= nil then
+            if five_plus_only then
+              if sc.extra_turn == true then
+                best_sc = sc
+                best_act = ac
+                return true
+              end
+            else
+              -- Крест/квадрат: только если выгоднее свапа по мане после стоимости, либо даёт 5+.
+              if sc.extra_turn == true or race_better(sc, best_sc) then
+                best_sc = sc
+                best_act = ac
+              end
+            end
+          end
+        end
+      end
+      return false
+    end
+
+    -- 5+ от креста/квадрата важнее петарды (даже при полном банке).
+    if can_cross and consider_race_ability(2, true) then return best_act end
+    if can_square and consider_race_ability(3, true) then return best_act end
+
+    local bank = math.max(0, tonumber(stats.race_petard_bank) or 0)
+    local goal = race_goal_mana(state)
+    local opp_mana = tonumber(player_stats.mana) or 0
+    local opp_to_goal = goal - opp_mana
+    local bank_min = math.max(1, math.floor(tonumber(CFG.RACE_BOT_PETARD_BANK_MIN) or 30))
+    local bank_press = math.max(0, math.floor(tonumber(CFG.RACE_BOT_PETARD_BANK_PRESSURE) or 15))
+    local opp_near = math.max(1, math.floor(tonumber(CFG.RACE_BOT_PETARD_OPP_TO_GOAL) or 50))
+    if can_petard and (bank >= bank_min or (bank > bank_press and opp_to_goal < opp_near)) then
+      return { actionType = 4, fromX = -1, fromY = -1, toX = -1, toY = -1, cx = -1, cy = -1 }
+    end
+
+    if can_cross then consider_race_ability(2, false) end
+    if can_square then consider_race_ability(3, false) end
+    return best_act
   end
 
   local bombs_on_board = count_skulls(state.board)
@@ -5059,6 +5309,29 @@ local function match_join(context, dispatcher, tick, state, presences)
 
         state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
+        if state.pvp_race == true then
+          state.race_first_user_id = state.active_user_id
+          state.race_last_turn_user_id = nil
+          state.race_threshold_user_id = nil
+          state.race_actions = {}
+          state.race_actions[player_id] = 0
+          state.race_actions[state.bot_user_id] = 0
+          -- Не передаём временную таблицу в max_mana_for_state (GopherLua panic на сравнении).
+          local goal = race_goal_mana(nil)
+          state.race_goal_mana = goal
+          state.race_max_mana = race_max_from_goal(goal)
+          state.race_reward_lines = ContestGoals.race_rewards()
+          if state.stats[player_id] ~= nil then
+            state.stats[player_id].race_petard_bank = 0
+          end
+          if state.stats[state.bot_user_id] ~= nil then
+            state.stats[state.bot_user_id].race_petard_bank = 0
+          end
+          nk.logger_info("duel_match3: PvP Race vs bot — first=" .. tostring(state.race_first_user_id)
+            .. " goal=" .. tostring(state.race_goal_mana)
+            .. " max=" .. tostring(state.race_max_mana))
+        end
+
         tick_cooldowns(state.stats[state.active_user_id])
         state.turn_deadline_paused = true
         state.turn_pause_started_tick = tick
@@ -5094,7 +5367,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.stats[player_id] = new_stats()
       state.stats[state.bot_user_id] = new_stats()
       CharStats.apply_player_combat_stats_from_sheet(state.stats[player_id], player_id, {
-        aura = get_active_server_aura(),
+        aura = ServerAura.get_active(),
       })
 
       local pve_run = state.pve_run or {}
@@ -5187,7 +5460,21 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.race_first_user_id = state.active_user_id
       state.race_last_turn_user_id = nil
       state.race_threshold_user_id = nil
-      nk.logger_info("duel_match3: PvP Race (Спуск) — first=" .. tostring(state.race_first_user_id))
+      state.race_actions = {}
+      -- Цель/потолок/награды фиксируем на старте матча (Storage можно менять между матчами).
+      local goal = race_goal_mana(nil)
+      state.race_goal_mana = goal
+      state.race_max_mana = race_max_from_goal(goal)
+      state.race_reward_lines = ContestGoals.race_rewards()
+      for _, uid in ipairs(state.players_sorted) do
+        state.race_actions[uid] = 0
+        if state.stats[uid] ~= nil then
+          state.stats[uid].race_petard_bank = 0
+        end
+      end
+      nk.logger_info("duel_match3: PvP Race (Спуск) — first=" .. tostring(state.race_first_user_id)
+        .. " goal=" .. tostring(state.race_goal_mana)
+        .. " max=" .. tostring(state.race_max_mana))
     end
 
     tick_cooldowns(state.stats[state.active_user_id])
@@ -5639,7 +5926,7 @@ CharStats.configure({
   sum_equipment_bonuses = sum_equipment_bonuses,
   merge_stats_with_equipment = merge_stats_with_equipment,
   is_human = Ach.is_human,
-  aura_apply_to_pve_player_stats = aura_apply_to_pve_player_stats,
+  aura_apply_to_pve_player_stats = ServerAura.apply_to_pve_player_stats,
 })
 
 Ach.configure({
@@ -5662,6 +5949,9 @@ nk.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_s
 nk.register_rpc(AchCat.rpc_achievement_catalog_get, "duel_match3_achievement_catalog_get")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
+nk.register_rpc(duel_match3_race_info, "duel_match3_race_info")
+nk.register_rpc(duel_match3_race_enter, "duel_match3_race_enter")
+nk.register_rpc(duel_match3_race_create, "duel_match3_race_create")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")
 nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
 nk.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
@@ -5679,7 +5969,7 @@ nk.register_rpc(EconomyRpc.duel_workshop_craft_rush, "duel_workshop_craft_rush")
 nk.register_rpc(EconomyRpc.duel_nickname_status_get, "duel_nickname_status_get")
 nk.register_rpc(EconomyRpc.duel_nickname_change, "duel_nickname_change")
 nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
-nk.register_rpc(duel_match3_server_aura_get, "duel_match3_server_aura_get")
+nk.register_rpc(ServerAura.rpc_get, "duel_match3_server_aura_get")
 nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
 nk.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_leave")
 nk.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")

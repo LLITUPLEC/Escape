@@ -9,6 +9,9 @@ return function(deps)
   local get_bot_profile = deps.get_bot_profile
   local normalize_mine_difficulty = deps.normalize_mine_difficulty
   local award_pve_defeat = deps.award_pve_defeat
+  local ContestGoals = deps.ContestGoals
+  local add_blueprint = deps.add_blueprint
+  local empty_key_items = deps.empty_key_items
 
   local P = {}
 
@@ -40,27 +43,61 @@ return function(deps)
     end
   end
 
+  local function apply_flat_rewards_to_progress(progress, flat)
+    flat = flat or {}
+    progress.xp = math.max(0, tonumber(progress.xp) or 0) + math.max(0, tonumber(flat.xp) or 0)
+    progress.gold = math.max(0, tonumber(progress.gold) or 0) + math.max(0, tonumber(flat.gold) or 0)
+    progress.ore = math.max(0, tonumber(progress.ore) or 0) + math.max(0, tonumber(flat.ore) or 0)
+    progress.matter = math.max(0, tonumber(progress.matter) or 0) + math.max(0, tonumber(flat.matter) or 0)
+    progress.ingots = math.max(0, tonumber(progress.ingots) or 0) + math.max(0, tonumber(flat.ingots) or 0)
+    progress.tesseracts = math.max(0, tonumber(progress.tesseracts) or 0) + math.max(0, tonumber(flat.tesseract) or 0)
+    local key_id = tostring(flat.key_id or "")
+    local key_amount = math.max(0, math.floor(tonumber(flat.key_amount) or 0))
+    if key_id ~= "" and key_amount > 0 and type(empty_key_items) == "function" then
+      progress.key_items = progress.key_items or empty_key_items()
+      progress.key_items[key_id] = (tonumber(progress.key_items[key_id]) or 0) + key_amount
+    end
+    local bp = tostring(flat.blueprint or "")
+    if bp ~= "" and type(add_blueprint) == "function" then
+      add_blueprint(progress, bp)
+    end
+    -- recipe_item_id: структура готова; выдача предмета — отдельным пайплайном инвентаря.
+    progress.level = current_level_from_xp(progress.xp)
+  end
+
   function P.award_victory(user_id, opts)
     opts = opts or {}
-    local win_xp = tonumber(opts.xp) or tonumber(CFG.PVP_WIN_XP) or 50
-    local win_gold = tonumber(opts.gold) or tonumber(CFG.PVP_WIN_GOLD) or 75
-    local win_matter = tonumber(opts.matter) or 0
+    local flat = {
+      xp = tonumber(opts.xp) or tonumber(CFG.PVP_WIN_XP) or 50,
+      gold = tonumber(opts.gold) or tonumber(CFG.PVP_WIN_GOLD) or 75,
+      ore = tonumber(opts.ore) or 0,
+      matter = tonumber(opts.matter) or 0,
+      ingots = tonumber(opts.ingots) or 0,
+      tesseract = tonumber(opts.tesseract) or 0,
+      key_id = tostring(opts.key_id or ""),
+      key_amount = tonumber(opts.key_amount) or 0,
+      blueprint = tostring(opts.blueprint or ""),
+      recipe_item_id = tostring(opts.recipe_item_id or ""),
+    }
     local max_retries = 5
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)
-      progress.xp = math.max(0, tonumber(progress.xp) or 0) + win_xp
-      progress.gold = math.max(0, tonumber(progress.gold) or 0) + win_gold
-      progress.matter = math.max(0, tonumber(progress.matter) or 0) + win_matter
-      progress.level = current_level_from_xp(progress.xp)
+      apply_flat_rewards_to_progress(progress, flat)
       local ok, err = pcall(function()
         write_pve_progress(user_id, progress, version)
       end)
       if ok then
         return {
-          reward_xp = win_xp,
-          reward_gold = win_gold,
-          reward_ore = 0,
-          reward_matter = win_matter,
+          reward_xp = flat.xp,
+          reward_gold = flat.gold,
+          reward_ore = flat.ore,
+          reward_matter = flat.matter,
+          reward_ingots = flat.ingots,
+          reward_tesseract = flat.tesseract,
+          reward_key_id = flat.key_id,
+          reward_key_amount = flat.key_amount,
+          reward_blueprint = flat.blueprint,
+          reward_recipe_item_id = flat.recipe_item_id,
           level = progress.level or 1,
           xp = progress.xp or 0,
           gold = progress.gold or 0,
@@ -74,40 +111,96 @@ return function(deps)
     end
 
     return {
-      reward_xp = win_xp,
-      reward_gold = win_gold,
-      reward_ore = 0,
-      reward_matter = win_matter,
+      reward_xp = flat.xp,
+      reward_gold = flat.gold,
+      reward_ore = flat.ore,
+      reward_matter = flat.matter,
+      reward_ingots = flat.ingots,
+      reward_tesseract = flat.tesseract,
+      reward_key_id = flat.key_id,
+      reward_key_amount = flat.key_amount,
+      reward_blueprint = flat.blueprint,
+      reward_recipe_item_id = flat.recipe_item_id,
       level = 1,
       xp = 0,
       gold = 0,
     }
   end
 
+  local function resolve_race_reward_opts(state)
+    local lines = nil
+    if state ~= nil and type(state.race_reward_lines) == "table" then
+      lines = state.race_reward_lines
+    elseif type(ContestGoals) == "table" and type(ContestGoals.race_rewards) == "function" then
+      local ok, got = pcall(ContestGoals.race_rewards)
+      if ok then lines = got end
+    end
+    local flat
+    if type(ContestGoals) == "table" and type(ContestGoals.flatten_reward_lines) == "function" then
+      flat = ContestGoals.flatten_reward_lines(lines)
+    else
+      flat = {
+        xp = tonumber(CFG.RACE_WIN_XP) or 200,
+        gold = 0,
+        ore = 0,
+        matter = tonumber(CFG.RACE_WIN_MATTER) or 10,
+        ingots = 0,
+        tesseract = 0,
+        key_id = "",
+        key_amount = 0,
+        blueprint = "",
+        recipe_item_id = "",
+      }
+    end
+    return {
+      xp = flat.xp,
+      gold = flat.gold,
+      ore = flat.ore,
+      matter = flat.matter,
+      ingots = flat.ingots,
+      tesseract = flat.tesseract,
+      key_id = flat.key_id,
+      key_amount = flat.key_amount,
+      blueprint = flat.blueprint,
+      recipe_item_id = flat.recipe_item_id,
+    }
+  end
+
   function P.apply_game_over_rewards(state, winner, game_over_payload)
-    if state == nil or state.mode == "pve" or state.arena_mirror ~= nil or winner == nil or winner == "" then
+    if state == nil or winner == nil or winner == "" then
+      return
+    end
+    local is_race = state.pvp_race == true
+    -- Race vs bot создаётся как mode=pve — награды «Спуска» всё равно выдаём.
+    if not is_race and (state.mode == "pve" or state.arena_mirror ~= nil) then
       return
     end
     if P.is_human_duelist_uid(state, winner) then
       local opts = nil
-      if state.pvp_race == true then
-        opts = {
-          xp = tonumber(CFG.RACE_WIN_XP) or 200,
-          gold = 0,
-          matter = tonumber(CFG.RACE_WIN_MATTER) or 10,
-        }
+      if is_race then
+        opts = resolve_race_reward_opts(state)
       end
       state.last_reward = P.award_victory(winner, opts)
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
-      game_over_payload.rewardOre = 0
+      game_over_payload.rewardOre = state.last_reward.reward_ore or 0
       game_over_payload.rewardMatter = state.last_reward.reward_matter or 0
+      game_over_payload.rewardIngots = state.last_reward.reward_ingots or 0
+      game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
+      game_over_payload.rewardKeyId = state.last_reward.reward_key_id or ""
+      game_over_payload.rewardKeyAmount = state.last_reward.reward_key_amount or 0
+      game_over_payload.rewardBlueprint = state.last_reward.reward_blueprint or ""
+      game_over_payload.rewardRecipeItemId = state.last_reward.reward_recipe_item_id or ""
       game_over_payload.newLevel = state.last_reward.level or 1
     end
-    if type(award_pve_defeat) ~= "function" then return end
-    local loser = deps.other_player_id(state, winner)
-    if loser ~= nil and P.is_human_duelist_uid(state, loser) then
-      award_pve_defeat(loser, 0)
+    if type(award_pve_defeat) == "function" then
+      -- В race vs bot проигравший-бот не получает defeat XP.
+      if not (is_race and state.mode == "pve") then
+        local loser = deps.other_player_id(state, winner)
+        if loser ~= nil and P.is_human_duelist_uid(state, loser) then
+          award_pve_defeat(loser, 0)
+        end
+      end
     end
   end
 

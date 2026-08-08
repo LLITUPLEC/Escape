@@ -12,6 +12,8 @@ namespace Project.Match3
         public int maxHp     = 150;
         public int mana      = 0;
         public int maxMana   = 100;
+        /// <summary>«Спуск»: накопленные анхи для петарды (списание маны сопернику).</summary>
+        public int racePetardBank;
         public int crossCooldown  = 0;  // 0 = ready, >0 = turns remaining
         public int squareCooldown = 0;
         public int petardCooldown = 0;
@@ -70,6 +72,8 @@ namespace Project.Match3
         public int aShieldT1, aShieldT2, aShieldT3, aFuryTurns, aFuryBonus;
         public int aLevel;
         public int aMaxMana;
+        public int aPetardBank;
+        public int aRaceActions;
 
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
@@ -80,6 +84,14 @@ namespace Project.Match3
         public int bShieldT1, bShieldT2, bShieldT3, bFuryTurns, bFuryBonus;
         public int bLevel;
         public int bMaxMana;
+        public int bPetardBank;
+        public int bRaceActions;
+        /// <summary>«Спуск»: цель по мане на этот матч.</summary>
+        public int raceGoalMana;
+        /// <summary>«Спуск»: чей last-turn (пусто, если ещё не начался).</summary>
+        public string raceLastTurnUserId;
+        /// <summary>«Спуск»: каждые N ходов игрока — +1 к мане с камней.</summary>
+        public int raceManaBonusEvery;
 
         /// <summary>Сколько маны списано у цели за этот ход (Race: черепа/петарда).</summary>
         public int manaDrain;

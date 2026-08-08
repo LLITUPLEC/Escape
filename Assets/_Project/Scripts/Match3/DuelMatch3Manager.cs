@@ -120,6 +120,8 @@ namespace Project.Match3
         private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
         private const string RpcMatch3AchievementSync = "duel_match3_achievement_sync";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
+        private const string RpcMatch3RaceCreate = "duel_match3_race_create";
+        private const int RaceBotFillTimeoutMs = 20_000;
         private const string DefaultPveBotId = "mine_1";
         private const string RewardExpIconPath = "Assets/_Project/img/resources_hud/exp.png";
         private const string RewardOreIconPath = "Assets/_Project/img/resources_hud/ore.png";
@@ -140,8 +142,8 @@ namespace Project.Match3
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
         private const int   MaxMana         = 100;
-        private const int   RaceMaxMana     = 350;
-        private const int   RaceGoalMana    = 300;
+        private const int   RaceMaxManaDefault  = 220;
+        private const int   RaceGoalManaDefault = 200;
         private const float TurnDuration    = 30f;
         private const int   CrossAbilityCost  = 20;
         private const int   SquareAbilityCost = 20;
@@ -230,6 +232,12 @@ namespace Project.Match3
         private bool _pvpProQueue;
         private bool _pvpRaceQueue;
         private bool _raceHudApplied;
+        private int _raceMaxMana = RaceMaxManaDefault;
+        private int _raceGoalMana = RaceGoalManaDefault;
+        private int _raceManaBonusEvery = 5;
+        private string _raceLastTurnUserId = string.Empty;
+        private int _myRaceActions;
+        private int _opRaceActions;
         private bool _pendingGameOverDraw;
         private bool _isSoloBotMode;
         private bool _useLocalBotSimulation;
@@ -636,7 +644,38 @@ namespace Project.Match3
                 });
             _matchmakerTicket = ticket?.Ticket;
 
-            var matched = await _mmTcs.Task;
+            IMatchmakerMatched matched = null;
+            if (_pvpRaceQueue)
+            {
+                // «Спуск»: 20 с ждём человека, иначе серверный бот.
+                var timeoutTask = Task.Delay(RaceBotFillTimeoutMs, ct);
+                var finished = await Task.WhenAny(_mmTcs.Task, timeoutTask);
+                if (finished == _mmTcs.Task)
+                {
+                    matched = await _mmTcs.Task;
+                }
+                else
+                {
+                    await CancelMatchmakerTicketAsync();
+                    // Гонка: матч мог прийти в момент таймаута.
+                    if (_mmTcs.Task.Status == TaskStatus.RanToCompletion)
+                        matched = await _mmTcs.Task;
+                    else
+                    {
+                        _mmTcs = null;
+                        _matchmakerTicket = null;
+                        MainThreadDispatcher.Enqueue(() =>
+                            _searchingPanel?.Show("Соперник не найден.\nПодключаем бота…"));
+                        await CreateRaceVsBotAndJoinAsync(ct);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                matched = await _mmTcs.Task;
+            }
+
             _mmTcs = null;
             _matchmakerTicket = null; // consumed by successful match
             ct.ThrowIfCancellationRequested();
@@ -653,6 +692,30 @@ namespace Project.Match3
 
             _opponentIsServerBot = !string.IsNullOrEmpty(_opUserId) &&
                                   _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal);
+        }
+
+        private async Task CreateRaceVsBotAndJoinAsync(CancellationToken ct)
+        {
+            var payload = JsonUtility.ToJson(new SessionEpochRpcPayload
+            {
+                session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+            });
+            var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                NakamaBootstrap.Instance.Session, RpcMatch3RaceCreate, payload, canceller: ct);
+            var model = JsonUtility.FromJson<RaceCreateRpcResponse>(rpc?.Payload ?? "");
+            if (model == null || !model.ok || string.IsNullOrEmpty(model.match_id))
+            {
+                var detail = model != null && !string.IsNullOrEmpty(model.err) ? model.err : "unknown";
+                throw new Exception("race_create_failed: " + detail);
+            }
+
+            if (model.race_goal_mana > 0)
+                _raceGoalMana = model.race_goal_mana;
+
+            _opUserId = string.IsNullOrEmpty(model.bot_user_id) ? "zz-bot-race_bot" : model.bot_user_id;
+            _opDisplayName = string.IsNullOrEmpty(model.bot_name) ? "Странник" : model.bot_name;
+            _opponentIsServerBot = true;
+            _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(model.match_id);
         }
 
         private void OnMatchFound()
@@ -1696,20 +1759,28 @@ namespace Project.Match3
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
                         var rgold = Mathf.Max(0, msg.rewardGold);
+                        var rore = Mathf.Max(0, msg.rewardOre);
                         var rmatter = Mathf.Max(0, msg.rewardMatter);
+                        var ringots = Mathf.Max(0, msg.rewardIngots);
+                        var rkeyAmt = Mathf.Max(0, msg.rewardKeyAmount);
+                        var rkeyId = msg.rewardKeyId ?? string.Empty;
+                        var rblueprint = msg.rewardBlueprint ?? string.Empty;
+                        var rrecipe = msg.rewardRecipeItemId ?? string.Empty;
+                        var rtess = Mathf.Max(0, msg.rewardTesseract);
                         _lastRewardXp = rxp;
                         _lastRewardGold = rgold;
-                        _lastRewardOre = 0;
+                        _lastRewardOre = rore;
                         _lastRewardMatter = rmatter;
-                        _lastRewardIngots = 0;
-                        _lastRewardKeyAmount = 0;
-                        _lastRewardKeyId = string.Empty;
-                        _lastRewardBlueprint = string.Empty;
-                        _lastRewardRecipeItemId = string.Empty;
-                        _lastRewardTesseract = 0;
+                        _lastRewardIngots = ringots;
+                        _lastRewardKeyAmount = rkeyAmt;
+                        _lastRewardKeyId = rkeyId;
+                        _lastRewardBlueprint = rblueprint;
+                        _lastRewardRecipeItemId = rrecipe;
+                        _lastRewardTesseract = rtess;
                         if (msg.newLevel > 0)
                             _myProgressionLevel = msg.newLevel;
-                        _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, 0, rmatter, 0, "", 0, "", "", 0);
+                        _lastRewardText = BuildRewardLinesTextFull(
+                            rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
                     }
                     _pendingGameOver = true;
                     _pendingGameOverDraw = msg.isDraw;
@@ -1986,6 +2057,7 @@ namespace Project.Match3
             _myStats.crossCooldown  = amA ? msg.aCrossCd  : msg.bCrossCd;
             _myStats.squareCooldown = amA ? msg.aSquareCd : msg.bSquareCd;
             _myStats.petardCooldown = amA ? msg.aPetardCd : msg.bPetardCd;
+            _myStats.racePetardBank = amA ? msg.aPetardBank : msg.bPetardBank;
             _myStats.shieldCooldown = amA ? msg.aShieldCd : msg.bShieldCd;
             _myStats.furyCooldown   = amA ? msg.aFuryCd   : msg.bFuryCd;
             _myStats.baseDamage = amA ? msg.aBaseDamage : msg.bBaseDamage;
@@ -2007,6 +2079,7 @@ namespace Project.Match3
             _opStats.crossCooldown  = amA ? msg.bCrossCd  : msg.aCrossCd;
             _opStats.squareCooldown = amA ? msg.bSquareCd : msg.aSquareCd;
             _opStats.petardCooldown = amA ? msg.bPetardCd : msg.aPetardCd;
+            _opStats.racePetardBank = amA ? msg.bPetardBank : msg.aPetardBank;
             _opStats.shieldCooldown = amA ? msg.bShieldCd : msg.aShieldCd;
             _opStats.furyCooldown   = amA ? msg.bFuryCd   : msg.aFuryCd;
             _opStats.baseDamage = amA ? msg.bBaseDamage : msg.aBaseDamage;
@@ -2024,6 +2097,32 @@ namespace Project.Match3
 
             // Боевые статы (уровень + экип + достижения + аура PvE) приходят с сервера в baseDamage/maxHp и т.д.
 
+            if (_pvpRaceQueue || msg.pvpRace)
+            {
+                if (msg.aMaxMana > 0 || msg.bMaxMana > 0)
+                {
+                    var manaCapA = msg.aMaxMana > 0 ? msg.aMaxMana : RaceMaxManaDefault;
+                    var manaCapB = msg.bMaxMana > 0 ? msg.bMaxMana : RaceMaxManaDefault;
+                    _raceMaxMana = Mathf.Max(1, amA ? manaCapA : manaCapB);
+                    _myStats.maxMana = _raceMaxMana;
+                    _opStats.maxMana = Mathf.Max(1, amA ? manaCapB : manaCapA);
+                }
+                if (msg.raceGoalMana > 0)
+                    _raceGoalMana = msg.raceGoalMana;
+                if (msg.raceManaBonusEvery > 0)
+                    _raceManaBonusEvery = Mathf.Max(1, msg.raceManaBonusEvery);
+                _myRaceActions = amA ? msg.aRaceActions : msg.bRaceActions;
+                _opRaceActions = amA ? msg.bRaceActions : msg.aRaceActions;
+                _raceLastTurnUserId = msg.raceLastTurnUserId ?? string.Empty;
+                EnsureRaceHudApplied();
+                RefreshRaceInfoBanners(msg.activeUserId);
+            }
+            else
+            {
+                _hud?.SetRaceLastTurnBanner(false, null);
+                _hud?.SetRaceManaBonusBanner(false, null);
+            }
+
             _boardView?.RefreshAll(_board);
             if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
                 yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
@@ -2038,7 +2137,6 @@ namespace Project.Match3
             // Damage / mana-drain popups.
             if (_pvpRaceQueue || msg.pvpRace)
             {
-                EnsureRaceHudApplied();
                 var drain = Mathf.Max(0, msg.manaDrain);
                 if (drain <= 0)
                 {
@@ -2796,12 +2894,43 @@ namespace Project.Match3
             _raceHudApplied = true;
             _myPanel?.SetRaceHudMode(true);
             _opPanel?.SetRaceHudMode(true);
-            _myStats.maxMana = RaceMaxMana;
-            _opStats.maxMana = RaceMaxMana;
+            if (_raceMaxMana <= 0) _raceMaxMana = RaceMaxManaDefault;
+            _myStats.maxMana = _raceMaxMana;
+            _opStats.maxMana = _raceMaxMana;
+        }
+
+        private void RefreshRaceInfoBanners(string activeUserId)
+        {
+            if (!_pvpRaceQueue || _hud == null) return;
+
+            if (!string.IsNullOrEmpty(_raceLastTurnUserId))
+            {
+                var mine = string.Equals(_raceLastTurnUserId, _myUserId, StringComparison.Ordinal);
+                _hud.SetRaceLastTurnBanner(true, mine
+                    ? "Последний ход! Соперник достиг цели."
+                    : "Последний ход соперника!");
+            }
+            else
+                _hud.SetRaceLastTurnBanner(false, null);
+
+            var every = Mathf.Max(1, _raceManaBonusEvery);
+            var activeIsMe = !string.IsNullOrEmpty(activeUserId)
+                && string.Equals(activeUserId, _myUserId, StringComparison.Ordinal);
+            var actions = activeIsMe ? _myRaceActions : _opRaceActions;
+            // Бонус действует на текущем ходе игрока: floor((actions+1)/every) в серверной логике хода.
+            // После записанных actions бонус уже «включён», когда actions >= every.
+            var bonus = actions / every;
+            if (bonus > 0)
+            {
+                var who = activeIsMe ? "ваш" : "соперника";
+                _hud.SetRaceManaBonusBanner(true, $"+{bonus} к мане с камней ({who})");
+            }
+            else
+                _hud.SetRaceManaBonusBanner(false, null);
         }
 
         private int EffectiveMaxMana()
-            => _pvpRaceQueue ? RaceMaxMana : MaxMana;
+            => _pvpRaceQueue ? Mathf.Max(1, _raceMaxMana) : MaxMana;
 
         private void RefreshAbilityUi(bool isMyTurn, bool gameEnded)
         {
@@ -2814,7 +2943,8 @@ namespace Project.Match3
                 GetPetardAbilityCost(),
                 GetShieldAbilityCost(),
                 GetFuryAbilityCost(),
-                _pvpRaceQueue);
+                _pvpRaceQueue,
+                _pvpRaceQueue ? _myStats.racePetardBank : -1);
         }
 
         private void RefreshStatsUI()
@@ -4777,6 +4907,18 @@ namespace Project.Match3
         private sealed class SessionEpochRpcPayload
         {
             public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class RaceCreateRpcResponse
+        {
+            public bool ok;
+            public string match_id;
+            public string bot_id;
+            public string bot_name;
+            public string bot_user_id;
+            public int race_goal_mana;
+            public string err;
         }
 
         [Serializable]

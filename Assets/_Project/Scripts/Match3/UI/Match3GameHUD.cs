@@ -14,6 +14,10 @@ namespace Project.Match3
         [Tooltip("Подпись под таймером: «Время на решение» / «Анимация хода»")]
         [SerializeField] public TMP_Text timerPhaseText;
         [SerializeField] public TMP_Text extraTurnText;
+        [Tooltip("«Спуск»: баннер last-turn наверху экрана")]
+        [SerializeField] public TMP_Text raceLastTurnText;
+        [Tooltip("«Спуск»: бонус маны чуть выше секундомера")]
+        [SerializeField] public TMP_Text raceManaBonusText;
 
         [SerializeField] public Button affixButton;
         [SerializeField] public Image affixButtonIconImage;
@@ -42,6 +46,7 @@ namespace Project.Match3
         {
             ResolveReferences();
             EnsureExtraTurnText();
+            EnsureRaceBanners();
             EnsureAffixUi();
         }
 
@@ -51,6 +56,8 @@ namespace Project.Match3
             timerText ??= transform.Find("TimerText")?.GetComponent<TMP_Text>();
             timerPhaseText ??= transform.Find("TimerPhaseText")?.GetComponent<TMP_Text>();
             extraTurnText ??= transform.Find("ExtraTurnText")?.GetComponent<TMP_Text>();
+            raceLastTurnText ??= transform.Find("RaceLastTurnText")?.GetComponent<TMP_Text>();
+            raceManaBonusText ??= transform.Find("RaceManaBonusText")?.GetComponent<TMP_Text>();
 
             affixButton ??= transform.Find("AffixButton")?.GetComponent<Button>();
             affixButtonIconImage ??= transform.Find("AffixButton/Icon")?.GetComponent<Image>();
@@ -89,6 +96,98 @@ namespace Project.Match3
             extraTurnText.alignment = TextAlignmentOptions.Center;
             extraTurnText.text = string.Empty;
             extraTurnText.gameObject.SetActive(false);
+        }
+
+        private void EnsureRaceBanners()
+        {
+            if (raceLastTurnText == null)
+            {
+                var go = new GameObject("RaceLastTurnText", typeof(RectTransform));
+                var rt = go.GetComponent<RectTransform>();
+                // Наверх экрана относительно HUD-полосы.
+                var parent = transform.parent != null ? transform.parent : transform;
+                rt.SetParent(parent, false);
+                rt.anchorMin = new Vector2(0.05f, 0.92f);
+                rt.anchorMax = new Vector2(0.95f, 0.99f);
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                raceLastTurnText = go.AddComponent<TextMeshProUGUI>();
+                raceLastTurnText.font = TMP_Settings.defaultFontAsset;
+                raceLastTurnText.fontSize = 30;
+                raceLastTurnText.fontStyle = FontStyles.Bold;
+                raceLastTurnText.alignment = TextAlignmentOptions.Center;
+                raceLastTurnText.color = new Color(1f, 0.82f, 0.28f, 1f);
+                raceLastTurnText.outlineWidth = 0.22f;
+                raceLastTurnText.outlineColor = new Color32(0, 0, 0, 220);
+                raceLastTurnText.raycastTarget = false;
+                raceLastTurnText.text = string.Empty;
+                go.SetActive(false);
+            }
+
+            if (raceManaBonusText == null)
+            {
+                var go = new GameObject("RaceManaBonusText", typeof(RectTransform));
+                var rt = go.GetComponent<RectTransform>();
+                if (timerText != null)
+                {
+                    rt.SetParent(timerText.transform.parent != null ? timerText.transform.parent : transform, false);
+                    var tr = timerText.rectTransform;
+                    rt.anchorMin = tr.anchorMin;
+                    rt.anchorMax = tr.anchorMax;
+                    rt.pivot = tr.pivot;
+                    rt.sizeDelta = new Vector2(Mathf.Max(160f, tr.rect.width), 36f);
+                    rt.anchoredPosition = tr.anchoredPosition + new Vector2(0f, 42f);
+                }
+                else
+                {
+                    rt.SetParent(transform, false);
+                    rt.anchorMin = new Vector2(0.52f, 0.55f);
+                    rt.anchorMax = new Vector2(0.78f, 0.95f);
+                    rt.offsetMin = Vector2.zero;
+                    rt.offsetMax = Vector2.zero;
+                }
+
+                raceManaBonusText = go.AddComponent<TextMeshProUGUI>();
+                raceManaBonusText.font = TMP_Settings.defaultFontAsset;
+                raceManaBonusText.fontSize = 20;
+                raceManaBonusText.fontStyle = FontStyles.Bold;
+                raceManaBonusText.alignment = TextAlignmentOptions.Center;
+                raceManaBonusText.color = new Color(0.45f, 0.9f, 1f, 1f);
+                raceManaBonusText.outlineWidth = 0.18f;
+                raceManaBonusText.outlineColor = new Color32(0, 0, 0, 210);
+                raceManaBonusText.raycastTarget = false;
+                raceManaBonusText.text = string.Empty;
+                go.SetActive(false);
+            }
+        }
+
+        public void SetRaceLastTurnBanner(bool show, string text)
+        {
+            EnsureRaceBanners();
+            if (raceLastTurnText == null) return;
+            if (!show || string.IsNullOrWhiteSpace(text))
+            {
+                raceLastTurnText.text = string.Empty;
+                raceLastTurnText.gameObject.SetActive(false);
+                return;
+            }
+            raceLastTurnText.text = text;
+            raceLastTurnText.gameObject.SetActive(true);
+            raceLastTurnText.transform.SetAsLastSibling();
+        }
+
+        public void SetRaceManaBonusBanner(bool show, string text)
+        {
+            EnsureRaceBanners();
+            if (raceManaBonusText == null) return;
+            if (!show || string.IsNullOrWhiteSpace(text))
+            {
+                raceManaBonusText.text = string.Empty;
+                raceManaBonusText.gameObject.SetActive(false);
+                return;
+            }
+            raceManaBonusText.text = text;
+            raceManaBonusText.gameObject.SetActive(true);
         }
 
         private void EnsureAffixUi()

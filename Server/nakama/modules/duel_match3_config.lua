@@ -90,6 +90,11 @@ local CFG = {  SIZE = 6,
   SERVER_AURA_STORAGE_USER_ID = "0777075f-a8ec-4912-a5d5-bd9729d6a917",
   --- Кэш чтения ауры (секунды); снижает нагрузку на storage.
   SERVER_AURA_CACHE_TTL_SECONDS = 30,
+  --- Цели состязаний (Спуск и др.): Storage, правка без рестарта. См. data/contest_goals.example.json.
+  CONTEST_GOALS_COLLECTION = "duel_match3_contest_goals",
+  CONTEST_GOALS_KEY = "config",
+  CONTEST_GOALS_STORAGE_USER_ID = "0777075f-a8ec-4912-a5d5-bd9729d6a917",
+  CONTEST_GOALS_CACHE_TTL_SEC = 30,
   BOTS_COLLECTION = "duel_match3_bot_defs",
   BOTS_KEY = "catalog",
   --- Каталоги ботов по сложности шахты: перекрывают id из BOTS_KEY.
@@ -166,12 +171,23 @@ local CFG = {  SIZE = 6,
   PVP_WIN_XP = 50,
   PVP_WIN_GOLD = 75,
   --- PvP «Спуск» (race): гонка по мане, без урона по HP.
-  RACE_GOAL_MANA = 300,
-  RACE_MAX_MANA = 350,
+  --- Цель по умолчанию, если Storage пуст; актуальная цель — CONTEST_GOALS (race.goal_mana).
+  RACE_GOAL_MANA = 200,
+  --- Потолок маны = goal * RACE_MAX_MANA_MULT (динамический).
+  RACE_MAX_MANA_MULT = 1.1,
   RACE_SKULL_MANA_DRAIN = 2,
-  RACE_PETARD_MANA_DRAIN = 40,
+  --- Петарда в race: списание маны = накопленные анхи (кап ниже), не фикс.
+  RACE_PETARD_BANK_CAP = 50,
+  --- Каждые N ходов игрока: +1 к мане с каждого мана-камня.
+  RACE_MANA_BONUS_EVERY_ACTIONS = 5,
+  --- Fallback награды/входа, если Storage duel_match3_contest_goals пуст.
   RACE_WIN_XP = 200,
   RACE_WIN_MATTER = 10,
+  RACE_ENTRY_MATTER = 2,
+  --- Бот в «Спуске»: петарда при банке ≥ этого или при банке >15 и соперник близко к цели.
+  RACE_BOT_PETARD_BANK_MIN = 30,
+  RACE_BOT_PETARD_BANK_PRESSURE = 15,
+  RACE_BOT_PETARD_OPP_TO_GOAL = 50,
 }
 
 function CFG.clamp_int(v, lo, hi)

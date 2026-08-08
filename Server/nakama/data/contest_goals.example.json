@@ -1,0 +1,12 @@
+{
+  "race": {
+    "goal_mana": 200,
+    "entry": [
+      { "resource": "matter", "amount": 2 }
+    ],
+    "rewards": [
+      { "resource": "xp", "amount": 200 },
+      { "resource": "matter", "amount": 10 }
+    ]
+  }
+}

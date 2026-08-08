@@ -91,7 +91,8 @@ namespace Project.Match3
             int petardCost,
             int shieldCost,
             int furyCost,
-            bool disableShieldAndFury = false)
+            bool disableShieldAndFury = false,
+            int racePetardBank = -1)
         {
             BindButtonListeners();
 
@@ -124,6 +125,7 @@ namespace Project.Match3
             SetCostLabel(squareButton, squareCost);
             SetCostLabel(shieldButton, shieldCost);
             SetCostLabel(furyButton, furyCost);
+            SetRacePetardBankLabel(racePetardBank);
 
             bool petardDimmed = !active || petardCooldown || !petardHasMana;
             bool crossDimmed = !active || crossCooldown || !crossHasMana;
@@ -148,6 +150,65 @@ namespace Project.Match3
             ApplyCooldownOverlayRow(furyButton, !disableShieldAndFury && furyCooldown, stats.furyCooldown);
 
             ApplyAdaptiveButtonLayout();
+        }
+
+        /// <summary>«Спуск»: число на петарде = сколько маны спишет у соперника (накопленные анхи).</summary>
+        private void SetRacePetardBankLabel(int bank)
+        {
+            if (petardButton == null) return;
+            var tr = petardButton.transform.Find("RacePetardBank");
+            TMP_Text tmp = null;
+            RectTransform rt = null;
+            if (tr != null)
+            {
+                tmp = tr.GetComponent<TMP_Text>();
+                rt = tr as RectTransform;
+            }
+
+            if (bank < 0)
+            {
+                if (tr != null) tr.gameObject.SetActive(false);
+                if (petardCooldownText != null) petardCooldownText.gameObject.SetActive(false);
+                return;
+            }
+
+            if (tmp == null && petardCooldownText != null)
+            {
+                tmp = petardCooldownText;
+                tmp.gameObject.name = "RacePetardBank";
+                rt = tmp.rectTransform;
+            }
+
+            if (tmp == null)
+            {
+                var go = new GameObject("RacePetardBank", typeof(RectTransform));
+                go.transform.SetParent(petardButton.transform, false);
+                rt = go.GetComponent<RectTransform>();
+                tmp = go.AddComponent<TextMeshProUGUI>();
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.raycastTarget = false;
+            }
+
+            if (rt == null)
+                rt = tmp.rectTransform;
+
+            // top-stretch, height 50, Pos Y 50
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.sizeDelta = new Vector2(0f, 50f);
+            rt.anchoredPosition = new Vector2(0f, 50f);
+
+            tmp.gameObject.SetActive(true);
+            tmp.text = Mathf.Max(0, bank).ToString();
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 18f;
+            tmp.fontSizeMax = 72f;
+            tmp.color = new Color(0.35f, 0.85f, 1f, 1f);
+            tmp.outlineWidth = 0.2f;
+            tmp.outlineColor = new Color32(0, 0, 0, 220);
         }
 
         public void ShowHint(bool show)
