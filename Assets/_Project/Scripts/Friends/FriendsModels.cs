@@ -82,4 +82,58 @@ namespace Project.Friends
         public string user_id;
         public string username;
     }
+
+    public sealed class FriendsRaceInviteResult
+    {
+        public bool Ok;
+        public string Err;
+        public string InviteId;
+        public string TargetUsername;
+    }
+
+    public sealed class FriendsRaceRespondResult
+    {
+        public bool Ok;
+        public string Err;
+        public string Status;
+        public string MatchId;
+        public int PrepSeconds;
+        public string OpponentUserId;
+        public string OpponentUsername;
+    }
+
+    [Serializable]
+    public sealed class FriendsRaceInviteRpcResponse
+    {
+        public bool ok;
+        public string err;
+        public string invite_id;
+        public string target_user_id;
+        public string target_username;
+        public long expires_at;
+        public int required;
+        public string resource;
+    }
+
+    [Serializable]
+    public sealed class FriendsRaceRespondRpcResponse
+    {
+        public bool ok;
+        public string err;
+        public string status;
+        public string match_id;
+        public int prep_seconds;
+        public string opponent_user_id;
+        public string opponent_username;
+        public string invite_id;
+    }
+
+    [Serializable]
+    public sealed class FriendsRaceClearRpcResponse
+    {
+        public bool ok;
+        public string err;
+        public int cleared;
+        public string reason;
+    }
 }

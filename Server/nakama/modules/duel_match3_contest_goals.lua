@@ -145,7 +145,7 @@ return function(deps)
 
   function M.race_max_mana(goal)
     local g = math.max(1, math.floor(tonumber(goal) or M.race_goal_mana()))
-    local mult = tonumber(CFG.RACE_MAX_MANA_MULT) or 1.1
+    local mult = tonumber(CFG.RACE_MAX_MANA_MULT) or 1.2
     return math.max(g, math.floor(g * mult + 1e-9))
   end
 

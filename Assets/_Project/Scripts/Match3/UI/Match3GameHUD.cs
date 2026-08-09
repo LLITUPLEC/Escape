@@ -18,6 +18,8 @@ namespace Project.Match3
         [SerializeField] public TMP_Text raceLastTurnText;
         [Tooltip("«Спуск»: бонус маны чуть выше секундомера")]
         [SerializeField] public TMP_Text raceManaBonusText;
+        [Tooltip("«Спуск»: постоянная подпись цели маны")]
+        [SerializeField] public TMP_Text raceGoalText;
 
         [SerializeField] public Button affixButton;
         [SerializeField] public Image affixButtonIconImage;
@@ -58,6 +60,7 @@ namespace Project.Match3
             extraTurnText ??= transform.Find("ExtraTurnText")?.GetComponent<TMP_Text>();
             raceLastTurnText ??= transform.Find("RaceLastTurnText")?.GetComponent<TMP_Text>();
             raceManaBonusText ??= transform.Find("RaceManaBonusText")?.GetComponent<TMP_Text>();
+            raceGoalText ??= transform.Find("RaceGoalText")?.GetComponent<TMP_Text>();
 
             affixButton ??= transform.Find("AffixButton")?.GetComponent<Button>();
             affixButtonIconImage ??= transform.Find("AffixButton/Icon")?.GetComponent<Image>();
@@ -156,6 +159,139 @@ namespace Project.Match3
                 raceManaBonusText.fontSizeMax = 72f;
                 raceManaBonusText.alignment = TextAlignmentOptions.Center;
             }
+
+            if (raceGoalText == null)
+                raceGoalText = FindOrCreateRaceGoalText();
+
+            ApplyRaceGoalTextLayout(raceGoalText);
+        }
+
+        public void SetRaceGoalBanner(bool show, string text)
+        {
+            EnsureRaceBanners();
+            if (raceGoalText == null) return;
+            ApplyRaceGoalTextLayout(raceGoalText);
+            if (!show || string.IsNullOrWhiteSpace(text))
+            {
+                raceGoalText.text = string.Empty;
+                raceGoalText.gameObject.SetActive(false);
+                return;
+            }
+            raceGoalText.text = text;
+            raceGoalText.gameObject.SetActive(true);
+        }
+
+        private TMP_Text FindOrCreateRaceGoalText()
+        {
+            var canvasTr = ResolveMatchCanvasTransform();
+            if (canvasTr == null) return null;
+
+            // Уже на нужном Canvas.
+            var existing = canvasTr.Find("RaceGoalText");
+            // Старый баг: мог оказаться в корне сцены или под BoardCol.
+            if (existing == null && transform.parent != null)
+                existing = transform.parent.Find("RaceGoalText");
+            if (existing == null)
+            {
+                var scene = gameObject.scene;
+                if (scene.IsValid())
+                {
+                    foreach (var root in scene.GetRootGameObjects())
+                    {
+                        if (root != null && root.name == "RaceGoalText")
+                        {
+                            existing = root.transform;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (existing == null)
+            {
+                foreach (var t in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    if (t != null && t.name == "RaceGoalText" && t.GetComponent<TMP_Text>() != null)
+                    {
+                        existing = t;
+                        break;
+                    }
+                }
+            }
+
+            TMP_Text label = existing != null ? existing.GetComponent<TMP_Text>() : null;
+            if (label == null)
+            {
+                var go = new GameObject("RaceGoalText", typeof(RectTransform));
+                go.transform.SetParent(canvasTr, false);
+                label = go.AddComponent<TextMeshProUGUI>();
+                label.font = TMP_Settings.defaultFontAsset;
+                label.fontSize = 40;
+                label.fontStyle = FontStyles.Bold;
+                label.alignment = TextAlignmentOptions.Center;
+                label.color = new Color(0.92f, 0.95f, 1f, 1f);
+                label.outlineWidth = 0.18f;
+                label.outlineColor = new Color32(0, 0, 0, 210);
+                label.raycastTarget = false;
+                label.text = string.Empty;
+                go.SetActive(false);
+            }
+
+            return label;
+        }
+
+        private Transform ResolveMatchCanvasTransform()
+        {
+            // Нужен Canvas под DuelMatch3Manager (с Bg), не Overlay-canvas инвайтов и т.п.
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null && canvas.transform.Find("Bg") != null)
+                return canvas.transform;
+
+            var t = transform;
+            while (t != null)
+            {
+                var c = t.GetComponent<Canvas>();
+                if (c != null && t.Find("Bg") != null)
+                    return t;
+                t = t.parent;
+            }
+
+            // Fallback: любой Canvas с Bg в сцене матча.
+            foreach (var c in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (c != null && c.transform.Find("Bg") != null)
+                    return c.transform;
+            }
+
+            return canvas != null ? canvas.transform : null;
+        }
+
+        /// <summary>
+        /// DuelMatch3Manager/Canvas → сразу под Bg (второй child); top-stretch, Pos Y = -50.
+        /// </summary>
+        private void ApplyRaceGoalTextLayout(TMP_Text label)
+        {
+            if (label == null) return;
+            var rt = label.rectTransform;
+            var canvasTr = ResolveMatchCanvasTransform();
+            if (canvasTr == null) return;
+
+            if (rt.parent != canvasTr)
+                rt.SetParent(canvasTr, false);
+
+            var bg = canvasTr.Find("Bg");
+            if (bg != null)
+                rt.SetSiblingIndex(bg.GetSiblingIndex() + 1);
+            else
+                rt.SetSiblingIndex(Mathf.Min(1, canvasTr.childCount - 1));
+
+            // top-stretch, Pos Y = -70
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -70f);
+            rt.sizeDelta = new Vector2(0f, 48f);
+            label.fontSize = 40;
+            label.enableAutoSizing = false;
         }
 
         private static void ApplyRaceManaBonusLayout(RectTransform rt)

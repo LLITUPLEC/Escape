@@ -166,6 +166,21 @@ return function(deps)
     }
   end
 
+  local function fill_game_over_reward_fields(game_over_payload, reward)
+    if type(game_over_payload) ~= "table" or type(reward) ~= "table" then return end
+    game_over_payload.rewardXp = reward.reward_xp or 0
+    game_over_payload.rewardGold = reward.reward_gold or 0
+    game_over_payload.rewardOre = reward.reward_ore or 0
+    game_over_payload.rewardMatter = reward.reward_matter or 0
+    game_over_payload.rewardIngots = reward.reward_ingots or 0
+    game_over_payload.rewardTesseract = reward.reward_tesseract or 0
+    game_over_payload.rewardKeyId = reward.reward_key_id or ""
+    game_over_payload.rewardKeyAmount = reward.reward_key_amount or 0
+    game_over_payload.rewardBlueprint = reward.reward_blueprint or ""
+    game_over_payload.rewardRecipeItemId = reward.reward_recipe_item_id or ""
+    game_over_payload.newLevel = reward.level or 1
+  end
+
   function P.apply_game_over_rewards(state, winner, game_over_payload)
     if state == nil or winner == nil or winner == "" then
       return
@@ -181,17 +196,7 @@ return function(deps)
         opts = resolve_race_reward_opts(state)
       end
       state.last_reward = P.award_victory(winner, opts)
-      game_over_payload.rewardXp = state.last_reward.reward_xp or 0
-      game_over_payload.rewardGold = state.last_reward.reward_gold or 0
-      game_over_payload.rewardOre = state.last_reward.reward_ore or 0
-      game_over_payload.rewardMatter = state.last_reward.reward_matter or 0
-      game_over_payload.rewardIngots = state.last_reward.reward_ingots or 0
-      game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
-      game_over_payload.rewardKeyId = state.last_reward.reward_key_id or ""
-      game_over_payload.rewardKeyAmount = state.last_reward.reward_key_amount or 0
-      game_over_payload.rewardBlueprint = state.last_reward.reward_blueprint or ""
-      game_over_payload.rewardRecipeItemId = state.last_reward.reward_recipe_item_id or ""
-      game_over_payload.newLevel = state.last_reward.level or 1
+      fill_game_over_reward_fields(game_over_payload, state.last_reward)
     end
     if type(award_pve_defeat) == "function" then
       -- В race vs bot проигравший-бот не получает defeat XP.
@@ -202,6 +207,86 @@ return function(deps)
         end
       end
     end
+  end
+
+  local function resolve_race_draw_opts(state)
+    local flat = {
+      xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200)),
+      gold = 0,
+      ore = 0,
+      matter = 0,
+      ingots = 0,
+      tesseract = 0,
+      key_id = "",
+      key_amount = 0,
+      blueprint = "",
+      recipe_item_id = "",
+    }
+    local lines = nil
+    if state ~= nil and type(state.race_entry_costs) == "table" then
+      lines = state.race_entry_costs
+    elseif type(ContestGoals) == "table" and type(ContestGoals.race_entry_costs) == "function" then
+      local ok, got = pcall(ContestGoals.race_entry_costs)
+      if ok then lines = got end
+    end
+    if type(lines) == "table" then
+      for _, row in ipairs(lines) do
+        if type(row) == "table" then
+          local res = string.lower(tostring(row.resource or ""))
+          local amt = math.max(0, math.floor(tonumber(row.amount) or 0))
+          if amt > 0 then
+            if res == "xp" then
+              flat.xp = flat.xp + amt
+            elseif res == "gold" then
+              flat.gold = flat.gold + amt
+            elseif res == "ore" then
+              flat.ore = flat.ore + amt
+            elseif res == "matter" then
+              flat.matter = flat.matter + amt
+            elseif res == "ingots" then
+              flat.ingots = flat.ingots + amt
+            elseif res == "tesseract" or res == "tesseracts" then
+              flat.tesseract = flat.tesseract + amt
+            end
+          end
+        end
+      end
+    end
+    if flat.matter <= 0 and flat.gold <= 0 and flat.ore <= 0 and flat.ingots <= 0 then
+      flat.matter = math.max(0, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2))
+    end
+    return flat
+  end
+
+  --- Ничья в «Спуске»: обоим людям — возврат entry + RACE_DRAW_XP.
+  function P.apply_race_draw_rewards(state, game_over_payload)
+    if state == nil or state.pvp_race ~= true then
+      return
+    end
+    local opts = resolve_race_draw_opts(state)
+    local last = nil
+    for _, uid in ipairs(state.players_sorted or {}) do
+      if P.is_human_duelist_uid(state, uid) then
+        last = P.award_victory(uid, opts)
+      end
+    end
+    if last == nil then
+      last = {
+        reward_xp = opts.xp,
+        reward_gold = opts.gold,
+        reward_ore = opts.ore,
+        reward_matter = opts.matter,
+        reward_ingots = opts.ingots,
+        reward_tesseract = opts.tesseract,
+        reward_key_id = "",
+        reward_key_amount = 0,
+        reward_blueprint = "",
+        reward_recipe_item_id = "",
+        level = 1,
+      }
+    end
+    state.last_reward = last
+    fill_game_over_reward_fields(game_over_payload, last)
   end
 
   return P

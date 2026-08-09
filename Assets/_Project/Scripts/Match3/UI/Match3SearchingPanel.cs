@@ -2,6 +2,9 @@ using System;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Project.Match3
 {
@@ -15,6 +18,8 @@ namespace Project.Match3
             SciFi = 2,
             Dark = 3
         }
+
+        private const string DefaultCancelSpritePath = "Assets/_Project/img/match3/btmc_exit.png";
 
         [Header("Preset")]
         [SerializeField] private SearchOverlayPreset visualPreset = SearchOverlayPreset.SciFi;
@@ -37,14 +42,20 @@ namespace Project.Match3
         [SerializeField] private Vector2 spinnerSize = new(86f, 86f);
         [SerializeField] private Vector2 statusAnchorMin = new(0.08f, 0.62f);
         [SerializeField] private Vector2 statusAnchorMax = new(0.92f, 0.86f);
-        [SerializeField] private Vector2 cancelAnchorMin = new(0.2f, 0.12f);
-        [SerializeField] private Vector2 cancelAnchorMax = new(0.8f, 0.32f);
+
+        [Header("Cancel Button (bottom-stretch)")]
+        [SerializeField] private float cancelLeft = 100f;
+        [SerializeField] private float cancelRight = 100f;
+        [SerializeField] private float cancelPosY = 100f;
+        [SerializeField] private float cancelHeight = 200f;
+        [SerializeField] private Sprite cancelButtonSprite;
+        [SerializeField] private string cancelLabelText = "Отмена";
 
         [Header("Colors")]
         [SerializeField] private Color dimBackgroundColor = new(0.01f, 0.01f, 0.02f, 1f);
         [SerializeField] private Color modalWindowColor = new(0.1f, 0.12f, 0.18f, 0.94f);
         [SerializeField] private Color statusTextColor = Color.white;
-        [SerializeField] private Color cancelButtonColor = new(0.45f, 0.12f, 0.12f, 1f);
+        [SerializeField] private Color cancelButtonColor = Color.white;
         [SerializeField] private Color spinnerColor = new(0.85f, 0.9f, 1f, 0.95f);
 
         [Header("Typography")]
@@ -63,6 +74,9 @@ namespace Project.Match3
         private Image _spinnerImage;
         private Vector3 _spinnerBaseScale = Vector3.one;
         private float _animTime;
+#if UNITY_EDITOR
+        private bool _pendingValidateApply;
+#endif
 
         private void Awake()
         {
@@ -101,10 +115,25 @@ namespace Project.Match3
 
         private void OnValidate()
         {
+            // RectTransform/TMP нельзя трогать прямо в OnValidate — SendMessage warning.
+#if UNITY_EDITOR
+            if (_pendingValidateApply) return;
+            _pendingValidateApply = true;
+            EditorApplication.delayCall += ApplyVisualSettingsDeferred;
+#endif
+        }
+
+#if UNITY_EDITOR
+        private void ApplyVisualSettingsDeferred()
+        {
+            _pendingValidateApply = false;
+            if (this == null) return;
             ResolveReferences();
-            ApplyPresetIfNeeded();
+            if (applyPresetOnAwake)
+                ApplyPresetIfNeeded();
             ApplyVisualSettings();
         }
+#endif
 
         private void Update()
         {
@@ -168,14 +197,28 @@ namespace Project.Match3
                 if (tf != null) statusText = tf.GetComponent<TMP_Text>();
             }
 
-            if (cancelButton == null && modalWindowRect != null)
+            if (cancelButton == null)
             {
-                var tf = modalWindowRect.Find("CancelBtn");
+                var tf = transform.Find("CancelBtn");
+                if (tf == null && modalWindowRect != null)
+                    tf = modalWindowRect.Find("CancelBtn");
                 if (tf != null) cancelButton = tf.GetComponent<Button>();
             }
 
             if (cancelButtonImage == null && cancelButton != null)
                 cancelButtonImage = cancelButton.GetComponent<Image>();
+
+            if (cancelButtonSprite == null)
+                cancelButtonSprite = LoadDefaultCancelSprite();
+        }
+
+        private static Sprite LoadDefaultCancelSprite()
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Sprite>(DefaultCancelSpritePath);
+#else
+            return null;
+#endif
         }
 
         private void ApplyVisualSettings()
@@ -214,33 +257,43 @@ namespace Project.Match3
                 statusText.alignment = TextAlignmentOptions.Center;
             }
 
-            if (cancelButton != null)
-            {
-                var rt = cancelButton.transform as RectTransform;
-                if (rt != null)
-                {
-                    rt.anchorMin = cancelAnchorMin;
-                    rt.anchorMax = cancelAnchorMax;
-                    rt.offsetMin = Vector2.zero;
-                    rt.offsetMax = Vector2.zero;
-                }
+            ApplyCancelButtonLayout();
+        }
 
-                var btnText = cancelButton.GetComponentInChildren<TMP_Text>(true);
-                if (btnText != null)
-                {
-                    btnText.fontSize = Mathf.Max(10, cancelFontSize);
-                    btnText.alignment = TextAlignmentOptions.Center;
-                }
+        private void ApplyCancelButtonLayout()
+        {
+            if (cancelButton == null) return;
+
+            var rt = cancelButton.transform as RectTransform;
+            if (rt != null)
+            {
+                // Bottom-stretch: Left / Right / Pos Y / Height (как в инспекторе)
+                rt.anchorMin = new Vector2(0f, 0f);
+                rt.anchorMax = new Vector2(1f, 0f);
+                rt.pivot = new Vector2(0.5f, 0f);
+                rt.offsetMin = new Vector2(cancelLeft, cancelPosY);
+                rt.offsetMax = new Vector2(-cancelRight, cancelPosY + cancelHeight);
+            }
+
+            var btnText = cancelButton.GetComponentInChildren<TMP_Text>(true);
+            if (btnText != null)
+            {
+                btnText.gameObject.SetActive(true);
+                btnText.text = string.IsNullOrEmpty(cancelLabelText) ? "Отмена" : cancelLabelText;
+                btnText.fontSize = Mathf.Max(10, cancelFontSize);
+                btnText.alignment = TextAlignmentOptions.Center;
             }
 
             if (cancelButtonImage != null)
-                cancelButtonImage.color = cancelButtonColor;
-
-            if (spinnerRect != null)
             {
-                var img = spinnerRect.GetComponent<Image>();
-                if (img != null)
-                    img.color = spinnerColor;
+                cancelButtonImage.color = cancelButtonColor;
+                if (cancelButtonSprite != null)
+                {
+                    cancelButtonImage.sprite = cancelButtonSprite;
+                    // Sliced: у btmc_exit задан spriteBorder.
+                    cancelButtonImage.type = Image.Type.Sliced;
+                    cancelButtonImage.preserveAspect = false;
+                }
             }
         }
 
@@ -252,7 +305,6 @@ namespace Project.Match3
                     dimBackgroundColor = new Color(0f, 0f, 0f, 0.94f);
                     modalWindowColor = new Color(0.12f, 0.12f, 0.12f, 0.95f);
                     statusTextColor = Color.white;
-                    cancelButtonColor = new Color(0.32f, 0.14f, 0.14f, 1f);
                     spinnerColor = new Color(0.92f, 0.92f, 0.92f, 1f);
                     statusFontSize = 40;
                     cancelFontSize = 28;
@@ -270,7 +322,6 @@ namespace Project.Match3
                     dimBackgroundColor = new Color(0.01f, 0.01f, 0.02f, 1f);
                     modalWindowColor = new Color(0.1f, 0.12f, 0.18f, 0.94f);
                     statusTextColor = new Color(0.95f, 0.97f, 1f, 1f);
-                    cancelButtonColor = new Color(0.45f, 0.12f, 0.12f, 1f);
                     spinnerColor = new Color(0.82f, 0.9f, 1f, 0.95f);
                     statusFontSize = 42;
                     cancelFontSize = 30;
@@ -288,7 +339,6 @@ namespace Project.Match3
                     dimBackgroundColor = new Color(0f, 0f, 0f, 1f);
                     modalWindowColor = new Color(0.06f, 0.06f, 0.08f, 0.96f);
                     statusTextColor = new Color(0.92f, 0.92f, 0.94f, 1f);
-                    cancelButtonColor = new Color(0.28f, 0.1f, 0.1f, 1f);
                     spinnerColor = new Color(0.85f, 0.85f, 0.88f, 0.95f);
                     statusFontSize = 40;
                     cancelFontSize = 28;
@@ -302,6 +352,9 @@ namespace Project.Match3
                     spinnerSize = new Vector2(80f, 80f);
                     break;
             }
+
+            // CancelBtn layout/color/sprite — фиксированные, пресеты их не трогают.
+            cancelButtonColor = Color.white;
         }
     }
 }

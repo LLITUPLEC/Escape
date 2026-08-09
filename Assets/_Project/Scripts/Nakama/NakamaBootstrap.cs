@@ -72,6 +72,8 @@ namespace Project.Nakama
         private const int PlayerUsernameMaxLength = 17;
         public const string SessionEpochLocalPrefKey = "nakama.session_epoch.local";
         private const long NotificationCodeSessionReplaced = 10001;
+        private const long NotificationCodeFriendsRaceInvite = 10020;
+        private const long NotificationCodeFriendsRaceUpdate = 10021;
 
         /// <summary>
         /// Nakama C# client авто-рефрешит сессию, если она истекает примерно в ближайшие 5 минут.
@@ -123,6 +125,7 @@ namespace Project.Nakama
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Project.Friends.FriendsRaceInviteHost.Ensure();
 
             Application.runInBackground = true;
             QualitySettings.vSyncCount = 0;
@@ -593,7 +596,17 @@ namespace Project.Nakama
 
         private void OnSocketReceivedNotification(IApiNotification notification)
         {
-            if (notification == null || notification.Code != NotificationCodeSessionReplaced)
+            if (notification == null) return;
+
+            if (notification.Code == NotificationCodeFriendsRaceInvite
+                || notification.Code == NotificationCodeFriendsRaceUpdate)
+            {
+                Project.Friends.FriendsRaceInviteHost.Ensure()
+                    .HandleNotification(notification.Code, notification.Content);
+                return;
+            }
+
+            if (notification.Code != NotificationCodeSessionReplaced)
                 return;
             var epoch = TryParseEpochFromNotificationContent(notification.Content);
             if (epoch < 0) return;

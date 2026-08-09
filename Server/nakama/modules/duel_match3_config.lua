@@ -174,15 +174,18 @@ local CFG = {  SIZE = 6,
   --- Цель по умолчанию, если Storage пуст; актуальная цель — CONTEST_GOALS (race.goal_mana).
   RACE_GOAL_MANA = 200,
   --- Потолок маны = goal * RACE_MAX_MANA_MULT (динамический).
-  RACE_MAX_MANA_MULT = 1.1,
+  RACE_MAX_MANA_MULT = 1.2,
   RACE_SKULL_MANA_DRAIN = 2,
-  --- Петарда в race: списание маны = накопленные анхи (кап ниже), не фикс.
+  --- Петарда в race: за 1 уничтоженный анх в банк идёт столько зарядов (списание маны = банк, кап ниже).
+  RACE_ANKH_PETARD_BANK = 2,
   RACE_PETARD_BANK_CAP = 50,
   --- Каждые N ходов игрока: +1 к мане с каждого мана-камня.
   RACE_MANA_BONUS_EVERY_ACTIONS = 5,
   --- Fallback награды/входа, если Storage duel_match3_contest_goals пуст.
   RACE_WIN_XP = 200,
   RACE_WIN_MATTER = 10,
+  --- Ничья в «Спуске»: опыт + полный возврат entry (matter и др.).
+  RACE_DRAW_XP = 200,
   RACE_ENTRY_MATTER = 2,
   --- Бот в «Спуске»: петарда при банке ≥ этого или при банке >15 и соперник близко к цели.
   RACE_BOT_PETARD_BANK_MIN = 30,

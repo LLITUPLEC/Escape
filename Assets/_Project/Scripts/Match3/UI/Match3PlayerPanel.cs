@@ -52,6 +52,10 @@ namespace Project.Match3
         private bool _visualStyleApplied;
         private Match3AvatarFuryFx _furyFx;
         private bool _furyVisualActive;
+        private bool _raceHudMode;
+        private int _raceGoalMana;
+        private RectTransform _raceGoalMarker;
+        private Transform _raceTrack;
 
         private void Start()
         {
@@ -192,8 +196,20 @@ namespace Project.Match3
             ApplyBarFill(hpFill, maxHp > 0 ? Mathf.Clamp01((float)hp / maxHp) : 0f);
             ApplyBarFill(manaFill, maxMana > 0 ? Mathf.Clamp01((float)mana / maxMana) : 0f);
 
-            if (hpText   != null) hpText.text   = $"{hp}/{maxHp}";
-            if (manaText != null) manaText.text  = $"{mana}/{maxMana}";
+            if (hpText != null) hpText.text = $"{hp}/{maxHp}";
+            // Потолок полоски (maxMana, ~goal×1.2). Цель — отдельно: RaceGoalText + RaceGoalMarker.
+            if (manaText != null) manaText.text = $"{mana}/{maxMana}";
+
+            if (_raceHudMode)
+                RefreshRaceGoalMarker(maxMana);
+        }
+
+        /// <summary>Цель маны для режима «Спуск» (засечка на баре + текст mana/goal).</summary>
+        public void SetRaceGoalMana(int goalMana)
+        {
+            _raceGoalMana = Mathf.Max(0, goalMana);
+            if (_raceHudMode)
+                RefreshRaceGoalMarker(-1);
         }
 
         public void UpdateAvatarLevel(int level)
@@ -285,6 +301,7 @@ namespace Project.Match3
         public void SetRaceHudMode(bool enabled)
         {
             ResolveReferences();
+            _raceHudMode = enabled;
 
             var hpTrack = FindNamedTransform("HpBarTrack");
             var hpValue = FindNamedTransform("HpValue") ?? FindNamedTransform("HpVal");
@@ -294,6 +311,7 @@ namespace Project.Match3
             var mpLabel = FindNamedTransform("MpLabel");
             var raceTrack = FindNamedTransform("MpBarTrack_Race");
             var raceValue = FindNamedTransform("MpValue_Race");
+            _raceTrack = raceTrack;
 
             SetActiveSafe(hpTrack, !enabled);
             SetActiveSafe(hpValue, !enabled);
@@ -330,9 +348,73 @@ namespace Project.Match3
                 if (combatStatsValue != null) combatStatsValue.gameObject.SetActive(false);
                 if (buffStateText != null) buffStateText.gameObject.SetActive(false);
 
+                // Текст внутри полоски (child трека), поверх заливки.
                 SetupBarValueText(manaFill, manaText);
                 ApplyBarCornerCuts(manaFill, RightCornerCutEffect.CutCorner.BottomRight);
+                EnsureRaceGoalMarker();
+                RefreshRaceGoalMarker(-1);
+                // Засечка ниже текста, чтобы цифры оставались читаемыми.
+                if (manaText != null)
+                    manaText.transform.SetAsLastSibling();
             }
+            else if (_raceGoalMarker != null)
+            {
+                _raceGoalMarker.gameObject.SetActive(false);
+            }
+        }
+
+        private static readonly Color RaceGoalMarkerColor = new Color(0x16 / 255f, 1f, 0f, 1f);
+
+        private void EnsureRaceGoalMarker()
+        {
+            if (_raceTrack == null) return;
+            if (_raceGoalMarker != null) return;
+
+            var existing = _raceTrack.Find("RaceGoalMarker");
+            if (existing != null)
+            {
+                _raceGoalMarker = existing as RectTransform;
+                return;
+            }
+
+            var go = new GameObject("RaceGoalMarker", typeof(RectTransform), typeof(Image));
+            _raceGoalMarker = go.GetComponent<RectTransform>();
+            _raceGoalMarker.SetParent(_raceTrack, false);
+            var img = go.GetComponent<Image>();
+            img.color = RaceGoalMarkerColor;
+            img.raycastTarget = false;
+            go.transform.SetAsLastSibling();
+        }
+
+        private void RefreshRaceGoalMarker(int maxManaHint)
+        {
+            if (!_raceHudMode || _raceTrack == null) return;
+            EnsureRaceGoalMarker();
+            if (_raceGoalMarker == null) return;
+
+            if (_raceGoalMana <= 0)
+            {
+                _raceGoalMarker.gameObject.SetActive(false);
+                return;
+            }
+
+            // Right-stretch: Top/Bottom = 0, Pos X = -(20% цели). Пример: цель 250 → X = -50.
+            _raceGoalMarker.anchorMin = new Vector2(1f, 0f);
+            _raceGoalMarker.anchorMax = new Vector2(1f, 1f);
+            _raceGoalMarker.pivot = new Vector2(0.5f, 0.5f);
+            _raceGoalMarker.sizeDelta = new Vector2(5f, 0f);
+            _raceGoalMarker.anchoredPosition = new Vector2(-_raceGoalMana * 0.2f, 0f);
+            var img = _raceGoalMarker.GetComponent<Image>();
+            if (img != null) img.color = RaceGoalMarkerColor;
+            _raceGoalMarker.gameObject.SetActive(true);
+            // Засечка над fill, но под MpValue_Race.
+            var fillTr = manaFill != null ? manaFill.transform : null;
+            if (fillTr != null && fillTr.parent == _raceTrack)
+                _raceGoalMarker.SetSiblingIndex(fillTr.GetSiblingIndex() + 1);
+            else
+                _raceGoalMarker.SetAsFirstSibling();
+            if (manaText != null && manaText.transform.parent == _raceTrack)
+                manaText.transform.SetAsLastSibling();
         }
 
         private Transform FindNamedTransform(string objectName)

@@ -25,6 +25,13 @@ namespace Project.Match3
         private static string _arenaOpponentUserId;
         private static bool _arenaJoinOpponentIsBot;
 
+        /// <summary>Друзья → «Спуск»: join к уже созданному race-матчу (не арена).</summary>
+        private static bool _friendRaceJoinPending;
+        private static string _friendRaceJoinMatchId;
+        private static string _friendRaceOpponentHint;
+        private static string _friendRaceOpponentUserId;
+        private static int _friendRacePrepSeconds;
+
         /// <summary>После автовыхода из боя 1/4–1/2: арена показывает блокер до первого poll с активной сеткой.</summary>
         private static bool _arenaMenuAwaitBracketOverlay;
 
@@ -136,6 +143,54 @@ namespace Project.Match3
             _arenaOpponentDisplayHint = null;
             _arenaOpponentUserId = null;
             _arenaJoinOpponentIsBot = false;
+        }
+
+        /// <summary>Перед загрузкой DuelMatch3 после accept «Предложить Спуск».</summary>
+        public static void ArmFriendRaceJoin(
+            string matchId,
+            string opponentDisplayHint = null,
+            string opponentUserId = null,
+            int prepSeconds = 5)
+        {
+            _friendRaceJoinMatchId = string.IsNullOrWhiteSpace(matchId) ? null : matchId.Trim();
+            _friendRaceJoinPending = !string.IsNullOrEmpty(_friendRaceJoinMatchId);
+            _friendRaceOpponentHint = string.IsNullOrWhiteSpace(opponentDisplayHint) ? null : opponentDisplayHint.Trim();
+            _friendRaceOpponentUserId = string.IsNullOrWhiteSpace(opponentUserId) ? null : opponentUserId.Trim();
+            _friendRacePrepSeconds = prepSeconds < 1 ? 5 : (prepSeconds > 15 ? 15 : prepSeconds);
+            if (_friendRaceJoinPending)
+            {
+                _nextPvpRace = true;
+                _nextPvpPro = false;
+                _nextMode = Match3LaunchMode.Multiplayer;
+                ClearArenaJoinArm();
+            }
+        }
+
+        public static bool TryPeekFriendRaceJoin(
+            out string matchId,
+            out string opponentDisplayHint,
+            out string opponentUserId,
+            out int prepSeconds)
+        {
+            matchId = _friendRaceJoinMatchId;
+            opponentDisplayHint = _friendRaceOpponentHint;
+            opponentUserId = _friendRaceOpponentUserId;
+            prepSeconds = _friendRacePrepSeconds > 0 ? _friendRacePrepSeconds : 5;
+            return _friendRaceJoinPending && !string.IsNullOrEmpty(matchId);
+        }
+
+        public static void ConsumeFriendRaceJoinArm()
+        {
+            _friendRaceJoinPending = false;
+            _friendRaceJoinMatchId = null;
+            _friendRaceOpponentHint = null;
+            _friendRaceOpponentUserId = null;
+            _friendRacePrepSeconds = 0;
+        }
+
+        public static void ClearFriendRaceJoinArm()
+        {
+            ConsumeFriendRaceJoinArm();
         }
 
         public static void RequestArenaMenuAwaitBracketOverlay() => _arenaMenuAwaitBracketOverlay = true;

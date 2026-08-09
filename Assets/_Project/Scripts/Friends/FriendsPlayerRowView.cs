@@ -144,8 +144,9 @@ namespace Project.Friends
                 _removeButton.gameObject.SetActive(true);
             if (_acceptButton != null)
                 _acceptButton.gameObject.SetActive(incoming);
+            // Действия (дуэль / Спуск / турнир) только для взаимных друзей онлайн.
             if (_actionButton != null)
-                _actionButton.gameObject.SetActive(entry.State == FriendRelationState.Mutual);
+                _actionButton.gameObject.SetActive(entry.State == FriendRelationState.Mutual && entry.Online);
         }
 
         public void BindOnline(OnlinePlayerEntry entry)

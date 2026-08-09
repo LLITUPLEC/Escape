@@ -604,13 +604,17 @@ namespace Project.Friends
             _actionPopupTitle.alignment = TextAlignmentOptions.Center;
 
             var duelBtn = MakeToolbarButton(panel.transform, "DuelInvite", "Предложить дуэль", new Color(0.55f, 0.28f, 0.22f, 1f));
+            var raceBtn = MakeToolbarButton(panel.transform, "RaceInvite", "Предложить Спуск", new Color(0.22f, 0.42f, 0.58f, 1f));
             var tourneyBtn = MakeToolbarButton(panel.transform, "TournamentInvite", "В группу турнира", new Color(0.24f, 0.40f, 0.62f, 1f));
             var duelLe = duelBtn.GetComponent<LayoutElement>();
+            var raceLe = raceBtn.GetComponent<LayoutElement>();
             var tourneyLe = tourneyBtn.GetComponent<LayoutElement>();
             if (duelLe != null) { duelLe.preferredHeight = 48f; duelLe.flexibleWidth = 1f; duelLe.preferredWidth = -1f; }
+            if (raceLe != null) { raceLe.preferredHeight = 48f; raceLe.flexibleWidth = 1f; raceLe.preferredWidth = -1f; }
             if (tourneyLe != null) { tourneyLe.preferredHeight = 48f; tourneyLe.flexibleWidth = 1f; tourneyLe.preferredWidth = -1f; }
 
             duelBtn.onClick.AddListener(() => OnPlayerActionChosen("duel"));
+            raceBtn.onClick.AddListener(() => OnPlayerActionChosen("race"));
             tourneyBtn.onClick.AddListener(() => OnPlayerActionChosen("tournament"));
 
             _actionPopupRoot.SetActive(false);
@@ -1128,6 +1132,7 @@ namespace Project.Friends
         private void OnActionFriendClicked(FriendsPlayerRowView row)
         {
             if (row == null) return;
+            // Кнопка скрыта для оффлайна; доп. защита на случай гонки обновления списка.
             _actionTarget = new FriendListEntry
             {
                 UserId = row.UserId,
@@ -1162,12 +1167,53 @@ namespace Project.Friends
 
         private void OnPlayerActionChosen(string kind)
         {
-            var name = string.IsNullOrWhiteSpace(_actionTarget?.Username) ? "игроку" : _actionTarget.Username;
+            var target = _actionTarget;
+            var name = string.IsNullOrWhiteSpace(target?.Username) ? "игроку" : target.Username;
             HideActionPopup();
+            if (kind == "race")
+            {
+                if (target == null || string.IsNullOrWhiteSpace(target.UserId))
+                {
+                    SetFriendsStatus("Игрок не выбран");
+                    return;
+                }
+
+                _ = SendRaceInviteAsync(target.UserId, name);
+                return;
+            }
+
             var message = kind == "tournament"
                 ? $"Приглашение в группу турнира для «{name}» скоро будет доступно"
                 : $"Предложение дуэли для «{name}» скоро будет доступно";
             SetFriendsStatus(message);
+        }
+
+        private async System.Threading.Tasks.Task SendRaceInviteAsync(string userId, string username)
+        {
+            try
+            {
+                SetFriendsStatus($"Отправляем предложение Спуска «{username}»…");
+                var result = await FriendsService.InviteRaceAsync(userId, CancellationToken.None);
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (!result.Ok)
+                    {
+                        SetFriendsStatus(FriendsService.DescribeError(result.Err));
+                        return;
+                    }
+
+                    var shown = string.IsNullOrWhiteSpace(result.TargetUsername) ? username : result.TargetUsername;
+                    SetFriendsStatus($"Предложение Спуска отправлено «{shown}»");
+                });
+            }
+            catch (System.OperationCanceledException)
+            {
+            }
+            catch (Exception e)
+            {
+                await MainThreadDispatcher.RunAsync(() =>
+                    SetFriendsStatus(FriendsService.DescribeError(e.Message)));
+            }
         }
 
         private void EnsurePendingInviteBadge()

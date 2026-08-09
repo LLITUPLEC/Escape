@@ -12,6 +12,9 @@ namespace Project.Friends
     {
         private const string RpcOnlineList = "duel_online_list";
         private const string RpcResolveUsername = "duel_friends_resolve_username";
+        private const string RpcFriendsRaceInvite = "duel_friends_race_invite";
+        private const string RpcFriendsRaceRespond = "duel_friends_race_respond";
+        private const string RpcFriendsRaceClear = "duel_friends_race_clear";
         private const int FriendsPageLimit = 100;
 
         public static async Task<FriendsListResult> ListFriendsAsync(CancellationToken ct)
@@ -374,10 +377,140 @@ namespace Project.Friends
             }
         }
 
+        public static async Task<FriendsRaceInviteResult> InviteRaceAsync(string targetUserId, CancellationToken ct)
+        {
+            var id = (targetUserId ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(id))
+                return new FriendsRaceInviteResult { Ok = false, Err = "empty_target" };
+            if (NakamaBootstrap.Instance == null)
+                return new FriendsRaceInviteResult { Ok = false, Err = "nakama_not_initialized" };
+
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (!IsClientReady())
+                return new FriendsRaceInviteResult { Ok = false, Err = "nakama_not_ready" };
+
+            try
+            {
+                var body = JsonUtility.ToJson(new FriendsRaceInviteRpcRequest
+                {
+                    target_user_id = id,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                });
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                        NakamaBootstrap.Instance.Session, RpcFriendsRaceInvite, body, canceller: ct)
+                    .ConfigureAwait(false);
+                var parsed = JsonUtility.FromJson<FriendsRaceInviteRpcResponse>(rpc?.Payload ?? "{}");
+                if (parsed == null)
+                    return new FriendsRaceInviteResult { Ok = false, Err = "parse_failed" };
+                if (!parsed.ok)
+                    return new FriendsRaceInviteResult { Ok = false, Err = string.IsNullOrWhiteSpace(parsed.err) ? "server_error" : parsed.err };
+                return new FriendsRaceInviteResult
+                {
+                    Ok = true,
+                    InviteId = parsed.invite_id,
+                    TargetUsername = parsed.target_username,
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] InviteRace failed: " + e.Message);
+                return new FriendsRaceInviteResult { Ok = false, Err = e.Message };
+            }
+        }
+
+        public static async Task<FriendsRaceRespondResult> RespondRaceInviteAsync(string inviteId, bool accept, CancellationToken ct)
+        {
+            var id = (inviteId ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(id))
+                return new FriendsRaceRespondResult { Ok = false, Err = "empty_invite" };
+            if (NakamaBootstrap.Instance == null)
+                return new FriendsRaceRespondResult { Ok = false, Err = "nakama_not_initialized" };
+
+            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            if (!IsClientReady())
+                return new FriendsRaceRespondResult { Ok = false, Err = "nakama_not_ready" };
+
+            try
+            {
+                var body = JsonUtility.ToJson(new FriendsRaceRespondRpcRequest
+                {
+                    invite_id = id,
+                    accept = accept,
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                });
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                        NakamaBootstrap.Instance.Session, RpcFriendsRaceRespond, body, canceller: ct)
+                    .ConfigureAwait(false);
+                var parsed = JsonUtility.FromJson<FriendsRaceRespondRpcResponse>(rpc?.Payload ?? "{}");
+                if (parsed == null)
+                    return new FriendsRaceRespondResult { Ok = false, Err = "parse_failed" };
+                if (!parsed.ok)
+                    return new FriendsRaceRespondResult { Ok = false, Err = string.IsNullOrWhiteSpace(parsed.err) ? "server_error" : parsed.err };
+                return new FriendsRaceRespondResult
+                {
+                    Ok = true,
+                    Status = parsed.status,
+                    MatchId = parsed.match_id,
+                    PrepSeconds = parsed.prep_seconds,
+                    OpponentUserId = parsed.opponent_user_id,
+                    OpponentUsername = parsed.opponent_username,
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] RespondRaceInvite failed: " + e.Message);
+                return new FriendsRaceRespondResult { Ok = false, Err = e.Message };
+            }
+        }
+
+        /// <summary>
+        /// Аннулирует активные исходящие/входящие предложения Спуска (вход в другой матч).
+        /// </summary>
+        public static async Task<bool> ClearPendingRaceInvitesAsync(string reason, CancellationToken ct)
+        {
+            if (NakamaBootstrap.Instance == null) return false;
+            try
+            {
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
+                if (!IsClientReady()) return false;
+                var body = JsonUtility.ToJson(new FriendsRaceClearRpcRequest
+                {
+                    reason = string.IsNullOrWhiteSpace(reason) ? "match_enter" : reason.Trim(),
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                });
+                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
+                        NakamaBootstrap.Instance.Session, RpcFriendsRaceClear, body, canceller: ct)
+                    .ConfigureAwait(false);
+                var parsed = JsonUtility.FromJson<FriendsRaceClearRpcResponse>(rpc?.Payload ?? "{}");
+                return parsed != null && parsed.ok;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Friends] ClearPendingRaceInvites failed: " + e.Message);
+                return false;
+            }
+        }
+
         public static string DescribeError(string err)
         {
             if (string.IsNullOrWhiteSpace(err))
                 return "Неизвестная ошибка";
+            if (err.StartsWith("not_enough_", StringComparison.OrdinalIgnoreCase))
+                return "Недостаточно ресурсов для входа в Спуск";
+            if (err.StartsWith("inviter_not_enough_", StringComparison.OrdinalIgnoreCase))
+                return "У друга недостаточно ресурсов для входа";
             return err switch
             {
                 "nakama_not_ready" => "Нет соединения с сервером",
@@ -385,17 +518,48 @@ namespace Project.Friends
                 "unauthorized" => "Требуется авторизация",
                 "empty_username" => "Введите ник игрока",
                 "cannot_add_self" => "Нельзя добавить себя",
+                "cannot_invite_self" => "Нельзя пригласить себя",
                 "empty_target" => "Игрок не выбран",
+                "empty_invite" => "Приглашение не найдено",
                 "empty_payload" => "Пустой ответ сервера",
                 "parse_failed" => "Ошибка ответа сервера",
                 "server_error" => "Ошибка сервера",
                 "user_not_found" => "Игрок не найден",
+                "not_friends" => "Можно предлагать только друзьям",
+                "invite_already_sent" => "Вы уже отправили предложение",
+                "target_busy" => "У игрока уже есть активное предложение",
+                "invite_not_found" => "Предложение устарело",
+                "invite_expired" => "Предложение истекло",
+                "match_create_failed" => "Не удалось создать матч",
+                "cancelled" => "Предложение отменено",
                 _ => err.Contains("not found", StringComparison.OrdinalIgnoreCase)
                     || err.Contains("User not found", StringComparison.OrdinalIgnoreCase)
                     || err.Contains("No valid ID or username", StringComparison.OrdinalIgnoreCase)
                     ? "Игрок не найден"
                     : "Ошибка: " + err,
             };
+        }
+
+        [Serializable]
+        private sealed class FriendsRaceInviteRpcRequest
+        {
+            public string target_user_id;
+            public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class FriendsRaceRespondRpcRequest
+        {
+            public string invite_id;
+            public bool accept;
+            public int session_epoch;
+        }
+
+        [Serializable]
+        private sealed class FriendsRaceClearRpcRequest
+        {
+            public string reason;
+            public int session_epoch;
         }
 
         private static void MergeDecorOutgoingInvites(List<FriendListEntry> collected)

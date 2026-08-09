@@ -10,6 +10,7 @@ using Project.UI;
 using Project.Utils;
 using Project.Character;
 using Project.Achievements;
+using Project.Friends;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -121,6 +122,7 @@ namespace Project.Match3
         private const string RpcMatch3AchievementSync = "duel_match3_achievement_sync";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
         private const string RpcMatch3RaceCreate = "duel_match3_race_create";
+        private const string RpcMatch3RaceCancel = "duel_match3_race_cancel";
         private const int RaceBotFillTimeoutMs = 20_000;
         private const string DefaultPveBotId = "mine_1";
         private const string RewardExpIconPath = "Assets/_Project/img/resources_hud/exp.png";
@@ -142,7 +144,7 @@ namespace Project.Match3
         // ─── Game Constants ───────────────────────────────────────────────────────
         private const int   MaxHp           = 150;
         private const int   MaxMana         = 100;
-        private const int   RaceMaxManaDefault  = 220;
+        private const int   RaceMaxManaDefault  = 240;
         private const int   RaceGoalManaDefault = 200;
         private const float TurnDuration    = 30f;
         private const int   CrossAbilityCost  = 20;
@@ -314,12 +316,18 @@ namespace Project.Match3
 
             EnsureCamera();
             BuildUI();
+            // Любой вход в DuelMatch3 (поиск/PvE/друзья) снимает висящие предложения Спуска.
+            FriendsRaceInviteHost.InvalidatePendingForMatchEntry();
             _ = LoadMyProgressionLevelAsync(_cts.Token);
             EnsureAudioSource();
             TryAutoAssignSfxInEditor();
+            var friendRacePending = !_isSoloBotMode && Match3LaunchContext.TryPeekFriendRaceJoin(
+                out _, out _, out _, out _);
             _searchingPanel?.Show(_isSoloBotMode
                 ? "Подготовка боя с ботом…"
-                : (_pvpRaceQueue ? "Поиск соперника (Спуск)…" : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…")));
+                : (friendRacePending
+                    ? "Телепортируемся в шахту с другом…"
+                    : (_pvpRaceQueue ? "Поиск соперника (Спуск)…" : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…"))));
 
             if (_isSoloBotMode)
             {
@@ -379,6 +387,53 @@ namespace Project.Match3
                                            _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal));
                     if (!string.IsNullOrWhiteSpace(arenaOppHint))
                         _opDisplayName = arenaOppHint;
+                    MainThreadDispatcher.Enqueue(OnMatchFound);
+                }
+                else if (_launchMode == Match3LaunchMode.Multiplayer &&
+                         Match3LaunchContext.TryPeekFriendRaceJoin(
+                             out var raceMatchId, out var raceOppHint, out var raceOppUserId, out var racePrepSeconds))
+                {
+                    _pvpProQueue = false;
+                    _pvpRaceQueue = true;
+                    _isArenaTournamentMatch = false;
+                    _mmTcs?.TrySetCanceled();
+                    await CancelMatchmakerTicketAsync();
+                    if (!string.IsNullOrEmpty(raceOppUserId) && raceOppUserId != _myUserId)
+                        _opUserId = raceOppUserId;
+                    if (!string.IsNullOrWhiteSpace(raceOppHint))
+                        _opDisplayName = raceOppHint;
+                    _opponentIsServerBot = false;
+
+                    // 5 с «телепорта» на SearchingPanel, затем JoinMatch.
+                    await RunFriendRacePrepCountdownAsync(racePrepSeconds, _cts.Token);
+                    if (_cts.IsCancellationRequested || _gameEnded) return;
+
+                    try
+                    {
+                        _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(raceMatchId);
+                    }
+                    catch (Exception joinEx)
+                    {
+                        Match3LaunchContext.ClearFriendRaceJoinArm();
+                        Debug.LogWarning("[Match3] FriendRace JoinMatchAsync: " + joinEx.Message);
+                        MainThreadDispatcher.Enqueue(() =>
+                        {
+                            _searchingPanel?.Show("Не удалось войти в матч.\n" + joinEx.Message);
+                        });
+                        return;
+                    }
+
+                    Match3LaunchContext.ConsumeFriendRaceJoinArm();
+                    if (_match?.Presences != null)
+                        foreach (var p in _match.Presences)
+                            if (p.UserId != _myUserId)
+                            {
+                                _opUserId = p.UserId;
+                                _opDisplayName = ReadPresenceUsername(p);
+                                break;
+                            }
+                    if (!string.IsNullOrWhiteSpace(raceOppHint))
+                        _opDisplayName = raceOppHint;
                     MainThreadDispatcher.Enqueue(OnMatchFound);
                 }
                 else
@@ -692,6 +747,23 @@ namespace Project.Match3
 
             _opponentIsServerBot = !string.IsNullOrEmpty(_opUserId) &&
                                   _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal);
+        }
+
+        private async Task RunFriendRacePrepCountdownAsync(int prepSeconds, CancellationToken ct)
+        {
+            var secs = Mathf.Clamp(prepSeconds, 1, 15);
+            for (var left = secs; left >= 1; left--)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (_gameEnded) return;
+                var n = left;
+                MainThreadDispatcher.Enqueue(() =>
+                    _searchingPanel?.Show($"Телепортируемся в шахту с другом…\n{n}"));
+                await Task.Delay(1000, ct);
+            }
+
+            MainThreadDispatcher.Enqueue(() =>
+                _searchingPanel?.Show("Телепортируемся в шахту с другом…\nВходим…"));
         }
 
         private async Task CreateRaceVsBotAndJoinAsync(CancellationToken ct)
@@ -1466,7 +1538,8 @@ namespace Project.Match3
                     arenaTitle = "Победа в турнире!";
             }
             _gameOverPanel?.Show(won, null, arenaTitle);
-            RefreshGameOverRewardRows(won && !isDraw);
+            // Ничья в Спуске тоже с наградой (refund entry + XP) — не подменять на fake loss XP.
+            RefreshGameOverRewardRows(won || isDraw);
         }
 
         private void ReportAchievementProgressAfterGameOver(bool won)
@@ -1568,6 +1641,7 @@ namespace Project.Match3
                 var payload = JsonUtility.ToJson(new StatsRecordRpcRequest
                 {
                     won = won,
+                    mode = ResolveStatsModeId(),
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
                 });
                 await NakamaBootstrap.Instance.Client.RpcAsync(
@@ -2895,8 +2969,12 @@ namespace Project.Match3
             _myPanel?.SetRaceHudMode(true);
             _opPanel?.SetRaceHudMode(true);
             if (_raceMaxMana <= 0) _raceMaxMana = RaceMaxManaDefault;
+            if (_raceGoalMana <= 0) _raceGoalMana = RaceGoalManaDefault;
             _myStats.maxMana = _raceMaxMana;
             _opStats.maxMana = _raceMaxMana;
+            _myPanel?.SetRaceGoalMana(_raceGoalMana);
+            _opPanel?.SetRaceGoalMana(_raceGoalMana);
+            _hud?.SetRaceGoalBanner(true, $"Цель: {_raceGoalMana} маны");
         }
 
         private void RefreshRaceInfoBanners(string activeUserId)
@@ -2948,6 +3026,12 @@ namespace Project.Match3
         {
             EnsureRaceHudApplied();
             var maxMana = EffectiveMaxMana();
+            if (_pvpRaceQueue && _raceGoalMana > 0)
+            {
+                _myPanel?.SetRaceGoalMana(_raceGoalMana);
+                _opPanel?.SetRaceGoalMana(_raceGoalMana);
+                _hud?.SetRaceGoalBanner(true, $"Цель: {_raceGoalMana} маны");
+            }
             _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, maxMana);
             _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, maxMana);
             RefreshAvatarLevelUI();
@@ -3613,11 +3697,16 @@ namespace Project.Match3
             _isLeavingToMenu = true;
             Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
             var shouldRecordLoss = !_resultRecorded && !_gameEnded && _hasInitialBoardSync && !string.IsNullOrEmpty(_opUserId);
+            // «Спуск»: отмена поиска до старта матча — вернуть prepaid вход.
+            var shouldRefundRaceEntry = _pvpRaceQueue && !_hasInitialBoardSync && !shouldRecordLoss;
             _gameEnded = true;
             try
             {
                 _mmTcs?.TrySetCanceled();
                 await CancelMatchmakerTicketAsync();
+
+                if (shouldRefundRaceEntry)
+                    await RefundRaceEntryAsync();
 
                 if (shouldRecordLoss)
                 {
@@ -3636,7 +3725,41 @@ namespace Project.Match3
             finally
             {
                 Match3LaunchContext.ClearArenaJoinArm();
+                Match3LaunchContext.ClearFriendRaceJoinArm();
                 SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+            }
+        }
+
+        private async Task RefundRaceEntryAsync()
+        {
+            try
+            {
+                var boot = NakamaBootstrap.Instance;
+                if (boot?.Client == null || boot.Session == null) return;
+                await boot.EnsureConnectedAsync(CancellationToken.None);
+                var payload = JsonUtility.ToJson(new SessionEpochRpcPayload
+                {
+                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
+                });
+                var rpc = await boot.Client.RpcAsync(boot.Session, RpcMatch3RaceCancel, payload);
+                var model = JsonUtility.FromJson<PlayerResourcesRpcResponse>(rpc?.Payload ?? "");
+                if (model != null && model.ok)
+                {
+                    PlayerResourcesService.PatchCachedFromProgression(new Progression
+                    {
+                        gold = model.gold,
+                        ore = model.ore,
+                        ingots = model.ingots,
+                        matter = model.matter,
+                        keys = model.keys,
+                        energy = model.energy,
+                        energy_max = model.energy_max,
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Match3] Race entry refund failed: " + ex.Message);
             }
         }
 
@@ -4893,10 +5016,20 @@ namespace Project.Match3
             public int session_epoch;
         }
 
+        private string ResolveStatsModeId()
+        {
+            if (_isSoloBotMode) return "mine";
+            if (_isArenaTournamentMatch) return "arena";
+            if (_pvpRaceQueue) return "race";
+            if (_pvpProQueue) return "pro";
+            return "duel";
+        }
+
         [Serializable]
         private sealed class StatsRecordRpcRequest
         {
             public bool won;
+            public string mode;
             public int session_epoch;
         }
 

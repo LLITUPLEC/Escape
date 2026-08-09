@@ -282,7 +282,7 @@ local function race_max_from_goal(goal)
   end
   local mult = tonumber(CFG and CFG.RACE_MAX_MANA_MULT)
   if type(mult) ~= "number" or mult < 1 then
-    mult = 1.1
+    mult = 1.2
   end
   return math.max(g, math.floor(g * mult + 1e-9))
 end
@@ -325,10 +325,16 @@ local function race_petard_bank_cap()
   return math.max(0, math.floor(tonumber(CFG.RACE_PETARD_BANK_CAP) or 50))
 end
 
+local function race_ankh_petard_mult()
+  return math.max(1, math.floor(tonumber(CFG.RACE_ANKH_PETARD_BANK) or 2))
+end
+
 local function race_add_petard_bank(actor, amount)
   if actor == nil then return end
-  local add = math.max(0, math.floor(tonumber(amount) or 0))
-  if add <= 0 then return end
+  -- amount = число уничтоженных анхов; в банк кладём с множителем RACE_ANKH_PETARD_BANK.
+  local ankhs = math.max(0, math.floor(tonumber(amount) or 0))
+  if ankhs <= 0 then return end
+  local add = ankhs * race_ankh_petard_mult()
   local cap = race_petard_bank_cap()
   local cur = math.max(0, tonumber(actor.race_petard_bank) or 0)
   actor.race_petard_bank = math.min(cap, cur + add)
@@ -1198,7 +1204,9 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
     winnerUserId = winner or "",
     isDraw = is_draw == true,
   }
-  if is_draw ~= true and winner ~= nil and winner ~= "" then
+  if is_draw == true and is_pvp_race(state) then
+    Pvp.apply_race_draw_rewards(state, game_over_payload)
+  elseif is_draw ~= true and winner ~= nil and winner ~= "" then
     Pvp.apply_game_over_rewards(state, winner, game_over_payload)
   else
     game_over_payload.rewardXp = 0
@@ -1217,6 +1225,52 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
   dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
 end
 
+--- Race («Спуск»): завершить матч после last-turn (ход/пропуск/таймаут) — сравнение маны.
+--- Возвращает true, если матч завершён.
+local function finish_race_after_last_turn(dispatcher, state, last_actor, action, tick, anim_steps, sync_action_actor_uid)
+  if not is_pvp_race(state) or state.ended or last_actor == nil then
+    return false
+  end
+  local opponent = other_player_id(state, last_actor)
+  if opponent == nil then return false end
+
+  local goal = race_goal_mana(state)
+  local actor_mana = tonumber(state.stats[last_actor] and state.stats[last_actor].mana) or 0
+  local opp_mana = tonumber(state.stats[opponent] and state.stats[opponent].mana) or 0
+  local action_type = action and tonumber(action.actionType) or 0
+
+  local winner = state.race_threshold_user_id or opponent
+  local is_draw = false
+  if actor_mana >= goal then
+    if actor_mana > opp_mana then
+      winner = last_actor
+    elseif opp_mana > actor_mana then
+      winner = opponent
+    else
+      winner = ""
+      is_draw = true
+    end
+  end
+
+  state.ended = true
+  state.bot_turn_pending = false
+  state.bot_turn_ready_tick = 0
+  broadcast_sync(dispatcher, state, action, false, anim_steps, tick, sync_action_actor_uid)
+  broadcast_pvp_game_over(dispatcher, state, winner, last_actor, opponent, action_type, is_draw)
+  return true
+end
+
+--- Race: пропуск/таймаут во время «последнего хода» → сразу финал матча.
+local function try_finish_race_on_last_turn_forfeit(dispatcher, state, forfeiting_user_id, tick)
+  if not is_pvp_race(state) or state.ended or forfeiting_user_id == nil then
+    return false
+  end
+  if state.race_last_turn_user_id == nil or state.race_last_turn_user_id ~= forfeiting_user_id then
+    return false
+  end
+  return finish_race_after_last_turn(dispatcher, state, forfeiting_user_id, nil, tick, nil, nil)
+end
+
 --- Race («Спуск»): проверка цели по мане + last-turn для первого хода.
 --- Возвращает true, если матч уже завершён или ход принудительно передан на last-turn.
 local function try_finish_race_after_action(dispatcher, state, actor, opponent, action, extra_turn, keep_turn, tick, tick_rate, anim_steps, sync_action_actor_uid)
@@ -1226,13 +1280,14 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
 
   local goal = race_goal_mana(state)
   local actor_mana = tonumber(state.stats[actor] and state.stats[actor].mana) or 0
-  local opp_mana = tonumber(state.stats[opponent] and state.stats[opponent].mana) or 0
   local first = state.race_first_user_id
   local action_type = action and tonumber(action.actionType) or 0
   local turn_segment_done = (keep_turn ~= true) and (extra_turn ~= true)
 
   local function end_race(winner, is_draw)
     state.ended = true
+    state.bot_turn_pending = false
+    state.bot_turn_ready_tick = 0
     broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
     broadcast_pvp_game_over(dispatcher, state, winner, actor, opponent, action_type, is_draw)
     return true
@@ -1245,7 +1300,30 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
     Ach.clear_five_plus_streak(state, actor)
     state.active_user_id = opponent
     tick_cooldowns(state.stats[opponent])
-    state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+    -- Как обычная смена хода: ждём OP 17, затем дедлайн; для PvE сразу планируем ход бота.
+    local need_ack = state.active_user_id ~= nil
+    if need_ack then
+      state.turn_deadline_paused = true
+      state.turn_pause_started_tick = tick
+      state.turn_deadline_tick = tick
+    else
+      state.turn_deadline_paused = false
+      state.turn_deadline_tick = tick + turn_seconds_for_state(state) * tick_rate
+    end
+    if state.mode == "pve" then
+      if state.active_user_id == state.bot_user_id then
+        state.bot_turn_pending = true
+        state.bot_long_think_next = (actor == state.owner_user_id)
+        if state.turn_deadline_paused then
+          state.bot_turn_ready_tick = 0
+        else
+          state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, state.bot_long_think_next == true)
+        end
+      else
+        state.bot_turn_pending = false
+        state.bot_turn_ready_tick = 0
+      end
+    end
     broadcast_sync(dispatcher, state, action, false, anim_steps, tick, sync_action_actor_uid)
     state._action_mana_drain = 0
     return true
@@ -1253,16 +1331,7 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
 
   -- Конец «последнего хода» второго игрока: сравниваем / отдаём победу первому.
   if state.race_last_turn_user_id == actor and turn_segment_done then
-    if actor_mana >= goal then
-      if actor_mana > opp_mana then
-        return end_race(actor, false)
-      elseif opp_mana > actor_mana then
-        return end_race(opponent, false)
-      else
-        return end_race("", true)
-      end
-    end
-    return end_race(state.race_threshold_user_id or opponent, false)
+    return finish_race_after_last_turn(dispatcher, state, actor, action, tick, anim_steps, sync_action_actor_uid)
   end
 
   if actor_mana < goal then
@@ -3133,6 +3202,9 @@ local function read_pve_progress(user_id)
     energy_updated_at = math.floor(tonumber(val.energy_updated_at) or now),
     nickname_changes = math.max(0, math.floor(tonumber(val.nickname_changes) or 0)),
     mine = type(val.mine) == "table" and val.mine or {},
+    -- Prepaid вход в «Спуск»: списан до очереди, возвращается при отмене поиска.
+    race_entry_pending = val.race_entry_pending == true,
+    race_entry_costs = type(val.race_entry_costs) == "table" and val.race_entry_costs or nil,
   }
   progress.mine.current_difficulty = normalize_mine_difficulty(progress.mine.current_difficulty)
   progress.mine.selected_floor = CFG.clamp_int(progress.mine.selected_floor or 1, 1, CFG.PVE_MAX_LEVEL)
@@ -3174,6 +3246,8 @@ local function write_pve_progress(user_id, progress, version)
       energy_updated_at = progress.energy_updated_at,
       nickname_changes = math.max(0, math.floor(tonumber(progress.nickname_changes) or 0)),
       mine = progress.mine,
+      race_entry_pending = progress.race_entry_pending == true,
+      race_entry_costs = type(progress.race_entry_costs) == "table" and progress.race_entry_costs or nil,
       updated_at = os.time(),
     },
     permission_read = 1,
@@ -3511,182 +3585,15 @@ Pvp = build_pvp({
   empty_key_items = empty_key_items,
 })
 
-local function read_match3_stats(user_id)
-  local val, version = Ach.storage_read_match3_summary_val(user_id)
-  local stats = {
-    played = tonumber(val.played) or 0,
-    wins = tonumber(val.wins) or 0,
-    losses = tonumber(val.losses) or 0,
-  }
-  return stats, version
-end
-
-local function stats_inc_arena_tournament_played(user_id, arena_kind)
-  if user_id == nil or user_id == "" then
-    return false
-  end
-  local k = string.lower(tostring(arena_kind or "smith"))
-  if k ~= "smith" and k ~= "ore" and k ~= "gold" then
-    k = "smith"
-  end
-  local max_retries = 5
-  for attempt = 1, max_retries do
-    local val, version = Ach.storage_read_match3_summary_val(user_id)
-    if type(val) ~= "table" then
-      val = {}
-    end
-    if type(val.summary) ~= "table" then
-      val.summary = {}
-    end
-    if type(val.summary.arena_tournaments) ~= "table" then
-      val.summary.arena_tournaments = {}
-    end
-    if type(val.summary.arena_tournaments[k]) ~= "table" then
-      val.summary.arena_tournaments[k] = {}
-    end
-    local bag = val.summary.arena_tournaments[k]
-    bag.played = (tonumber(bag.played) or 0) + 1
-    bag.updated_at = os.time()
-    val.summary.arena_tournaments[k] = bag
-    val.updated_at = os.time()
-
-    local write_obj = {
-      collection = CFG.STATS_COLLECTION,
-      key = CFG.STATS_KEY,
-      user_id = user_id,
-      value = val,
-      permission_read = 1,
-      permission_write = 0,
-    }
-    if version ~= nil and version ~= "" then
-      write_obj.version = version
-    end
-
-    local write_ok, write_err = pcall(function()
-      nk.storage_write({ write_obj })
-    end)
-    if write_ok then
-      return true
-    end
-    local err_text = tostring(write_err)
-    if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-      nk.logger_error("stats_inc_arena_tournament_played: " .. err_text)
-      return false
-    end
-  end
-  return false
-end
-
-local function duel_match3_stats_get(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local stats, _ = read_match3_stats(user_id)
-    local val_full, _fv = Ach.storage_read_match3_summary_val(user_id)
-    local ach = {}
-    if type(val_full.achievement_stats) == "table" then
-      ach = val_full.achievement_stats
-    end
-    local claimed = {}
-    if type(val_full.achievement_claimed) == "table" then
-      claimed = val_full.achievement_claimed
-    end
-    return nk.json_encode({
-      ok = true,
-      played = stats.played or 0,
-      wins = stats.wins or 0,
-      losses = stats.losses or 0,
-      achievement_stats = ach,
-      achievement_claimed = claimed,
-    })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_match3_stats_get: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_match3_stats_record(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    ensure_character_sheet_initialized(user_id)
-
-    local won = false
-    if payload ~= nil and payload ~= "" then
-      local p = nk.json_decode(payload)
-      won = p ~= nil and p.won == true
-    end
-
-    local max_retries = 5
-    for i = 1, max_retries do
-      local val, version = Ach.storage_read_match3_summary_val(user_id)
-      local played = (tonumber(val.played) or 0) + 1
-      local wins = tonumber(val.wins) or 0
-      local losses = tonumber(val.losses) or 0
-      if won then
-        wins = wins + 1
-      else
-        losses = losses + 1
-      end
-      val.played = played
-      val.wins = wins
-      val.losses = losses
-      val.updated_at = os.time()
-
-      local write_obj = {
-        collection = CFG.STATS_COLLECTION,
-        key = CFG.STATS_KEY,
-        user_id = user_id,
-        value = val,
-        permission_read = 1,
-        permission_write = 0,
-      }
-      if version ~= nil and version ~= "" then
-        write_obj.version = version
-      end
-
-      local write_ok, write_err = pcall(function()
-        nk.storage_write({ write_obj })
-      end)
-
-      if write_ok then
-        return nk.json_encode({
-          ok = true,
-          played = played,
-          wins = wins,
-          losses = losses,
-        })
-      end
-
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        error(write_err)
-      end
-    end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_match3_stats_record: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
+-- Stats RPC / arena tournament counters: отдельный chunk (лимит 200 local).
+local StatsApi = runtime_lua_require("modules.duel_match3_stats_api", "duel_match3_stats_api")({
+  CFG = CFG,
+  Ach = Ach,
+  Guard = Guard,
+  read_pve_progress = read_pve_progress,
+  normalize_mine_difficulty = normalize_mine_difficulty,
+  ensure_character_sheet_initialized = ensure_character_sheet_initialized,
+})
 
 local function duel_match3_pve_catalog_get(ctx, payload)
   local ok, result = pcall(function()
@@ -3801,7 +3708,7 @@ local Arena = arena_factory({
   ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
-  stats_inc_arena_tournament_played = stats_inc_arena_tournament_played,
+  stats_inc_arena_tournament_played = StatsApi.stats_inc_arena_tournament_played,
   achievement_merge_stats = Ach.merge_persistent_stats,
 })
 arena_mirror_commit = Arena.mirror_commit
@@ -4039,200 +3946,19 @@ local function duel_match3_pve_create(ctx, payload)
   return result
 end
 
-local function race_progress_balance(progress, resource)
-  local r = string.lower(tostring(resource or ""))
-  if r == "matter" then return math.max(0, tonumber(progress.matter) or 0) end
-  if r == "gold" then return math.max(0, tonumber(progress.gold) or 0) end
-  if r == "ore" then return math.max(0, tonumber(progress.ore) or 0) end
-  if r == "ingots" then return math.max(0, tonumber(progress.ingots) or 0) end
-  if r == "energy" then return math.max(0, tonumber(progress.energy) or 0) end
-  return nil
-end
-
-local function race_progress_spend(progress, resource, amount)
-  local r = string.lower(tostring(resource or ""))
-  local need = math.max(0, math.floor(tonumber(amount) or 0))
-  if need <= 0 then return true end
-  if r == "matter" then
-    progress.matter = math.max(0, (tonumber(progress.matter) or 0) - need)
-    return true
-  end
-  if r == "gold" then
-    progress.gold = math.max(0, (tonumber(progress.gold) or 0) - need)
-    return true
-  end
-  if r == "ore" then
-    progress.ore = math.max(0, (tonumber(progress.ore) or 0) - need)
-    return true
-  end
-  if r == "ingots" then
-    progress.ingots = math.max(0, (tonumber(progress.ingots) or 0) - need)
-    return true
-  end
-  if r == "energy" then
-    progress.energy = math.max(0, (tonumber(progress.energy) or 0) - need)
-    return true
-  end
-  return false
-end
-
---- «Спуск»: публичный конфиг (цель / вход / награды) для модалки.
-local function duel_match3_race_info(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local cfg = ContestGoals.race_public_config()
-    return nk.json_encode({
-      ok = true,
-      goal_mana = cfg.goal_mana,
-      mana_bonus_every = cfg.mana_bonus_every,
-      entry = cfg.entry,
-      rewards = cfg.rewards,
-    })
-  end)
-  if not ok then
-    nk.logger_error("duel_match3_race_info: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
---- «Спуск»: списать стоимость входа (из Storage contest_goals) перед очередью / матчем.
-local function duel_match3_race_enter(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local costs = ContestGoals.race_entry_costs()
-    if type(costs) ~= "table" or #costs == 0 then
-      costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
-    end
-
-    local max_retries = 5
-    for i = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      for _, line in ipairs(costs) do
-        local res = tostring(line.resource or "")
-        local need = math.max(0, math.floor(tonumber(line.amount) or 0))
-        local have = race_progress_balance(progress, res)
-        if have == nil then
-          return nk.json_encode({ ok = false, err = "unsupported_entry_resource", resource = res })
-        end
-        if have < need then
-          local resources = build_resource_payload(progress, user_id)
-          resources.ok = false
-          resources.err = "not_enough_" .. res
-          resources.required = need
-          resources.resource = res
-          resources.reason = "race_enter"
-          resources.entry = costs
-          return nk.json_encode(resources)
-        end
-      end
-
-      for _, line in ipairs(costs) do
-        race_progress_spend(progress, line.resource, line.amount)
-      end
-
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then
-        local resources = build_resource_payload(progress, user_id)
-        resources.ok = true
-        resources.reason = "race_enter"
-        resources.entry = costs
-        resources.spent = costs[1] and costs[1].amount or 0
-        resources.resource = costs[1] and costs[1].resource or ""
-        return nk.json_encode(resources)
-      end
-
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        error(write_err)
-      end
-    end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_match3_race_enter: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
---- «Спуск»: матч против серверного бота (когда matchmaker не нашёл человека).
-local function duel_match3_race_create(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local owner_epoch = Guard.read_metadata_epoch(user_id)
-    local bot_id = "race_bot"
-    local bot_user_id = make_bot_user_id(bot_id)
-    local bot_names = { "Странник", "Тень", "Путник", "Эхо", "Скиталец" }
-    local bot_name = bot_names[math.random(1, #bot_names)]
-
-    local match_id = try_match_create({
-      mode = "pve",
-      pvp_race = true,
-      arena_pvp_style = true,
-      owner_user_id = user_id,
-      bot_id = bot_id,
-      bot_user_id = bot_user_id,
-      owner_level = 1,
-      owner_session_epoch = owner_epoch,
-      pve_run = {
-        floor = 1,
-        difficulty = "easy",
-        affix = "",
-        stat_mul = 1,
-        reward_mul = 0,
-        arena_suppress_all = true,
-      },
-    })
-    if match_id == nil or match_id == "" then
-      return nk.json_encode({ ok = false, err = "match_create_failed" })
-    end
-
-    nk.logger_info("duel_match3_race_create: user=" .. tostring(user_id)
-      .. " match=" .. tostring(match_id)
-      .. " bot=" .. tostring(bot_name))
-
-    return nk.json_encode({
-      ok = true,
-      match_id = match_id,
-      bot_id = bot_id,
-      bot_name = bot_name,
-      bot_user_id = bot_user_id,
-      race_goal_mana = race_goal_mana(nil),
-    })
-  end)
-
-  if not ok then
-    nk.logger_error("duel_match3_race_create: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
+-- Race RPC / friends invite: отдельный chunk (лимит 200 local в duel_match3).
+local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3_race_api")({
+  CFG = CFG,
+  ContestGoals = ContestGoals,
+  Guard = Guard,
+  decode_storage_value = decode_storage_value,
+  try_match_create = try_match_create,
+  make_bot_user_id = make_bot_user_id,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  build_resource_payload = build_resource_payload,
+  race_goal_mana = race_goal_mana,
+})
 
 local function duel_mine_summon(ctx, payload)
   local ok, result = pcall(function()
@@ -5321,12 +5047,14 @@ local function match_join(context, dispatcher, tick, state, presences)
           state.race_goal_mana = goal
           state.race_max_mana = race_max_from_goal(goal)
           state.race_reward_lines = ContestGoals.race_rewards()
+          state.race_entry_costs = ContestGoals.race_entry_costs()
           if state.stats[player_id] ~= nil then
             state.stats[player_id].race_petard_bank = 0
           end
           if state.stats[state.bot_user_id] ~= nil then
             state.stats[state.bot_user_id].race_petard_bank = 0
           end
+          RaceApi.race_consume_entry_pending(player_id)
           nk.logger_info("duel_match3: PvP Race vs bot — first=" .. tostring(state.race_first_user_id)
             .. " goal=" .. tostring(state.race_goal_mana)
             .. " max=" .. tostring(state.race_max_mana))
@@ -5466,11 +5194,13 @@ local function match_join(context, dispatcher, tick, state, presences)
       state.race_goal_mana = goal
       state.race_max_mana = race_max_from_goal(goal)
       state.race_reward_lines = ContestGoals.race_rewards()
+      state.race_entry_costs = ContestGoals.race_entry_costs()
       for _, uid in ipairs(state.players_sorted) do
         state.race_actions[uid] = 0
         if state.stats[uid] ~= nil then
           state.stats[uid].race_petard_bank = 0
         end
+        RaceApi.race_consume_entry_pending(uid)
       end
       nk.logger_info("duel_match3: PvP Race (Спуск) — first=" .. tostring(state.race_first_user_id)
         .. " goal=" .. tostring(state.race_goal_mana)
@@ -5514,6 +5244,35 @@ local function augment_arena_game_over_payload(state, payload)
   end
 end
 
+--- Победа из‑за сдачи / disconnect / reconnect timeout — с наградами (в т.ч. Спуск).
+local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
+  if winner == nil or winner == "" then return end
+  local tag = tostring(reason_tag or "forfeit")
+  local ok_arena, err_arena = pcall(function()
+    if type(arena_on_match_finished) == "function" then
+      arena_on_match_finished(state, winner)
+    end
+  end)
+  if not ok_arena then
+    nk.logger_error("arena_on_match_finished failed (" .. tag .. "): " .. tostring(err_arena))
+  end
+  if is_pvp_race(state) ~= true then
+    local ok_achi, err_achi = pcall(function()
+      Ach.flush_match_finish(state, winner, nil, nil, 0)
+    end)
+    if not ok_achi then
+      nk.logger_error("achievement_flush_match_finish failed (" .. tag .. "): " .. tostring(err_achi))
+    end
+  end
+  local game_over_payload = {
+    winnerUserId = winner,
+    isDraw = false,
+  }
+  Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+  augment_arena_game_over_payload(state, game_over_payload)
+  dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+end
+
 local function match_leave(context, dispatcher, tick, state, presences)
   local left_duelist_uid = nil
   if state.players_sorted and state.started and not state.ended and state.mode ~= "pve" then
@@ -5548,23 +5307,7 @@ local function match_leave(context, dispatcher, tick, state, presences)
       local winner = nil
       for uid, _ in pairs(state.presences) do winner = uid end
       if winner ~= nil then
-        local ok_arena, err_arena = pcall(function()
-          if type(arena_on_match_finished) == "function" then
-            arena_on_match_finished(state, winner)
-          end
-        end)
-        if not ok_arena then
-          nk.logger_error("arena_on_match_finished failed (disconnect): " .. tostring(err_arena))
-        end
-        local ok_achi, err_achi = pcall(function()
-          Ach.flush_match_finish(state, winner, nil, nil, 0)
-        end)
-        if not ok_achi then
-          nk.logger_error("achievement_flush_match_finish failed (match_leave): " .. tostring(err_achi))
-        end
-        local game_over_payload = { winnerUserId = winner }
-        augment_arena_game_over_payload(state, game_over_payload)
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+        finalize_pvp_forfeit_win(dispatcher, state, winner, "disconnect")
       end
       return nil
     end
@@ -5621,23 +5364,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       state.ended = true
       local winner = other_player_id(state, q)
       if winner ~= nil then
-        local ok_arena, err_arena = pcall(function()
-          if type(arena_on_match_finished) == "function" then
-            arena_on_match_finished(state, winner)
-          end
-        end)
-        if not ok_arena then
-          nk.logger_error("arena_on_match_finished failed (reconnect_timeout): " .. tostring(err_arena))
-        end
-        local ok_achi, err_achi = pcall(function()
-          Ach.flush_match_finish(state, winner, nil, nil, 0)
-        end)
-        if not ok_achi then
-          nk.logger_error("achievement_flush_match_finish failed (reconnect_timeout): " .. tostring(err_achi))
-        end
-        local game_over_payload = { winnerUserId = winner }
-        augment_arena_game_over_payload(state, game_over_payload)
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+        finalize_pvp_forfeit_win(dispatcher, state, winner, "reconnect_timeout")
       end
       return nil
     end
@@ -5673,23 +5400,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
       if winner then
-        local ok_arena, err_arena = pcall(function()
-          if type(arena_on_match_finished) == "function" then
-            arena_on_match_finished(state, winner)
-          end
-        end)
-        if not ok_arena then
-          nk.logger_error("arena_on_match_finished failed (timeout): " .. tostring(err_arena))
-        end
-        local ok_achi, err_achi = pcall(function()
-          Ach.flush_match_finish(state, winner, nil, nil, 0)
-        end)
-        if not ok_achi then
-          nk.logger_error("achievement_flush_match_finish failed (player_left): " .. tostring(err_achi))
-        end
-        local game_over_payload = { winnerUserId = winner }
-        augment_arena_game_over_payload(state, game_over_payload)
-        dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+        finalize_pvp_forfeit_win(dispatcher, state, winner, "player_left")
       end
       return nil
     end
@@ -5771,6 +5482,10 @@ local function match_loop(context, dispatcher, tick, state, messages)
   -- Сначала таймаут хода (человек не успел), затем ход бота — чтобы бот мог сходить в том же тике.
   if state.started and not state.ended and not state.turn_deadline_paused and tick >= state.turn_deadline_tick then
     local current = state.active_user_id
+    -- Race: пропуск «последнего хода» завершает матч (без передачи хода дальше).
+    if try_finish_race_on_last_turn_forfeit(dispatcher, state, current, tick) then
+      return state
+    end
     local next_player = other_player_id(state, current)
     if next_player then
       tick_buffs_end_turn(state.stats[current])
@@ -5812,6 +5527,10 @@ local function match_loop(context, dispatcher, tick, state, messages)
     state._bot_pre_mana = state.stats[actor_id] ~= nil and tonumber(state.stats[actor_id].mana) or nil
     local action = choose_bot_action(state, actor_id, opp_id)
     if action == nil then
+      -- Race last-turn: нечем ходить = пропуск → финал матча.
+      if try_finish_race_on_last_turn_forfeit(dispatcher, state, actor_id, tick) then
+        return state
+      end
       tick_buffs_end_turn(state.stats[actor_id])
       state.active_user_id = opp_id
       tick_cooldowns(state.stats[opp_id])
@@ -5844,6 +5563,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
         finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, CFG.TICK_RATE, anim_steps)
       else
         nk.logger_warn("bot action rejected: " .. tostring(err))
+        if try_finish_race_on_last_turn_forfeit(dispatcher, state, actor_id, tick) then
+          return state
+        end
         tick_buffs_end_turn(state.stats[actor_id])
         state.active_user_id = opp_id
         tick_cooldowns(state.stats[opp_id])
@@ -5942,16 +5664,20 @@ AchCat.configure({
   decode_storage_value = decode_storage_value,
 })
 
-nk.register_rpc(duel_match3_stats_get, "duel_match3_stats_get")
-nk.register_rpc(duel_match3_stats_record, "duel_match3_stats_record")
+nk.register_rpc(StatsApi.duel_match3_stats_get, "duel_match3_stats_get")
+nk.register_rpc(StatsApi.duel_match3_stats_record, "duel_match3_stats_record")
 nk.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
 nk.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
 nk.register_rpc(AchCat.rpc_achievement_catalog_get, "duel_match3_achievement_catalog_get")
 nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
 nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
-nk.register_rpc(duel_match3_race_info, "duel_match3_race_info")
-nk.register_rpc(duel_match3_race_enter, "duel_match3_race_enter")
-nk.register_rpc(duel_match3_race_create, "duel_match3_race_create")
+nk.register_rpc(RaceApi.duel_match3_race_info, "duel_match3_race_info")
+nk.register_rpc(RaceApi.duel_match3_race_enter, "duel_match3_race_enter")
+nk.register_rpc(RaceApi.duel_match3_race_cancel, "duel_match3_race_cancel")
+nk.register_rpc(RaceApi.duel_match3_race_create, "duel_match3_race_create")
+nk.register_rpc(RaceApi.duel_friends_race_invite, "duel_friends_race_invite")
+nk.register_rpc(RaceApi.duel_friends_race_respond, "duel_friends_race_respond")
+nk.register_rpc(RaceApi.duel_friends_race_clear, "duel_friends_race_clear")
 nk.register_rpc(duel_mine_summon, "duel_mine_summon")
 nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
 nk.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
