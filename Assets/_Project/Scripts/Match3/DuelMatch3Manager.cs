@@ -804,9 +804,16 @@ namespace Project.Match3
 
         private async Task PreparePveLobbyAsync(CancellationToken ct)
         {
-            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
-            _myUserId = NakamaBootstrap.Instance.Session.UserId;
-            ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
+            var boot = NakamaBootstrap.Instance;
+            if (boot == null)
+                throw new Exception("NakamaBootstrap отсутствует. Запустите игру с MainMenu (не с MineScene3D напрямую).");
+
+            await boot.EnsureConnectedAsync(ct);
+            if (boot.Session == null || boot.Client == null)
+                throw new Exception("Нет сессии Nakama. Сначала войдите через MainMenu.");
+
+            _myUserId = boot.Session.UserId;
+            ReplaceMatchSocketHooks(boot.Socket);
             await LoadPveCatalogAsync(ct);
             ApplyPreferredPveSelection();
             MainThreadDispatcher.Enqueue(() =>
@@ -911,6 +918,7 @@ namespace Project.Match3
             if (_pveBots == null || _pveBots.Count == 0) return;
             _selectedPveBotIndex = Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1);
             var bot = _pveBots[_selectedPveBotIndex];
+            if (bot == null) return;
             if (_pveBotTitleText != null)
                 _pveBotTitleText.text = $"{bot.name} ({bot.id})";
             if (_pveBotStatsText != null)
@@ -3726,7 +3734,7 @@ namespace Project.Match3
             {
                 Match3LaunchContext.ClearArenaJoinArm();
                 Match3LaunchContext.ClearFriendRaceJoinArm();
-                SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+                SceneManager.LoadScene(_isSoloBotMode ? Match3LaunchContext.ConsumeSoloReturnScene() : "ArenaMenu");
             }
         }
 
@@ -4070,7 +4078,7 @@ namespace Project.Match3
         private void ReturnFromGameOver()
         {
             Match3LaunchContext.ClearArenaJoinArm();
-            SceneManager.LoadScene(_isSoloBotMode ? "MineScene" : "ArenaMenu");
+            SceneManager.LoadScene(_isSoloBotMode ? Match3LaunchContext.ConsumeSoloReturnScene() : "ArenaMenu");
         }
 
         private void CompleteUiSetupAfterPanelsReady(Transform root)

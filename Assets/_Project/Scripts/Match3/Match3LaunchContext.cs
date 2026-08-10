@@ -17,6 +17,8 @@ namespace Project.Match3
         private static int _preferredFloor;
         private static string _preferredDifficulty;
         private static bool _autoStartSolo;
+        /// <summary>Куда вернуться после соло-PVE (MineScene / MineScene3D).</summary>
+        private static string _soloReturnScene = "MineScene";
 
         /// <summary>Турнир арены: присоединиться к уже созданному authoritative матчу без матчмейкера.</summary>
         private static bool _arenaJoinPending;
@@ -75,13 +77,15 @@ namespace Project.Match3
             return v;
         }
 
-        public static void SetSoloMine(string botId, int floor, string difficulty, bool autoStart = true)
+        public static void SetSoloMine(string botId, int floor, string difficulty, bool autoStart = true, string returnScene = null)
         {
             _nextMode = Match3LaunchMode.SoloBot;
             _preferredBotId = string.IsNullOrWhiteSpace(botId) ? null : botId;
             _preferredFloor = floor;
             _preferredDifficulty = string.IsNullOrWhiteSpace(difficulty) ? "easy" : difficulty;
             _autoStartSolo = autoStart;
+            if (!string.IsNullOrWhiteSpace(returnScene))
+                _soloReturnScene = returnScene.Trim();
         }
 
         public static void ConsumeSoloMine(out string botId, out int floor, out string difficulty, out bool autoStart)
@@ -96,6 +100,16 @@ namespace Project.Match3
             _preferredDifficulty = null;
             _autoStartSolo = false;
         }
+
+        public static string ConsumeSoloReturnScene()
+        {
+            var scene = string.IsNullOrWhiteSpace(_soloReturnScene) ? "MineScene" : _soloReturnScene;
+            _soloReturnScene = "MineScene";
+            return scene;
+        }
+
+        public static string PeekSoloReturnScene() =>
+            string.IsNullOrWhiteSpace(_soloReturnScene) ? "MineScene" : _soloReturnScene;
 
         /// <summary>Вызвать перед загрузкой сцены DuelMatch3 для боя турнира арены.</summary>
         public static void ArmArenaJoin(

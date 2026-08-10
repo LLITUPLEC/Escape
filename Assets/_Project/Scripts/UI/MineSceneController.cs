@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Character;
 using Project.Match3;
+using Project.Mine3D;
 using Project.Nakama;
 using TMPro;
 using UnityEngine;
@@ -268,19 +269,46 @@ namespace Project.UI
             return 1f;
         }
 
+        private bool IsMine3DScene =>
+            string.Equals(SceneManager.GetActiveScene().name, "MineScene3D", StringComparison.OrdinalIgnoreCase);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void RegisterSceneHook()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoadedInstall;
+            SceneManager.sceneLoaded += OnSceneLoadedInstall;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoInstall()
         {
-            var scene = SceneManager.GetActiveScene();
-            if (!string.Equals(scene.name, "MineScene", StringComparison.OrdinalIgnoreCase))
-                return;
+            // AfterSceneLoad срабатывает в основном для первой сцены; дальше — sceneLoaded.
+            TryAutoInstallForActiveScene();
+        }
 
-            if (FindFirstObjectByType<MineSceneController>(FindObjectsInactive.Include) != null)
-                return;
+        private static void OnSceneLoadedInstall(Scene scene, LoadSceneMode mode)
+        {
+            TryAutoInstallForActiveScene();
+        }
+
+        /// <summary>Ставит MineSceneController на MineScene / MineScene3D (в т.ч. после LoadScene с MainMenu).</summary>
+        public static MineSceneController EnsureInstalled()
+        {
+            var existing = FindFirstObjectByType<MineSceneController>(FindObjectsInactive.Include);
+            if (existing != null)
+                return existing;
+
+            var scene = SceneManager.GetActiveScene();
+            var isMine2D = string.Equals(scene.name, "MineScene", StringComparison.OrdinalIgnoreCase);
+            var isMine3D = string.Equals(scene.name, "MineScene3D", StringComparison.OrdinalIgnoreCase);
+            if (!isMine2D && !isMine3D)
+                return null;
 
             var go = new GameObject("MineSceneController");
-            go.AddComponent<MineSceneController>();
+            return go.AddComponent<MineSceneController>();
         }
+
+        private static void TryAutoInstallForActiveScene() => EnsureInstalled();
 
         private void Awake()
         {
@@ -454,6 +482,16 @@ namespace Project.UI
             ApplyUnlockedFromCatalog(model);
             EnsureMissingFloorEntries();
 
+            if (IsMine3DScene)
+            {
+                // Не откатываем optimistic-поворот, пока идёт SetDifficulty RPC.
+                if (!_setDifficultyInFlight)
+                {
+                    SyncMine3DShaftDifficulty(_difficulty, animated: false);
+                    RebindMine3DRowsAfterDifficultyChange();
+                }
+            }
+
             ApplyRows();
             ApplyDifficultyTabVisuals();
             ApplyResourcesFallbackFromProgression();
@@ -538,6 +576,12 @@ namespace Project.UI
 
         private void CacheRows()
         {
+            if (IsMine3DScene)
+            {
+                CacheRows3D();
+                return;
+            }
+
             _rows.Clear();
             _liftButtons.Clear();
             for (var floor = 1; floor <= 12; floor++)
@@ -582,6 +626,161 @@ namespace Project.UI
                     }
                 }
             }
+        }
+
+        private void CacheRows3D()
+        {
+            _rows.Clear();
+            _liftButtons.Clear();
+
+            var face = FindMine3DFaceRoot(_difficulty);
+            if (face == null)
+                face = FindMine3DFaceRoot(Mine3DShaftController.Easy);
+            if (face == null)
+                return;
+
+            var cam = Camera.main;
+            for (var floor = 1; floor <= 12; floor++)
+            {
+                var floorT = face.Find("Floor_" + floor);
+                if (floorT == null)
+                    continue;
+
+                var floorUi = floorT.Find("FloorUi");
+                if (floorUi != null)
+                {
+                    var canvas = floorUi.GetComponent<Canvas>();
+                    if (canvas != null)
+                        canvas.worldCamera = cam;
+                }
+
+                var uiRoot = floorUi != null ? floorUi : floorT;
+                var refs = new FloorRowRefs
+                {
+                    root = floorT,
+                    stateText = FindTextByName(uiRoot, "StateText")
+                };
+
+                var monsterTr = uiRoot.Find("MonsterButton");
+                refs.monsterButton = monsterTr != null
+                    ? monsterTr.GetComponent<Button>() ?? monsterTr.gameObject.AddComponent<Button>()
+                    : EnsureMonsterButton(uiRoot);
+                refs.monsterButton.onClick.RemoveAllListeners();
+
+                var lockTr = uiRoot.Find("LockButton");
+                refs.lockButton = lockTr != null
+                    ? lockTr.GetComponent<Button>() ?? lockTr.gameObject.AddComponent<Button>()
+                    : EnsureLockButton(uiRoot, floor);
+                refs.lockButton.onClick.RemoveAllListeners();
+
+                var f = floor;
+                refs.monsterButton.onClick.AddListener(() => OpenMonsterModal(f));
+                refs.lockButton.onClick.AddListener(() => OpenMonsterModal(f));
+                EnsureCooldownClusterForFloor(refs, f);
+                if (floorUi != null && refs.cooldownClusterRt != null)
+                {
+                    refs.cooldownClusterRt.SetParent(floorUi, false);
+                    // Не перекрываем весь этаж: whistle остаётся кликабельным, капсула — тоже.
+                    var clusterRt = refs.cooldownClusterRt;
+                    clusterRt.anchorMin = new Vector2(0.55f, 0.08f);
+                    clusterRt.anchorMax = new Vector2(0.96f, 0.28f);
+                    clusterRt.offsetMin = Vector2.zero;
+                    clusterRt.offsetMax = Vector2.zero;
+                }
+
+                var view = floorT.GetComponent<Mine3DFloorView>();
+                view?.BindInteractables();
+                StripMine3DOverlayButtonVisuals(refs);
+                _rows[floor] = refs;
+            }
+
+            SyncMine3DShaftDifficulty(_difficulty, animated: false);
+        }
+
+        private static Transform FindMine3DFaceRoot(string difficulty)
+        {
+            var shaft = FindFirstObjectByType<Mine3DShaftController>(FindObjectsInactive.Include);
+            var root = shaft != null ? shaft.ShaftRoot : GameObject.Find("MineShaftRoot")?.transform;
+            if (root == null)
+                return null;
+            var id = string.IsNullOrWhiteSpace(difficulty) ? Mine3DShaftController.Easy : difficulty.Trim().ToLowerInvariant();
+            return root.Find("Face_" + id);
+        }
+
+        private void SyncMine3DShaftDifficulty(string difficulty, bool animated)
+        {
+            if (!IsMine3DScene)
+                return;
+            var shaft = FindFirstObjectByType<Mine3DShaftController>(FindObjectsInactive.Include);
+            if (shaft == null)
+                return;
+            if (animated)
+                shaft.SetDifficultyAnimated(difficulty);
+            else
+                shaft.SetDifficultyImmediate(difficulty);
+        }
+
+        private void RebindMine3DRowsAfterDifficultyChange()
+        {
+            if (!IsMine3DScene)
+                return;
+            CacheRows3D();
+            ApplyRows();
+            RefreshAllMine3DFaceGameplayVisuals();
+        }
+
+        private void SyncMine3DFloorVisuals(int floor, FloorRowRefs refs, bool unlocked, bool monsterReady)
+        {
+            if (!IsMine3DScene)
+                return;
+            // На каждой грани — свой прогресс unlock (иначе hard копирует easy и без барьеров).
+            ApplyMine3DGameplayVisiblePerFace(floor, monsterReadyForCurrent: monsterReady);
+        }
+
+        private void ApplyMine3DGameplayVisiblePerFace(int floor, bool monsterReadyForCurrent)
+        {
+            var shaft = FindFirstObjectByType<Mine3DShaftController>(FindObjectsInactive.Include);
+            var root = shaft != null ? shaft.ShaftRoot : GameObject.Find("MineShaftRoot")?.transform;
+            if (root == null)
+                return;
+
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var face = root.GetChild(i);
+                if (face == null || !face.name.StartsWith("Face_", StringComparison.Ordinal))
+                    continue;
+
+                var faceDiff = face.name.Substring("Face_".Length);
+                var unlockedCap = GetUnlockedFloorForDifficulty(faceDiff);
+                var unlocked = floor <= 1 || floor <= unlockedCap;
+                var isCurrent = string.Equals(faceDiff, _difficulty, StringComparison.OrdinalIgnoreCase);
+                var monsterReady = unlocked && (isCurrent ? monsterReadyForCurrent : true);
+
+                var floorT = face.Find("Floor_" + floor);
+                if (floorT == null)
+                    continue;
+                var view = floorT.GetComponent<Mine3DFloorView>();
+                if (view != null)
+                    view.SetGameplayVisible(unlocked, monsterReady);
+                else
+                {
+                    var monsterRoot = floorT.Find("MonsterRoot");
+                    var barrierRoot = floorT.Find("BarrierRoot");
+                    if (barrierRoot != null)
+                        barrierRoot.gameObject.SetActive(!unlocked);
+                    if (monsterRoot != null)
+                        monsterRoot.gameObject.SetActive(unlocked && monsterReady);
+                }
+            }
+        }
+
+        private int GetUnlockedFloorForDifficulty(string difficulty)
+        {
+            if (string.Equals(difficulty, "medium", StringComparison.OrdinalIgnoreCase))
+                return Mathf.Max(0, _unlockedMedium);
+            if (string.Equals(difficulty, "hard", StringComparison.OrdinalIgnoreCase))
+                return Mathf.Max(0, _unlockedHard);
+            return Mathf.Max(1, _unlockedEasy);
         }
 
         private Button EnsureMonsterButton(Transform rowRoot)
@@ -712,8 +911,11 @@ namespace Project.UI
         {
             if (refs.cooldownClusterRt == null || refs.monsterButton == null)
                 return;
-            var monsterRt = refs.monsterButton.GetComponent<RectTransform>();
-            CopyRectTransform(monsterRt, refs.cooldownClusterRt);
+            if (!IsMine3DScene)
+            {
+                var monsterRt = refs.monsterButton.GetComponent<RectTransform>();
+                CopyRectTransform(monsterRt, refs.cooldownClusterRt);
+            }
             refs.cooldownClusterRt.gameObject.SetActive(true);
 
             var clusterH = refs.cooldownClusterRt.GetComponent<HorizontalLayoutGroup>();
@@ -951,15 +1153,12 @@ namespace Project.UI
 
         private int GetUnlockedFloorForCurrentDifficulty()
         {
-            if (string.Equals(_difficulty, "medium", StringComparison.OrdinalIgnoreCase))
-                return Mathf.Max(0, _unlockedMedium);
-            if (string.Equals(_difficulty, "hard", StringComparison.OrdinalIgnoreCase))
-                return Mathf.Max(0, _unlockedHard);
-            return Mathf.Max(1, _unlockedEasy);
+            return GetUnlockedFloorForDifficulty(_difficulty);
         }
 
         /// <summary>
-        /// Этаж открыт по данным каталога; если записи этажа нет (дыра в bots) — по прогрессу разблокировки.
+        /// Этаж открыт по прогрессу сложности; запись каталога не должна открывать этажи выше cap
+        /// (иначе после easy на hard «протекают» открытые этажи).
         /// 1-й этаж всегда открыт (барьеры с этажа 2).
         /// </summary>
         private bool IsFloorUnlocked(int floor)
@@ -967,9 +1166,13 @@ namespace Project.UI
             if (floor <= 1)
                 return true;
 
+            var cap = GetUnlockedFloorForCurrentDifficulty();
+            if (floor > cap)
+                return false;
+
             if (_mineByFloor.TryGetValue(floor, out var mf) && mf != null)
                 return mf.unlocked;
-            return floor <= GetUnlockedFloorForCurrentDifficulty();
+            return true;
         }
 
         private void ApplyRows()
@@ -995,6 +1198,7 @@ namespace Project.UI
                     SetButtonVisible(refs.monsterButton, false);
                     SetButtonVisible(refs.lockButton, true);
                     refs.lockButton.interactable = true;
+                    SyncMine3DFloorVisuals(floor, refs, unlocked: false, monsterReady: false);
                     continue;
                 }
 
@@ -1007,6 +1211,7 @@ namespace Project.UI
                     SetButtonLabel(refs.monsterButton, string.Empty);
                     SetButtonVisible(refs.monsterButton, false);
                     ApplyCooldownTimerLayout(refs, floor);
+                    SyncMine3DFloorVisuals(floor, refs, unlocked: true, monsterReady: false);
                 }
                 else
                 {
@@ -1017,12 +1222,95 @@ namespace Project.UI
                     SetButtonLabel(refs.monsterButton, string.Empty);
                     SetButtonVisible(refs.monsterButton, true);
                     refs.monsterButton.interactable = true;
+                    SyncMine3DFloorVisuals(floor, refs, unlocked: true, monsterReady: true);
                 }
 
                 _botByFloor.TryGetValue(floor, out var bot);
-                ApplyMonsterVisual(floor, refs, bot, mf);
+                if (!IsMine3DScene)
+                    ApplyMonsterVisual(floor, refs, bot, mf);
+                else
+                    StripMine3DOverlayButtonVisuals(refs);
+            }
+
+            if (IsMine3DScene)
+                RefreshAllMine3DFaceGameplayVisuals();
+        }
+
+        /// <summary>Проставляет барьеры/монстров на всех гранях по unlock каждой сложности.</summary>
+        private void RefreshAllMine3DFaceGameplayVisuals()
+        {
+            for (var floor = 1; floor <= 12; floor++)
+            {
+                var monsterReady = true;
+                if (string.Equals(_difficulty, Mine3DShaftController.Easy, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(_difficulty, Mine3DShaftController.Medium, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(_difficulty, Mine3DShaftController.Hard, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_mineByFloor.TryGetValue(floor, out var mf) && mf != null)
+                        monsterReady = mf.respawn_left_seconds <= 0;
+                }
+
+                ApplyMine3DGameplayVisiblePerFace(floor, monsterReady);
             }
         }
+
+        private static void StripMine3DOverlayButtonVisuals(FloorRowRefs refs)
+        {
+            if (refs == null) return;
+            StripButtonVisual(refs.monsterButton);
+            StripButtonVisual(refs.lockButton);
+        }
+
+        private static void StripButtonVisual(Button btn)
+        {
+            if (btn == null) return;
+            btn.interactable = false;
+            foreach (var img in btn.GetComponentsInChildren<Image>(true))
+            {
+                if (img == null) continue;
+                img.sprite = null;
+                img.raycastTarget = false;
+                img.color = new Color(1f, 1f, 1f, 0f);
+            }
+        }
+
+        /// <summary>Клик по 3D-капсуле / барьеру из MineScene3D.</summary>
+        public void OpenFloorFromWorld(int floor, string difficulty = null)
+        {
+            if (!IsMine3DScene) return;
+            if (!string.IsNullOrWhiteSpace(difficulty)
+                && !string.Equals(difficulty, _difficulty, StringComparison.OrdinalIgnoreCase))
+            {
+                _difficulty = difficulty.Trim().ToLowerInvariant();
+                SyncMine3DShaftDifficulty(_difficulty, animated: false);
+                RebindMine3DRowsAfterDifficultyChange();
+                ApplyDifficultyTabVisuals();
+            }
+
+            EnsureModal();
+            if (_modalRoot == null)
+            {
+                Debug.LogError("[MineScene3D] Не удалось открыть MonsterModal (префаб/родитель).");
+                return;
+            }
+
+            OpenMonsterModal(floor);
+        }
+
+        /// <summary>После сборки 3D-мира — перепривязать ряды и табы сложности.</summary>
+        public void NotifyMine3DWorldReady()
+        {
+            if (!IsMine3DScene) return;
+            _difficultyTabsRoot = null;
+            EnsureDifficultyTabs();
+            CacheRows3D();
+            ApplyRows();
+            RefreshAllMine3DFaceGameplayVisuals();
+            ApplyDifficultyTabVisuals();
+        }
+
+        /// <summary>Клик по вкладке сложности из Mine3D HUD.</summary>
+        public void RequestDifficultyFromUi(string difficulty) => OnDifficultyTabClicked(difficulty);
 
         private static void ApplyFloorLightingState(Transform rowRoot, bool isLocked)
         {
@@ -1164,6 +1452,9 @@ namespace Project.UI
 
         private static Transform FindMonsterModalParent()
         {
+            var canvas3D = GameObject.Find("Mine3DCanvas");
+            if (canvas3D != null)
+                return canvas3D.transform;
             var canvasGo = GameObject.Find("MineCanvas");
             if (canvasGo != null)
                 return canvasGo.transform;
@@ -1331,7 +1622,12 @@ namespace Project.UI
                 // if precheck fails, allow server-authoritative check below
             }
 
-            Match3LaunchContext.SetSoloMine(bot.id, _selectedFloor, _difficulty, true);
+            Match3LaunchContext.SetSoloMine(
+                bot.id,
+                _selectedFloor,
+                _difficulty,
+                true,
+                returnScene: IsMine3DScene ? "MineScene3D" : "MineScene");
             SceneManager.LoadScene(DuelMatch3SceneName);
         }
 
@@ -1941,8 +2237,11 @@ namespace Project.UI
 
         private void EnsureDifficultyTabs()
         {
-            if (_difficultyTabsRoot != null)
+            if (_difficultyTabsRoot != null && _difficultyButtons.Count == 3)
+            {
+                WireDifficultyTabButtons();
                 return;
+            }
 
             var existing = GameObject.Find(DifficultyTabsRootName);
             if (existing != null)
@@ -2099,7 +2398,36 @@ namespace Project.UI
                 return;
             }
 
+            // В 3D сразу крутим шахту (не ждём RPC) — иначе кажется, что кнопки «мёртвые».
+            if (IsMine3DScene)
+            {
+                SyncMine3DShaftDifficulty(difficulty, animated: true);
+                var prev = _difficulty;
+                _difficulty = difficulty;
+                RebindMine3DRowsAfterDifficultyChange();
+                ApplyDifficultyTabVisuals();
+                Mine3DUiBevel.ApplyDifficultySelection(difficulty);
+                _ = SetDifficultyAsyncKeepingVisual(difficulty, prev);
+                return;
+            }
+
             _ = SetDifficultyAsync(difficulty);
+        }
+
+        private async Task SetDifficultyAsyncKeepingVisual(string difficulty, string previousDifficulty)
+        {
+            await SetDifficultyAsync(difficulty);
+            // Если RPC не сменил сложность — откатываем визуал к фактической.
+            if (!string.Equals(_difficulty, difficulty, StringComparison.OrdinalIgnoreCase))
+            {
+                SyncMine3DShaftDifficulty(_difficulty, animated: true);
+                RebindMine3DRowsAfterDifficultyChange();
+                ApplyDifficultyTabVisuals();
+                return;
+            }
+
+            // RPC мог вернуть !ok, не тронув _difficulty (остался optimistic) — сверим с previous при failure toast.
+            _ = previousDifficulty;
         }
 
         private static string DescribeDifficultyLocked(string difficulty)
@@ -2149,6 +2477,14 @@ namespace Project.UI
                         ShowMineToast("Не удалось сменить сложность шахты.");
                     if (model.progression != null)
                         ApplyUnlockedFromProgression(model.progression);
+                    // Откат optimistic switch в 3D.
+                    if (IsMine3DScene && model.progression?.mine != null &&
+                        !string.IsNullOrWhiteSpace(model.progression.mine.current_difficulty))
+                    {
+                        _difficulty = model.progression.mine.current_difficulty;
+                        SyncMine3DShaftDifficulty(_difficulty, animated: true);
+                        RebindMine3DRowsAfterDifficultyChange();
+                    }
                     ApplyDifficultyTabVisuals();
                     return;
                 }
@@ -2169,6 +2505,8 @@ namespace Project.UI
                     _progression = model.progression;
 
                 CloseMonsterModal();
+                SyncMine3DShaftDifficulty(_difficulty, animated: true);
+                RebindMine3DRowsAfterDifficultyChange();
                 await RefreshAsync(_cts.Token);
                 await RefreshResourcesAsync(_cts.Token);
             }
@@ -2200,12 +2538,21 @@ namespace Project.UI
 
         private void ApplyDifficultyTabVisuals()
         {
+            if (_difficultyButtons.Count == 0 && IsMine3DScene)
+            {
+                Mine3DUiBevel.ApplyDifficultySelection(_difficulty);
+                return;
+            }
+
             if (_difficultyButtons.Count == 0)
                 return;
 
             ApplyOneDifficultyTabVisual("easy", "ЛЁГКАЯ");
             ApplyOneDifficultyTabVisual("medium", "СРЕДНЯЯ");
             ApplyOneDifficultyTabVisual("hard", "ТЯЖЁЛАЯ");
+
+            if (IsMine3DScene)
+                Mine3DUiBevel.ApplyDifficultySelection(_difficulty);
         }
 
         private void ApplyOneDifficultyTabVisual(string difficultyId, string baseLabel)
@@ -2233,12 +2580,37 @@ namespace Project.UI
 
             if (_difficultyButtons.TryGetValue(difficultyId, out var btn) && btn != null)
             {
-                var img = btn.GetComponent<Image>();
-                if (img != null)
+                if (btn.transform.Find("Face") != null)
                 {
-                    img.color = selected
-                        ? new Color(0.12f, 0.28f, 0.14f, 0.98f)
-                        : new Color(0.14f, 0.16f, 0.20f, 0.98f);
+                    Color faceOn;
+                    Color faceOff;
+                    if (string.Equals(difficultyId, "easy", StringComparison.OrdinalIgnoreCase))
+                    {
+                        faceOn = new Color(0.20f, 0.62f, 0.30f, 1f);
+                        faceOff = new Color(0.20f, 0.22f, 0.20f, 1f);
+                    }
+                    else if (string.Equals(difficultyId, "medium", StringComparison.OrdinalIgnoreCase))
+                    {
+                        faceOn = new Color(0.62f, 0.55f, 0.22f, 1f);
+                        faceOff = new Color(0.22f, 0.22f, 0.24f, 1f);
+                    }
+                    else
+                    {
+                        faceOn = new Color(0.70f, 0.22f, 0.18f, 1f);
+                        faceOff = new Color(0.24f, 0.18f, 0.18f, 1f);
+                    }
+
+                    Mine3DUiBevel.SetFaceColor(btn, selected ? faceOn : faceOff, selected);
+                }
+                else
+                {
+                    var img = btn.GetComponent<Image>();
+                    if (img != null)
+                    {
+                        img.color = selected
+                            ? new Color(0.12f, 0.28f, 0.14f, 0.98f)
+                            : new Color(0.14f, 0.16f, 0.20f, 0.98f);
+                    }
                 }
             }
         }

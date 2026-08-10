@@ -36,8 +36,10 @@ namespace Project.UI
         [SerializeField] private bool debugUiStats = false;
         [Header("Navigation")]
         [SerializeField] private string mineSceneName = "MineScene";
+        [SerializeField] private string mine3DSceneName = "MineScene3D";
         [SerializeField] private string workshopSceneName = "WorkshopScene";
         [SerializeField] private string mineButtonName = "MineButton";
+        [SerializeField] private string mine3DButtonName = "MineButton3D";
         [SerializeField] private string workshopButtonName = "BottomButtonWorkshop";
 
         private const string HudGoldIconAssetPath = "Assets/_Project/img/resources_hud/gold.png";
@@ -85,6 +87,7 @@ namespace Project.UI
         private readonly ResourceValueBinding _matterBinding = new("matter");
         private readonly ResourceValueBinding _keysBinding = new("keys");
         private Button _mineButton;
+        private Button _mine3DButton;
         private Button _workshopButton;
         private EnergyHeaderPurchaseController _energyHeaderPurchase;
         private Sprite _hudEnergySprite;
@@ -162,6 +165,7 @@ namespace Project.UI
         private void OnDestroy()
         {
             if (_mineButton != null) _mineButton.onClick.RemoveListener(OpenMineScene);
+            if (_mine3DButton != null) _mine3DButton.onClick.RemoveListener(OpenMine3DScene);
             if (_workshopButton != null) _workshopButton.onClick.RemoveListener(OpenWorkshopScene);
             if (_serverAuraButton != null) _serverAuraButton.onClick.RemoveListener(ShowServerAuraModal);
         }
@@ -192,6 +196,8 @@ namespace Project.UI
                 }
             }
 
+            EnsureMine3DButton(layout);
+
             if (_workshopButton == null)
             {
                 var workshopRoot = FindChildByName(layout, workshopButtonName, StringComparison.OrdinalIgnoreCase);
@@ -207,10 +213,97 @@ namespace Project.UI
             }
         }
 
+        private void EnsureMine3DButton(RectTransform layout)
+        {
+            if (_mine3DButton != null) return;
+
+            var existing = FindChildByName(layout, mine3DButtonName, StringComparison.OrdinalIgnoreCase);
+            RectTransform mine3DRt = null;
+            if (existing != null)
+            {
+                mine3DRt = existing as RectTransform;
+                _mine3DButton = existing.GetComponent<Button>();
+            }
+            else
+            {
+                var mineRoot = FindChildByName(layout, mineButtonName, StringComparison.OrdinalIgnoreCase) as RectTransform;
+                if (mineRoot == null) return;
+
+                var go = new GameObject(mine3DButtonName, typeof(RectTransform), typeof(Image), typeof(Button));
+                mine3DRt = go.GetComponent<RectTransform>();
+                mine3DRt.SetParent(mineRoot.parent, false);
+                mine3DRt.anchorMin = mineRoot.anchorMin;
+                mine3DRt.anchorMax = mineRoot.anchorMax;
+                mine3DRt.pivot = mineRoot.pivot;
+                mine3DRt.sizeDelta = new Vector2(mineRoot.sizeDelta.x * 0.72f, mineRoot.sizeDelta.y * 0.55f);
+                // Под кнопкой «Шахта».
+                mine3DRt.anchoredPosition = new Vector2(
+                    mineRoot.anchoredPosition.x,
+                    mineRoot.anchoredPosition.y - mineRoot.sizeDelta.y * 0.5f - mine3DRt.sizeDelta.y * 0.5f - 16f);
+
+                var srcImg = mineRoot.GetComponent<Image>();
+                var dstImg = go.GetComponent<Image>();
+                if (srcImg != null)
+                {
+                    dstImg.sprite = srcImg.sprite;
+                    dstImg.type = srcImg.type;
+                    dstImg.color = new Color(0.85f, 0.9f, 1f, 1f);
+                }
+                else
+                {
+                    dstImg.color = new Color(0.18f, 0.22f, 0.28f, 0.95f);
+                }
+
+                var labelGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+                var labelRt = labelGo.GetComponent<RectTransform>();
+                labelRt.SetParent(mine3DRt, false);
+                labelRt.anchorMin = Vector2.zero;
+                labelRt.anchorMax = Vector2.one;
+                labelRt.offsetMin = new Vector2(12f, 8f);
+                labelRt.offsetMax = new Vector2(-12f, -8f);
+                var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+                tmp.text = "Шахта_2";
+                tmp.fontSize = 34f;
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.color = Color.white;
+                tmp.raycastTarget = false;
+
+                var mineLabel = mineRoot.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (mineLabel != null && mineLabel.font != null)
+                {
+                    tmp.font = mineLabel.font;
+                    tmp.fontSharedMaterial = mineLabel.fontSharedMaterial;
+                }
+
+                _mine3DButton = go.GetComponent<Button>();
+                var srcBtn = mineRoot.GetComponent<Button>();
+                if (srcBtn != null)
+                {
+                    _mine3DButton.transition = srcBtn.transition;
+                    _mine3DButton.spriteState = srcBtn.spriteState;
+                    _mine3DButton.colors = srcBtn.colors;
+                }
+            }
+
+            if (_mine3DButton == null) return;
+            _mine3DButton.onClick.RemoveListener(OpenMine3DScene);
+            _mine3DButton.onClick.AddListener(OpenMine3DScene);
+            if (mine3DRt != null)
+                mine3DRt.SetAsLastSibling();
+        }
+
         private void OpenMineScene()
         {
             if (!string.IsNullOrWhiteSpace(mineSceneName) && Application.CanStreamedLevelBeLoaded(mineSceneName))
                 SceneManager.LoadScene(mineSceneName);
+        }
+
+        private void OpenMine3DScene()
+        {
+            if (!string.IsNullOrWhiteSpace(mine3DSceneName) && Application.CanStreamedLevelBeLoaded(mine3DSceneName))
+                SceneManager.LoadScene(mine3DSceneName);
+            else
+                Debug.LogWarning("[MainMenu] Сцена MineScene3D не в Build Settings. Tools/UI/Создать сцену MineScene3D");
         }
 
         private void OpenWorkshopScene()
