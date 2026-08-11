@@ -42,6 +42,8 @@ namespace Project.UI.Editor
             var hard = SaveMat("MonsterHard", new Color(0.55f, 0.16f, 0.14f), 0.2f, 0.4f);
             var wood = SaveMat("MineWood", new Color(0.30f, 0.18f, 0.09f), 0.02f, 0.18f);
             var darkRock = SaveMat("MineDarkRock", new Color(0.11f, 0.09f, 0.07f), 0.04f, 0.10f);
+            _ = SaveMat("MineCharred", new Color(0.07f, 0.06f, 0.05f), 0.08f, 0.08f);
+            _ = SaveMat("MineAsh", new Color(0.16f, 0.14f, 0.12f), 0.04f, 0.12f);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.ambientMode = AmbientMode.Flat;
