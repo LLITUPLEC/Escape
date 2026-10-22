@@ -7,6 +7,7 @@ local function runtime_lua_require(name_nested, name_root)
 end
 
 local FakeOnline = runtime_lua_require("modules.duel_fake_online", "duel_fake_online")
+local CFG = runtime_lua_require("modules.duel_match3_config", "duel_match3_config")
 
 --- Турнир арены (отдельный chunk — не упирается в лимит локалей duel_match3.lua).
 return function(deps)
@@ -15,27 +16,10 @@ return function(deps)
   local guard_read_metadata_epoch = deps.guard_read_metadata_epoch
   local guard_assert_client_epoch_matches = deps.guard_assert_client_epoch_matches
   local read_pve_progress = deps.read_pve_progress
-  local write_pve_progress = deps.write_pve_progress
   local read_character_sheet = deps.read_character_sheet
-  local write_character_sheet = deps.write_character_sheet
   local ensure_sheet_inventory_counts = deps.ensure_sheet_inventory_counts
   local inventory_remove_def_total = deps.inventory_remove_def_total
   local inventory_try_add = deps.inventory_try_add
-  local stats_inc_arena_tournament_played = deps.stats_inc_arena_tournament_played
-  local achievement_merge_stats = deps.achievement_merge_stats
-
-  local function ach_inc(uid, key, delta)
-    if type(achievement_merge_stats) ~= "function" then return end
-    if uid == nil or uid == "" or key == nil or key == "" then return end
-    local d = tonumber(delta) or 0
-    if d == 0 then return end
-    pcall(achievement_merge_stats, uid, { [key] = d })
-  end
-
---- ═══════════════════════════════════════════════════════════════════════════
---- Арена: турнир на 8 участников (очередь + сетка + интеграция с duel_match3).
---- Отключение ботов: см. arena_runtime.allow_bot_fill ниже.
---- ═══════════════════════════════════════════════════════════════════════════
 
 local ARENA_QUEUE_MAX = 8
 local ARENA_COUNTDOWN_SEC = 20
@@ -99,219 +83,6 @@ local function resource_tier_cfg(kind, bet_tier)
   return nil, tier
 end
 
--- Persisted state (RPC and match loops can run in different Lua contexts).
-local STORAGE_COLL_TOURN = "arena_tournament"
-local STORAGE_COLL_USER_TID = "arena_user_tid"
-local STORAGE_USER_TID_KEY = "tid"
-local STORAGE_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"
-
-local arena_runtime = {
-  kinds = {
-    [ARENA_KIND_SMITH] = { queues = {}, allow_bot_fill = true },
-    [ARENA_KIND_ORE] = { queues = {}, allow_bot_fill = true },
-    [ARENA_KIND_GOLD] = { queues = {}, allow_bot_fill = true },
-  },
-  tournaments = {},
-  -- user_tid[user_id] = { tid = "...", kind = "smith|ore|gold" }
-  user_tid = {},
-  last_tourn_storage_sweep = 0,
-}
-
-local function kind_state(kind)
-  local k = normalize_kind(kind)
-  local ks = arena_runtime.kinds[k]
-  if ks == nil then
-    ks = { queues = {}, allow_bot_fill = true }
-    arena_runtime.kinds[k] = ks
-  end
-  return ks, k
-end
-
---- Миграция со старого формата { queue, queue_bet_tier, next_bot_at } → queues[bet].
-local function ensure_kind_queues(ks)
-  if type(ks.queues) ~= "table" then
-    ks.queues = {}
-  end
-  if type(ks.queue) == "table" and #ks.queue > 0 then
-    local old_bet = tostring(ks.queue_bet_tier or "")
-    if old_bet == "" then
-      local first = ks.queue[1]
-      old_bet = (first ~= nil and tostring(first.bet_tier or "")) or "green"
-    end
-    if old_bet == "" then old_bet = "green" end
-    local bq = ks.queues[old_bet]
-    if bq == nil then
-      bq = { queue = {}, next_bot_at = 0 }
-      ks.queues[old_bet] = bq
-    end
-    if type(bq.queue) ~= "table" then
-      bq.queue = {}
-    end
-    for i = 1, #ks.queue do
-      bq.queue[#bq.queue + 1] = ks.queue[i]
-    end
-    if (tonumber(ks.next_bot_at) or 0) > 0 then
-      bq.next_bot_at = tonumber(ks.next_bot_at) or 0
-    end
-  end
-  ks.queue = nil
-  ks.queue_bet_tier = nil
-  ks.next_bot_at = nil
-end
-
-local function bet_queue_state(kind, bet)
-  local ks, k = kind_state(kind)
-  ensure_kind_queues(ks)
-  local b = string.lower(tostring(bet or ""))
-  if b == "" then b = "green" end
-  local bq = ks.queues[b]
-  if bq == nil then
-    bq = { queue = {}, next_bot_at = 0 }
-    ks.queues[b] = bq
-  elseif type(bq.queue) ~= "table" then
-    bq.queue = {}
-  end
-  return bq, ks, k, b
-end
-
-local function find_user_in_any_queue(user_id)
-  for _, kk in ipairs({ ARENA_KIND_SMITH, ARENA_KIND_ORE, ARENA_KIND_GOLD }) do
-    local ks = arena_runtime.kinds[kk]
-    if ks ~= nil then
-      ensure_kind_queues(ks)
-      for bet_key, bq in pairs(ks.queues) do
-        local q = bq and bq.queue
-        if type(q) == "table" then
-          for i = 1, #q do
-            local e = q[i]
-            if e ~= nil and e.bot ~= true and e.uid == user_id then
-              return kk, tostring(bet_key), bq, i, e
-            end
-          end
-        end
-      end
-    end
-  end
-  return nil, nil, nil, nil, nil
-end
-
-local function storage_read_one(user_id, collection, key)
-  local ok, rows = pcall(function()
-    return nk.storage_read({ { user_id = user_id, collection = collection, key = key } })
-  end)
-  if not ok then
-    nk.logger_error("arena storage_read failed: " .. tostring(rows))
-    return nil
-  end
-  if rows == nil or #rows == 0 or rows[1] == nil then
-    return nil
-  end
-  return rows[1].value
-end
-
-local function storage_write_one(user_id, collection, key, value)
-  local ok, err = pcall(function()
-    nk.storage_write({ { user_id = user_id, collection = collection, key = key, value = value } })
-  end)
-  if not ok then
-    nk.logger_error("arena storage_write failed: " .. tostring(err))
-    return false
-  end
-  return true
-end
-
-local function storage_delete_one(user_id, collection, key)
-  local ok, err = pcall(function()
-    nk.storage_delete({ { user_id = user_id, collection = collection, key = key } })
-  end)
-  if not ok then
-    nk.logger_error("arena storage_delete failed: " .. tostring(err))
-    return false
-  end
-  return true
-end
-
-local function arena_save_tournament(T)
-  if T == nil or T.id == nil or T.id == "" then return end
-  storage_write_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(T.id), T)
-end
-
-local function arena_delete_tournament(tid)
-  if tid == nil or tid == "" then return end
-  arena_runtime.tournaments[tid] = nil
-  storage_delete_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(tid))
-end
-
-local function arena_load_tournament(tid)
-  if tid == nil or tid == "" then return nil end
-  -- Always refresh from storage: RPC and match loops can update in different Lua contexts.
-  local v = storage_read_one(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, tostring(tid))
-  if v ~= nil then
-    if v.phase == "done" then
-      arena_delete_tournament(tid)
-      return nil
-    end
-    arena_runtime.tournaments[tid] = v
-    return v
-  end
-  return arena_runtime.tournaments[tid]
-end
-
---- Удаление по TTL работало только при следующем read по tid; без обхода коллекции записи «done» копились.
-local function arena_sweep_expired_done_storage()
-  local cursor = ""
-  while true do
-    local ok, objects, next_cursor = pcall(function()
-      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
-    end)
-    if not ok then
-      nk.logger_error("arena storage_list failed: " .. tostring(objects))
-      break
-    end
-    if objects == nil then break end
-    for _, row in ipairs(objects) do
-      local v = row.value
-      if v ~= nil and v.phase == "done" then
-        arena_delete_tournament(row.key)
-      end
-    end
-    if next_cursor == nil or next_cursor == "" then break end
-    cursor = next_cursor
-  end
-end
-
-local function arena_save_user_tid(user_id, tid)
-  if user_id == nil or user_id == "" then return end
-  if tid == nil or tid == "" then
-    storage_delete_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
-  else
-    local kind = nil
-    if type(tid) == "table" then
-      kind = normalize_kind(tid.kind)
-      tid = tid.tid
-    end
-    storage_write_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY, { tid = tid, kind = kind })
-  end
-end
-
-local function arena_load_user_tid(user_id)
-  if user_id == nil or user_id == "" then return nil end
-  -- Always refresh from storage: user_tid is modified by match context on elimination.
-  local v = storage_read_one(user_id, STORAGE_COLL_USER_TID, STORAGE_USER_TID_KEY)
-  if v ~= nil and v.tid ~= nil and v.tid ~= "" then
-    local kind = normalize_kind(v.kind)
-    arena_runtime.user_tid[user_id] = { tid = v.tid, kind = kind }
-    return v.tid, kind
-  end
-  arena_runtime.user_tid[user_id] = nil
-  return nil, nil
-end
-
--- Имена ботов:
--- - ARENA_ALWAYS (Морозко/…/Надзиратель) — всегда можно в турнир;
--- - ONLINE_POOL (Player_…/Vanya_…) — только если сейчас в фиктивном онлайне.
--- См. modules/duel_fake_online.lua.
-
 local function arena_shuffle_inplace(arr)
   for i = #arr, 2, -1 do
     local j = math.random(i)
@@ -359,8 +130,13 @@ local function arena_pick_bot_display(used)
 end
 
 --- Страховка: перед стартом турнира у ботов не должно быть одинаковых display.
-local function arena_dedupe_bot_displays(entries)
+local function arena_dedupe_bot_displays(entries, cooldowns)
   local used = {}
+  for name, at in pairs(cooldowns or {}) do
+    if (tonumber(at) or 0) + (tonumber(FakeOnline.POOL_TOURNAMENT_COOLDOWN_SEC) or 3600) > os.time() then
+      used[name] = true
+    end
+  end
   for _, e in ipairs(entries or {}) do
     if e ~= nil and e.bot ~= true and e.display ~= nil and e.display ~= "" then
       used[tostring(e.display)] = true
@@ -402,172 +178,6 @@ local function arena_make_bot_uid()
   return make_bot_user_id("arena_" .. nk.uuid_v4())
 end
 
-local function arena_uid_is_bot(T, uid)
-  local p = T.parts[uid]
-  return p == nil or p.bot == true
-end
-
-local function arena_clear_human_tid(user_id)
-  arena_runtime.user_tid[user_id] = nil
-  arena_save_user_tid(user_id, nil)
-end
-
---- Синхронизирует eliminated с сеткой: hp=0 у человека ⇒ выбыл (если on_match_finished не дошёл).
-local function arena_reconcile_eliminated_from_bracket(T)
-  if T == nil or type(T.parts) ~= "table" then
-    return
-  end
-  if type(T.eliminated) ~= "table" then
-    T.eliminated = {}
-  end
-  for _, rk in ipairs({ "qf", "sf", "final" }) do
-    local plist = T[rk]
-    if type(plist) ~= "table" then
-      goto next_round
-    end
-    for i = 1, #plist do
-      local pr = plist[i]
-      local function mark_out(uid, hp_key, opp_uid)
-        if uid == nil or uid == "" then return end
-        if T.parts[uid] == nil or T.parts[uid].bot == true then return end
-        if (tonumber(pr[hp_key]) or 0) > 0 then return end
-        T.eliminated[uid] = true
-        arena_clear_human_tid(uid)
-        if pr.status ~= "done" then
-          pr.status = "done"
-          if pr.winner_uid == nil or pr.winner_uid == "" then
-            pr.winner_uid = opp_uid or ""
-          end
-          pr.match_id = ""
-        end
-      end
-      mark_out(pr.uid_a, "hp_a", pr.uid_b)
-      mark_out(pr.uid_b, "hp_b", pr.uid_a)
-    end
-    ::next_round::
-  end
-end
-
-local function arena_tournament_count_remaining_humans(T)
-  if T == nil or type(T.parts) ~= "table" then
-    return 0
-  end
-  arena_reconcile_eliminated_from_bracket(T)
-  local eliminated = (type(T.eliminated) == "table") and T.eliminated or {}
-  local n = 0
-  for uid, meta in pairs(T.parts) do
-    if meta ~= nil and meta.bot ~= true and eliminated[uid] ~= true then
-      n = n + 1
-    end
-  end
-  return n
-end
-
-local function arena_clear_all_human_tids_from_tournament(T)
-  if T == nil or type(T.parts) ~= "table" then
-    return
-  end
-  for uid, meta in pairs(T.parts) do
-    if meta ~= nil and meta.bot ~= true then
-      arena_clear_human_tid(uid)
-    end
-  end
-end
-
---- Нет активных людей — не держим запись в storage (боты доигрывают сами себе не нужны).
-local function arena_abort_if_no_humans(T)
-  if T == nil or T.id == nil or T.id == "" then
-    return true
-  end
-  if arena_tournament_count_remaining_humans(T) > 0 then
-    return false
-  end
-  arena_clear_all_human_tids_from_tournament(T)
-  arena_delete_tournament(T.id)
-  return true
-end
-
-local function arena_persist_or_abort_if_no_humans(T)
-  if T == nil or T.id == nil or T.id == "" then return end
-  if arena_tournament_count_remaining_humans(T) <= 0 then
-    arena_abort_if_no_humans(T)
-    return
-  end
-  arena_save_tournament(T)
-end
-
---- Удаляем «мертвые» турниры: нет ни одного активного реального игрока.
-local function arena_sweep_dead_tournaments_storage()
-  local cursor = ""
-  while true do
-    local ok, objects, next_cursor = pcall(function()
-      return nk.storage_list(STORAGE_SYSTEM_USER_ID, STORAGE_COLL_TOURN, 100, cursor)
-    end)
-    if not ok then
-      nk.logger_error("arena storage_list failed: " .. tostring(objects))
-      break
-    end
-    if objects == nil then break end
-    for _, row in ipairs(objects) do
-      local v = row.value
-      if v ~= nil and v.phase ~= "done" then
-        arena_reconcile_eliminated_from_bracket(v)
-        arena_abort_if_no_humans(v)
-      end
-    end
-    if next_cursor == nil or next_cursor == "" then break end
-    cursor = next_cursor
-  end
-end
-
-local function mirror_commit(state)
-  local am = state.arena_mirror
-  if am == nil then
-    return
-  end
-  local tid = am.tournament_id
-  local T = arena_load_tournament(tid)
-  if T == nil then
-    nk.logger_warn("arena mirror_commit: tournament not found tid=" .. tostring(tid))
-    return
-  end
-  local rk = am.round or "qf"
-  local idx = tonumber(am.slot_index) or 1
-  local plist = T[rk]
-  if plist == nil then
-    nk.logger_warn("arena mirror_commit: round list missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk))
-    return
-  end
-  local pr = plist[idx]
-  if pr == nil then
-    nk.logger_warn("arena mirror_commit: pair missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx))
-    return
-  end
-  if state.players_sorted == nil or #state.players_sorted < 2 then
-    return
-  end
-  local sa = state.players_sorted[1]
-  local sb = state.players_sorted[2]
-  local st = state.stats
-  if st == nil then
-    return
-  end
-  local hpa = math.max(0, tonumber(st[sa].hp) or 0)
-  local hpb = math.max(0, tonumber(st[sb].hp) or 0)
-  if pr.uid_a == sa then
-    pr.hp_a = hpa
-    pr.hp_b = hpb
-  elseif pr.uid_a == sb then
-    pr.hp_a = hpb
-    pr.hp_b = hpa
-  else
-    pr.hp_a = hpa
-    pr.hp_b = hpb
-  end
-  arena_persist_or_abort_if_no_humans(T)
-end
-
---- Награды финала турнира (золото/руда) — та же шкала, что в arena_grant_final_progress и в OP_GAME_OVER.
 local function final_prize_for_kind_and_bet(kind, bet_tier)
   local k = normalize_kind(kind)
   if k == ARENA_KIND_ORE or k == ARENA_KIND_GOLD then
@@ -597,29 +207,6 @@ local function arena_apply_bet_score_to_prize(kind, bet_tier, bet_score)
   return math.floor((tonumber(g) or 0) * mult + 0.5), math.floor((tonumber(o) or 0) * mult + 0.5)
 end
 
-local function arena_grant_final_progress(user_id, kind, bet_tier, bet_score)
-  local g, o = arena_apply_bet_score_to_prize(kind, bet_tier, bet_score)
-  local max_retries = 5
-  for attempt = 1, max_retries do
-    local progress, version = read_pve_progress(user_id)
-    progress.ore = math.max(0, (tonumber(progress.ore) or 0) + (tonumber(o) or 0))
-    progress.gold = math.max(0, (tonumber(progress.gold) or 0) + (tonumber(g) or 0))
-    local ok, err = pcall(function()
-      write_pve_progress(user_id, progress, version)
-    end)
-    if ok then
-      return true, g, o
-    end
-    local err_text = tostring(err)
-    if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-      nk.logger_error("arena_grant_final_progress: " .. err_text)
-      return false, g, o
-    end
-  end
-  return false, g, o
-end
-
---- Раунд, на который сейчас принимают side-bet: qf / sf / nil (финал и бои — нельзя).
 local function arena_open_side_bet_round(T)
   if T == nil or T.phase ~= "countdown" then
     return nil
@@ -665,41 +252,6 @@ local function arena_ensure_side_bet_tables(T)
   end
 end
 
---- После завершения раунда: ±1 в bet_score и счётчики win/loss за каждую ставку игрока.
-local function arena_resolve_side_bets(T, rk)
-  arena_ensure_side_bet_tables(T)
-  local plist = T[rk]
-  if plist == nil then
-    return
-  end
-  for uid, bag in pairs(T.side_bets) do
-    if type(bag) == "table" then
-      local picks = bag[rk]
-      if type(picks) == "table" then
-        for slot_key, pick_uid in pairs(picks) do
-          local pr = plist[tonumber(slot_key)]
-          if pr ~= nil and pick_uid ~= nil and pick_uid ~= "" then
-            local w = tostring(pr.winner_uid or "")
-            if w ~= "" then
-              local cur = tonumber(T.bet_score[uid]) or 0
-              if w == tostring(pick_uid) then
-                T.bet_score[uid] = cur + 1
-                T.bet_wins[uid] = (tonumber(T.bet_wins[uid]) or 0) + 1
-                ach_inc(uid, "slaughter.arena_bets_won", 1)
-              else
-                T.bet_score[uid] = cur - 1
-                T.bet_losses[uid] = (tonumber(T.bet_losses[uid]) or 0) + 1
-                ach_inc(uid, "slaughter.arena_bets_lost", 1)
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-end
-
---- Сколько side-ставок должен сделать финалист на все чужие пары (для сетки 2^n).
 local function arena_expected_side_bets_for_finalist(bracket_size)
   local n = tonumber(bracket_size) or ARENA_QUEUE_MAX
   if n < 4 then
@@ -731,26 +283,6 @@ local function arena_count_side_bets_placed(T, uid)
     end
   end
   return n
-end
-
-local function arena_try_grant_perfect_bets_achievement(T, winner_uid)
-  if T == nil or winner_uid == nil or winner_uid == "" then
-    return
-  end
-  if arena_uid_is_bot(T, winner_uid) then
-    return
-  end
-  arena_ensure_side_bet_tables(T)
-  local expected = arena_expected_side_bets_for_finalist(T.bracket_size or ARENA_QUEUE_MAX)
-  if expected <= 0 then
-    return
-  end
-  local wins = tonumber(T.bet_wins[winner_uid]) or 0
-  local losses = tonumber(T.bet_losses[winner_uid]) or 0
-  local placed = arena_count_side_bets_placed(T, winner_uid)
-  if wins == expected and losses == 0 and placed == expected then
-    ach_inc(winner_uid, "dnn.arena_perfect_bets_win", 1)
-  end
 end
 
 local function arena_pack_my_side_bets(T, user_id, rk)
@@ -785,17 +317,6 @@ local function arena_pack_my_side_bets(T, user_id, rk)
   return out
 end
 
---- Приз финала с учётом side-bet счёта победителя (для UI GAME_OVER).
-local function final_prize_for_winner(tournament_id, user_id, kind, bet_tier)
-  local score = 0
-  local T = arena_load_tournament(tournament_id)
-  if T ~= nil then
-    arena_ensure_side_bet_tables(T)
-    score = tonumber(T.bet_score[user_id]) or 0
-  end
-  return arena_apply_bet_score_to_prize(kind, bet_tier, score)
-end
-
 local function arena_pair_row_from_slots(a, b)
   return {
     uid_a = a.uid,
@@ -821,931 +342,615 @@ local function arena_build_round_from_slots(slots)
   return pairs
 end
 
-local arena_on_pair_completed
-
-local function arena_all_pairs_done(T, rk)
-  local plist = T[rk]
-  if plist == nil then
-    return false
+-- All authoritative state is shared across runtime VMs. A single storage batch
+-- commits the state change and its money/stat effects, or commits nothing.
+local SYSTEM = "00000000-0000-0000-0000-000000000000"
+local TOURNAMENTS = "arena_tournament"
+local QUEUES = "arena_queue"
+local RETRIES = 12
+local function read_row(uid, collection, key)
+  local rows = nk.storage_read({ { user_id = uid, collection = collection, key = key } })
+  local row = rows and rows[1]
+  if row == nil then return nil, "*" end
+  local value = row.value
+  if type(value) == "string" then value = nk.json_decode(value) end
+  if type(value) ~= "table" or row.version == nil or row.version == "" then
+    error("arena invalid storage row: " .. collection .. "/" .. key)
   end
-  for i = 1, #plist do
-    if plist[i].status ~= "done" then
-      return false
+  return value, row.version
+end
+local function write_row(uid, collection, key, value, version, readable)
+  return { user_id = uid, collection = collection, key = key, value = value,
+    version = version or "*", permission_read = readable and 1 or 0, permission_write = 0 }
+end
+local function conflict(err)
+  return string.find(string.lower(tostring(err)), "version", 1, true) ~= nil
+end
+local function transact(collection, key, create, mutate)
+  for attempt = 1, RETRIES do
+    local value, version = read_row(SYSTEM, collection, key)
+    if value == nil then
+      if create == nil then return nil, "missing" end
+      value = create()
+    end
+    local writes = {}
+    local changed, result = mutate(value, writes)
+    if not changed then return value, result end
+    table.insert(writes, 1, write_row(SYSTEM, collection, key, value, version))
+    local ok, err = pcall(nk.storage_write, writes)
+    if ok then return value, result end
+    if not conflict(err) or attempt == RETRIES then error(err) end
+  end
+  error("arena transaction retry limit")
+end
+local function load_tournament(tid)
+  if tid == nil or tid == "" then return nil end
+  return read_row(SYSTEM, TOURNAMENTS, tostring(tid))
+end
+local function summary_write(writes, uid, mutate)
+  -- Coalesce all deltas for one user into one versioned object in the batch.
+  for _, wo in ipairs(writes) do
+    if wo.collection == CFG.STATS_COLLECTION and wo.key == CFG.STATS_KEY and wo.user_id == uid then
+      mutate(wo.value)
+      return
     end
   end
+  local value, version = read_row(uid, CFG.STATS_COLLECTION, CFG.STATS_KEY)
+  value = value or {}
+  mutate(value)
+  value.updated_at = os.time()
+  writes[#writes + 1] = write_row(uid, CFG.STATS_COLLECTION, CFG.STATS_KEY, value, version, true)
+end
+local function achievement(writes, uid, key, delta)
+  summary_write(writes, uid, function(value)
+    value.achievement_stats = type(value.achievement_stats) == "table" and value.achievement_stats or {}
+    value.achievement_stats[key] = (tonumber(value.achievement_stats[key]) or 0) + delta
+  end)
+end
+local function uid_is_bot(T, uid)
+  return T.parts[uid] == nil or T.parts[uid].bot == true
+end
+local function active_humans(T)
+  local n = 0
+  T.eliminated = type(T.eliminated) == "table" and T.eliminated or {}
+  for uid, meta in pairs(T.parts or {}) do
+    if not meta.bot and T.eliminated[uid] ~= true then n = n + 1 end
+  end
+  return n
+end
+local function abort_if_empty(T)
+  if T.phase ~= "done" and active_humans(T) == 0 then
+    T.phase, T.done_at, T.aborted = "done", os.time(), true
+    return true
+  end
+  return false
+end
+local function build_progress_write(uid, progress, version)
+  if type(deps.build_pve_progress_write) ~= "function" then error("arena progress write builder missing") end
+  return deps.build_pve_progress_write(uid, progress, version)
+end
+local function build_sheet_write(uid, sheet)
+  if type(deps.build_character_sheet_write) ~= "function" then error("arena sheet write builder missing") end
+  return deps.build_character_sheet_write(uid, sheet)
+end
+local function all_done(T, rk)
+  local list = T[rk]
+  if type(list) ~= "table" or #list == 0 then return false end
+  for _, pr in ipairs(list) do if pr.status ~= "done" then return false end end
   return true
 end
-
-local function arena_collect_winners(T, rk)
-  local out = {}
-  local plist = T[rk]
-  if plist == nil then
-    return out
-  end
-  for i = 1, #plist do
-    local pr = plist[i]
-    local w = pr.winner_uid
-    if w ~= nil and w ~= "" then
-      local meta = T.parts[w]
-      local display = meta ~= nil and meta.display or "?"
-      local bot = meta ~= nil and meta.bot == true
-      out[#out + 1] = { uid = w, display = display, bot = bot }
+local function resolve_bets(T, rk, writes)
+  arena_ensure_side_bet_tables(T)
+  T.bets_resolved = type(T.bets_resolved) == "table" and T.bets_resolved or {}
+  if T.bets_resolved[rk] then return end
+  for uid, bag in pairs(T.side_bets) do
+    local picks = type(bag) == "table" and bag[rk] or nil
+    if type(picks) == "table" and not uid_is_bot(T, uid) then
+      for slot, picked in pairs(picks) do
+        local pr = T[rk][tonumber(slot)]
+        if pr and picked ~= "" and pr.winner_uid ~= nil and pr.winner_uid ~= "" then
+          local won = pr.winner_uid == picked
+          T.bet_score[uid] = (tonumber(T.bet_score[uid]) or 0) + (won and 1 or -1)
+          local counters = won and T.bet_wins or T.bet_losses
+          counters[uid] = (tonumber(counters[uid]) or 0) + 1
+          achievement(writes, uid, won and "slaughter.arena_bets_won" or "slaughter.arena_bets_lost", 1)
+        end
+      end
     end
   end
-  return out
+  T.bets_resolved[rk] = true
 end
-
-local function arena_spawn_round_if_pending(T, rk)
-  local plist = T[rk]
-  if plist == nil then
+local function advance(T, rk, writes)
+  if T.phase == "done" or not all_done(T, rk) then return end
+  if abort_if_empty(T) then return end
+  if rk == "qf" or rk == "sf" then
+    local slots = {}
+    for _, pr in ipairs(T[rk]) do
+      local uid, meta = pr.winner_uid, T.parts[pr.winner_uid]
+      if not meta then error("arena winner missing from parts") end
+      slots[#slots + 1] = { uid = uid, display = meta.display, bot = meta.bot == true }
+    end
+    if #slots ~= (rk == "qf" and 4 or 2) then error("arena invalid bracket size") end
+    resolve_bets(T, rk, writes)
+    arena_shuffle_inplace(slots)
+    local next_round = rk == "qf" and "sf" or "final"
+    T[next_round] = arena_build_round_from_slots(slots)
+    T.qf = {}
+    if rk == "sf" then T.sf = {} end
+    T.phase, T.next_round = "countdown", next_round
+    T.countdown_until, T.next_slots = os.time() + ARENA_COUNTDOWN_SEC, nil
     return
   end
-  -- Бот vs бот — без матча; отдельно, чтобы не вызывать advance посередине одного прохода.
-  for i = 1, #plist do
-    local pr = plist[i]
-    if pr.status == "pending" and pr.bot_a and pr.bot_b then
+  if rk ~= "final" then return end
+  local winner = T.final[1].winner_uid
+  if winner and winner ~= "" and not uid_is_bot(T, winner) then
+    arena_ensure_side_bet_tables(T)
+    local g, o = arena_apply_bet_score_to_prize(T.kind, T.bet_tier, T.bet_score[winner] or 0)
+    local progress, version = read_pve_progress(winner)
+    progress.gold = math.max(0, (tonumber(progress.gold) or 0) + g)
+    progress.ore = math.max(0, (tonumber(progress.ore) or 0) + o)
+    writes[#writes + 1] = build_progress_write(winner, progress, version)
+    local expected = arena_expected_side_bets_for_finalist(T.bracket_size)
+    if (tonumber(T.bet_wins[winner]) or 0) == expected
+      and (tonumber(T.bet_losses[winner]) or 0) == 0
+      and arena_count_side_bets_placed(T, winner) == expected then
+      achievement(writes, winner, "dnn.arena_perfect_bets_win", 1)
+    end
+    T.reward_receipt = { user_id = winner, gold = g, ore = o, granted_at = os.time() }
+  end
+  -- Keep a terminal receipt: no stale runtime snapshot may resurrect a final or
+  -- reissue its prize. The receipt and progress update share the same commit.
+  T.phase, T.done_at, T.next_round = "done", os.time(), nil
+end
+local function pair_for_state(T, state)
+  local am = state and state.arena_mirror
+  if not am or T.phase == "done" then return nil end
+  local rk, idx = tostring(am.round or "qf"), tonumber(am.slot_index) or 1
+  if T.phase ~= rk then return nil end
+  local pr = type(T[rk]) == "table" and T[rk][idx] or nil
+  if not pr or (pr.status ~= "fighting" and pr.status ~= "spawning") then return nil end
+  if pr.spawn_token ~= am.spawn_token then return nil end
+  if pr.match_id and pr.match_id ~= "" and state.match_id and state.match_id ~= ""
+    and pr.match_id ~= state.match_id then return nil end
+  return pr, rk
+end
+local function mirror_commit(state)
+  local am = state and state.arena_mirror
+  if not am then return end
+  transact(TOURNAMENTS, tostring(am.tournament_id or ""), nil, function(T)
+    local pr = pair_for_state(T, state)
+    if not pr then return false end
+    local changed = false
+    local a = type(state.stats) == "table" and state.stats[pr.uid_a]
+    local b = type(state.stats) == "table" and state.stats[pr.uid_b]
+    if a and b then
+      pr.hp_a, pr.hp_b = math.max(0, tonumber(a.hp) or 0), math.max(0, tonumber(b.hp) or 0)
+      changed = true
+    end
+    if pr.status == "spawning" and state.match_id and state.match_id ~= "" then
+      pr.status, pr.match_id = "fighting", state.match_id
+      changed = true
+    end
+    return changed
+  end)
+end
+local function on_match_created(state)
+  local am = state and state.arena_mirror
+  if not am then return end
+  if not state.match_id or state.match_id == "" then error("arena match id missing at creation") end
+  local _, bound = transact(TOURNAMENTS, tostring(am.tournament_id or ""), nil, function(T)
+    local pr = pair_for_state(T, state)
+    if not pr or not am.spawn_token then return false, false end
+    if pr.status == "fighting" then return false, pr.match_id == state.match_id end
+    pr.status, pr.match_id = "fighting", state.match_id
+    return true, true
+  end)
+  if bound ~= true then error("arena spawn claim expired or superseded") end
+end
+local function clean_registry(T, writes)
+  local registry, version = read_row(SYSTEM, QUEUES, "state")
+  if not registry or type(registry.users) ~= "table" then return end
+  local changed = false
+  for uid in pairs(T.parts or {}) do
+    local ref = registry.users[uid]
+    if ref and ref.tid == T.id and (T.phase == "done" or T.eliminated[uid]) then
+      registry.users[uid], changed = nil, true
+    end
+  end
+  if changed then writes[#writes + 1] = write_row(SYSTEM, QUEUES, "state", registry, version) end
+end
+local function on_match_finished(state, winner_uid)
+  local am = state and state.arena_mirror
+  if not am then return end
+  return transact(TOURNAMENTS, tostring(am.tournament_id or ""), nil, function(T, writes)
+    local pr, rk = pair_for_state(T, state)
+    if not pr or (winner_uid ~= pr.uid_a and winner_uid ~= pr.uid_b) then return false end
+    local loser = winner_uid == pr.uid_a and pr.uid_b or pr.uid_a
+    pr.status, pr.winner_uid, pr.match_id = "done", winner_uid, ""
+    for _, side in ipairs({ "a", "b" }) do
+      local uid = pr["uid_" .. side]
+      local st = type(state.stats) == "table" and state.stats[uid] or nil
+      if st then pr["hp_" .. side] = math.max(0, tonumber(st.hp) or 0) end
+      if uid == loser then pr["hp_" .. side] = 0 end
+    end
+    T.eliminated = type(T.eliminated) == "table" and T.eliminated or {}
+    if not uid_is_bot(T, loser) then T.eliminated[loser] = true end
+    advance(T, rk, writes)
+    clean_registry(T, writes)
+    return true
+  end)
+end
+
+local function spawn_pair(tid, rk, index)
+  local token = nk.uuid_v4()
+  local claimed, won_claim = transact(TOURNAMENTS, tid, nil, function(T, writes)
+    local pr = T.phase == rk and T[rk] and T[rk][index]
+    if not pr or pr.status ~= "pending" then return false end
+    if pr.bot_a and pr.bot_b then
       pr.winner_uid = math.random() < 0.5 and pr.uid_a or pr.uid_b
       pr.status = "done"
+      advance(T, rk, writes)
+      return true
     end
-  end
-  if arena_all_pairs_done(T, rk) then
-    arena_on_pair_completed(T, rk)
-    return
-  end
-  for i = 1, #plist do
-    local pr = plist[i]
-    if pr.status ~= "pending" then
-      -- skip
-    elseif pr.bot_a or pr.bot_b then
-      local human_uid = pr.bot_a and pr.uid_b or pr.uid_a
-      local epoch = guard_read_metadata_epoch(human_uid)
-      local bot_uid = pr.bot_a and pr.uid_a or pr.uid_b
-      local bot_display = pr.bot_a and pr.display_a or pr.display_b
-      local mid = try_match_create({
-        mode = "pve",
-        owner_user_id = human_uid,
-        bot_id = "arena_bot",
-        bot_user_id = bot_uid,
-        owner_level = 1,
-        owner_session_epoch = epoch,
-        arena_pvp_style = true,
-        -- Боты из ONLINE_POOL_NAMES думают дольше (случайные 7–22с).
-        arena_human_like_bot = FakeOnline.is_online_pool_name(bot_display),
-        pve_run = {
-          floor = 1,
-          difficulty = "easy",
-          affix = "",
-          stat_mul = 1,
-          reward_mul = 0,
-          arena_suppress_all = true,
-        },
-        arena_mirror = {
-          tournament_id = T.id,
-          round = rk,
-          slot_index = i,
-          bet_tier = T.bet_tier,
-          kind = T.kind,
-        },
-      })
-      if mid ~= nil and mid ~= "" then
-        pr.match_id = mid
-        pr.status = "fighting"
-      else
-        nk.logger_error("arena_spawn_round_if_pending: pve match_create failed idx=" .. tostring(i))
-        pr.winner_uid = human_uid
-        pr.status = "done"
-      end
-    else
-      local mid = try_match_create({
-        mode = "pvp",
-        invited = { { user_id = pr.uid_a }, { user_id = pr.uid_b } },
-        arena_mirror = {
-          tournament_id = T.id,
-          round = rk,
-          slot_index = i,
-          bet_tier = T.bet_tier,
-          kind = T.kind,
-        },
-      })
-      if mid ~= nil and mid ~= "" then
-        pr.match_id = mid
-        pr.status = "fighting"
-      else
-        nk.logger_error("arena_spawn_round_if_pending: pvp match_create failed idx=" .. tostring(i))
-        pr.winner_uid = pr.uid_a
-        pr.status = "done"
-      end
-    end
-  end
-  if arena_all_pairs_done(T, rk) then
-    arena_on_pair_completed(T, rk)
-  end
-end
-
-local function arena_begin_next_round(T, rk_next, slots)
-  arena_shuffle_inplace(slots)
-  T[rk_next] = arena_build_round_from_slots(slots)
-  T.phase = rk_next
-  arena_spawn_round_if_pending(T, rk_next)
-  arena_save_tournament(T)
-end
-
-arena_on_pair_completed = function(T, rk)
-  if not arena_all_pairs_done(T, rk) then
-    return
-  end
-  if arena_abort_if_no_humans(T) then
-    return
-  end
-  if rk == "qf" then
-    local winners = arena_collect_winners(T, "qf")
-    if #winners ~= 4 then
-      return
-    end
-    arena_resolve_side_bets(T, "qf")
-    -- Prepare next bracket immediately (no history in UI).
-    arena_shuffle_inplace(winners)
-    T.sf = arena_build_round_from_slots(winners)
-    T.qf = {}
-    T.phase = "countdown"
-    T.countdown_until = os.time() + ARENA_COUNTDOWN_SEC
-    T.next_round = "sf"
-    T.next_slots = nil
-    arena_save_tournament(T)
-    return
-  end
-  if rk == "sf" then
-    local winners = arena_collect_winners(T, "sf")
-    if #winners ~= 2 then
-      return
-    end
-    arena_resolve_side_bets(T, "sf")
-    arena_shuffle_inplace(winners)
-    T.final = arena_build_round_from_slots(winners)
-    T.sf = {}
-    T.qf = {}
-    T.phase = "countdown"
-    T.countdown_until = os.time() + ARENA_COUNTDOWN_SEC
-    T.next_round = "final"
-    T.next_slots = nil
-    arena_save_tournament(T)
-    return
-  end
-  if rk == "final" then
-    local plist = T.final
-    local pr = plist ~= nil and plist[1] or nil
-    if pr == nil then
-      return
-    end
-    local w = pr.winner_uid
-    if w ~= nil and w ~= "" and not arena_uid_is_bot(T, w) then
-      arena_ensure_side_bet_tables(T)
-      arena_try_grant_perfect_bets_achievement(T, w)
-      arena_grant_final_progress(w, T.kind, T.bet_tier, T.bet_score[w] or 0)
-    end
-    T.phase = "done"
-    T.done_at = os.time()
-    for uid, meta in pairs(T.parts) do
-      if meta.bot ~= true then
-        arena_clear_human_tid(uid)
-      end
-    end
-    arena_delete_tournament(T.id)
-  end
-end
-
-local function on_match_finished(state, winner_uid)
-  local am = state.arena_mirror
-  if am == nil then
-    -- Обычный PvP/тренировочный бой без турнира: хук вызывается из duel_match3 всегда — без зеркала нечего обновлять.
-    return
-  end
-  local tid = am.tournament_id
-  local T = arena_load_tournament(tid)
-  if T == nil then
-    nk.logger_warn("arena on_match_finished: tournament not found tid=" .. tostring(tid) .. " winner=" .. tostring(winner_uid))
-    return
-  end
-  local rk = am.round or "qf"
-  local idx = tonumber(am.slot_index) or 1
-  local plist = T[rk]
-  if plist == nil then
-    nk.logger_warn("arena on_match_finished: round list missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk))
-    return
-  end
-  local pr = plist[idx]
-  if pr == nil then
-    nk.logger_warn("arena on_match_finished: pair missing tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx))
-    return
-  end
-  nk.logger_info("arena on_match_finished: tid=" .. tostring(tid) .. " rk=" .. tostring(rk) .. " idx=" .. tostring(idx) ..
-    " winner=" .. tostring(winner_uid) .. " a=" .. tostring(pr.uid_a) .. " b=" .. tostring(pr.uid_b))
-
-  local loser_uid = nil
-  if pr.uid_a == winner_uid then
-    loser_uid = pr.uid_b
-  elseif pr.uid_b == winner_uid then
-    loser_uid = pr.uid_a
+    pr.status, pr.spawn_token, pr.spawn_started_at = "spawning", token, os.time()
+    return true, true
+  end)
+  if not claimed or won_claim ~= true then return end
+  local pr = claimed[rk][index]
+  local params = { arena_mirror = { tournament_id = tid, round = rk, slot_index = index,
+    bet_tier = claimed.bet_tier, kind = claimed.kind, spawn_token = token } }
+  if pr.bot_a or pr.bot_b then
+    local human = pr.bot_a and pr.uid_b or pr.uid_a
+    local bot_display = pr.bot_a and pr.display_a or pr.display_b
+    params.mode, params.owner_user_id = "pve", human
+    params.bot_id, params.bot_user_id = "arena_bot", pr.bot_a and pr.uid_a or pr.uid_b
+    params.owner_level, params.owner_session_epoch = 1, guard_read_metadata_epoch(human)
+    params.arena_pvp_style = true
+    params.arena_human_like_bot = FakeOnline.is_online_pool_name(bot_display)
+    params.pve_run = { floor = 1, difficulty = "easy", affix = "", stat_mul = 1,
+      reward_mul = 0, arena_suppress_all = true }
   else
-    -- Fallback: sometimes duel_match3 may report a bot user id that doesn't match stored uid
-    -- (older tournaments / stale state). If one side is a bot participant, assume bot is winner.
-    local a_is_bot = arena_uid_is_bot(T, pr.uid_a)
-    local b_is_bot = arena_uid_is_bot(T, pr.uid_b)
-    if a_is_bot and not b_is_bot and string.find(tostring(winner_uid or ""), "zz%-bot%-", 1) == 1 then
-      winner_uid = pr.uid_a
-      loser_uid = pr.uid_b
-    elseif b_is_bot and not a_is_bot and string.find(tostring(winner_uid or ""), "zz%-bot%-", 1) == 1 then
-      winner_uid = pr.uid_b
-      loser_uid = pr.uid_a
+    params.mode, params.invited = "pvp", { { user_id = pr.uid_a }, { user_id = pr.uid_b } }
+  end
+  local ok, mid = pcall(try_match_create, params)
+  if not ok then mid = nil end
+  transact(TOURNAMENTS, tid, nil, function(T)
+    local current = T.phase == rk and T[rk] and T[rk][index]
+    if not current or current.status ~= "spawning" or current.spawn_token ~= token then return false end
+    if mid and mid ~= "" then
+      current.status, current.match_id = "fighting", mid
+    else
+      -- A failed creation has no fight/result and can be retried by a later poll.
+      current.status, current.spawn_token, current.spawn_started_at = "pending", nil, nil
+      nk.logger_error("arena match_create failed tid=" .. tid .. " slot=" .. index)
     end
-  end
-  pr.status = "done"
-  pr.winner_uid = winner_uid
-  -- Match is over and may be deleted; never offer join to a finished match.
-  pr.match_id = ""
-  -- Ensure HP looks correct in bracket even if last mirror_commit didn't arrive.
-  -- We persist final HP snapshot from match state, then force loser HP to 0 for clarity.
-  if state ~= nil and type(state.stats) == "table" then
-    local function hp_of(uid)
-      if uid == nil or uid == "" then return nil end
-      local s = state.stats[uid]
-      if s == nil then return nil end
-      return math.max(0, tonumber(s.hp) or 0)
+    return true
+  end)
+end
+local function tick_tournament(tid)
+  local T = transact(TOURNAMENTS, tid, nil, function(value, writes)
+    if value.phase == "done" then return false end
+    if abort_if_empty(value) then clean_registry(value, writes) return true end
+    if value.phase ~= "countdown" then
+      -- No registered match owns this expired claim. A delayed creator must
+      -- pass on_match_created with its token and will be rejected after reset.
+      local changed = false
+      for _, pr in ipairs(value[value.phase] or {}) do
+        if pr.status == "spawning" and (tonumber(pr.spawn_started_at) or 0) + 30 <= os.time() then
+          pr.status, pr.spawn_token, pr.spawn_started_at = "pending", nil, nil
+          changed = true
+        end
+      end
+      return changed
     end
-    local ha = hp_of(pr.uid_a)
-    local hb = hp_of(pr.uid_b)
-    if ha ~= nil then pr.hp_a = ha end
-    if hb ~= nil then pr.hp_b = hb end
-  end
-  if loser_uid ~= nil then
-    if pr.uid_a == loser_uid then pr.hp_a = 0 end
-    if pr.uid_b == loser_uid then pr.hp_b = 0 end
-  end
-  if loser_uid ~= nil and T.parts[loser_uid] ~= nil and T.parts[loser_uid].bot ~= true then
-    T.eliminated[loser_uid] = true
-    arena_clear_human_tid(loser_uid)
-  end
-  arena_on_pair_completed(T, rk)
-  arena_persist_or_abort_if_no_humans(T)
+    if (tonumber(value.countdown_until) or math.huge) > os.time() then return false end
+    value.phase = value.next_round or "qf"
+    value.next_round, value.next_slots = nil, nil
+    return true
+  end)
+  if not T or T.phase == "done" then return T end
+  local rk = T.phase
+  if rk ~= "qf" and rk ~= "sf" and rk ~= "final" then return T end
+  for i = 1, #(T[rk] or {}) do spawn_pair(tid, rk, i) end
+  return load_tournament(tid)
 end
 
-local function arena_tick_countdowns()
-  local now = os.time()
-  for tid, T in pairs(arena_runtime.tournaments) do
-    if T == nil then
-      -- skip
-    elseif arena_abort_if_no_humans(T) then
-      -- skip
-    elseif T.phase == "countdown" and tonumber(T.countdown_until) ~= nil and now >= tonumber(T.countdown_until) then
-      if T.next_round ~= nil and T.next_round ~= "" then
-        local rk_next = T.next_round
-        T.next_round = nil
-        T.next_slots = nil
-        T.phase = rk_next
-        arena_spawn_round_if_pending(T, rk_next)
-      else
-        T.phase = "qf"
-        arena_spawn_round_if_pending(T, "qf")
-      end
-      arena_save_tournament(T)
-    end
-  end
+local function empty_registry() return { queues = {}, users = {} } end
+local function read_registry()
+  return read_row(SYSTEM, QUEUES, "state") or empty_registry()
 end
-
-local function arena_start_tournament_from_entries(kind, entries)
-  local k = normalize_kind(kind)
-  local tid = nk.uuid_v4()
-  local bet = entries[1] ~= nil and entries[1].bet_tier or "green"
-
-  -- Если в пачке 8 только боты — не создаём турнир/сетку и не пишем в storage.
-  local has_human = false
-  for _, p in ipairs(entries or {}) do
-    if p ~= nil and p.bot ~= true then
-      has_human = true
-      break
+local function queue_key(kind, bet) return kind .. ":" .. bet end
+local function get_queue(registry, kind, bet)
+  registry.queues = type(registry.queues) == "table" and registry.queues or {}
+  registry.users = type(registry.users) == "table" and registry.users or {}
+  local key = queue_key(kind, bet)
+  registry.queues[key] = registry.queues[key] or { entries = {}, next_bot_at = 0, kind = kind, bet = bet }
+  return registry.queues[key]
+end
+local function tidy_user(registry, uid)
+  registry.users = type(registry.users) == "table" and registry.users or {}
+  local ref = registry.users[uid]
+  if ref and ref.tid then
+    local T = load_tournament(ref.tid)
+    if not T or T.phase == "done" or (T.eliminated and T.eliminated[uid]) then
+      registry.users[uid] = nil
+      return nil
     end
   end
-  if not has_human then
-    return
-  end
-
-  arena_dedupe_bot_displays(entries)
-
-  -- ONLINE_POOL: 1 турнир / час — фиксируем сразу после назначения display.
-  do
-    local played = {}
-    for _, p in ipairs(entries or {}) do
-      if p ~= nil and p.bot == true and p.display ~= nil and p.display ~= "" then
-        played[#played + 1] = p.display
-      end
-    end
-    FakeOnline.mark_pool_tournament_played(played, os.time())
-  end
-
-  local T = {
-    id = tid,
-    kind = k,
-    bet_tier = bet,
-    bracket_size = #entries,
-    phase = "countdown",
-    countdown_until = os.time() + ARENA_COUNTDOWN_SEC,
-    next_round = nil,
-    next_slots = nil,
-    parts = {},
-    qf = {},
-    sf = {},
-    final = {},
-    eliminated = {},
-    side_bets = {},
-    bet_score = {},
-    bet_wins = {},
-    bet_losses = {},
-    created_at = os.time(),
-  }
+  return registry.users[uid]
+end
+local function user_tournament(uid)
+  local registry = read_registry()
+  local ref = registry.users and registry.users[uid]
+  if ref and ref.tid then return ref.tid, ref.kind end
+  -- Compatibility for tournaments created before shared queues were deployed.
+  local legacy = read_row(uid, "arena_user_tid", "tid")
+  if legacy and legacy.tid and legacy.tid ~= "" then return legacy.tid, normalize_kind(legacy.kind) end
+  return nil
+end
+local function make_tournament(kind, bet, entries, cooldowns)
+  arena_dedupe_bot_displays(entries, cooldowns)
   arena_shuffle_inplace(entries)
-  for _, p in ipairs(entries) do
-    T.parts[p.uid] = { display = p.display, bot = p.bot == true }
-    if p.bot ~= true then
-      arena_runtime.user_tid[p.uid] = { tid = tid, kind = k }
-      arena_save_user_tid(p.uid, { tid = tid, kind = k })
-      if type(stats_inc_arena_tournament_played) == "function" then
-        pcall(stats_inc_arena_tournament_played, p.uid, k)
-      end
-    end
-  end
+  local T = { id = nk.uuid_v4(), kind = kind, bet_tier = bet, bracket_size = #entries,
+    phase = "countdown", countdown_until = os.time() + ARENA_COUNTDOWN_SEC, created_at = os.time(),
+    parts = {}, qf = {}, sf = {}, final = {}, eliminated = {}, side_bets = {},
+    bet_score = {}, bet_wins = {}, bet_losses = {}, bet_counted = {}, bets_resolved = {} }
   local slots = {}
   for _, p in ipairs(entries) do
-    slots[#slots + 1] = { uid = p.uid, display = p.display, bot = p.bot == true }
+    T.parts[p.uid] = { display = p.display, bot = p.bot == true }
+    slots[#slots + 1] = p
   end
   T.qf = arena_build_round_from_slots(slots)
-  arena_runtime.tournaments[tid] = T
-  arena_save_tournament(T)
+  return T
 end
-
-local function arena_try_pop_queue_full(kind, bet)
-  local bq, _ks, k, bet_key = bet_queue_state(kind, bet)
-  local q = bq.queue
-  if #q < ARENA_QUEUE_MAX then
-    return
+local function pop_full(registry, q, writes)
+  if #q.entries < ARENA_QUEUE_MAX then return end
+  local entries = {}
+  for _ = 1, ARENA_QUEUE_MAX do entries[#entries + 1] = table.remove(q.entries, 1) end
+  registry.bot_cooldowns = type(registry.bot_cooldowns) == "table" and registry.bot_cooldowns or {}
+  for name, at in pairs(registry.bot_cooldowns) do
+    if (tonumber(at) or 0) + 7200 < os.time() then registry.bot_cooldowns[name] = nil end
   end
-  local batch = {}
-  for i = 1, ARENA_QUEUE_MAX do
-    batch[#batch + 1] = q[i]
-  end
-  for _ = 1, ARENA_QUEUE_MAX do
-    table.remove(q, 1)
-  end
-  bq.next_bot_at = 0
-  arena_start_tournament_from_entries(k, batch)
-end
-
-local function arena_maybe_fill_bot(kind, bet)
-  local bq, ks, k, bet_key = bet_queue_state(kind, bet)
-  if ks.allow_bot_fill ~= true then
-    return
-  end
-  local q = bq.queue
-  if #q >= ARENA_QUEUE_MAX or #q == 0 then
-    return
-  end
-  -- Если в этой ставке не осталось людей — очищаем очередь от ботов.
-  local has_human = false
-  for i = 1, #q do
-    local e = q[i]
-    if e ~= nil and e.bot ~= true then
-      has_human = true
-      break
+  local T = make_tournament(q.kind, q.bet, entries, registry.bot_cooldowns)
+  writes[#writes + 1] = write_row(SYSTEM, TOURNAMENTS, T.id, T, "*")
+  q.next_bot_at = 0
+  for _, p in ipairs(entries) do
+    if p.bot then
+      if FakeOnline.is_online_pool_name(p.display) then registry.bot_cooldowns[p.display] = os.time() end
+    else
+      registry.users[p.uid] = { tid = T.id, kind = q.kind }
+      summary_write(writes, p.uid, function(value)
+        value.summary = type(value.summary) == "table" and value.summary or {}
+        local summary = value.summary
+        summary.arena_tournaments = type(summary.arena_tournaments) == "table" and summary.arena_tournaments or {}
+        local bag = summary.arena_tournaments[q.kind] or {}
+        bag.played, bag.updated_at = (tonumber(bag.played) or 0) + 1, os.time()
+        summary.arena_tournaments[q.kind] = bag
+      end)
     end
   end
-  if not has_human then
-    bq.queue = {}
-    bq.next_bot_at = 0
-    return
-  end
-  local now = os.time()
-  if bq.next_bot_at <= 0 then
-    bq.next_bot_at = now + math.random(5, 8)
-    return
-  end
-  if now < bq.next_bot_at then
-    return
-  end
-  bq.next_bot_at = now + math.random(5, 8)
-  local used = arena_collect_used_displays(q)
-  q[#q + 1] = {
-    uid = arena_make_bot_uid(),
-    display = arena_pick_bot_display(used),
-    bot = true,
-    bet_tier = bet_key,
-  }
-  arena_try_pop_queue_full(k, bet_key)
 end
-
-local function arena_maybe_fill_bots_for_kind(kind)
-  local ks, k = kind_state(kind)
-  ensure_kind_queues(ks)
-  for bet_key, _bq in pairs(ks.queues) do
-    arena_maybe_fill_bot(k, bet_key)
-  end
+local function fill_bot(kind, bet)
+  transact(QUEUES, "state", empty_registry, function(registry, writes)
+    local q = get_queue(registry, kind, bet)
+    if #q.entries == 0 then return false end
+    local has_human = false
+    for _, p in ipairs(q.entries) do if not p.bot then has_human = true end end
+    if not has_human then q.entries, q.next_bot_at = {}, 0 return true end
+    if #q.entries >= ARENA_QUEUE_MAX then pop_full(registry, q, writes) return true end
+    if (tonumber(q.next_bot_at) or 0) > os.time() then return false end
+    q.next_bot_at = os.time() + math.random(5, 8)
+    local used = arena_collect_used_displays(q.entries)
+    q.entries[#q.entries + 1] = { uid = arena_make_bot_uid(), display = arena_pick_bot_display(used),
+      bot = true, bet_tier = bet }
+    pop_full(registry, q, writes)
+    return true
+  end)
 end
-
-local function arena_json_for_user(user_id)
-  arena_tick_countdowns()
-  local tid, kind = arena_load_user_tid(user_id)
-  if tid == nil then
-    return nil
-  end
-  arena_maybe_fill_bots_for_kind(kind)
-  local T = arena_load_tournament(tid)
-  if T == nil then
-    arena_clear_human_tid(user_id)
-    return nil
-  end
-  if T.eliminated[user_id] == true then
-    return {
-      active = true,
-      id = tid,
-      eliminated = true,
-      phase = T.phase,
-      bet_tier = T.bet_tier,
-    }
-  end
-  local join_mid = ""
-  local join_opponent_is_bot = false
-  local function scan_round(rk)
-    local plist = T[rk]
-    if plist == nil then
-      return
+local function canonical_bet(kind, bet)
+  bet = string.lower(tostring(bet or "green"))
+  if kind ~= ARENA_KIND_SMITH then return normalize_resource_bet_tier(kind, bet) end
+  if bet ~= "green" and bet ~= "blue" and bet ~= "purple" then return "green" end
+  return bet
+end
+local function checked_rpc(name, handler)
+  return function(ctx, payload)
+    local ok, result = pcall(function()
+      local uid = ctx and ctx.user_id or ""
+      if uid == "" then return { ok = false, err = "unauthorized" } end
+      local allowed, err = guard_assert_client_epoch_matches(uid, payload)
+      if not allowed then return { ok = false, err = err } end
+      local p = payload and payload ~= "" and nk.json_decode(payload) or {}
+      if type(p) ~= "table" then return { ok = false, err = "bad_payload" } end
+      return handler(uid, p)
+    end)
+    if not ok then
+      nk.logger_error(name .. ": " .. tostring(result))
+      result = { ok = false, err = "server_error" }
     end
-    for i = 1, #plist do
-      local pr = plist[i]
-      if pr.status == "fighting" and (pr.uid_a == user_id or pr.uid_b == user_id) then
-        join_mid = pr.match_id or ""
-        local opp_uid = pr.uid_a == user_id and pr.uid_b or pr.uid_a
-        join_opponent_is_bot = arena_uid_is_bot(T, opp_uid)
-        break
+    return nk.json_encode(result)
+  end
+end
+local duel_arena_queue_join = checked_rpc("duel_arena_queue_join", function(uid, p)
+  local kind = normalize_kind(p.arena_kind)
+  local bet = canonical_bet(kind, p.bet_tier)
+  local account = nk.account_get_id(uid)
+  local display = account and account.user and tostring(account.user.username or "Игрок") or "Игрок"
+  local registry, result = transact(QUEUES, "state", empty_registry, function(value, writes)
+    local ref = tidy_user(value, uid)
+    if ref then return false, { ok = false, err = ref.tid and "already_in_tournament" or "already_in_queue" } end
+    local legacy_tid = user_tournament(uid)
+    local legacy = legacy_tid and load_tournament(legacy_tid)
+    if legacy and legacy.phase ~= "done" and not (legacy.eliminated and legacy.eliminated[uid]) then
+      return false, { ok = false, err = "already_in_tournament" }
+    end
+    local q = get_queue(value, kind, bet)
+    if kind == ARENA_KIND_SMITH then
+      local sheet = read_character_sheet(uid)
+      ensure_sheet_inventory_counts(sheet)
+      local def = arena_bet_to_ingot_def(bet)
+      if inventory_remove_def_total(sheet, def, ARENA_QUEUE_BET_INGOTS) ~= true then
+        return false, { ok = false, err = "not_enough_ingots", ingot_def = def }
+      end
+      writes[#writes + 1] = build_sheet_write(uid, sheet)
+    else
+      local cfg = resource_tier_cfg(kind, bet)
+      local progress, version = read_pve_progress(uid)
+      local resource = kind == ARENA_KIND_ORE and "ore" or "gold"
+      local have, need = tonumber(progress[resource]) or 0, cfg.bet
+      if have < need then return false, { ok = false, err = "not_enough_" .. resource, required = need, have = have } end
+      progress[resource] = have - need
+      writes[#writes + 1] = build_progress_write(uid, progress, version)
+    end
+    q.entries[#q.entries + 1] = { uid = uid, display = display, bot = false, bet_tier = bet }
+    value.users[uid] = { kind = kind, bet = bet }
+    if (tonumber(q.next_bot_at) or 0) <= 0 then q.next_bot_at = os.time() + math.random(5, 8) end
+    pop_full(value, q, writes)
+    return true, { ok = true }
+  end)
+  if not result or result.ok ~= true then return result end
+  local q = get_queue(registry, kind, bet)
+  return { ok = true, queue_count = #q.entries, queue_max = ARENA_QUEUE_MAX, bet_tier = bet,
+    in_tournament = registry.users[uid] and registry.users[uid].tid ~= nil, arena_kind = kind }
+end)
+local duel_arena_queue_leave = checked_rpc("duel_arena_queue_leave", function(uid)
+  local registry, result = transact(QUEUES, "state", empty_registry, function(value, writes)
+    local ref = tidy_user(value, uid)
+    if not ref then return false, { ok = false, err = "not_in_queue" } end
+    if ref.tid then return false, { ok = false, err = "in_tournament" } end
+    local q = get_queue(value, ref.kind, ref.bet)
+    local found
+    for i, entry in ipairs(q.entries) do if entry.uid == uid and not entry.bot then found = i break end end
+    if not found then error("arena queue registry mismatch") end
+    if ref.kind == ARENA_KIND_SMITH then
+      local sheet = read_character_sheet(uid)
+      ensure_sheet_inventory_counts(sheet)
+      local added, err = inventory_try_add(sheet, arena_bet_to_ingot_def(ref.bet), ARENA_QUEUE_BET_INGOTS)
+      if added ~= true then return false, { ok = false, err = err or "inventory_full" } end
+      writes[#writes + 1] = build_sheet_write(uid, sheet)
+    else
+      local cfg = resource_tier_cfg(ref.kind, ref.bet)
+      local progress, version = read_pve_progress(uid)
+      local resource = ref.kind == ARENA_KIND_ORE and "ore" or "gold"
+      progress[resource] = math.max(0, (tonumber(progress[resource]) or 0) + cfg.bet)
+      writes[#writes + 1] = build_progress_write(uid, progress, version)
+    end
+    table.remove(q.entries, found)
+    value.users[uid] = nil
+    local human = false
+    for _, entry in ipairs(q.entries) do if not entry.bot then human = true break end end
+    if not human then q.entries, q.next_bot_at = {}, 0 end
+    return true, { ok = true, queue_count = #q.entries, queue_max = ARENA_QUEUE_MAX,
+      bet_tier = ref.bet, arena_kind = ref.kind }
+  end)
+  return result
+end)
+
+local duel_arena_place_bet = checked_rpc("duel_arena_place_bet", function(uid, p)
+  local tid = user_tournament(uid)
+  if not tid then return { ok = false, err = "not_in_tournament" } end
+  local _, result = transact(TOURNAMENTS, tid, nil, function(T, writes)
+    if T.phase == "done" then return false, { ok = false, err = "no_tournament" } end
+    if not T.parts[uid] or uid_is_bot(T, uid) then return false, { ok = false, err = "not_in_tournament" } end
+    if T.eliminated[uid] then return false, { ok = false, err = "eliminated" } end
+    local rk = arena_open_side_bet_round(T)
+    if not rk or (tonumber(T.countdown_until) or 0) <= os.time() then
+      return false, { ok = false, err = "bets_closed" }
+    end
+    local slot = tonumber(p.slot) or 0
+    if slot ~= math.floor(slot) or slot < 1 or slot > #(T[rk] or {}) then return false, { ok = false, err = "bad_slot" } end
+    local pr = T[rk][slot]
+    if pr.uid_a == uid or pr.uid_b == uid then return false, { ok = false, err = "own_pair" } end
+    arena_ensure_side_bet_tables(T)
+    T.side_bets[uid] = T.side_bets[uid] or {}
+    local bag = T.side_bets[uid]
+    bag[rk] = bag[rk] or {}
+    local picks, key = bag[rk], tostring(slot)
+    local response = { ok = true, round = rk, slot = slot, bet_score = tonumber(T.bet_score[uid]) or 0 }
+    local changed = false
+    if p.clear == true then
+      changed, picks[key], response.cleared = picks[key] ~= nil, nil, true
+    else
+      local side = string.lower(tostring(p.side or ""))
+      if side ~= "a" and side ~= "b" then return false, { ok = false, err = "bad_side" } end
+      local pick = pr["uid_" .. side]
+      changed, picks[key] = picks[key] ~= pick, pick
+      response.side, response.pick_uid = side, pick
+      T.bet_counted = T.bet_counted or {}
+      T.bet_counted[uid] = T.bet_counted[uid] or {}
+      T.bet_counted[uid][rk] = T.bet_counted[uid][rk] or {}
+      if not T.bet_counted[uid][rk][key] then
+        T.bet_counted[uid][rk][key] = true
+        achievement(writes, uid, "slaughter.arena_bets_placed", 1)
+        changed = true
       end
     end
-  end
-  scan_round("qf")
-  if join_mid == "" then
-    scan_round("sf")
-  end
-  if join_mid == "" then
-    scan_round("final")
-  end
-
-  local function pack_pairs(rk)
+    response.my_bets = arena_pack_my_side_bets(T, uid, rk)
+    return changed, response
+  end)
+  return type(result) == "table" and result or { ok = false, err = "no_tournament" }
+end)
+local function tournament_json(uid, T)
+  if not T or T.phase == "done" then return { active = false, id = "" } end
+  if T.eliminated[uid] then return { active = true, id = T.id, eliminated = true, phase = T.phase, bet_tier = T.bet_tier } end
+  local join_mid, join_bot = "", false
+  local function pack(rk)
     local out = {}
-    local plist = T[rk]
-    if plist == nil then
-      return out
-    end
-    for i = 1, #plist do
-      local pr = plist[i]
-      out[#out + 1] = {
-        slot = i,
-        match_id = pr.match_id or "",
-        uid_a = pr.uid_a,
-        uid_b = pr.uid_b,
-        display_a = pr.display_a,
-        display_b = pr.display_b,
-        hp_a = pr.hp_a,
-        hp_b = pr.hp_b,
-        status = pr.status,
-        winner_uid = pr.winner_uid,
-      }
+    for i, pr in ipairs(T[rk] or {}) do
+      if pr.status == "fighting" and (pr.uid_a == uid or pr.uid_b == uid) then
+        join_mid = pr.match_id or ""
+        join_bot = uid_is_bot(T, pr.uid_a == uid and pr.uid_b or pr.uid_a)
+      end
+      out[#out + 1] = { slot = i, match_id = pr.match_id or "", uid_a = pr.uid_a, uid_b = pr.uid_b,
+        display_a = pr.display_a, display_b = pr.display_b, hp_a = pr.hp_a, hp_b = pr.hp_b,
+        status = pr.status, winner_uid = pr.winner_uid }
     end
     return out
   end
-
-  local countdown_left = 0
-  if T.phase == "countdown" and tonumber(T.countdown_until) ~= nil then
-    countdown_left = math.max(0, tonumber(T.countdown_until) - os.time())
-  end
-
+  local qf, sf, final = pack("qf"), pack("sf"), pack("final")
   arena_ensure_side_bet_tables(T)
-  local open_rk = arena_open_side_bet_round(T)
-  local active_rk = arena_active_side_bet_round(T)
-  local score = tonumber(T.bet_score[user_id]) or 0
-  local wins = tonumber(T.bet_wins[user_id]) or 0
-  local losses = tonumber(T.bet_losses[user_id]) or 0
-  local base_g, base_o = final_prize_for_kind_and_bet(T.kind, T.bet_tier)
-  local prev_g, prev_o = arena_apply_bet_score_to_prize(T.kind, T.bet_tier, score)
-
-  return {
-    active = true,
-    id = tid,
-    eliminated = false,
-    phase = T.phase,
-    bet_tier = T.bet_tier,
-    kind = T.kind,
-    countdown_left = countdown_left,
-    next_round = T.next_round,
-    join_match_id = join_mid,
-    join_opponent_is_bot = join_opponent_is_bot,
-    qf = pack_pairs("qf"),
-    sf = pack_pairs("sf"),
-    final_pairs = pack_pairs("final"),
-    bets_open = open_rk ~= nil,
-    betting_round = active_rk or "",
-    my_bets = arena_pack_my_side_bets(T, user_id, active_rk),
-    bet_score = score,
-    bet_wins = wins,
-    bet_losses = losses,
-    prize_base_gold = base_g,
-    prize_base_ore = base_o,
-    prize_preview_gold = prev_g,
-    prize_preview_ore = prev_o,
-  }
+  local score, rk = tonumber(T.bet_score[uid]) or 0, arena_active_side_bet_round(T)
+  local bg, bo = final_prize_for_kind_and_bet(T.kind, T.bet_tier)
+  local pg, po = arena_apply_bet_score_to_prize(T.kind, T.bet_tier, score)
+  return { active = true, id = T.id, eliminated = false, phase = T.phase, kind = T.kind, bet_tier = T.bet_tier,
+    countdown_left = T.phase == "countdown" and math.max(0, (tonumber(T.countdown_until) or 0) - os.time()) or 0,
+    next_round = T.next_round, join_match_id = join_mid, join_opponent_is_bot = join_bot,
+    qf = qf, sf = sf, final_pairs = final, bets_open = arena_open_side_bet_round(T) ~= nil,
+    betting_round = rk or "", my_bets = arena_pack_my_side_bets(T, uid, rk), bet_score = score,
+    bet_wins = tonumber(T.bet_wins[uid]) or 0, bet_losses = tonumber(T.bet_losses[uid]) or 0,
+    prize_base_gold = bg, prize_base_ore = bo, prize_preview_gold = pg, prize_preview_ore = po }
 end
-
-local function duel_arena_queue_join(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local kind = normalize_kind(p.arena_kind)
-    local bet = string.lower(tostring(p.bet_tier or "green"))
-    local k = kind
-    if k == ARENA_KIND_SMITH then
-      if bet ~= "green" and bet ~= "blue" and bet ~= "purple" then
-        bet = "green"
-      end
-    else
-      local cfg, normalized = resource_tier_cfg(k, bet)
-      if cfg == nil then
-        return nk.json_encode({ ok = false, err = "bad_bet_tier" })
-      end
-      bet = normalized
-    end
-    -- Один игрок — одна активная запись в любой очереди арены.
-    local already_kind = find_user_in_any_queue(user_id)
-    if already_kind ~= nil then
-      return nk.json_encode({ ok = false, err = "already_in_queue" })
-    end
-    if arena_load_user_tid(user_id) ~= nil then
-      return nk.json_encode({ ok = false, err = "already_in_tournament" })
-    end
-    local bq, _ks, _, bet_key = bet_queue_state(k, bet)
-    bet = bet_key
-    if k == ARENA_KIND_SMITH then
-      local sheet = read_character_sheet(user_id)
-      ensure_sheet_inventory_counts(sheet)
-      local ingot_def = arena_bet_to_ingot_def(bet)
-      if inventory_remove_def_total(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS) ~= true then
-        return nk.json_encode({ ok = false, err = "not_enough_ingots", ingot_def = ingot_def })
-      end
-      write_character_sheet(user_id, sheet)
-    else
-      local cfg = resource_tier_cfg(k, bet)
-      local need = cfg ~= nil and (tonumber(cfg.bet) or 0) or 0
-      if need <= 0 then
-        return nk.json_encode({ ok = false, err = "bad_bet_tier" })
-      end
-      local max_retries = 5
-      for attempt = 1, max_retries do
-        local progress, version = read_pve_progress(user_id)
-        local ore = tonumber(progress.ore) or 0
-        local gold = tonumber(progress.gold) or 0
-        if k == ARENA_KIND_ORE then
-          if ore < need then
-            return nk.json_encode({ ok = false, err = "not_enough_ore", required = need, have = ore })
-          end
-          progress.ore = math.max(0, ore - need)
-        else
-          if gold < need then
-            return nk.json_encode({ ok = false, err = "not_enough_gold", required = need, have = gold })
-          end
-          progress.gold = math.max(0, gold - need)
-        end
-        local okw, erw = pcall(function()
-          write_pve_progress(user_id, progress, version)
-        end)
-        if okw then
-          break
-        end
-        local err_text = tostring(erw)
-        if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-          nk.logger_error("arena join spend progress failed: " .. err_text)
-          return nk.json_encode({ ok = false, err = "server_error" })
-        end
-      end
-    end
-
-    local disp = "Игрок"
-    local ok_acc, acc = pcall(function()
-      return nk.account_get_id(user_id)
+local duel_arena_queue_poll = checked_rpc("duel_arena_queue_poll", function(uid, p)
+  local kind = normalize_kind(p.arena_kind)
+  local requested = p.bet_tier ~= nil and tostring(p.bet_tier) ~= ""
+  local bet = canonical_bet(kind, p.bet_tier)
+  local registry = read_registry()
+  local ref = registry.users and registry.users[uid]
+  if ref and not ref.tid then kind, bet, requested = ref.kind, ref.bet, true end
+  if requested then fill_bot(kind, bet) end
+  local tid = user_tournament(uid)
+  local T = tid and tick_tournament(tid) or nil
+  if tid and (not T or T.phase == "done" or (T.eliminated and T.eliminated[uid])) then
+    transact(QUEUES, "state", empty_registry, function(value)
+      local old = value.users and value.users[uid]
+      if old and old.tid == tid then value.users[uid] = nil return true end
+      return false
     end)
-    if ok_acc and acc ~= nil and acc.user ~= nil and acc.user.username ~= nil then
-      disp = tostring(acc.user.username)
-    end
-    if disp == "" then
-      disp = "Игрок"
-    end
-
-    bq.queue[#bq.queue + 1] = {
-      uid = user_id,
-      display = disp,
-      bot = false,
-      bet_tier = bet,
-    }
-    if bq.next_bot_at <= 0 then
-      bq.next_bot_at = os.time() + math.random(5, 8)
-    end
-    arena_maybe_fill_bot(k, bet)
-    arena_try_pop_queue_full(k, bet)
-
-    local in_tournament = arena_load_user_tid(user_id) ~= nil
-    local q_count = #bq.queue
-    if in_tournament then
-      -- Игрок уже вытолкнут в турнир — счётчик для его ставки.
-      local bq_after = select(1, bet_queue_state(k, bet))
-      q_count = #(bq_after.queue or {})
-    end
-
-    return nk.json_encode({
-      ok = true,
-      queue_count = q_count,
-      queue_max = ARENA_QUEUE_MAX,
-      bet_tier = bet,
-      in_tournament = in_tournament,
-      arena_kind = k,
-    })
-  end)
-  if not ok then
-    nk.logger_error("duel_arena_queue_join: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
   end
-  return result
+  registry = read_registry()
+  ref = registry.users and registry.users[uid]
+  local q = get_queue(registry, kind, bet)
+  return { ok = true, queue_count = requested and #q.entries or 0, queue_max = ARENA_QUEUE_MAX,
+    in_queue = ref ~= nil and ref.tid == nil, queue_bet_tier = requested and bet or "",
+    queue_kind = kind, tournament = tournament_json(uid, T) }
+end)
+local function final_prize_for_winner(tid, uid, kind, bet)
+  local T = load_tournament(tid)
+  local score = T and T.bet_score and tonumber(T.bet_score[uid]) or 0
+  return arena_apply_bet_score_to_prize(kind, bet, score)
 end
-
-local function duel_arena_queue_leave(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    if arena_load_user_tid(user_id) ~= nil then
-      return nk.json_encode({ ok = false, err = "in_tournament" })
-    end
-    local rk, removed_bet, bq, idx = find_user_in_any_queue(user_id)
-    if rk == nil or bq == nil or idx == nil then
-      return nk.json_encode({ ok = false, err = "not_in_queue" })
-    end
-    table.remove(bq.queue, idx)
-    if #bq.queue == 0 then
-      bq.next_bot_at = 0
-    end
-
-    if rk == ARENA_KIND_SMITH then
-      local sheet = read_character_sheet(user_id)
-      ensure_sheet_inventory_counts(sheet)
-      local ingot_def = arena_bet_to_ingot_def(removed_bet)
-      inventory_try_add(sheet, ingot_def, ARENA_QUEUE_BET_INGOTS)
-      write_character_sheet(user_id, sheet)
-    else
-      local cfg = resource_tier_cfg(rk, removed_bet)
-      local refund = cfg ~= nil and (tonumber(cfg.bet) or 0) or 0
-      if refund > 0 then
-        local max_retries = 5
-        for attempt = 1, max_retries do
-          local progress, version = read_pve_progress(user_id)
-          if rk == ARENA_KIND_ORE then
-            progress.ore = math.max(0, (tonumber(progress.ore) or 0) + refund)
-          else
-            progress.gold = math.max(0, (tonumber(progress.gold) or 0) + refund)
-          end
-          local okw, erw = pcall(function()
-            write_pve_progress(user_id, progress, version)
-          end)
-          if okw then
-            break
-          end
-          local err_text = tostring(erw)
-          if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-            nk.logger_error("arena leave refund progress failed: " .. err_text)
-            return nk.json_encode({ ok = false, err = "server_error" })
-          end
-        end
-      end
-    end
-    return nk.json_encode({
-      ok = true,
-      queue_count = #bq.queue,
-      queue_max = ARENA_QUEUE_MAX,
-      bet_tier = removed_bet,
-      arena_kind = rk,
-    })
-  end)
-  if not ok then
-    nk.logger_error("duel_arena_queue_leave: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_arena_place_bet(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local tid = arena_load_user_tid(user_id)
-    if tid == nil then
-      return nk.json_encode({ ok = false, err = "not_in_tournament" })
-    end
-    local T = arena_load_tournament(tid)
-    if T == nil then
-      arena_clear_human_tid(user_id)
-      return nk.json_encode({ ok = false, err = "no_tournament" })
-    end
-    if T.eliminated[user_id] == true then
-      return nk.json_encode({ ok = false, err = "eliminated" })
-    end
-    local rk = arena_open_side_bet_round(T)
-    if rk == nil then
-      return nk.json_encode({ ok = false, err = "bets_closed" })
-    end
-    local slot = tonumber(p.slot) or 0
-    local plist = T[rk]
-    if plist == nil or slot < 1 or slot > #plist then
-      return nk.json_encode({ ok = false, err = "bad_slot" })
-    end
-    local pr = plist[slot]
-    if pr.uid_a == user_id or pr.uid_b == user_id then
-      return nk.json_encode({ ok = false, err = "own_pair" })
-    end
-
-    arena_ensure_side_bet_tables(T)
-    local bag = T.side_bets[user_id]
-    if type(bag) ~= "table" then
-      bag = {}
-      T.side_bets[user_id] = bag
-    end
-    local picks = bag[rk]
-    if type(picks) ~= "table" then
-      picks = {}
-      bag[rk] = picks
-    end
-
-    local slot_key = tostring(slot)
-    if p.clear == true then
-      picks[slot_key] = nil
-      arena_save_tournament(T)
-      return nk.json_encode({
-        ok = true,
-        cleared = true,
-        round = rk,
-        slot = slot,
-        my_bets = arena_pack_my_side_bets(T, user_id, rk),
-        bet_score = tonumber(T.bet_score[user_id]) or 0,
-      })
-    end
-
-    local side = string.lower(tostring(p.side or ""))
-    local pick_uid = ""
-    if side == "a" then
-      pick_uid = tostring(pr.uid_a or "")
-    elseif side == "b" then
-      pick_uid = tostring(pr.uid_b or "")
-    else
-      return nk.json_encode({ ok = false, err = "bad_side" })
-    end
-    if pick_uid == "" then
-      return nk.json_encode({ ok = false, err = "bad_side" })
-    end
-    picks[slot_key] = pick_uid
-    arena_save_tournament(T)
-    ach_inc(user_id, "slaughter.arena_bets_placed", 1)
-    return nk.json_encode({
-      ok = true,
-      round = rk,
-      slot = slot,
-      side = side,
-      pick_uid = pick_uid,
-      my_bets = arena_pack_my_side_bets(T, user_id, rk),
-      bet_score = tonumber(T.bet_score[user_id]) or 0,
-    })
-  end)
-  if not ok then
-    nk.logger_error("duel_arena_place_bet: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-
-local function duel_arena_queue_poll(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-    local ok_epoch, err_epoch = guard_assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-    arena_tick_countdowns()
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-    local requested_kind = normalize_kind(p.arena_kind)
-    local requested_bet = string.lower(tostring(p.bet_tier or ""))
-
-    local tnow = os.time()
-    arena_runtime.last_tourn_storage_sweep = tnow
-    arena_sweep_expired_done_storage()
-    arena_sweep_dead_tournaments_storage()
-
-    local in_queue = false
-    local queue_kind = ""
-    local queue_bet = ""
-    local queue_count = 0
-    local queue_max = ARENA_QUEUE_MAX
-
-    local found_kind, found_bet, found_bq = find_user_in_any_queue(user_id)
-    if found_kind ~= nil then
-      in_queue = true
-      queue_kind = found_kind
-      queue_bet = found_bet
-      queue_count = #(found_bq.queue or {})
-    else
-      queue_kind = requested_kind
-      if requested_bet ~= "" then
-        if requested_kind == ARENA_KIND_SMITH then
-          if requested_bet ~= "green" and requested_bet ~= "blue" and requested_bet ~= "purple" then
-            requested_bet = "green"
-          end
-        else
-          local _cfg, normalized = resource_tier_cfg(requested_kind, requested_bet)
-          requested_bet = normalized
-        end
-        local bq = select(1, bet_queue_state(requested_kind, requested_bet))
-        queue_bet = requested_bet
-        queue_count = #(bq.queue or {})
-      else
-        queue_bet = ""
-        queue_count = 0
-      end
-    end
-
-    local tournament = arena_json_for_user(user_id)
-    if tournament == nil then
-      tournament = { active = false, id = "" }
-    end
-
-    if queue_bet ~= "" then
-      arena_maybe_fill_bot(queue_kind ~= "" and queue_kind or requested_kind, queue_bet)
-    else
-      arena_maybe_fill_bots_for_kind(queue_kind ~= "" and queue_kind or requested_kind)
-    end
-
-    return nk.json_encode({
-      ok = true,
-      queue_count = queue_count,
-      queue_max = queue_max,
-      in_queue = in_queue,
-      queue_bet_tier = queue_bet,
-      queue_kind = queue_kind,
-      tournament = tournament,
-    })
-  end)
-  if not ok then
-    nk.logger_error("duel_arena_queue_poll: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
-  return result
-end
-  return {
-    mirror_commit = mirror_commit,
-    on_match_finished = on_match_finished,
-    final_prize_for_kind_and_bet = final_prize_for_kind_and_bet,
-    final_prize_for_winner = final_prize_for_winner,
-    duel_arena_queue_join = duel_arena_queue_join,
-    duel_arena_queue_leave = duel_arena_queue_leave,
-    duel_arena_queue_poll = duel_arena_queue_poll,
-    duel_arena_place_bet = duel_arena_place_bet,
-  }
+  return { mirror_commit = mirror_commit, on_match_created = on_match_created, on_match_finished = on_match_finished,
+    final_prize_for_kind_and_bet = final_prize_for_kind_and_bet, final_prize_for_winner = final_prize_for_winner,
+    duel_arena_queue_join = duel_arena_queue_join, duel_arena_queue_leave = duel_arena_queue_leave,
+    duel_arena_queue_poll = duel_arena_queue_poll, duel_arena_place_bet = duel_arena_place_bet }
 end

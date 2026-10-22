@@ -1,0 +1,14 @@
+{
+  "active": false,
+  "title": "",
+  "description": "",
+  "duration_hours": 0,
+  "all_stats_pct": 0,
+  "crit_pct": 0,
+  "hp_pct": 0,
+  "damage_pct": 0,
+  "armor_pct": 0,
+  "healing_pct": 0,
+  "xp_bonus_pct": 0,
+  "mine_respawn_wait_pct": 0
+}

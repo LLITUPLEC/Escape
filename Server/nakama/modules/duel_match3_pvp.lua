@@ -12,6 +12,7 @@ return function(deps)
   local ContestGoals = deps.ContestGoals
   local add_blueprint = deps.add_blueprint
   local empty_key_items = deps.empty_key_items
+  local get_race_entry = deps.get_race_entry
 
   local P = {}
 
@@ -181,20 +182,63 @@ return function(deps)
     game_over_payload.newLevel = reward.level or 1
   end
 
+  local function settle_race(state, winner, is_draw, game_over_payload)
+    local entry = type(get_race_entry) == "function" and get_race_entry() or nil
+    if type(entry) ~= "table" then
+      nk.logger_error("race settlement unavailable")
+      return false
+    end
+    local ok, err, rewards = entry.settle(state.players_sorted, state.stats_result_id, winner, is_draw, function(progress, uid, costs)
+      local flat = { xp = 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
+      if is_draw then
+        flat.xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200))
+        -- Refund the immutable paid receipt, never the current entry config.
+        for _, cost in ipairs(costs) do flat[cost.resource] = (flat[cost.resource] or 0) + cost.amount end
+      elseif uid == winner then
+        flat = resolve_race_reward_opts(state)
+      elseif state.mode ~= "pve" then
+        -- Preserve the existing human PvP loss award. Race is outside PvE,
+        -- so the PvE server aura must not multiply this fixed 10 XP.
+        flat.xp = 10
+      end
+      apply_flat_rewards_to_progress(progress, flat)
+      if flat.energy then progress.energy = (tonumber(progress.energy) or 0) + flat.energy end
+      return {
+        reward_xp = flat.xp or 0, reward_gold = flat.gold or 0, reward_ore = flat.ore or 0,
+        reward_matter = flat.matter or 0, reward_ingots = flat.ingots or 0,
+        reward_tesseract = flat.tesseract or 0, reward_energy = flat.energy or 0,
+        reward_key_id = flat.key_id or "", reward_key_amount = flat.key_amount or 0,
+        reward_blueprint = flat.blueprint or "", reward_recipe_item_id = flat.recipe_item_id or "",
+        level = progress.level or 1, xp = progress.xp or 0, gold = progress.gold or 0,
+      }
+    end)
+    if not ok then
+      nk.logger_error("race settlement rejected: " .. tostring(err))
+      if type(game_over_payload) == "table" then game_over_payload.rewardError = err end
+      return false
+    end
+    state.race_rewards_by_user = rewards
+    local reward = rewards[winner or ""]
+    if is_draw then
+      for _, uid in ipairs(state.players_sorted or {}) do if rewards[uid] then reward = rewards[uid]; break end end
+    end
+    state.last_reward = reward
+    fill_game_over_reward_fields(game_over_payload, reward)
+    return true
+  end
+
   function P.apply_game_over_rewards(state, winner, game_over_payload)
     if state == nil or winner == nil or winner == "" then
       return
     end
     local is_race = state.pvp_race == true
+    if is_race then return settle_race(state, winner, false, game_over_payload) end
     -- Race vs bot создаётся как mode=pve — награды «Спуска» всё равно выдаём.
     if not is_race and (state.mode == "pve" or state.arena_mirror ~= nil) then
       return
     end
     if P.is_human_duelist_uid(state, winner) then
       local opts = nil
-      if is_race then
-        opts = resolve_race_reward_opts(state)
-      end
       state.last_reward = P.award_victory(winner, opts)
       fill_game_over_reward_fields(game_over_payload, state.last_reward)
     end
@@ -209,84 +253,12 @@ return function(deps)
     end
   end
 
-  local function resolve_race_draw_opts(state)
-    local flat = {
-      xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200)),
-      gold = 0,
-      ore = 0,
-      matter = 0,
-      ingots = 0,
-      tesseract = 0,
-      key_id = "",
-      key_amount = 0,
-      blueprint = "",
-      recipe_item_id = "",
-    }
-    local lines = nil
-    if state ~= nil and type(state.race_entry_costs) == "table" then
-      lines = state.race_entry_costs
-    elseif type(ContestGoals) == "table" and type(ContestGoals.race_entry_costs) == "function" then
-      local ok, got = pcall(ContestGoals.race_entry_costs)
-      if ok then lines = got end
-    end
-    if type(lines) == "table" then
-      for _, row in ipairs(lines) do
-        if type(row) == "table" then
-          local res = string.lower(tostring(row.resource or ""))
-          local amt = math.max(0, math.floor(tonumber(row.amount) or 0))
-          if amt > 0 then
-            if res == "xp" then
-              flat.xp = flat.xp + amt
-            elseif res == "gold" then
-              flat.gold = flat.gold + amt
-            elseif res == "ore" then
-              flat.ore = flat.ore + amt
-            elseif res == "matter" then
-              flat.matter = flat.matter + amt
-            elseif res == "ingots" then
-              flat.ingots = flat.ingots + amt
-            elseif res == "tesseract" or res == "tesseracts" then
-              flat.tesseract = flat.tesseract + amt
-            end
-          end
-        end
-      end
-    end
-    if flat.matter <= 0 and flat.gold <= 0 and flat.ore <= 0 and flat.ingots <= 0 then
-      flat.matter = math.max(0, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2))
-    end
-    return flat
-  end
-
   --- Ничья в «Спуске»: обоим людям — возврат entry + RACE_DRAW_XP.
   function P.apply_race_draw_rewards(state, game_over_payload)
     if state == nil or state.pvp_race ~= true then
       return
     end
-    local opts = resolve_race_draw_opts(state)
-    local last = nil
-    for _, uid in ipairs(state.players_sorted or {}) do
-      if P.is_human_duelist_uid(state, uid) then
-        last = P.award_victory(uid, opts)
-      end
-    end
-    if last == nil then
-      last = {
-        reward_xp = opts.xp,
-        reward_gold = opts.gold,
-        reward_ore = opts.ore,
-        reward_matter = opts.matter,
-        reward_ingots = opts.ingots,
-        reward_tesseract = opts.tesseract,
-        reward_key_id = "",
-        reward_key_amount = 0,
-        reward_blueprint = "",
-        reward_recipe_item_id = "",
-        level = 1,
-      }
-    end
-    state.last_reward = last
-    fill_game_over_reward_fields(game_over_payload, last)
+    return settle_race(state, "", true, game_over_payload)
   end
 
   return P

@@ -19,6 +19,66 @@ local Guard = build_session_guard({ nk = nk, CFG = CFG })
 -- modules/functions from its fields only after runtime initialization completes.
 local Runtime = {}
 Runtime.RateLimit = runtime_lua_require("modules.duel_api_rate_limit", "duel_api_rate_limit")
+Runtime.Presence = runtime_lua_require("modules.duel_match3_presence", "duel_match3_presence")
+
+Runtime.finish_arena_result = function(state, winner)
+  if state.arena_mirror == nil or type(Runtime.arena_on_match_finished) ~= "function" then return true end
+  local ok, result = pcall(Runtime.arena_on_match_finished, state, winner)
+  if not ok then
+    state._arena_pending_result = { winner = winner }
+    nk.logger_error("arena result pending: " .. tostring(result))
+    return false
+  end
+  state._arena_pending_result = nil
+  if type(result) == "table" then state._arena_reward_receipt = result.reward_receipt end
+  return true
+end
+
+Runtime.apply_result_rewards = function(state, winner, is_draw, payload)
+  local fn = is_draw and Runtime.Pvp.apply_race_draw_rewards or Runtime.Pvp.apply_game_over_rewards
+  if not state.pvp_race then return fn(state, winner, payload) end
+  local ok, result
+  if is_draw then ok, result = pcall(fn, state, payload)
+  else ok, result = pcall(fn, state, winner, payload) end
+  if not ok or result == false then
+    state._race_pending_result = { winner = winner, is_draw = is_draw == true, payload = payload }
+    if not ok then nk.logger_error("Race result pending: " .. tostring(result)) end
+    return false
+  end
+  payload.rewardError = nil
+  state._race_pending_result = nil
+  return true
+end
+
+Runtime.emit_game_over = function(dispatcher, state, payload)
+  if state._arena_pending_result or state._race_pending_result then
+    state._pending_game_over = payload
+    return false
+  end
+  local receipt = state._arena_reward_receipt
+  if receipt and receipt.user_id == payload.winnerUserId then
+    payload.rewardGold, payload.rewardOre = receipt.gold or 0, receipt.ore or 0
+  end
+  state._pending_game_over = nil
+  dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(payload), nil, nil)
+  return true
+end
+
+Runtime.retry_pending_results = function(dispatcher, state, tick)
+  if not state._arena_pending_result and not state._race_pending_result then return false end
+  if tick >= (state._next_result_retry_tick or 0) then
+    state._next_result_retry_tick = tick + CFG.TICK_RATE
+    if state._arena_pending_result then Runtime.finish_arena_result(state, state._arena_pending_result.winner) end
+    if state._race_pending_result then
+      local pending = state._race_pending_result
+      Runtime.apply_result_rewards(state, pending.winner, pending.is_draw, pending.payload)
+    end
+    if not state._arena_pending_result and not state._race_pending_result and state._pending_game_over then
+      Runtime.emit_game_over(dispatcher, state, state._pending_game_over)
+    end
+  end
+  return state._arena_pending_result ~= nil or state._race_pending_result ~= nil
+end
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -1150,7 +1210,8 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
     state.last_crit = false
   end
 
-  Runtime.arena_mirror_commit(state)
+  local mirror_ok, mirror_err = pcall(Runtime.arena_mirror_commit, state)
+  if not mirror_ok then nk.logger_error("arena mirror deferred: " .. tostring(mirror_err)) end
 
   local uid_for_sync = sync_action_actor_uid or ""
 
@@ -1197,9 +1258,9 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
     isDraw = is_draw == true,
   }
   if is_draw == true and is_pvp_race(state) then
-    Runtime.Pvp.apply_race_draw_rewards(state, game_over_payload)
+    Runtime.apply_result_rewards(state, winner, true, game_over_payload)
   elseif is_draw ~= true and winner ~= nil and winner ~= "" then
-    Runtime.Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+    Runtime.apply_result_rewards(state, winner, false, game_over_payload)
   else
     game_over_payload.rewardXp = 0
     game_over_payload.rewardGold = 0
@@ -1215,7 +1276,7 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
     end
   end
   Runtime.StatsApi.record_match_finish(state, winner, is_draw)
-  dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+  Runtime.emit_game_over(dispatcher, state, game_over_payload)
 end
 
 --- Race («Спуск»): завершить матч после last-turn (ход/пропуск/таймаут) — сравнение маны.
@@ -1391,7 +1452,9 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.arenaBetTier = state.arena_mirror.bet_tier or ""
       game_over_payload.arenaKind = string.lower(tostring(state.arena_mirror.kind or "smith"))
     end
-    if state.mode == "pve" and winner == state.owner_user_id then
+    if state.pvp_race == true then
+      Runtime.apply_result_rewards(state, winner, false, game_over_payload)
+    elseif state.mode == "pve" and winner == state.owner_user_id then
       if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
         local progress = { level = 1, xp = 0 }
         if type(read_pve_progress) == "function" then
@@ -1454,20 +1517,15 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
       local rg, ro = Runtime.arena_final_prize_gold_ore(ak, bt)
       if type(Runtime.arena_final_prize_for_winner) == "function" and winner ~= nil then
-        rg, ro = Runtime.arena_final_prize_for_winner(state.arena_mirror.tournament_id, winner, ak, bt)
+        local prize_ok, prize_gold, prize_ore = pcall(Runtime.arena_final_prize_for_winner,
+          state.arena_mirror.tournament_id, winner, ak, bt)
+        if prize_ok then rg, ro = prize_gold, prize_ore
+        else nk.logger_error("arena reward display deferred: " .. tostring(prize_gold)) end
       end
       game_over_payload.rewardGold = tonumber(rg) or 0
       game_over_payload.rewardOre = tonumber(ro) or 0
     end
-    -- Arena tournament hook must never break match loop.
-    local ok_arena, err_arena = pcall(function()
-      if type(Runtime.arena_on_match_finished) == "function" then
-        Runtime.arena_on_match_finished(state, winner)
-      end
-    end)
-    if not ok_arena then
-      nk.logger_error("arena_on_match_finished failed: " .. tostring(err_arena))
-    end
+    Runtime.finish_arena_result(state, winner)
     local ok_achi, err_achi = pcall(function()
       Ach.flush_match_finish(state, winner, actor, opponent, action_type)
     end)
@@ -1475,7 +1533,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
     end
     Runtime.StatsApi.record_match_finish(state, winner, false)
-    dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+    Runtime.emit_game_over(dispatcher, state, game_over_payload)
     return
   end
 
@@ -2279,11 +2337,8 @@ local function read_character_sheet(user_id)
   return sheet
 end
 
--- All inventory writers carry their read version, including match rewards.
--- Economy operations may atomically commit their currency changes in this batch.
-local function write_character_sheet(user_id, sheet, progress, progress_version)
-  local writes = {
-    {
+Runtime.build_character_sheet_write = function(user_id, sheet)
+  return {
       collection = CFG.CHARACTER_SHEET_COLLECTION,
       key = CFG.CHARACTER_SHEET_KEY,
       user_id = user_id,
@@ -2298,8 +2353,13 @@ local function write_character_sheet(user_id, sheet, progress, progress_version)
       permission_read = 1,
       permission_write = 0,
       version = sheet._storage_version or "*",
-    },
   }
+end
+
+-- All inventory writers carry their read version, including match rewards.
+-- Economy operations may atomically commit their currency changes in this batch.
+local function write_character_sheet(user_id, sheet, progress, progress_version)
+  local writes = { Runtime.build_character_sheet_write(user_id, sheet) }
   if progress ~= nil then
     progress.updated_at = os.time()
     writes[#writes + 1] = {
@@ -2477,23 +2537,28 @@ local function workshop_payload_arrays(sheet)
   return o, e
 end
 
---- Сумма трёх цветов слитков в сундуке (§4.4); для HUD вместо устаревшего progress.ingots.
-local function sum_ingots_in_inventory_sheet(sheet)
-  if sheet == nil then return 0 end
+--- Spendable inventory resources; progress counters also include already consumed drops.
+local function inventory_resource_totals(sheet)
+  if sheet == nil then return 0, 0 end
   ensure_sheet_inventory_counts(sheet)
-  local inv = sheet.inventory
-  local ic = sheet.inventory_counts
-  local sum = 0
+  local inv = sheet.inventory or {}
+  local ic = sheet.inventory_counts or {}
+  local ingots, tesseracts = 0, 0
   for i = 1, 25 do
     local id = inv[i] or ""
+    local amount = math.max(0, math.floor(tonumber(ic[i]) or 0))
     if id == "ingot_green" or id == "ingot_blue" or id == "ingot_purple" then
-      sum = sum + math.max(0, math.floor(tonumber(ic[i]) or 0))
+      ingots = ingots + amount
+    elseif id == "tesseract" then
+      tesseracts = tesseracts + amount
     end
   end
-  return sum
+  return ingots, tesseracts
 end
 
-local function build_resource_payload(progress, user_id)
+local function build_resource_payload(progress, user_id, sheet_opt)
+  local sheet = sheet_opt or read_character_sheet(user_id)
+  local ingots, tesseracts = inventory_resource_totals(sheet)
   local energy_max = pve_energy_max_for_user(user_id)
   local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
   local dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0)
@@ -2504,28 +2569,21 @@ local function build_resource_payload(progress, user_id)
     energy_max = energy_max,
     ore = math.max(0, tonumber(progress.ore) or 0),
     gold = math.max(0, tonumber(progress.gold) or 0),
-    ingots = math.max(0, tonumber(progress.ingots) or 0),
+    ingots = ingots,
     matter = math.max(0, tonumber(progress.matter) or 0),
     keys = keys_total,
     blueprint_green = math.max(0, tonumber(progress.blueprint_green) or 0),
     blueprint_blue = math.max(0, tonumber(progress.blueprint_blue) or 0),
     blueprint_purple = math.max(0, tonumber(progress.blueprint_purple) or 0),
     blueprint_gold = math.max(0, tonumber(progress.blueprint_gold) or 0),
-    tesseracts = math.max(0, tonumber(progress.tesseracts) or 0),
+    tesseracts = tesseracts,
     miner_key = miner_key,
     dark_key = dark_key,
   }
 end
 
 local function build_progression_payload(progress, user_id, sheet_opt)
-  local resources = build_resource_payload(progress, user_id)
-  local ingots = resources.ingots
-  if sheet_opt ~= nil then
-    local invSum = sum_ingots_in_inventory_sheet(sheet_opt)
-    if invSum > 0 then
-      ingots = invSum
-    end
-  end
+  local resources = build_resource_payload(progress, user_id, sheet_opt)
   return {
     level = progress.level or 1,
     xp = progress.xp or 0,
@@ -2534,7 +2592,7 @@ local function build_progression_payload(progress, user_id, sheet_opt)
     energy = resources.energy,
     energy_max = resources.energy_max,
     ore = resources.ore,
-    ingots = ingots,
+    ingots = resources.ingots,
     matter = resources.matter,
     keys = resources.keys,
     -- Клиент (Unity JsonUtility) ожидает key_items; без этого барьер показывает 0 ключей при наличии miner_key.
@@ -3183,7 +3241,7 @@ local function apply_pvp_pro_stats_from_sheet(actor, user_id)
   CharStats.apply_player_combat_stats_from_sheet(actor, user_id, nil)
 end
 
-local function write_pve_progress(user_id, progress, version)
+Runtime.build_pve_progress_write = function(user_id, progress, version)
   local write_obj = {
     collection = CFG.PVE_PROGRESS_COLLECTION,
     key = CFG.PVE_PROGRESS_KEY,
@@ -3215,7 +3273,11 @@ local function write_pve_progress(user_id, progress, version)
     permission_write = 0,
   }
   write_obj.version = (version ~= nil and version ~= "") and version or "*"
-  nk.storage_write({ write_obj })
+  return write_obj
+end
+
+local function write_pve_progress(user_id, progress, version)
+  nk.storage_write({ Runtime.build_pve_progress_write(user_id, progress, version) })
 end
 
 function random_affix_for_floor(floor)
@@ -3548,6 +3610,7 @@ Runtime.Pvp = build_pvp({
   ContestGoals = Runtime.ContestGoals,
   add_blueprint = add_blueprint,
   empty_key_items = empty_key_items,
+  get_race_entry = function() return Runtime.RaceEntry end,
 })
 
 -- Stats RPC / arena tournament counters: отдельный chunk (лимит 200 local).
@@ -3694,14 +3757,17 @@ end
 
 local arena_factory = runtime_lua_require("modules.arena_tournament", "arena_tournament")
 local Arena = arena_factory({
+  CFG = CFG,
   try_match_create = try_match_create,
   make_bot_user_id = make_bot_user_id,
   guard_read_metadata_epoch = Guard.read_metadata_epoch,
   guard_assert_client_epoch_matches = Guard.assert_client_epoch_matches,
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
+  build_pve_progress_write = Runtime.build_pve_progress_write,
   read_character_sheet = read_character_sheet,
   write_character_sheet = write_character_sheet,
+  build_character_sheet_write = Runtime.build_character_sheet_write,
   ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
@@ -3710,6 +3776,7 @@ local Arena = arena_factory({
 })
 Runtime.arena_mirror_commit = Arena.mirror_commit
 Runtime.arena_on_match_finished = Arena.on_match_finished
+Runtime.arena_on_match_created = Arena.on_match_created
 Runtime.arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
 Runtime.arena_final_prize_for_winner = Arena.final_prize_for_winner
 
@@ -3922,9 +3989,12 @@ local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3
   make_bot_user_id = make_bot_user_id,
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
+  build_pve_progress_write = Runtime.build_pve_progress_write,
+  current_level_from_xp = current_level_from_xp,
   build_resource_payload = build_resource_payload,
   race_goal_mana = race_goal_mana,
 })
+Runtime.RaceEntry = RaceApi.Entry
 
 local function duel_mine_summon(ctx, payload)
   local ok, result = pcall(function()
@@ -4857,6 +4927,8 @@ local function match_init(context, params)
 
   local state = {
     invited = invited,
+    match_id = context and context.match_id or nil,
+    join_deadline_tick = math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5),
     stats_result_id = nk.uuid_v4(),
     mode = params and tostring(params.mode or "pvp") or "pvp",
     pvp_pro = truthy_match_param(params and params.pvp_pro),
@@ -4891,16 +4963,18 @@ local function match_init(context, params)
     arena_pvp_style = truthy_match_param(params and params.arena_pvp_style),
     --- Бот с ником из ONLINE_POOL_NAMES: замедленная «думалка» 7–22с.
     arena_human_like_bot = truthy_match_param(params and params.arena_human_like_bot),
-    reconnect_grace_for_user_id = nil,
-    reconnect_deadline_tick = nil,
+    reconnect_deadlines = {},
     player_levels = {},
   }
 
+  if state.arena_mirror ~= nil then Runtime.arena_on_match_created(state) end
   return state, CFG.TICK_RATE, "mode=duel_match3"
 end
 
 local function match_join_attempt(context, dispatcher, tick, state, presence, metadata)
   if state.ended then return state, false, "ended" end
+  local allowed, reason = Runtime.Presence.can_rejoin(state, presence, tick)
+  if not allowed then return state, false, reason end
 
   if state.mode == "pve" then
     if state.owner_user_id ~= nil and state.owner_user_id ~= "" and presence.user_id ~= state.owner_user_id then
@@ -4925,43 +4999,18 @@ local function match_join_attempt(context, dispatcher, tick, state, presence, me
 end
 
 local function match_join(context, dispatcher, tick, state, presences)
-  for _, p in ipairs(presences) do
-    state.presences[p.user_id] = p
-  end
-
-  -- PvP: повторный вход после обрыва связи — полная рассылка состояния ушедшему игроку.
-  if state.mode ~= "pve" and state.started and not state.ended and state.reconnect_grace_for_user_id ~= nil then
+  Runtime.Presence.join(state, presences, dispatcher)
+  -- Any admitted participant gets the full state, including overlap replacement.
+  if state.started and not state.ended then
     for _, p in ipairs(presences) do
-      if p.user_id == state.reconnect_grace_for_user_id then
-        state.reconnect_grace_for_user_id = nil
-        state.reconnect_deadline_tick = nil
-        local cheat = {}
-        if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
-          cheat = state.cheat_rows or {}
-        end
-        local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
-        dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
-        return state
+      local cheat = {}
+      if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
+        cheat = state.cheat_rows or {}
       end
+      local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
+      dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
     end
-  end
-
-  -- PvE: владелец вернулся в тот же матч после обрыва.
-  if state.mode == "pve" and state.started and not state.ended and state.reconnect_grace_for_user_id ~= nil
-      and state.owner_user_id ~= nil and state.owner_user_id ~= "" then
-    for _, p in ipairs(presences) do
-      if p.user_id == state.reconnect_grace_for_user_id and p.user_id == state.owner_user_id then
-        state.reconnect_grace_for_user_id = nil
-        state.reconnect_deadline_tick = nil
-        local cheat = {}
-        if state.cheat_rows_allowed ~= nil and state.cheat_rows_allowed[p.user_id] == true then
-          cheat = state.cheat_rows or {}
-        end
-        local msg = make_sync_msg(state, nil, false, nil, cheat, tick, "")
-        dispatcher.broadcast_message(CFG.OP_BOARD_SYNC, nk.json_encode(msg), { p }, nil)
-        return state
-      end
-    end
+    return state
   end
 
   if state.mode == "pve" then
@@ -4979,6 +5028,15 @@ local function match_join(context, dispatcher, tick, state, presences)
           state.bot_user_id = make_bot_user_id("arena_bot")
         end
 
+        if state.pvp_race == true then
+          local paid, err = RaceApi.Entry.claim({player_id}, state.stats_result_id)
+          if not paid then
+            nk.logger_warn("Race start rejected: " .. tostring(err))
+            state.ended = true
+            dispatcher.match_kick(presences)
+            return nil
+          end
+        end
         state.started = true
         state.players_sorted = { player_id, state.bot_user_id }
         state.stats[player_id] = new_stats()
@@ -5020,7 +5078,6 @@ local function match_join(context, dispatcher, tick, state, presences)
           if state.stats[state.bot_user_id] ~= nil then
             state.stats[state.bot_user_id].race_petard_bank = 0
           end
-          RaceApi.race_consume_entry_pending(player_id)
           nk.logger_info("duel_match3: PvP Race vs bot — first=" .. tostring(state.race_first_user_id)
             .. " goal=" .. tostring(state.race_goal_mana)
             .. " max=" .. tostring(state.race_max_mana))
@@ -5122,8 +5179,17 @@ local function match_join(context, dispatcher, tick, state, presences)
   end
 
   if not state.started and count_present_players(state) == 2 then
-    state.started = true
     state.players_sorted = sorted_two_players(state.presences)
+    if state.pvp_race == true then
+      local paid, err = RaceApi.Entry.claim(state.players_sorted, state.stats_result_id)
+      if not paid then
+        nk.logger_warn("Race start rejected: " .. tostring(err))
+        state.ended = true
+        dispatcher.match_kick(presences)
+        return nil
+      end
+    end
+    state.started = true
     state.stats[state.players_sorted[1]] = new_stats()
     state.stats[state.players_sorted[2]] = new_stats()
     if state.pvp_pro == true and state.mode ~= "pve" then
@@ -5164,7 +5230,6 @@ local function match_join(context, dispatcher, tick, state, presences)
         if state.stats[uid] ~= nil then
           state.stats[uid].race_petard_bank = 0
         end
-        RaceApi.race_consume_entry_pending(uid)
       end
       nk.logger_info("duel_match3: PvP Race (Спуск) — first=" .. tostring(state.race_first_user_id)
         .. " goal=" .. tostring(state.race_goal_mana)
@@ -5212,14 +5277,7 @@ end
 local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
   if winner == nil or winner == "" then return end
   local tag = tostring(reason_tag or "forfeit")
-  local ok_arena, err_arena = pcall(function()
-    if type(Runtime.arena_on_match_finished) == "function" then
-      Runtime.arena_on_match_finished(state, winner)
-    end
-  end)
-  if not ok_arena then
-    nk.logger_error("arena_on_match_finished failed (" .. tag .. "): " .. tostring(err_arena))
-  end
+  Runtime.finish_arena_result(state, winner)
   if is_pvp_race(state) ~= true then
     local ok_achi, err_achi = pcall(function()
       Ach.flush_match_finish(state, winner, nil, nil, 0)
@@ -5232,88 +5290,70 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
     winnerUserId = winner,
     isDraw = false,
   }
-  Runtime.Pvp.apply_game_over_rewards(state, winner, game_over_payload)
-  augment_arena_game_over_payload(state, game_over_payload)
+  Runtime.apply_result_rewards(state, winner, false, game_over_payload)
+  local augment_ok, augment_err = pcall(augment_arena_game_over_payload, state, game_over_payload)
+  if not augment_ok then nk.logger_error("arena reward display deferred: " .. tostring(augment_err)) end
   Runtime.StatsApi.record_match_finish(state, winner, false)
-  dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
+  Runtime.emit_game_over(dispatcher, state, game_over_payload)
 end
 
 local function match_leave(context, dispatcher, tick, state, presences)
-  local left_duelist_uid = nil
-  if state.players_sorted and state.started and not state.ended and state.mode ~= "pve" then
-    for _, p in ipairs(presences) do
-      for _, uid in ipairs(state.players_sorted) do
-        if uid == p.user_id then
-          left_duelist_uid = p.user_id
-          break
-        end
-      end
-      if left_duelist_uid then break end
-    end
-  end
-
-  for _, p in ipairs(presences) do
-    state.presences[p.user_id] = nil
-  end
-
+  local left = Runtime.Presence.leave(state, presences, tick,
+    math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5))
   if state.started and not state.ended then
-    local count = count_present_players(state)
-    -- Один дуэлянт ушёл по сети — не завершать матч сразу; дать время на JoinMatch.
-    if state.mode ~= "pve" and count == 1 and left_duelist_uid ~= nil
-        and state.players_sorted ~= nil and #state.players_sorted >= 2 then
-      state.reconnect_grace_for_user_id = left_duelist_uid
-      state.reconnect_deadline_tick = tick + math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5)
-      local msg = { disconnectedUserId = left_duelist_uid, reconnectGraceSeconds = CFG.RECONNECT_GRACE_SECONDS }
-      dispatcher.broadcast_message(CFG.OP_PEER_DISCONNECT, nk.json_encode(msg), nil, nil)
-      return state
-    end
-    if count <= 1 and state.mode ~= "pve" then
-      state.ended = true
-      local winner = nil
-      for uid, _ in pairs(state.presences) do winner = uid end
-      if winner ~= nil then
-        finalize_pvp_forfeit_win(dispatcher, state, winner, "disconnect")
-      end
-      return nil
-    end
-    if count <= 0 and state.mode == "pve" then
-      local owner_left = false
-      for _, p in ipairs(presences) do
-        if state.owner_user_id ~= nil and p.user_id == state.owner_user_id then
-          owner_left = true
-          break
-        end
-      end
-      if owner_left and state.owner_user_id ~= nil and state.owner_user_id ~= "" then
-        state.reconnect_grace_for_user_id = state.owner_user_id
-        state.reconnect_deadline_tick = tick + math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5)
+    for _, uid in ipairs(left) do
+      if state.mode == "pve" and uid == state.owner_user_id then
         on_pve_owner_socket_gone(state, tick)
-        return state
+      elseif state.mode ~= "pve" then
+        local msg = { disconnectedUserId = uid, reconnectGraceSeconds = CFG.RECONNECT_GRACE_SECONDS }
+        dispatcher.broadcast_message(CFG.OP_PEER_DISCONNECT, nk.json_encode(msg), nil, nil)
       end
-      state.ended = true
-      return nil
     end
   end
-
+  -- Keep the state even when both sockets are gone; each retains its grace.
   return state
 end
 
 local function match_loop(context, dispatcher, tick, state, messages)
-  if state.ended then return nil end
+  if state.ended then
+    if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
+    return nil
+  end
 
-  if state.started and not state.ended
-      and state.reconnect_deadline_tick ~= nil and state.reconnect_grace_for_user_id ~= nil then
-    local q = state.reconnect_grace_for_user_id
-    if tick >= state.reconnect_deadline_tick and state.presences[q] == nil then
-      state.reconnect_deadline_tick = nil
-      state.reconnect_grace_for_user_id = nil
-
+  -- Invitations must not leave a tournament round waiting forever for a no-show.
+  if not state.started and tick >= (state.join_deadline_tick or math.huge) then
+    state.ended = true
+    if state.arena_mirror ~= nil then
+      state.players_sorted = {}
       if state.mode == "pve" then
+        state.players_sorted = {state.owner_user_id, state.bot_user_id}
+      else
+        for uid in pairs(state.invited or {}) do state.players_sorted[#state.players_sorted + 1] = uid end
+        table.sort(state.players_sorted)
+      end
+      if #state.players_sorted == 2 then
+        for _, uid in ipairs(state.players_sorted) do state.stats[uid] = state.stats[uid] or new_stats() end
+        local winner = state.mode == "pve" and state.bot_user_id or state.players_sorted[2]
+        for _, uid in ipairs(state.players_sorted) do
+          if state.presences[uid] ~= nil then winner = uid; break end
+        end
+        finalize_pvp_forfeit_win(dispatcher, state, winner, "join_timeout")
+      end
+    end
+    if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
+    return nil
+  end
+
+  if state.started then
+    local expired = Runtime.Presence.expired(state, tick)
+    if #expired > 0 then
+      local q = expired[1]
+      state.ended = true
+      if state.mode == "pve" and state.arena_mirror == nil and not state.pvp_race then
         local oh = state.owner_user_id
         local st = oh ~= nil and state.stats ~= nil and state.stats[oh] or nil
         if oh ~= nil and st ~= nil and state.bot_user_id ~= nil
             and tonumber(st.hp or 0) > 0 then
-          state.ended = true
           state.last_reward = Runtime.award_pve_defeat(oh, state.owner_session_epoch)
           local game_over_payload = { winnerUserId = state.bot_user_id }
           game_over_payload.rewardXp = state.last_reward.reward_xp or 0
@@ -5327,11 +5367,11 @@ local function match_loop(context, dispatcher, tick, state, messages)
         return nil
       end
 
-      state.ended = true
       local winner = other_player_id(state, q)
       if winner ~= nil then
         finalize_pvp_forfeit_win(dispatcher, state, winner, "reconnect_timeout")
       end
+      if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
       return nil
     end
   end
@@ -5339,6 +5379,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
   if state.turn_deadline_paused == nil then state.turn_deadline_paused = false end
   if state.turn_pause_started_tick == nil then state.turn_pause_started_tick = 0 end
 
+  messages = Runtime.Presence.filter_messages(state, messages)
   messages = Runtime.RateLimit.filter_match_messages(state, messages, nk.time(), function(presence, reason)
     send_reject(dispatcher, presence, reason)
   end)
@@ -5373,6 +5414,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
       if winner then
         finalize_pvp_forfeit_win(dispatcher, state, winner, "player_left")
       end
+      if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
       return nil
     end
 

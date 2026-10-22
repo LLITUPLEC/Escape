@@ -71,7 +71,7 @@ local source = file:read("*a"); file:close()
 local start = assert(source:find("local function read_character_sheet", 1, true))
 local finish = assert(source:find("local SET_BONUS_FULL_EQUIP_STATS", start, true))
 local helpers_source = source:sub(start, finish - 1)
-local constructor = assert((loadstring or load)("return function(nk, CFG, normalize_character_sheet, decode_storage_value)\n" .. helpers_source .. "\nreturn read_character_sheet, write_character_sheet, ensure_character_sheet_initialized end"))()
+local constructor = assert((loadstring or load)("return function(nk, CFG, normalize_character_sheet, decode_storage_value)\nlocal Runtime = {}\n" .. helpers_source .. "\nreturn read_character_sheet, write_character_sheet, ensure_character_sheet_initialized end"))()
 local read_sheet, write_sheet, initialize_sheet = constructor(nk, cfg, normalized_sheet, function(row) return row.value end)
 local function read_progress()
   local row = db[progress_key]
@@ -259,7 +259,7 @@ local env = setmetatable({
   random_affix_for_floor = function() return "normal" end,
   Ach = { merge_persistent_stats = function() end },
 }, { __index = _G })
-local progress_start = assert(source:find("local function write_pve_progress", 1, true))
+local progress_start = assert(source:find("Runtime.build_pve_progress_write = function", 1, true))
 local progress_end = assert(source:find("function random_affix_for_floor", progress_start, true))
 load_env(source:sub(progress_start, progress_end - 1) .. "\nexport_write_progress = write_pve_progress", env)
 env.write_pve_progress = env.export_write_progress

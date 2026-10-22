@@ -54,9 +54,7 @@ return function(deps)
         permission_read = 1,
         permission_write = 0,
       }
-      if version ~= nil and version ~= "" then
-        write_obj.version = version
-      end
+      write_obj.version = (version ~= nil and version ~= "") and version or "*"
 
       local write_ok, write_err = pcall(function()
         nk.storage_write({ write_obj })

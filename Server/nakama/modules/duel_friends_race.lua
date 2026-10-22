@@ -8,10 +8,7 @@ return function(deps)
   local decode_storage_value = deps.decode_storage_value
   local try_match_create = deps.try_match_create
   local read_pve_progress = deps.read_pve_progress
-  local write_pve_progress = deps.write_pve_progress
   local race_progress_balance = deps.race_progress_balance
-  local race_progress_spend = deps.race_progress_spend
-  local race_progress_grant = deps.race_progress_grant
   local race_normalize_entry_costs = deps.race_normalize_entry_costs
 
   local NOTIFY_CODE_FRIENDS_RACE_INVITE = 10020
@@ -138,77 +135,17 @@ return function(deps)
   end
 
   local function race_ensure_entry_paid(user_id)
-    local costs = race_normalize_entry_costs(ContestGoals.race_entry_costs())
-    if #costs == 0 then
+    local costs = ContestGoals.race_entry_costs()
+    if type(costs) ~= "table" or #costs == 0 then
       costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
     end
-    local max_retries = 5
-    for i = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      if progress.race_entry_pending == true then
-        return true, nil, type(progress.race_entry_costs) == "table" and progress.race_entry_costs or costs
-      end
-      for _, line in ipairs(costs) do
-        local res = tostring(line.resource or "")
-        local need = math.max(0, math.floor(tonumber(line.amount) or 0))
-        local have = race_progress_balance(progress, res)
-        if have == nil then
-          return false, "unsupported_entry_resource", costs
-        end
-        if have < need then
-          return false, "not_enough_" .. res, costs
-        end
-      end
-      for _, line in ipairs(costs) do
-        race_progress_spend(progress, line.resource, line.amount)
-      end
-      progress.race_entry_pending = true
-      progress.race_entry_costs = costs
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then
-        return true, nil, costs
-      end
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        return false, "storage_write_failed", costs
-      end
-    end
-    return false, "retry_exhausted", costs
+    local ok, err, _progress, entry = deps.Entry.pay(user_id, costs)
+    return ok, err, entry and entry.newly_paid == true
   end
 
   local function race_refund_entry_paid(user_id)
-    local max_retries = 5
-    for i = 1, max_retries do
-      local progress, version = read_pve_progress(user_id)
-      if progress.race_entry_pending ~= true then
-        return true
-      end
-      local costs = race_normalize_entry_costs(progress.race_entry_costs)
-      if #costs == 0 then
-        costs = race_normalize_entry_costs(ContestGoals.race_entry_costs())
-      end
-      if #costs == 0 then
-        costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
-      end
-      for _, line in ipairs(costs) do
-        race_progress_grant(progress, line.resource, line.amount)
-      end
-      progress.race_entry_pending = false
-      progress.race_entry_costs = nil
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if write_ok then return true end
-      local err_text = tostring(write_err)
-      if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-        return false
-      end
-    end
-    return false
+    return deps.Entry.cancel(user_id)
   end
-
   local function friends_race_notify(user_id, subject, content, code)
     pcall(function()
       nk.notification_send(user_id, subject, content, code, "", true)
@@ -312,7 +249,9 @@ return function(deps)
         costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
       end
       local progress = read_pve_progress(user_id)
-      if progress.race_entry_pending ~= true then
+      local prepaid, prepaid_err = deps.Entry.require_pending(user_id)
+      if prepaid_err == "race_entry_in_use" then return nk.json_encode({ ok = false, err = prepaid_err }) end
+      if not prepaid and progress.race_entry_pending ~= true then
         for _, line in ipairs(costs) do
           local have = race_progress_balance(progress, line.resource)
           local need = math.max(0, math.floor(tonumber(line.amount) or 0))
@@ -424,13 +363,13 @@ return function(deps)
         return nk.json_encode({ ok = true, status = "declined" })
       end
 
-      local ok_to, err_to = race_ensure_entry_paid(user_id)
+      local ok_to, err_to, paid_to = race_ensure_entry_paid(user_id)
       if not ok_to then
         return nk.json_encode({ ok = false, err = err_to or "not_enough_matter" })
       end
-      local ok_from, err_from = race_ensure_entry_paid(from_id)
+      local ok_from, err_from, paid_from = race_ensure_entry_paid(from_id)
       if not ok_from then
-        race_refund_entry_paid(user_id)
+        if paid_to then race_refund_entry_paid(user_id) end
         friends_race_notify(from_id, "friends_race_failed", {
           invite_id = invite_id,
           status = "charge_failed",
@@ -449,8 +388,8 @@ return function(deps)
         },
       })
       if match_id == nil or match_id == "" then
-        race_refund_entry_paid(user_id)
-        race_refund_entry_paid(from_id)
+        if paid_to then race_refund_entry_paid(user_id) end
+        if paid_from then race_refund_entry_paid(from_id) end
         return nk.json_encode({ ok = false, err = "match_create_failed" })
       end
 

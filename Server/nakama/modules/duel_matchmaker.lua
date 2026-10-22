@@ -1,4 +1,6 @@
 local nk = require("nakama")
+local entry_ok, RaceEntry = pcall(require, "modules.duel_match3_race_entry")
+if not entry_ok then RaceEntry = require("duel_match3_race_entry") end
 
 local function try_create(setup, names)
   for _, name in ipairs(names) do
@@ -43,6 +45,11 @@ local function on_matchmaker_matched(context, matched_users)
     if rules == "pro" then
       setup.pvp_pro = true
     elseif rules == "race" then
+      for _, user in ipairs(matched_users or {}) do
+        local uid = user.presence and user.presence.user_id or user.user_id
+        local paid, err = RaceEntry.require_pending(tostring(uid or ""))
+        if not paid then error(err or "race_entry_required") end
+      end
       setup.pvp_race = true
     end
     local match_id = try_create(setup, { "duel_match3", "modules/duel_match3", "modules.duel_match3" })

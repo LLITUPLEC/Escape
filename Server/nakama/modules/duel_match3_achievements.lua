@@ -204,9 +204,7 @@ local function persistent_merge_increment(user_id, delta_map)
         permission_read = 1,
         permission_write = 0,
       }
-      if ver ~= nil and ver ~= "" then
-        wo.version = ver
-      end
+      wo.version = (ver ~= nil and ver ~= "") and ver or "*"
       nk.storage_write({ wo })
     end)
 

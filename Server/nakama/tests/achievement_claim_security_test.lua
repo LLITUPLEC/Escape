@@ -173,4 +173,14 @@ test("threshold prerequisites duplicates auth and epoch remain enforced", functi
   epoch_ok = true
   assert(claim().ok and claim().err == "already_claimed" and #writes == 1)
 end)
+test("first counter merge cannot erase concurrently created arena counters", function()
+  db[summary_id] = nil
+  before_write = function()
+    put(summary_id, { achievement_stats = { ["slaughter.arena_bets_placed"] = 1 }, summary = { arena_marker = 7 } })
+  end
+  assert(achievements.merge_persistent_stats("player", { ["uses.cross"] = 1 }))
+  assert(writes[1][1].version == "*" and #writes == 2)
+  assert(db[summary_id].value.achievement_stats["slaughter.arena_bets_placed"] == 1)
+  assert(db[summary_id].value.achievement_stats["uses.cross"] == 1 and db[summary_id].value.summary.arena_marker == 7)
+end)
 print("achievement claim security: " .. passed .. " tests passed")
