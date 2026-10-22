@@ -22,7 +22,7 @@ namespace Project.Achievements
         private const string CatalogCacheUpdatedAtKey = "achievements.server_catalog.updated_at.v2";
         private const string CatalogCacheSourceKey = "achievements.server_catalog.source.v2";
 
-        private static bool _refreshInFlight;
+        private static readonly SemaphoreSlim RefreshGate = new(1, 1);
         private static long _lastAppliedUpdatedAt = -1;
 
         public static long LastAppliedUpdatedAt => _lastAppliedUpdatedAt;
@@ -33,9 +33,11 @@ namespace Project.Achievements
         {
             if (AchievementCatalog.IsFromServer)
                 return;
+            var scope = LocalAccountCacheScope.Current;
+            if (scope == null) return;
             try
             {
-                var json = PlayerPrefs.GetString(CatalogCacheKey, string.Empty);
+                var json = PlayerPrefs.GetString(CatalogCacheKey + "." + scope, string.Empty);
                 if (string.IsNullOrWhiteSpace(json))
                     return;
                 if (!TryParseAndApplyCatalog(json, out var meta))
@@ -60,9 +62,7 @@ namespace Project.Achievements
 
         private static async Task RefreshCatalogAsync(CancellationToken ct, bool forceServerRefresh)
         {
-            if (_refreshInFlight)
-                return;
-            _refreshInFlight = true;
+            await RefreshGate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
                 var catalogChanged = await RefreshCatalogFromServerAsync(ct, forceServerRefresh).ConfigureAwait(false);
@@ -75,7 +75,7 @@ namespace Project.Achievements
             }
             finally
             {
-                _refreshInFlight = false;
+                RefreshGate.Release();
             }
         }
 
@@ -90,6 +90,8 @@ namespace Project.Achievements
                 await bootstrap.EnsureConnectedAsync(ct).ConfigureAwait(false);
                 if (!bootstrap.IsReady || bootstrap.Session == null)
                     return false;
+                var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
+                var session = bootstrap.Session;
 
                 IApiRpc rpc;
                 try
@@ -97,14 +99,14 @@ namespace Project.Achievements
                     var rpcBody = forceServerRefresh
                         ? "{\"force_refresh\":true}"
                         : "{}";
-                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcCatalogGet, rpcBody, canceller: ct)
+                    rpc = await bootstrap.Client.RpcAsync(session, RpcCatalogGet, rpcBody, canceller: ct)
                         .ConfigureAwait(false);
                 }
                 catch (Exception e) when (e.Message != null &&
                                           e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     await bootstrap.RecoverSessionAfterRefreshFailureAsync(ct).ConfigureAwait(false);
-                    if (!bootstrap.IsReady || bootstrap.Session == null)
+                    if (!bootstrap.IsReady || bootstrap.Session == null || !string.Equals(session.UserId, bootstrap.Session.UserId, StringComparison.Ordinal))
                         return false;
                     var rpcBody = forceServerRefresh
                         ? "{\"force_refresh\":true}"
@@ -123,10 +125,11 @@ namespace Project.Achievements
 
                 var changed = await MainThreadDispatcher.RunAsync(() =>
                 {
-                    var cachedUpdatedAt = long.TryParse(PlayerPrefs.GetString(CatalogCacheUpdatedAtKey, "-1"), out var v)
+                    if (!LocalAccountCacheScope.IsCurrent(scope)) return false;
+                    var cachedUpdatedAt = long.TryParse(PlayerPrefs.GetString(CatalogCacheUpdatedAtKey + "." + scope, "-1"), out var v)
                         ? v
                         : -1L;
-                    var cachedPayload = PlayerPrefs.GetString(CatalogCacheKey, "");
+                    var cachedPayload = PlayerPrefs.GetString(CatalogCacheKey + "." + scope, "");
                     var didChange = meta.UpdatedAt != _lastAppliedUpdatedAt
                         || meta.UpdatedAt != cachedUpdatedAt
                         || !string.Equals(payload, cachedPayload, StringComparison.Ordinal);
@@ -134,9 +137,9 @@ namespace Project.Achievements
                     AchievementCatalog.ApplyFromServer(meta.Chains);
                     _lastAppliedUpdatedAt = meta.UpdatedAt;
                     LastCatalogSource = meta.Source;
-                    PlayerPrefs.SetString(CatalogCacheKey, payload);
-                    PlayerPrefs.SetString(CatalogCacheUpdatedAtKey, meta.UpdatedAt.ToString());
-                    PlayerPrefs.SetString(CatalogCacheSourceKey, meta.Source ?? "");
+                    PlayerPrefs.SetString(CatalogCacheKey + "." + scope, payload);
+                    PlayerPrefs.SetString(CatalogCacheUpdatedAtKey + "." + scope, meta.UpdatedAt.ToString());
+                    PlayerPrefs.SetString(CatalogCacheSourceKey + "." + scope, meta.Source ?? "");
                     PlayerPrefs.Save();
 
                     var cross = AchievementCatalog.FindChain("obs.cross");
@@ -179,6 +182,10 @@ namespace Project.Achievements
             try
             {
                 await bootstrap.EnsureConnectedAsync(ct).ConfigureAwait(false);
+                var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
+                var session = bootstrap.Session;
+                if (scope == null || session == null) return;
+                var claimRevision = await MainThreadDispatcher.RunAsync(() => AchievementProgressStorage.ConfirmedClaimRevision).ConfigureAwait(false);
                 var sessionEpoch = await MainThreadDispatcher
                     .RunAsync(NakamaBootstrap.GetLocalSessionEpoch)
                     .ConfigureAwait(false);
@@ -190,24 +197,29 @@ namespace Project.Achievements
                 IApiRpc rpc;
                 try
                 {
-                    rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcAchievementSync, body, canceller: ct)
+                    rpc = await bootstrap.Client.RpcAsync(session, RpcAchievementSync, body, canceller: ct)
                         .ConfigureAwait(false);
                 }
                 catch (Exception e) when (e.Message != null &&
                                           e.Message.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     await bootstrap.RecoverSessionAfterRefreshFailureAsync(ct).ConfigureAwait(false);
-                    if (bootstrap.Session == null) return;
+                    if (bootstrap.Session == null || !string.Equals(session.UserId, bootstrap.Session.UserId, StringComparison.Ordinal)) return;
                     rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcAchievementSync, body, canceller: ct)
                         .ConfigureAwait(false);
                 }
 
-                var parsed = JsonUtility.FromJson<AchievementSyncRpcResponse>(rpc?.Payload ?? "{}");
+                // Nakama Lua encodes an empty table as {}. JsonUtility expects [] for array fields.
+                var payload = AchievementProgressStorage.NormalizeEmptyProgressArrays(rpc?.Payload ?? "{}");
+                var parsed = JsonUtility.FromJson<AchievementSyncRpcResponse>(payload);
                 if (parsed == null || !parsed.ok)
                     return;
 
                 await MainThreadDispatcher.RunAsync(() =>
                 {
+                    if (!LocalAccountCacheScope.IsCurrent(scope)) return;
+                    // A claim completed while this sync was in flight; its older snapshot must not undo the claim.
+                    if (claimRevision != AchievementProgressStorage.ConfirmedClaimRevision) return;
                     AchievementProgressStorage.MergeFromAuthoritativeSnapshot(
                         parsed.achievement_stats_flat,
                         parsed.achievement_claimed);

@@ -1,4 +1,6 @@
 local nk = require("nakama")
+local rate_ok, RateLimit = pcall(require, "modules.duel_api_rate_limit")
+if not rate_ok then RateLimit = require("duel_api_rate_limit") end
 
 local function sanitize_username(raw)
   local s = tostring(raw or "")
@@ -77,4 +79,4 @@ local function duel_friends_resolve_username(ctx, payload)
   return result
 end
 
-nk.register_rpc(duel_friends_resolve_username, "duel_friends_resolve_username")
+RateLimit.register_rpc(duel_friends_resolve_username, "duel_friends_resolve_username")

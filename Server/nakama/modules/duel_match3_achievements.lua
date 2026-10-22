@@ -42,10 +42,6 @@ local function read_pv(uid)
   return deps.read_pve_progress(uid)
 end
 
-local function write_pv(uid, progress, version)
-  return deps.write_pve_progress(uid, progress, version)
-end
-
 local function guard_epoch(uid, payload)
   local fn = deps.guard_assert_client_epoch_matches
   if type(fn) == "function" then
@@ -140,31 +136,6 @@ local function claim_append(claimed_arr, tok)
   local out = claimed_arr or {}
   out[#out + 1] = tok
   return out
-end
-
-local function apply_wallet_grant(user_id, chain_id, step_idx)
-  if user_id == nil or user_id == "" then return end
-  local rewards = AchCat.step_rewards(chain_id, step_idx)
-  if type(rewards) ~= "table" or #rewards == 0 then return end
-  local max_retries = 5
-  for attempt = 1, max_retries do
-    ensure_sheet(user_id)
-    local progress, ver = read_pv(user_id)
-    if not AchCat.apply_wallet_rewards(rewards, progress) then
-      return
-    end
-    local okw, erw = pcall(function()
-      write_pv(user_id, progress, ver)
-    end)
-    if okw then
-      return
-    end
-    local err_text = tostring(erw)
-    if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-      nk.logger_warn("achievement wallet grant failed: " .. tostring(chain_id) .. " step " .. tostring(step_idx))
-      return
-    end
-  end
 end
 
 function M.storage_read_match3_summary_val(user_id)
@@ -501,12 +472,16 @@ function M.rpc_achievement_claim_step(ctx, payload)
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
     end
-    local chain_id = tostring(p.chain_id or "")
-    local step_ix = tonumber(p.step_index)
-    if chain_id == "" or step_ix == nil then
+    if type(p) ~= "table" then
       return nk.json_encode({ ok = false, err = "bad_request" })
     end
-    step_ix = math.floor(step_ix)
+    local chain_id = tostring(p.chain_id or "")
+    local step_ix = tonumber(p.step_index)
+    if chain_id == "" or step_ix == nil or step_ix ~= step_ix
+        or step_ix == math.huge or step_ix == -math.huge
+        or step_ix < 0 or step_ix ~= math.floor(step_ix) then
+      return nk.json_encode({ ok = false, err = "bad_request" })
+    end
 
     local def = chain_def_by_id(chain_id)
     if def == nil then
@@ -527,7 +502,7 @@ function M.rpc_achievement_claim_step(ctx, payload)
       if type(ast) ~= "table" then ast = {} end
 
       local cur = tonumber(ast[key]) or 0
-      if cur < need then
+      if cur ~= cur or cur == math.huge or cur == -math.huge or cur < need then
         return nk.json_encode({ ok = false, err = "threshold_not_met" })
       end
 
@@ -553,6 +528,13 @@ function M.rpc_achievement_claim_step(ctx, payload)
 
       val.updated_at = os.time()
 
+      -- Currency lives in progression storage, not Nakama's account wallet.
+      -- Commit the claim and its reward together, with a CAS for each object.
+      -- A concurrent grant/spend must retry from both fresh snapshots.
+      local progress, progress_ver = read_pv(user_id)
+      local rewards = AchCat.step_rewards(chain_id, step_ix)
+      local wallet_changed = AchCat.apply_wallet_rewards(rewards, progress)
+
       local write_ok, write_err = pcall(function()
         local wo = {
           collection = CFG.STATS_COLLECTION,
@@ -561,13 +543,25 @@ function M.rpc_achievement_claim_step(ctx, payload)
           value = val,
           permission_read = 1,
           permission_write = 0,
+          version = (ver ~= nil and ver ~= "") and ver or "*",
         }
-        if ver ~= nil and ver ~= "" then wo.version = ver end
-        nk.storage_write({ wo })
+        local writes = { wo }
+        if wallet_changed then
+          progress.updated_at = val.updated_at
+          writes[#writes + 1] = {
+            collection = CFG.PVE_PROGRESS_COLLECTION,
+            key = CFG.PVE_PROGRESS_KEY,
+            user_id = user_id,
+            value = progress,
+            permission_read = 1,
+            permission_write = 0,
+            version = (progress_ver ~= nil and progress_ver ~= "") and progress_ver or "*",
+          }
+        end
+        nk.storage_write(writes)
       end)
 
       if write_ok then
-        apply_wallet_grant(user_id, chain_id, step_ix)
         local progress_after, _ = read_pv(user_id)
         local stats_payload = stats_payload_for_client(user_id)
         local wallet_payload = progression_wallet_payload(progress_after)

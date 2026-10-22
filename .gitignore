@@ -38,3 +38,14 @@ ParrelSync/
 Assets/_Project/Resources/NakamaConnectionConfig.asset
 Assets/_Project/Resources/NakamaConnectionConfig.asset.meta
 
+# Isolated Nakama deployment credentials and generated runtime
+Server/nakama/deploy/.env
+Server/nakama/deploy/secrets/
+Server/nakama/deploy/runtime/
+Server/nakama/deploy/backups/
+Server/nakama/deploy/__pycache__/
+.utmp/escape-deploy/
+.utmp/lua-test-runtime/
+.utmp/client-cache-tests/
+.utmp/security-*
+

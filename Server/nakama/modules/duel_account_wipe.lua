@@ -2,6 +2,8 @@
   Удаление прогресса текущего игрока: storage (character/progress/stats) + опционально account_delete.
 ]]
 local nk = require("nakama")
+local rate_ok, RateLimit = pcall(require, "modules.duel_api_rate_limit")
+if not rate_ok then RateLimit = require("duel_api_rate_limit") end
 
 local function runtime_lua_require_nested(name_nested, name_root)
   local ok, mod = pcall(require, name_nested)
@@ -96,4 +98,4 @@ local function duel_account_wipe(ctx, payload)
   return result
 end
 
-nk.register_rpc(duel_account_wipe, "duel_account_wipe")
+RateLimit.register_rpc(duel_account_wipe, "duel_account_wipe")

@@ -1,4 +1,6 @@
 local nk = require("nakama")
+local rate_ok, RateLimit = pcall(require, "modules.duel_api_rate_limit")
+if not rate_ok then RateLimit = require("duel_api_rate_limit") end
 
 local function runtime_lua_require(name_nested, name_root)
   local ok, mod = pcall(require, name_nested)
@@ -229,6 +231,6 @@ local function duel_online_list(ctx, payload)
   return result
 end
 
-nk.register_rpc(duel_online_ping_and_count, "duel_online_ping_and_count")
-nk.register_rpc(duel_online_leave, "duel_online_leave")
-nk.register_rpc(duel_online_list, "duel_online_list")
+RateLimit.register_rpc(duel_online_ping_and_count, "duel_online_ping_and_count")
+RateLimit.register_rpc(duel_online_leave, "duel_online_leave")
+RateLimit.register_rpc(duel_online_list, "duel_online_list")

@@ -79,6 +79,7 @@ namespace Project.Character
             if (NakamaBootstrap.Instance == null)
                 return new NicknameChangeRpcResponse { ok = false, err = "nakama_not_initialized" };
 
+            var requestedScope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
             await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
             if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
                 return new NicknameChangeRpcResponse { ok = false, err = "nakama_not_ready" };
@@ -96,22 +97,30 @@ namespace Project.Character
 
             try
             {
+                var session = NakamaBootstrap.Instance.Session;
+                var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
+                if (!ReferenceEquals(session, NakamaBootstrap.Instance.Session)
+                    || (requestedScope != null && !string.Equals(requestedScope, scope, StringComparison.Ordinal)))
+                    return new NicknameChangeRpcResponse { ok = false, err = "stale_session" };
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcChange, body, canceller: ct).ConfigureAwait(false);
+                    session, RpcChange, body, canceller: ct).ConfigureAwait(false);
                 var parsed = JsonUtility.FromJson<NicknameChangeRpcResponse>(rpc?.Payload ?? "{}");
                 if (parsed == null)
                     return new NicknameChangeRpcResponse { ok = false, err = "bad_payload" };
 
                 if (parsed.ok && !string.IsNullOrWhiteSpace(parsed.username))
                 {
-                    await MainThreadDispatcher.RunAsync(() =>
+                    var applied = await MainThreadDispatcher.RunAsync(() =>
                     {
+                        if (!LocalAccountCacheScope.IsCurrent(scope)) return false;
+                        if (parsed.progression != null) parsed.progression.localAccountScope = scope;
                         if (parsed.progression != null)
                             PlayerResourcesService.PatchCachedFromProgression(parsed.progression);
                         else if (parsed.resources != null && parsed.resources.ok)
                         {
                             var prog = new Progression
                             {
+                                localAccountScope = scope,
                                 gold = parsed.resources.gold,
                                 ore = parsed.resources.ore,
                                 ingots = parsed.resources.ingots,
@@ -124,7 +133,9 @@ namespace Project.Character
                         }
 
                         NotifyUsernameChanged(parsed.username);
+                        return true;
                     }).ConfigureAwait(false);
+                    if (!applied) return new NicknameChangeRpcResponse { ok = false, err = "stale_session" };
                 }
 
                 return parsed;

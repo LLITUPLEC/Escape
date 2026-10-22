@@ -390,11 +390,9 @@ end
     end
 
     clear_fn()
-    write_character_sheet(user_id, sheet)
-
-    local progress = read_pve_progress(user_id)
+    local progress, version = read_pve_progress(user_id)
     progress.gold = (tonumber(progress.gold) or 0) + gold_gain
-    write_pve_progress(user_id, progress)
+    write_character_sheet(user_id, sheet, progress, version)
 
     local encoded = encode_character_ok_response(sheet, progress, user_id)
     -- Дополняем ответ суммой продажи (если encode вернул JSON-строку).
@@ -529,8 +527,9 @@ end
 
     local dur = workshop_craft_duration_seconds(out_def, tier)
 
-    local max_retries = 5
-    for attempt = 1, max_retries do
+    -- A stale inventory or wallet snapshot rejects the entire craft. The client
+    -- can retry the RPC from fresh state; never retry an already mutated sheet.
+    do
       local progress, version = read_pve_progress(user_id)
       if (tonumber(progress.ore) or 0) < ore_c then
         return nk.json_encode({ ok = false, err = "not_enough_ore" })
@@ -542,10 +541,6 @@ end
       progress.ore = (tonumber(progress.ore) or 0) - ore_c
       progress.gold = (tonumber(progress.gold) or 0) - gold_c
 
-      local w_ok, w_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if w_ok then
         if ingot_n > 0 then
           if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
             nk.logger_error("workshop_craft_start: не удалось списать слитки")
@@ -593,17 +588,9 @@ end
         end
         wslot.output_def_id = output_def_id
         wslot.ends_at = os.time() + dur
-        write_character_sheet(user_id, sheet)
+        write_character_sheet(user_id, sheet, progress, version)
         return encode_character_ok_response(sheet, progress, user_id)
-      end
-
-      local err_text = tostring(w_err)
-      if string.find(err_text, "version", 1, true) == nil or attempt == max_retries then
-        error(w_err)
-      end
     end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
   end)
 
   if not ok then
@@ -891,10 +878,9 @@ end
       end
       wslot.ends_at = wend
       local w_ok, w_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
+        write_character_sheet(user_id, sheet, progress, version)
       end)
       if w_ok then
-        write_character_sheet(user_id, sheet)
         return encode_character_ok_response(sheet, progress, user_id)
       end
       local err_text = tostring(w_err)

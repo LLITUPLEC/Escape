@@ -1,5 +1,13 @@
 # Nakama: Match3 authoritative
 
+Текущее изолированное развёртывание Escape: `https://prokrust-play.ru`, сервер
+`46.173.17.51`, каталог `/opt/escape`, Compose project `escape`.
+Инструкции — [deploy/README.md](deploy/README.md), результаты проверки безопасности —
+[SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+
+Глобальные каталоги и разрешения отладки принадлежат системному UUID
+`00000000-0000-0000-0000-000000000000`. При обновлении прежней базы каталоги под
+старым UUID необходимо отдельно перенести; новое развёртывание создаёт чистую базу.
 
 1. Скопируйте файлы модулей в каталог **modules** вашего Nakama (часто `data/modules/` в Docker-образе):
    - `duel_online.lua` (онлайн-статус: ping/count, leave, list до 50 игроков),
@@ -44,7 +52,9 @@
 
 Серверная статистика Match3 (по `ctx.user_id`) также доступна через RPC:
 - `duel_match3_stats_get` → `{ ok, played, wins, losses }`
-- `duel_match3_stats_record` с payload `{"won":true|false}` → инкрементирует сыграно/победы/поражения.
+- Итоги записываются только authoritative match handler после завершения матча.
+  Legacy RPC `duel_match3_stats_record` всегда отклоняет запись; локальный SoloBot
+  не меняет доверенную серверную статистику.
 
 Таблица лидеров (главное меню):
 - `duel_leaderboard_get` с payload `{"period":"week","type":"tournament","view_id":"tournament_ore"}`
@@ -79,7 +89,9 @@
    Authorization: Bearer <console token>
    ```
 
-3. **RPC (временно):** положить `duel_leaderboard_admin_purge.lua` в modules, перезапустить Nakama, вызвать RPC `duel_leaderboard_admin_purge` с payload `{"mode":"broken"}` или `{"mode":"all_lb"}`, затем файл удалить.
+3. **Игрового RPC очистки нет:** `duel_leaderboard_admin_purge.lua` — безопасный
+   пустой модуль для перезаписи старых развёртываний. Очистка доступна администратору
+   через Console API и SSH-туннель; не добавляйте её в API игрока.
 
 4. **PostgreSQL** (Docker): только если API недоступен — сначала записи, потом лидерборд:
    ```sql

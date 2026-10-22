@@ -305,8 +305,11 @@ namespace Project.UI
                 {
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
                 });
+                var scope = LocalAccountCacheScope.Current;
+                var session = NakamaBootstrap.Instance.Session;
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcRaceEnter, payload, canceller: _cts.Token);
+                    session, RpcRaceEnter, payload, canceller: _cts.Token);
+                if (!LocalAccountCacheScope.IsCurrent(scope)) return;
                 var model = JsonUtility.FromJson<PlayerResourcesRpcResponse>(rpc?.Payload ?? "");
                 if (model == null || !model.ok)
                 {
@@ -317,6 +320,7 @@ namespace Project.UI
 
                 PlayerResourcesService.PatchCachedFromProgression(new Progression
                 {
+                    localAccountScope = scope,
                     gold = model.gold,
                     ore = model.ore,
                     ingots = model.ingots,

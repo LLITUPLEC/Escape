@@ -6,16 +6,16 @@ namespace Project.Nakama
     public sealed class NakamaConnectionConfig : ScriptableObject
     {
         [Header("Server")]
-        public string scheme = "http";
-        public string host = "127.0.0.1";
-        public int port = 7350;
+        public string scheme = "https";
+        public string host = "prokrust-play.ru";
+        public int port = 443;
         [Tooltip("Server key из Nakama (обычно 'defaultkey' если не меняли).")]
         public string serverKey = "defaultkey";
 
         [Header("Client")]
-        public bool useSsl = false;
+        public bool useSsl = true;
         [Tooltip("Если true — логирует сетевые события в консоль.")]
-        public bool verboseLogging = true;
+        public bool verboseLogging = false;
 
         public string GetScheme() => useSsl ? "https" : scheme;
     }

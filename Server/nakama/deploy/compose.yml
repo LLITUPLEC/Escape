@@ -1,0 +1,97 @@
+name: escape
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: escape
+      POSTGRES_USER: escape
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run init_config.py first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escape -d escape"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 384m
+    cpus: 0.5
+    logging: *logging
+
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.37.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        /nakama/nakama migrate up --config /nakama/config/server.yml &&
+        exec /nakama/nakama --config /nakama/config/server.yml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./secrets:/nakama/config:ro
+      - ./runtime:/nakama/data/modules:ro
+    ports:
+      - "127.0.0.1:27351:7351"
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+    mem_limit: 512m
+    cpus: 0.75
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,noexec,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  api-gateway:
+    image: nginx:1.30.6-alpine
+    restart: unless-stopped
+    depends_on:
+      nakama:
+        condition: service_healthy
+    environment:
+      # Exact bridge gateway seen by requests from the host's Caddy proxy.
+      # Caddy must overwrite X-Real-IP using its direct peer (remote_host).
+      CADDY_PROXY_IP: ${CADDY_PROXY_IP:?Set to the escape Docker network gateway}
+      NGINX_ENVSUBST_FILTER: ^CADDY_PROXY_IP$
+      NGINX_ENTRYPOINT_QUIET_LOGS: "1"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "127.0.0.1:27350:8080"
+      - "127.0.0.1:27352:8081"
+    mem_limit: 96m
+    cpus: 0.25
+    read_only: true
+    tmpfs:
+      - /etc/nginx/conf.d:rw,nosuid,noexec,size=1m
+      - /var/cache/nginx:rw,nosuid,noexec,size=16m
+      - /var/run:rw,nosuid,noexec,size=1m
+      - /tmp:rw,nosuid,noexec,size=8m
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+volumes:
+  postgres-data:

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Nakama;
 using Project.Character;
 using Project.Nakama;
+using Project.Utils;
 using UnityEngine;
 
 namespace Project.Achievements
@@ -36,14 +37,18 @@ namespace Project.Achievements
             if (def == null || !CanClaimStep(def, stepIndex))
                 return false;
 
-            var client = NakamaBootstrap.Instance?.Client;
-            var session = NakamaBootstrap.Instance?.Session;
-
-            if (client != null && session != null)
+            var bootstrap = NakamaBootstrap.Instance;
+            if (bootstrap != null)
             {
                 try
                 {
-                    await NakamaBootstrap.Instance.EnsureConnectedAsync(ct);
+                    var requestedScope = LocalAccountCacheScope.Current;
+                    await bootstrap.EnsureConnectedAsync(ct);
+                    var client = bootstrap.Client;
+                    var session = bootstrap.Session;
+                    var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current);
+                    if (client == null || session == null || scope == null || !ReferenceEquals(session, bootstrap.Session)
+                        || (requestedScope != null && !string.Equals(requestedScope, scope, StringComparison.Ordinal))) return false;
                     var rpcBody = JsonUtility.ToJson(new ClaimStepRpcPayload
                     {
                         chain_id = chainId,
@@ -54,13 +59,18 @@ namespace Project.Achievements
                     var resp = JsonUtility.FromJson<ClaimStepRpcResponse>(rpc.Payload ?? "{}");
                     if (resp != null && resp.ok == true)
                     {
-                        AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
-                        AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
-                        if (resp.stats != null)
-                            AchievementLifecycle.NotifyCombatStatsUpdated(resp.stats);
-                        else
-                            await RefreshCombatStatsFromCharacterGetAsync(ct).ConfigureAwait(false);
-                        RaiseClaimed(def, stepIndex);
+                        var applied = await MainThreadDispatcher.RunAsync(() =>
+                        {
+                            if (!LocalAccountCacheScope.IsCurrent(scope)) return false;
+                            AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
+                            AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
+                            if (resp.stats != null) AchievementLifecycle.NotifyCombatStatsUpdated(resp.stats);
+                            RaiseClaimed(def, stepIndex);
+                            return true;
+                        });
+                        if (!applied) return false;
+                        if (resp.stats == null)
+                            await RefreshCombatStatsFromCharacterGetAsync(scope, ct).ConfigureAwait(false);
                         return true;
                     }
                 }
@@ -75,10 +85,8 @@ namespace Project.Achievements
                 return false;
             }
 
-            AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
-            AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
-            RaiseClaimed(def, stepIndex);
-            return true;
+            // Rewards are authoritative: a disconnected client cannot claim and persist a local reward.
+            return false;
         }
 
         private static void RaiseClaimed(AchievementChainDefinition def, int stepIndex)
@@ -95,13 +103,16 @@ namespace Project.Achievements
             AchievementLifecycle.NotifyDataChanged();
         }
 
-        private static async Task RefreshCombatStatsFromCharacterGetAsync(CancellationToken ct)
+        private static async Task RefreshCombatStatsFromCharacterGetAsync(string scope, CancellationToken ct)
         {
             try
             {
                 var profile = await CharacterProfileService.GetAsync(ct).ConfigureAwait(false);
                 if (profile != null && profile.ok && profile.stats != null)
-                    AchievementLifecycle.NotifyCombatStatsUpdated(profile.stats);
+                    await MainThreadDispatcher.RunAsync(() =>
+                    {
+                        if (LocalAccountCacheScope.IsCurrent(scope)) AchievementLifecycle.NotifyCombatStatsUpdated(profile.stats);
+                    }).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

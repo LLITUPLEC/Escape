@@ -118,7 +118,6 @@ namespace Project.Match3
             public const long PeerDisconnect = 18;
         }
 
-        private const string RpcMatch3StatsRecord = "duel_match3_stats_record";
         private const string RpcMatch3AchievementSync = "duel_match3_achievement_sync";
         private const string RpcMatch3PveCreate = "duel_match3_pve_create";
         private const string RpcMatch3RaceCreate = "duel_match3_race_create";
@@ -206,7 +205,6 @@ namespace Project.Match3
         private Coroutine _snapshotRetryRoutine;
         private bool _hasInitialBoardSync;
         private int _remoteSelX = -1, _remoteSelY = -1;
-        private bool _resultRecorded;
         private string _lastRewardText;
         private int _lastRewardXp;
         private int _lastRewardGold;
@@ -796,7 +794,6 @@ namespace Project.Match3
             EnsureRaceHudApplied();
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
-            _resultRecorded = false;
             _lastRewardText = null;
             ClearLastPveRewards();
             StartGameWaitingServer();
@@ -901,7 +898,6 @@ namespace Project.Match3
             _searchingPanel?.Hide();
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(botName);
-            _resultRecorded = false;
             _lastRewardText = null;
             ClearLastPveRewards();
             StartGameWaitingServer();
@@ -1518,13 +1514,6 @@ namespace Project.Match3
         private void ShowGameOver(bool won)
         {
             var isDraw = _pendingGameOverDraw;
-            if (!_resultRecorded)
-            {
-                _resultRecorded = true;
-                if (!isDraw)
-                    _ = RecordMatch3ResultServerAsync(won);
-            }
-
             if (!isDraw)
                 ReportAchievementProgressAfterGameOver(won);
 
@@ -1637,28 +1626,6 @@ namespace Project.Match3
             if ((msg.actionType == 2 || msg.actionType == 3 || msg.actionType == 4)
                 && prevOpHp > 0 && _opStats.hp <= 0 && _myStats.hp > 0)
                 _pendingFinisherActionTypeForAchievement = msg.actionType;
-        }
-
-        private async Task RecordMatch3ResultServerAsync(bool won)
-        {
-            try
-            {
-                if (NakamaBootstrap.Instance == null) return;
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts != null ? _cts.Token : CancellationToken.None);
-                if (NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null) return;
-                var payload = JsonUtility.ToJson(new StatsRecordRpcRequest
-                {
-                    won = won,
-                    mode = ResolveStatsModeId(),
-                    session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
-                });
-                await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcMatch3StatsRecord, payload);
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning("[Match3] Не удалось записать серверную статистику: " + e.Message);
-            }
         }
 
         // ─── Networking — Send ────────────────────────────────────────────────────
@@ -3704,9 +3671,8 @@ namespace Project.Match3
             if (_isLeavingToMenu) return;
             _isLeavingToMenu = true;
             Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
-            var shouldRecordLoss = !_resultRecorded && !_gameEnded && _hasInitialBoardSync && !string.IsNullOrEmpty(_opUserId);
             // «Спуск»: отмена поиска до старта матча — вернуть prepaid вход.
-            var shouldRefundRaceEntry = _pvpRaceQueue && !_hasInitialBoardSync && !shouldRecordLoss;
+            var shouldRefundRaceEntry = _pvpRaceQueue && !_hasInitialBoardSync;
             _gameEnded = true;
             try
             {
@@ -3715,12 +3681,6 @@ namespace Project.Match3
 
                 if (shouldRefundRaceEntry)
                     await RefundRaceEntryAsync();
-
-                if (shouldRecordLoss)
-                {
-                    _resultRecorded = true;
-                    await RecordMatch3ResultServerAsync(won: false);
-                }
 
                 if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
                 {
@@ -5021,23 +4981,6 @@ namespace Project.Match3
             public string bot_id;
             public int floor;
             public string difficulty;
-            public int session_epoch;
-        }
-
-        private string ResolveStatsModeId()
-        {
-            if (_isSoloBotMode) return "mine";
-            if (_isArenaTournamentMatch) return "arena";
-            if (_pvpRaceQueue) return "race";
-            if (_pvpProQueue) return "pro";
-            return "duel";
-        }
-
-        [Serializable]
-        private sealed class StatsRecordRpcRequest
-        {
-            public bool won;
-            public string mode;
             public int session_epoch;
         }
 

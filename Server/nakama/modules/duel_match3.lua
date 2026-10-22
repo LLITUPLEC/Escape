@@ -15,10 +15,10 @@ local AchCat = runtime_lua_require("modules.duel_match3_achievement_catalog", "d
 local CharStats = runtime_lua_require("modules.duel_match3_character_stats", "duel_match3_character_stats")
 local build_session_guard = runtime_lua_require("modules.duel_match3_session_guard", "duel_match3_session_guard")
 local Guard = build_session_guard({ nk = nk, CFG = CFG })
-local Pvp
-local MineBarriers
-local EconomyRpc
-local ContestGoals
+-- Stable dispatch table: callbacks capture this initialized table, and resolve
+-- modules/functions from its fields only after runtime initialization completes.
+local Runtime = {}
+Runtime.RateLimit = runtime_lua_require("modules.duel_api_rate_limit", "duel_api_rate_limit")
 
 -- Board dimensions:
 -- We keep a real 6x8 board on server.
@@ -34,8 +34,6 @@ local ContestGoals
 -- clamp_int / character_stats_base_for_level — в duel_match3_config.lua.
 -- ─────────────────────────────────────────────────────────────────────────────
 
-local award_pve_victory
-local award_pve_defeat
 
 function is_boss_floor(floor)
   return floor == 4 or floor == 8 or floor == 12
@@ -294,8 +292,8 @@ local function race_goal_mana(state)
       return math.floor(frozen)
     end
   end
-  if type(ContestGoals) == "table" and type(ContestGoals.race_goal_mana) == "function" then
-    local ok, g = pcall(ContestGoals.race_goal_mana)
+  if type(Runtime.ContestGoals) == "table" and type(Runtime.ContestGoals.race_goal_mana) == "function" then
+    local ok, g = pcall(Runtime.ContestGoals.race_goal_mana)
     if ok then
       local n = tonumber(g)
       if type(n) == "number" and n >= 1 then
@@ -712,8 +710,6 @@ local function regenerate_active_board_without_matches(state)
 end
 
 -- Forward declarations (used by safety shuffle).
-local find_matches
-local enumerate_valid_swaps
 
 -- If the active 6x6 board ends up with zero valid swaps (rare but possible),
 -- shuffle the active area until at least one valid swap exists.
@@ -722,7 +718,7 @@ local function ensure_active_board_has_valid_swaps(state)
   if state == nil or state.board == nil then return false end
 
   local function has_any_valid_swap()
-    local swaps = enumerate_valid_swaps(state.board)
+    local swaps = Runtime.enumerate_valid_swaps(state.board)
     return swaps ~= nil and #swaps > 0
   end
 
@@ -759,7 +755,7 @@ local function ensure_active_board_has_valid_swaps(state)
   -- Try a number of shuffles; require "no immediate matches" and "has at least one swap".
   for _ = 1, 60 do
     shuffle_once()
-    local m = find_matches(state.board)
+    local m = Runtime.find_matches(state.board)
     if (m == nil or #m == 0) and has_any_valid_swap() then
       return true
     end
@@ -771,7 +767,7 @@ local function ensure_active_board_has_valid_swaps(state)
     if has_any_valid_swap() then return true end
     for _ = 1, 30 do
       shuffle_once()
-      local m = find_matches(state.board)
+      local m = Runtime.find_matches(state.board)
       if (m == nil or #m == 0) and has_any_valid_swap() then
         return true
       end
@@ -787,7 +783,7 @@ local function do_swap(board, x1, y1, x2, y2)
   bset(board, x2, y2, t)
 end
 
-find_matches = function(board)
+Runtime.find_matches = function(board)
   local results = {}
 
   for y = CFG.ACTIVE_Y_MIN, CFG.HEIGHT - 1 do
@@ -873,7 +869,7 @@ local function apply_gravity_and_refill(state)
   -- cheatRows must always reflect the real top 2 rows of the 6x8 board.
   update_cheat_rows_from_board(state)
 
-  return find_matches(board)
+  return Runtime.find_matches(board)
 end
 
 -- Simulation-only gravity/refill:
@@ -910,7 +906,7 @@ local function apply_gravity_and_refill_sim_ymin(state, y_min)
     end
   end
 
-  return find_matches(board)
+  return Runtime.find_matches(board)
 end
 
 local function try_swap(board, x1, y1, x2, y2)
@@ -918,7 +914,7 @@ local function try_swap(board, x1, y1, x2, y2)
   if math.abs(x1 - x2) + math.abs(y1 - y2) ~= 1 then return false, nil end
 
   do_swap(board, x1, y1, x2, y2)
-  local matches = find_matches(board)
+  local matches = Runtime.find_matches(board)
   if #matches > 0 then return true, matches end
 
   do_swap(board, x1, y1, x2, y2)
@@ -1051,7 +1047,7 @@ end
 local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsForUser, tick, sync_action_actor_uid)
   local a_id = state.players_sorted[1]
   local b_id = state.players_sorted[2]
-  Pvp.cache_player_levels(state)
+  Runtime.Pvp.cache_player_levels(state)
   local a = state.stats[a_id]
   local b = state.stats[b_id]
 
@@ -1147,10 +1143,6 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
 end
 
 --- Арена (турнир 8 игроков): forward refs — реализации ниже после инвентаря.
-local arena_mirror_commit
-local arena_on_match_finished
-local arena_final_prize_gold_ore
-local arena_final_prize_for_winner
 
 local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps, tick, sync_action_actor_uid)
   -- Синки без действия (старт матча, таймаут хода) не должны тащить critTriggered с прошлого хода.
@@ -1158,7 +1150,7 @@ local function broadcast_sync(dispatcher, state, action, extra_turn, anim_steps,
     state.last_crit = false
   end
 
-  arena_mirror_commit(state)
+  Runtime.arena_mirror_commit(state)
 
   local uid_for_sync = sync_action_actor_uid or ""
 
@@ -1205,9 +1197,9 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
     isDraw = is_draw == true,
   }
   if is_draw == true and is_pvp_race(state) then
-    Pvp.apply_race_draw_rewards(state, game_over_payload)
+    Runtime.Pvp.apply_race_draw_rewards(state, game_over_payload)
   elseif is_draw ~= true and winner ~= nil and winner ~= "" then
-    Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+    Runtime.Pvp.apply_game_over_rewards(state, winner, game_over_payload)
   else
     game_over_payload.rewardXp = 0
     game_over_payload.rewardGold = 0
@@ -1222,6 +1214,7 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
       nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
     end
   end
+  Runtime.StatsApi.record_match_finish(state, winner, is_draw)
   dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
 end
 
@@ -1414,7 +1407,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
           xp = progress.xp or 0,
         }
       else
-        state.last_reward = award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch, state.pve_run)
+        state.last_reward = Runtime.award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch, state.pve_run)
       end
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
@@ -1442,7 +1435,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
           xp = progress.xp or 0,
         }
       else
-        state.last_reward = award_pve_defeat(state.owner_user_id, state.owner_session_epoch)
+        state.last_reward = Runtime.award_pve_defeat(state.owner_user_id, state.owner_session_epoch)
       end
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = 0
@@ -1450,26 +1443,26 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardMatter = 0
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode ~= "pve" and winner ~= nil then
-      Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+      Runtime.Pvp.apply_game_over_rewards(state, winner, game_over_payload)
     end
 
     -- Arena финал: награда в UI с учётом side-bet (±20% от базы за каждую ставку).
     if game_over_payload.arenaRound == "final"
         and state.arena_mirror ~= nil
-        and type(arena_final_prize_gold_ore) == "function" then
+        and type(Runtime.arena_final_prize_gold_ore) == "function" then
       local bt = string.lower(tostring(state.arena_mirror.bet_tier or game_over_payload.arenaBetTier or "green"))
       local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
-      local rg, ro = arena_final_prize_gold_ore(ak, bt)
-      if type(arena_final_prize_for_winner) == "function" and winner ~= nil then
-        rg, ro = arena_final_prize_for_winner(state.arena_mirror.tournament_id, winner, ak, bt)
+      local rg, ro = Runtime.arena_final_prize_gold_ore(ak, bt)
+      if type(Runtime.arena_final_prize_for_winner) == "function" and winner ~= nil then
+        rg, ro = Runtime.arena_final_prize_for_winner(state.arena_mirror.tournament_id, winner, ak, bt)
       end
       game_over_payload.rewardGold = tonumber(rg) or 0
       game_over_payload.rewardOre = tonumber(ro) or 0
     end
     -- Arena tournament hook must never break match loop.
     local ok_arena, err_arena = pcall(function()
-      if type(arena_on_match_finished) == "function" then
-        arena_on_match_finished(state, winner)
+      if type(Runtime.arena_on_match_finished) == "function" then
+        Runtime.arena_on_match_finished(state, winner)
       end
     end)
     if not ok_arena then
@@ -1481,6 +1474,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
     if not ok_achi then
       nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
     end
+    Runtime.StatsApi.record_match_finish(state, winner, false)
     dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
     return
   end
@@ -1886,7 +1880,7 @@ local ServerAura = runtime_lua_require("modules.duel_match3_server_aura", "duel_
 })
 
 -- Цели состязаний (Спуск / future): Storage duel_match3_contest_goals.
-ContestGoals = runtime_lua_require("modules.duel_match3_contest_goals", "duel_match3_contest_goals")({
+Runtime.ContestGoals = runtime_lua_require("modules.duel_match3_contest_goals", "duel_match3_contest_goals")({
   nk = nk,
   CFG = CFG,
   decode_storage_value = decode_storage_value,
@@ -2274,14 +2268,21 @@ local function read_character_sheet(user_id)
     })
   end)
   if not ok or rows == nil or #rows == 0 then
-    return normalize_character_sheet({})
+    if not ok then error(rows) end
+    local sheet = normalize_character_sheet({})
+    sheet._storage_version = "*"
+    return sheet
   end
   local val = decode_storage_value(rows[1]) or {}
-  return normalize_character_sheet(val)
+  local sheet = normalize_character_sheet(val)
+  sheet._storage_version = rows[1].version
+  return sheet
 end
 
-local function write_character_sheet(user_id, sheet)
-  nk.storage_write({
+-- All inventory writers carry their read version, including match rewards.
+-- Economy operations may atomically commit their currency changes in this batch.
+local function write_character_sheet(user_id, sheet, progress, progress_version)
+  local writes = {
     {
       collection = CFG.CHARACTER_SHEET_COLLECTION,
       key = CFG.CHARACTER_SHEET_KEY,
@@ -2296,8 +2297,28 @@ local function write_character_sheet(user_id, sheet)
       },
       permission_read = 1,
       permission_write = 0,
+      version = sheet._storage_version or "*",
     },
-  })
+  }
+  if progress ~= nil then
+    progress.updated_at = os.time()
+    writes[#writes + 1] = {
+      collection = CFG.PVE_PROGRESS_COLLECTION,
+      key = CFG.PVE_PROGRESS_KEY,
+      user_id = user_id,
+      value = progress,
+      permission_read = 1,
+      permission_write = 0,
+      version = (progress_version ~= nil and progress_version ~= "") and progress_version or "*",
+    }
+  end
+  local acks = nk.storage_write(writes)
+  for _, ack in ipairs(acks or {}) do
+    if ack.collection == CFG.CHARACTER_SHEET_COLLECTION and ack.key == CFG.CHARACTER_SHEET_KEY then
+      sheet._storage_version = ack.version
+      break
+    end
+  end
 end
 
 --- Создаёт пустой лист в Storage, если записи ещё нет (как duel_match3_stats / progress при первой игре).
@@ -2314,9 +2335,20 @@ local function ensure_character_sheet_initialized(user_id)
       },
     })
   end)
-  if not ok or rows == nil or #rows == 0 then
-    write_character_sheet(user_id, normalize_character_sheet({}))
+  if not ok then error(rows) end
+  if rows ~= nil and #rows > 0 then return end
+
+  local created, create_err = pcall(write_character_sheet, user_id, normalize_character_sheet({}))
+  if created then return end
+  if string.find(tostring(create_err), "version", 1, true) ~= nil then
+    -- Another request may have initialized the sheet after our missing read.
+    -- Accept that race only after confirming an actual stored object exists.
+    local existing = nk.storage_read({
+      { collection = CFG.CHARACTER_SHEET_COLLECTION, key = CFG.CHARACTER_SHEET_KEY, user_id = user_id },
+    })
+    if existing ~= nil and #existing > 0 then return end
   end
+  error(create_err)
 end
 
 --- 8/8 экипировано, один tier и одно quality: ×1.25 к hp/damage/armor/healing с вещей (см. gen_item_catalog.js SET_BONUS_EQ).
@@ -2966,16 +2998,9 @@ local function inventory_can_fit(sheet, def_id, amount)
 end
 
 local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
-  -- Fallback for local dev / empty storage.
-  local emails = {}
-  for i = 1, #CFG.DEFAULT_CHEAT_EMAILS do
-    emails[#emails + 1] = CFG.DEFAULT_CHEAT_EMAILS[i]
-  end
-
-  if storage_user_id == nil or storage_user_id == "" then
-    return emails
-  end
-
+  -- Only the system-owned allowlist is trusted. Entries contain immutable user IDs,
+  -- never email addresses or user-editable account metadata.
+  if storage_user_id ~= "00000000-0000-0000-0000-000000000000" then return {} end
   local ok, rows = pcall(function()
     return nk.storage_read({
       {
@@ -2986,38 +3011,12 @@ local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
     })
   end)
   if not ok or rows == nil or #rows == 0 then
-    return emails
+    return {}
   end
 
   local row = rows[1]
   local val = decode_storage_value(row) or {}
-  local fromValue = nil
-
-  if type(val) == "table" then
-    -- Support both { emails = [...] } and [...] shapes.
-    if type(val.emails) == "table" then
-      fromValue = val.emails
-    else
-      fromValue = val
-    end
-  elseif type(val) == "string" then
-    local ok2, p = pcall(nk.json_decode, val)
-    if ok2 and type(p) == "table" then
-      if type(p.emails) == "table" then fromValue = p.emails else fromValue = p end
-    end
-  end
-
-  if type(fromValue) == "table" and #fromValue > 0 then
-    local newEmails = {}
-    for _, e in ipairs(fromValue) do
-      if type(e) == "string" and e ~= "" then
-        newEmails[#newEmails + 1] = string.lower(e)
-      end
-    end
-    if #newEmails > 0 then return newEmails end
-  end
-
-  return emails
+  return type(val) == "table" and type(val.user_ids) == "table" and val.user_ids or {}
 end
 
 local function build_cheat_whitelist_set(candidate_user_ids)
@@ -3031,59 +3030,21 @@ local function build_cheat_whitelist_set(candidate_user_ids)
     end
   end
 
-  -- 1) Try global bucket first (if it exists).
+  -- Read only the system bucket; player-owned buckets cannot grant privileges.
   local global_list = read_cheat_whitelist_emails_for_user_id(CFG.CHEAT_WHITELIST_USER_ID)
   absorb(global_list)
-
-  -- 2) Also try under any real player user_id (Console commonly writes under user context).
-  if type(candidate_user_ids) == "table" then
-    for _, uid in ipairs(candidate_user_ids) do
-      local list = read_cheat_whitelist_emails_for_user_id(uid)
-      absorb(list)
-    end
-  end
-
-  -- 3) Always include defaults so the feature still works without storage.
-  absorb(CFG.DEFAULT_CHEAT_EMAILS)
 
   return set
 end
 
-local function user_email_lower(user_id)
-  if user_id == nil or user_id == "" then return nil end
-  if string.sub(user_id, 1, #CFG.BOT_USER_ID_PREFIX) == CFG.BOT_USER_ID_PREFIX then
-    return nil
-  end
-
-  local ok, account = pcall(function()
-    return nk.account_get_id(user_id)
-  end)
-  if not ok or account == nil then
-    return nil
-  end
-
-  -- In Nakama's ApiAccount, e-mail is usually a top-level field (account.email),
-  -- not inside account.user.
-  local email = account.email
-  if email == nil and account.user ~= nil then
-    -- Extra tolerance for older/modified payloads.
-    email = account.user.email or account.user.email_address or account.user.emailAddress
-    if email == nil and account.user.metadata ~= nil then
-      email = account.user.metadata.email or account.user.metadata.Email
-    end
-  end
-  if email == nil then return nil end
-  return string.lower(tostring(email))
-end
 
 local function is_user_allowed_for_cheat_rows(user_id, whitelist_set)
-  local email = user_email_lower(user_id)
-  if email == nil or email == "" then return false end
+  if type(user_id) ~= "string" or user_id == "" then return false end
   local set = whitelist_set
   if set == nil then
     set = build_cheat_whitelist_set({ user_id })
   end
-  return set[email] == true
+  return set[string.lower(user_id)] == true
 end
 
 function normalize_mine_unlocked(raw, default_floor)
@@ -3253,9 +3214,7 @@ local function write_pve_progress(user_id, progress, version)
     permission_read = 1,
     permission_write = 0,
   }
-  if version ~= nil and version ~= "" then
-    write_obj.version = version
-  end
+  write_obj.version = (version ~= nil and version ~= "") and version or "*"
   nk.storage_write({ write_obj })
 end
 
@@ -3278,7 +3237,7 @@ function add_blueprint(progress, rarity)
   end
 end
 
-award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
+Runtime.award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   local snap = tonumber(match_epoch_snapshot) or 0
   if Guard.is_epoch_stale_for_match(user_id, snap) then
     nk.logger_info("award_pve_victory skipped: session_stale")
@@ -3296,8 +3255,6 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
       session_stale = true,
     }
   end
-
-  ensure_character_sheet_initialized(user_id)
 
   local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
   local bot = get_bot_profile(bot_id, diff)
@@ -3357,66 +3314,70 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
   end
   local reward_recipe_item_id = ""
   local max_retries = 5
+  local last_progress = {}
 
   for i = 1, max_retries do
-    local progress, version = read_pve_progress(user_id)
-    progress.xp = progress.xp + reward_xp
-    progress.gold = progress.gold + reward_gold
-    progress.ore = progress.ore + reward_ore
-    progress.matter = progress.matter + reward_matter
-    progress.ingots = progress.ingots + actual_ingots
-    progress.tesseracts = (tonumber(progress.tesseracts) or 0) + reward_tesseract
-    if reward_key_id ~= "" and reward_key_amount > 0 then
-      progress.key_items = progress.key_items or empty_key_items()
-      progress.key_items[reward_key_id] = (tonumber(progress.key_items[reward_key_id]) or 0) + reward_key_amount
-    end
-    if not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
-      add_blueprint(progress, bot.reward_blueprint)
-    end
-    progress.level = current_level_from_xp(progress.xp)
-    local defeated = progress.defeated or {}
-    local current_count = tonumber(defeated[bot_id]) or 0
-    defeated[bot_id] = current_count + 1
-    progress.defeated = defeated
-    progress.mine = progress.mine or {}
-    progress.mine.current_difficulty = diff
-    progress.mine.selected_floor = floor
-    progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
-    progress.mine.floor_states = type(progress.mine.floor_states) == "table" and progress.mine.floor_states or {}
-    local state_key = make_floor_state_key(diff, floor)
-    local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
-    do
-      local base_resp = is_boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS
-      local respawn_sec = ServerAura.mine_respawn_duration_seconds(base_resp, ServerAura.get_active())
-      cur_state.next_spawn_at = os.time() + respawn_sec
-    end
-    local fought_affix = tostring((run_meta and run_meta.affix) or "")
-    local next_affix = random_affix_for_floor(floor)
-    if #CFG.MINE_AFFIX_POOL > 1 then
-      local guard = 0
-      while next_affix == fought_affix and guard < 12 do
-        next_affix = random_affix_for_floor(floor)
-        guard = guard + 1
-      end
-    end
-    cur_state.last_affix = next_affix
-    cur_state.wins = (tonumber(cur_state.wins) or 0) + 1
-    progress.mine.floor_states[state_key] = cur_state
-    if floor >= CFG.PVE_MAX_LEVEL and is_boss then
-      if diff == "easy" and (progress.mine.unlocked.medium or 0) <= 0 then
-        progress.mine.unlocked.medium = 1
-      elseif diff == "medium" and (progress.mine.unlocked.hard or 0) <= 0 then
-        progress.mine.unlocked.hard = 1
-      end
-    end
-
+    local progress
+    local grant_ok = true
+    reward_recipe_item_id = ""
     local ok, err = pcall(function()
-      write_pve_progress(user_id, progress, version)
-    end)
-    if ok then
+      local version
+      progress, version = read_pve_progress(user_id)
+      last_progress = { level = progress.level, xp = progress.xp, gold = progress.gold, ore = progress.ore, matter = progress.matter }
+      progress.xp = progress.xp + reward_xp
+      progress.gold = progress.gold + reward_gold
+      progress.ore = progress.ore + reward_ore
+      progress.matter = progress.matter + reward_matter
+      progress.ingots = progress.ingots + actual_ingots
+      progress.tesseracts = (tonumber(progress.tesseracts) or 0) + reward_tesseract
+      if reward_key_id ~= "" and reward_key_amount > 0 then
+        progress.key_items = progress.key_items or empty_key_items()
+        progress.key_items[reward_key_id] = (tonumber(progress.key_items[reward_key_id]) or 0) + reward_key_amount
+      end
+      if not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
+        add_blueprint(progress, bot.reward_blueprint)
+      end
+      progress.level = current_level_from_xp(progress.xp)
+      local defeated = progress.defeated or {}
+      local current_count = tonumber(defeated[bot_id]) or 0
+      defeated[bot_id] = current_count + 1
+      progress.defeated = defeated
+      progress.mine = progress.mine or {}
+      progress.mine.current_difficulty = diff
+      progress.mine.selected_floor = floor
+      progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
+      progress.mine.floor_states = type(progress.mine.floor_states) == "table" and progress.mine.floor_states or {}
+      local state_key = make_floor_state_key(diff, floor)
+      local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
+      do
+        local base_resp = is_boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS
+        local respawn_sec = ServerAura.mine_respawn_duration_seconds(base_resp, ServerAura.get_active())
+        cur_state.next_spawn_at = os.time() + respawn_sec
+      end
+      local fought_affix = tostring((run_meta and run_meta.affix) or "")
+      local next_affix = random_affix_for_floor(floor)
+      if #CFG.MINE_AFFIX_POOL > 1 then
+        local guard = 0
+        while next_affix == fought_affix and guard < 12 do
+          next_affix = random_affix_for_floor(floor)
+          guard = guard + 1
+        end
+      end
+      cur_state.last_affix = next_affix
+      cur_state.wins = (tonumber(cur_state.wins) or 0) + 1
+      progress.mine.floor_states[state_key] = cur_state
+      if floor >= CFG.PVE_MAX_LEVEL and is_boss then
+        if diff == "easy" and (progress.mine.unlocked.medium or 0) <= 0 then
+          progress.mine.unlocked.medium = 1
+        elseif diff == "medium" and (progress.mine.unlocked.hard or 0) <= 0 then
+          progress.mine.unlocked.hard = 1
+        end
+      end
+
+      -- Prepare every reward before the only commit. In particular, a blueprint
+      -- must not write an old currency snapshot after another RPC has spent gold.
       local sheet = read_character_sheet(user_id)
       ensure_sheet_inventory_counts(sheet)
-      local grant_ok = true
       if actual_ingots > 0 then
         local ok_add = inventory_try_add(sheet, ingot_def_id, actual_ingots)
         if ok_add ~= true then grant_ok = false end
@@ -3438,12 +3399,6 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         local col = mine_recipe_color_for_difficulty(diff)
         local rarity = ({ green = "green", blue = "blue", purple = "purple" })[col]
         if rarity ~= nil then add_blueprint(progress, rarity) end
-        local ok_bp, err_bp = pcall(function()
-          write_pve_progress(user_id, progress, nil)
-        end)
-        if not ok_bp then
-          nk.logger_error("award_pve_victory: blueprint progress write failed: " .. tostring(err_bp))
-        end
       end
       if grant_ok and bp_r ~= "" and not used_v43 and not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
         local rid = ({ green = "recipe_green", blue = "recipe_blue", purple = "recipe_purple", gold = "recipe_gold" })[bp_r]
@@ -3453,8 +3408,15 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
         end
       end
       if grant_ok then
-        write_character_sheet(user_id, sheet)
+        write_character_sheet(user_id, sheet, progress, version)
       else
+        -- Preserve the established full-inventory behavior: progression rewards
+        -- still apply while the attempted inventory changes remain uncommitted.
+        write_pve_progress(user_id, progress, version)
+      end
+    end)
+    if ok then
+      if not grant_ok then
         nk.logger_warn("award_pve_victory: не удалось положить лут в инвентарь (сундук полон?)")
       end
       if tostring(bot_id or "") == "mine_2" then
@@ -3489,26 +3451,29 @@ award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
     end
   end
 
+  -- The match must still send GAME_OVER if reward storage is unavailable.
+  -- Never advertise currency or loot that failed to commit.
   return {
-    reward_xp = reward_xp,
-    reward_gold = reward_gold,
-    reward_ore = reward_ore,
-    reward_matter = reward_matter,
-    reward_ingots = actual_ingots,
-    reward_tesseract = reward_tesseract,
-    reward_key_id = reward_key_id,
-    reward_key_amount = reward_key_amount,
-    reward_blueprint = tostring(bot and bot.reward_blueprint or ""),
-    reward_recipe_item_id = reward_recipe_item_id,
-    level = 1,
-    xp = 0,
-    gold = 0,
-    ore = 0,
-    matter = 0,
+    reward_xp = 0,
+    reward_gold = 0,
+    reward_ore = 0,
+    reward_matter = 0,
+    reward_ingots = 0,
+    reward_tesseract = 0,
+    reward_key_id = "",
+    reward_key_amount = 0,
+    reward_blueprint = "",
+    reward_recipe_item_id = "",
+    level = last_progress.level or 1,
+    xp = last_progress.xp or 0,
+    gold = last_progress.gold or 0,
+    ore = last_progress.ore or 0,
+    matter = last_progress.matter or 0,
+    err = "reward_storage_unavailable",
   }
 end
 
-award_pve_defeat = function(user_id, match_epoch_snapshot)
+Runtime.award_pve_defeat = function(user_id, match_epoch_snapshot)
   local snap = tonumber(match_epoch_snapshot) or 0
   local defeat_xp = ServerAura.apply_to_pve_reward_xp(10, ServerAura.get_active())
   if Guard.is_epoch_stale_for_match(user_id, snap) then
@@ -3569,7 +3534,7 @@ award_pve_defeat = function(user_id, match_epoch_snapshot)
 end
 
 local build_pvp = runtime_lua_require("modules.duel_match3_pvp", "duel_match3_pvp")
-Pvp = build_pvp({
+Runtime.Pvp = build_pvp({
   nk = nk,
   CFG = CFG,
   clamp_int = CFG.clamp_int,
@@ -3578,21 +3543,53 @@ Pvp = build_pvp({
   current_level_from_xp = current_level_from_xp,
   get_bot_profile = get_bot_profile,
   normalize_mine_difficulty = normalize_mine_difficulty,
-  award_pve_defeat = award_pve_defeat,
+  award_pve_defeat = Runtime.award_pve_defeat,
   other_player_id = other_player_id,
-  ContestGoals = ContestGoals,
+  ContestGoals = Runtime.ContestGoals,
   add_blueprint = add_blueprint,
   empty_key_items = empty_key_items,
 })
 
 -- Stats RPC / arena tournament counters: отдельный chunk (лимит 200 local).
-local StatsApi = runtime_lua_require("modules.duel_match3_stats_api", "duel_match3_stats_api")({
+Runtime.StatsApi = runtime_lua_require("modules.duel_match3_stats_api", "duel_match3_stats_api")({
   CFG = CFG,
   Ach = Ach,
   Guard = Guard,
   read_pve_progress = read_pve_progress,
   normalize_mine_difficulty = normalize_mine_difficulty,
   ensure_character_sheet_initialized = ensure_character_sheet_initialized,
+})
+
+function get_unlocked_floor(progress, diff)
+  local d = normalize_mine_difficulty(diff)
+  local mine = progress.mine or {}
+  local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
+  local raw = unlocked[d]
+  -- В Lua 0 truthy: `0 or 1` → 0; для medium/hard с 0 этажей явно оставляем 0, затем поднимаем до 1.
+  local v
+  if raw == nil then
+    v = (d == "easy") and 1 or 0
+  else
+    v = CFG.clamp_int(raw, 0, CFG.PVE_MAX_LEVEL)
+  end
+  -- 1-й этаж выбранной сложности всегда доступен (барьеры с этажа 2).
+  if v < 1 then v = 1 end
+  return v
+end
+
+local MineBarriers = runtime_lua_require("modules.duel_match3_mine_barriers", "duel_match3_mine_barriers")({
+  CFG = CFG,
+  Guard = Guard,
+  normalize_mine_difficulty = normalize_mine_difficulty,
+  normalize_mine_unlocked = normalize_mine_unlocked,
+  make_floor_state_key = make_floor_state_key,
+  get_unlocked_floor = get_unlocked_floor,
+  read_pve_progress = read_pve_progress,
+  write_pve_progress = write_pve_progress,
+  build_progression_payload_auto = build_progression_payload_auto,
+  build_resource_payload = build_resource_payload,
+  random_affix_for_floor = random_affix_for_floor,
+  empty_key_items = empty_key_items,
 })
 
 local function duel_match3_pve_catalog_get(ctx, payload)
@@ -3708,13 +3705,13 @@ local Arena = arena_factory({
   ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
-  stats_inc_arena_tournament_played = StatsApi.stats_inc_arena_tournament_played,
+  stats_inc_arena_tournament_played = Runtime.StatsApi.stats_inc_arena_tournament_played,
   achievement_merge_stats = Ach.merge_persistent_stats,
 })
-arena_mirror_commit = Arena.mirror_commit
-arena_on_match_finished = Arena.on_match_finished
-arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
-arena_final_prize_for_winner = Arena.final_prize_for_winner
+Runtime.arena_mirror_commit = Arena.mirror_commit
+Runtime.arena_on_match_finished = Arena.on_match_finished
+Runtime.arena_final_prize_gold_ore = Arena.final_prize_for_kind_and_bet
+Runtime.arena_final_prize_for_winner = Arena.final_prize_for_winner
 
 
 function parse_floor_from_bot_id(bot_id)
@@ -3723,39 +3720,8 @@ function parse_floor_from_bot_id(bot_id)
   return CFG.clamp_int(n, 1, CFG.PVE_MAX_LEVEL)
 end
 
-function get_unlocked_floor(progress, diff)
-  local d = normalize_mine_difficulty(diff)
-  local mine = progress.mine or {}
-  local unlocked = normalize_mine_unlocked(mine.unlocked, 1)
-  local raw = unlocked[d]
-  -- В Lua 0 truthy: `0 or 1` → 0; для medium/hard с 0 этажей явно оставляем 0, затем поднимаем до 1.
-  local v
-  if raw == nil then
-    v = (d == "easy") and 1 or 0
-  else
-    v = CFG.clamp_int(raw, 0, CFG.PVE_MAX_LEVEL)
-  end
-  -- 1-й этаж выбранной сложности всегда доступен (барьеры с этажа 2).
-  if v < 1 then v = 1 end
-  return v
-end
 
-MineBarriers = runtime_lua_require("modules.duel_match3_mine_barriers", "duel_match3_mine_barriers")({
-  CFG = CFG,
-  Guard = Guard,
-  normalize_mine_difficulty = normalize_mine_difficulty,
-  normalize_mine_unlocked = normalize_mine_unlocked,
-  make_floor_state_key = make_floor_state_key,
-  get_unlocked_floor = get_unlocked_floor,
-  read_pve_progress = read_pve_progress,
-  write_pve_progress = write_pve_progress,
-  build_progression_payload_auto = build_progression_payload_auto,
-  build_resource_payload = build_resource_payload,
-  random_affix_for_floor = random_affix_for_floor,
-  empty_key_items = empty_key_items,
-})
-
-EconomyRpc = runtime_lua_require("modules.duel_match3_economy_rpc", "duel_match3_economy_rpc")({
+Runtime.EconomyRpc = runtime_lua_require("modules.duel_match3_economy_rpc", "duel_match3_economy_rpc")({
   CFG = CFG,
   Guard = Guard,
   EQUIP_ORDER = EQUIP_ORDER,
@@ -3949,7 +3915,7 @@ end
 -- Race RPC / friends invite: отдельный chunk (лимит 200 local в duel_match3).
 local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3_race_api")({
   CFG = CFG,
-  ContestGoals = ContestGoals,
+  ContestGoals = Runtime.ContestGoals,
   Guard = Guard,
   decode_storage_value = decode_storage_value,
   try_match_create = try_match_create,
@@ -4242,7 +4208,7 @@ local function validate_action_basic(state, sender_id, action)
   return false, "unknown_action"
 end
 
-enumerate_valid_swaps = function(board)
+Runtime.enumerate_valid_swaps = function(board)
   local swaps = {}
   for y = 0, CFG.ACTIVE_ROWS - 1 do
     for x = 0, CFG.SIZE - 1 do
@@ -4468,7 +4434,7 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   local survival = state.bot_survival_mode == true
 
   -- Один проход по свапам: урон / доп.ход / линия бомб / выживание (скоры кэшируем).
-  local swaps = enumerate_valid_swaps(state.board)
+  local swaps = Runtime.enumerate_valid_swaps(state.board)
   local swap_scores = {}
   local best_extra_swap = nil
   local best_extra_score = nil
@@ -4891,6 +4857,7 @@ local function match_init(context, params)
 
   local state = {
     invited = invited,
+    stats_result_id = nk.uuid_v4(),
     mode = params and tostring(params.mode or "pvp") or "pvp",
     pvp_pro = truthy_match_param(params and params.pvp_pro),
     pvp_race = truthy_match_param(params and params.pvp_race),
@@ -5026,12 +4993,11 @@ local function match_join(context, dispatcher, tick, state, presences)
         update_cheat_rows_from_board(state)
         state.cheat_rows_allowed = {}
         local wl = build_cheat_whitelist_set({ player_id })
-        local p_email = user_email_lower(player_id)
         local p_allowed = is_user_allowed_for_cheat_rows(player_id, wl)
         state.cheat_rows_allowed[player_id] = p_allowed
         state.cheat_rows_allowed[state.bot_user_id] = is_user_allowed_for_cheat_rows(state.bot_user_id, wl)
         nk.logger_info("duel_match3 cheat_rows_allowed (arena_pvp_style): user_id=" .. tostring(player_id) ..
-          " email=" .. tostring(p_email) .. " allowed=" .. tostring(p_allowed))
+          " allowed=" .. tostring(p_allowed))
 
         state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
@@ -5046,8 +5012,8 @@ local function match_join(context, dispatcher, tick, state, presences)
           local goal = race_goal_mana(nil)
           state.race_goal_mana = goal
           state.race_max_mana = race_max_from_goal(goal)
-          state.race_reward_lines = ContestGoals.race_rewards()
-          state.race_entry_costs = ContestGoals.race_entry_costs()
+          state.race_reward_lines = Runtime.ContestGoals.race_rewards()
+          state.race_entry_costs = Runtime.ContestGoals.race_entry_costs()
           if state.stats[player_id] ~= nil then
             state.stats[player_id].race_petard_bank = 0
           end
@@ -5131,12 +5097,11 @@ local function match_join(context, dispatcher, tick, state, presences)
       update_cheat_rows_from_board(state)
       state.cheat_rows_allowed = {}
       local wl = build_cheat_whitelist_set({ player_id })
-      local p_email = user_email_lower(player_id)
       local p_allowed = is_user_allowed_for_cheat_rows(player_id, wl)
       state.cheat_rows_allowed[player_id] = p_allowed
       state.cheat_rows_allowed[state.bot_user_id] = is_user_allowed_for_cheat_rows(state.bot_user_id, wl)
       nk.logger_info("duel_match3 cheat_rows_allowed (pve): user_id=" .. tostring(player_id) ..
-        " email=" .. tostring(p_email) .. " allowed=" .. tostring(p_allowed))
+        " allowed=" .. tostring(p_allowed))
 
       state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
 
@@ -5176,11 +5141,10 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.cheat_rows_allowed = {}
     local wl = build_cheat_whitelist_set(state.players_sorted)
     for _, uid in ipairs(state.players_sorted) do
-      local u_email = user_email_lower(uid)
       local allowed = is_user_allowed_for_cheat_rows(uid, wl)
       state.cheat_rows_allowed[uid] = allowed
       nk.logger_info("duel_match3 cheat_rows_allowed (pvp): user_id=" .. tostring(uid) ..
-        " email=" .. tostring(u_email) .. " allowed=" .. tostring(allowed))
+        " allowed=" .. tostring(allowed))
     end
 
     state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
@@ -5193,8 +5157,8 @@ local function match_join(context, dispatcher, tick, state, presences)
       local goal = race_goal_mana(nil)
       state.race_goal_mana = goal
       state.race_max_mana = race_max_from_goal(goal)
-      state.race_reward_lines = ContestGoals.race_rewards()
-      state.race_entry_costs = ContestGoals.race_entry_costs()
+      state.race_reward_lines = Runtime.ContestGoals.race_rewards()
+      state.race_entry_costs = Runtime.ContestGoals.race_entry_costs()
       for _, uid in ipairs(state.players_sorted) do
         state.race_actions[uid] = 0
         if state.stats[uid] ~= nil then
@@ -5229,13 +5193,13 @@ local function augment_arena_game_over_payload(state, payload)
   end
   local ar = string.lower(tostring(payload.arenaRound or ""))
   if ar ~= "final" then return end
-  if state.arena_mirror ~= nil and type(arena_final_prize_gold_ore) == "function" then
+  if state.arena_mirror ~= nil and type(Runtime.arena_final_prize_gold_ore) == "function" then
     local bt = string.lower(tostring(state.arena_mirror.bet_tier or payload.arenaBetTier or "green"))
     local ak = string.lower(tostring(state.arena_mirror.kind or "smith"))
-    local rg, ro = arena_final_prize_gold_ore(ak, bt)
+    local rg, ro = Runtime.arena_final_prize_gold_ore(ak, bt)
     local win_uid = tostring(payload.winnerUserId or payload.winner or "")
-    if type(arena_final_prize_for_winner) == "function" and win_uid ~= "" then
-      rg, ro = arena_final_prize_for_winner(state.arena_mirror.tournament_id, win_uid, ak, bt)
+    if type(Runtime.arena_final_prize_for_winner) == "function" and win_uid ~= "" then
+      rg, ro = Runtime.arena_final_prize_for_winner(state.arena_mirror.tournament_id, win_uid, ak, bt)
     end
     payload.rewardXp = tonumber(payload.rewardXp or 0) or 0
     payload.rewardMatter = tonumber(payload.rewardMatter or 0) or 0
@@ -5249,8 +5213,8 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
   if winner == nil or winner == "" then return end
   local tag = tostring(reason_tag or "forfeit")
   local ok_arena, err_arena = pcall(function()
-    if type(arena_on_match_finished) == "function" then
-      arena_on_match_finished(state, winner)
+    if type(Runtime.arena_on_match_finished) == "function" then
+      Runtime.arena_on_match_finished(state, winner)
     end
   end)
   if not ok_arena then
@@ -5268,8 +5232,9 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
     winnerUserId = winner,
     isDraw = false,
   }
-  Pvp.apply_game_over_rewards(state, winner, game_over_payload)
+  Runtime.Pvp.apply_game_over_rewards(state, winner, game_over_payload)
   augment_arena_game_over_payload(state, game_over_payload)
+  Runtime.StatsApi.record_match_finish(state, winner, false)
   dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
 end
 
@@ -5349,13 +5314,14 @@ local function match_loop(context, dispatcher, tick, state, messages)
         if oh ~= nil and st ~= nil and state.bot_user_id ~= nil
             and tonumber(st.hp or 0) > 0 then
           state.ended = true
-          state.last_reward = award_pve_defeat(oh, state.owner_session_epoch)
+          state.last_reward = Runtime.award_pve_defeat(oh, state.owner_session_epoch)
           local game_over_payload = { winnerUserId = state.bot_user_id }
           game_over_payload.rewardXp = state.last_reward.reward_xp or 0
           game_over_payload.rewardGold = 0
           game_over_payload.rewardOre = 0
           game_over_payload.rewardMatter = 0
           game_over_payload.newLevel = state.last_reward.level or 1
+          Runtime.StatsApi.record_match_finish(state, state.bot_user_id, false)
           dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
         end
         return nil
@@ -5373,6 +5339,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
   if state.turn_deadline_paused == nil then state.turn_deadline_paused = false end
   if state.turn_pause_started_tick == nil then state.turn_pause_started_tick = 0 end
 
+  messages = Runtime.RateLimit.filter_match_messages(state, messages, nk.time(), function(presence, reason)
+    send_reject(dispatcher, presence, reason)
+  end)
   for _, m in ipairs(messages) do
     if m.op_code == 17 then -- turn input ready (не local: лимит регистров Lua в чанке)
       if state.started and not state.ended and state.turn_deadline_paused == true then
@@ -5396,7 +5365,9 @@ local function match_loop(context, dispatcher, tick, state, messages)
         end
       end
     end
-    if m.op_code == CFG.OP_PLAYER_LEFT then
+    if m.op_code == CFG.OP_PLAYER_LEFT and state.started and not state.ended
+        and state.presences[m.sender.user_id] ~= nil
+        and (state.players_sorted[1] == m.sender.user_id or state.players_sorted[2] == m.sender.user_id) then
       local winner = other_player_id(state, m.sender.user_id)
       state.ended = true
       if winner then
@@ -5664,42 +5635,42 @@ AchCat.configure({
   decode_storage_value = decode_storage_value,
 })
 
-nk.register_rpc(StatsApi.duel_match3_stats_get, "duel_match3_stats_get")
-nk.register_rpc(StatsApi.duel_match3_stats_record, "duel_match3_stats_record")
-nk.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
-nk.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
-nk.register_rpc(AchCat.rpc_achievement_catalog_get, "duel_match3_achievement_catalog_get")
-nk.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
-nk.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
-nk.register_rpc(RaceApi.duel_match3_race_info, "duel_match3_race_info")
-nk.register_rpc(RaceApi.duel_match3_race_enter, "duel_match3_race_enter")
-nk.register_rpc(RaceApi.duel_match3_race_cancel, "duel_match3_race_cancel")
-nk.register_rpc(RaceApi.duel_match3_race_create, "duel_match3_race_create")
-nk.register_rpc(RaceApi.duel_friends_race_invite, "duel_friends_race_invite")
-nk.register_rpc(RaceApi.duel_friends_race_respond, "duel_friends_race_respond")
-nk.register_rpc(RaceApi.duel_friends_race_clear, "duel_friends_race_clear")
-nk.register_rpc(duel_mine_summon, "duel_mine_summon")
-nk.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
-nk.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
-nk.register_rpc(MineBarriers.duel_mine_set_difficulty, "duel_mine_set_difficulty")
-nk.register_rpc(EconomyRpc.duel_character_get, "duel_character_get")
-nk.register_rpc(EconomyRpc.duel_character_item_move, "duel_character_item_move")
-nk.register_rpc(EconomyRpc.duel_character_recipe_learn, "duel_character_recipe_learn")
-nk.register_rpc(EconomyRpc.duel_character_item_sell, "duel_character_item_sell")
-nk.register_rpc(EconomyRpc.duel_workshop_craft_start, "duel_workshop_craft_start")
-nk.register_rpc(EconomyRpc.duel_workshop_craft_claim, "duel_workshop_craft_claim")
-nk.register_rpc(EconomyRpc.duel_player_resources_get, "duel_player_resources_get")
-nk.register_rpc(EconomyRpc.duel_player_resources_spend, "duel_player_resources_spend")
-nk.register_rpc(EconomyRpc.duel_pve_energy_buy, "duel_pve_energy_buy")
-nk.register_rpc(EconomyRpc.duel_workshop_craft_rush, "duel_workshop_craft_rush")
-nk.register_rpc(EconomyRpc.duel_nickname_status_get, "duel_nickname_status_get")
-nk.register_rpc(EconomyRpc.duel_nickname_change, "duel_nickname_change")
-nk.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
-nk.register_rpc(ServerAura.rpc_get, "duel_match3_server_aura_get")
-nk.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
-nk.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_leave")
-nk.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")
-nk.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet")
+Runtime.RateLimit.register_rpc(Runtime.StatsApi.duel_match3_stats_get, "duel_match3_stats_get")
+Runtime.RateLimit.register_rpc(Runtime.StatsApi.duel_match3_stats_record, "duel_match3_stats_record")
+Runtime.RateLimit.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
+Runtime.RateLimit.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
+Runtime.RateLimit.register_rpc(AchCat.rpc_achievement_catalog_get, "duel_match3_achievement_catalog_get")
+Runtime.RateLimit.register_rpc(duel_match3_pve_catalog_get, "duel_match3_pve_catalog_get")
+Runtime.RateLimit.register_rpc(duel_match3_pve_create, "duel_match3_pve_create")
+Runtime.RateLimit.register_rpc(RaceApi.duel_match3_race_info, "duel_match3_race_info")
+Runtime.RateLimit.register_rpc(RaceApi.duel_match3_race_enter, "duel_match3_race_enter")
+Runtime.RateLimit.register_rpc(RaceApi.duel_match3_race_cancel, "duel_match3_race_cancel")
+Runtime.RateLimit.register_rpc(RaceApi.duel_match3_race_create, "duel_match3_race_create")
+Runtime.RateLimit.register_rpc(RaceApi.duel_friends_race_invite, "duel_friends_race_invite")
+Runtime.RateLimit.register_rpc(RaceApi.duel_friends_race_respond, "duel_friends_race_respond")
+Runtime.RateLimit.register_rpc(RaceApi.duel_friends_race_clear, "duel_friends_race_clear")
+Runtime.RateLimit.register_rpc(duel_mine_summon, "duel_mine_summon")
+Runtime.RateLimit.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
+Runtime.RateLimit.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
+Runtime.RateLimit.register_rpc(MineBarriers.duel_mine_set_difficulty, "duel_mine_set_difficulty")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_get, "duel_character_get")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_item_move, "duel_character_item_move")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_recipe_learn, "duel_character_recipe_learn")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_item_sell, "duel_character_item_sell")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_workshop_craft_start, "duel_workshop_craft_start")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_workshop_craft_claim, "duel_workshop_craft_claim")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_player_resources_get, "duel_player_resources_get")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_player_resources_spend, "duel_player_resources_spend")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_pve_energy_buy, "duel_pve_energy_buy")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_workshop_craft_rush, "duel_workshop_craft_rush")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_nickname_status_get, "duel_nickname_status_get")
+Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_nickname_change, "duel_nickname_change")
+Runtime.RateLimit.register_rpc(duel_match3_item_catalog_get, "duel_match3_item_catalog_get")
+Runtime.RateLimit.register_rpc(ServerAura.rpc_get, "duel_match3_server_aura_get")
+Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_join, "duel_arena_queue_join")
+Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_leave")
+Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")
+Runtime.RateLimit.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet")
 
 return {
   match_init = match_init,

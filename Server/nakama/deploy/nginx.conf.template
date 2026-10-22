@@ -1,0 +1,98 @@
+# Included in http{} by the official Nginx image. Only CADDY_PROXY_IP is
+# substituted; all Nginx request variables must remain intact.
+server_tokens off;
+set_real_ip_from ${CADDY_PROXY_IP};
+real_ip_header X-Real-IP;
+real_ip_recursive off;
+resolver 127.0.0.11 valid=10s ipv6=off;
+upstream escape_nakama_api {
+    zone escape_nakama_api 64k;
+    server nakama:7350 resolve;
+}
+upstream escape_nakama_console {
+    zone escape_nakama_console 64k;
+    server nakama:7351 resolve;
+}
+
+map $http_upgrade $escape_connection_upgrade {
+    default upgrade;
+    '' close;
+}
+map $uri $escape_auth_ip {
+    default '';
+    ~^/v2/account/authenticate/ $binary_remote_addr;
+    ~^/v2/session/refresh/?$ $binary_remote_addr;
+}
+map $uri $escape_console_auth_ip {
+    default '';
+    ~^/v2/console/authenticate(?:/|$) $binary_remote_addr;
+}
+
+# Empty map keys are not counted. Each auth route shares its IP budget, so
+# changing authentication providers or using a trailing slash cannot evade it.
+limit_req_zone $binary_remote_addr zone=escape_api:4m rate=20r/s;
+limit_req_zone $escape_auth_ip zone=escape_auth:1m rate=12r/m;
+limit_req_zone $binary_remote_addr zone=escape_console:1m rate=10r/s;
+limit_req_zone $escape_console_auth_ip zone=escape_console_auth:1m rate=6r/m;
+limit_conn_zone $binary_remote_addr zone=escape_connections:1m;
+limit_req_status 429;
+limit_conn_status 429;
+limit_req_log_level warn;
+
+# The default combined log contains query strings, including WebSocket JWTs.
+# Never put authentication tokens into access logs.
+log_format escape_safe '$remote_addr $request_method $uri $status $body_bytes_sent';
+access_log /var/log/nginx/access.log escape_safe;
+# Nginx error lines include the complete request (a WebSocket query has a JWT).
+# Normal rejected/failed requests remain visible in the safe access log above.
+error_log /dev/stderr crit;
+
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+# Discard externally supplied XFF; Nakama only sees this authenticated proxy hop.
+proxy_set_header X-Forwarded-For $remote_addr;
+proxy_set_header X-Forwarded-Proto https;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $escape_connection_upgrade;
+proxy_read_timeout 90s;
+proxy_send_timeout 30s;
+proxy_connect_timeout 5s;
+client_body_timeout 15s;
+client_header_timeout 15s;
+send_timeout 30s;
+client_max_body_size 256k;
+
+server {
+    listen 8080;
+    limit_req zone=escape_api burst=80 nodelay;
+    limit_req zone=escape_auth burst=12 nodelay;
+    limit_conn escape_connections 40;
+    error_page 429 = @escape_rate_limited;
+
+    location / {
+        proxy_pass http://escape_nakama_api;
+    }
+    location @escape_rate_limited {
+        default_type application/json;
+        add_header Retry-After 5 always;
+        return 429 '{"code":8,"message":"rate_limited: retry_after_seconds=5"}';
+    }
+}
+
+server {
+    listen 8081;
+    limit_req zone=escape_console burst=40 nodelay;
+    limit_req zone=escape_console_auth burst=5 nodelay;
+    limit_conn escape_connections 20;
+    error_page 429 = @escape_console_rate_limited;
+
+    location / {
+        proxy_pass http://escape_nakama_console;
+    }
+    location @escape_console_rate_limited {
+        default_type application/json;
+        add_header Retry-After 10 always;
+        return 429 '{"code":8,"message":"rate_limited: retry_after_seconds=10"}';
+    }
+}

@@ -1,0 +1,22 @@
+prokrust-play.ru {
+    encode gzip
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+    }
+    reverse_proxy 127.0.0.1:27350 {
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+console.prokrust-play.ru {
+    encode gzip
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    reverse_proxy 127.0.0.1:27352 {
+        header_up X-Real-IP {remote_host}
+    }
+}

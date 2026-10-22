@@ -1,13 +1,11 @@
--- Статистика Match3 / RPC get+record (вынесено из duel_match3.lua — лимит локалей).
+-- Статистика Match3: чтение RPC, запись только из authoritative match handler.
 local nk = require("nakama")
 
 return function(deps)
   local CFG = deps.CFG
   local Ach = deps.Ach
-  local Guard = deps.Guard
   local read_pve_progress = deps.read_pve_progress
   local normalize_mine_difficulty = deps.normalize_mine_difficulty
-  local ensure_character_sheet_initialized = deps.ensure_character_sheet_initialized
 
   local function read_match3_stats(user_id)
     local val, version = Ach.storage_read_match3_summary_val(user_id)
@@ -75,15 +73,12 @@ return function(deps)
     return false
   end
 
-  local function normalize_stats_mode(mode)
-    local m = string.lower(tostring(mode or ""))
-    if m == "duel" or m == "classic" then return "duel" end
-    if m == "pro" or m == "skirmish" then return "pro" end
-    if m == "race" then return "race" end
-    if m == "arena" or m == "tournament" then return "arena" end
-    if m == "mine" or m == "pve" or m == "solo" then return "mine" end
-    if m == "" then return "duel" end
-    return m
+  local function match_stats_mode(state)
+    if state.arena_mirror ~= nil then return "arena" end
+    if state.pvp_race == true then return "race" end
+    if state.mode == "pve" then return "mine" end
+    if state.pvp_pro == true then return "pro" end
+    return "duel"
   end
 
   local function mode_bag(modes, mode)
@@ -235,97 +230,87 @@ return function(deps)
     return result
   end
 
+  -- Compatibility response for old clients. No payload can mutate server stats.
   local function duel_match3_stats_record(ctx, payload)
-    local ok, result = pcall(function()
-      local user_id = ctx and ctx.user_id or ""
-      if user_id == nil or user_id == "" then
-        return nk.json_encode({ ok = false, err = "unauthorized" })
-      end
-
-      local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-      if not ok_epoch then
-        return nk.json_encode({ ok = false, err = err_epoch })
-      end
-
-      ensure_character_sheet_initialized(user_id)
-
-      local won = false
-      local mode = "duel"
-      if payload ~= nil and payload ~= "" then
-        local p = nk.json_decode(payload)
-        if type(p) == "table" then
-          won = p.won == true
-          mode = normalize_stats_mode(p.mode)
-        end
-      end
-
-      local max_retries = 5
-      for i = 1, max_retries do
-        local val, version = Ach.storage_read_match3_summary_val(user_id)
-        local played = (tonumber(val.played) or 0) + 1
-        local wins = tonumber(val.wins) or 0
-        local losses = tonumber(val.losses) or 0
-        if won then
-          wins = wins + 1
-        else
-          losses = losses + 1
-        end
-        val.played = played
-        val.wins = wins
-        val.losses = losses
-        val.updated_at = os.time()
-
-        local modes = type(val.modes) == "table" and val.modes or {}
-        local modes2, bag = mode_bag(modes, mode)
-        bag.played = bag.played + 1
-        if won then
-          bag.wins = bag.wins + 1
-        else
-          bag.losses = bag.losses + 1
-        end
-        modes2[mode] = bag
-        val.modes = modes2
-
-        local write_obj = {
-          collection = CFG.STATS_COLLECTION,
-          key = CFG.STATS_KEY,
-          user_id = user_id,
-          value = val,
-          permission_read = 1,
-          permission_write = 0,
-        }
-        if version ~= nil and version ~= "" then
-          write_obj.version = version
-        end
-
-        local write_ok, write_err = pcall(function()
-          nk.storage_write({ write_obj })
-        end)
-
-        if write_ok then
-          return nk.json_encode({
-            ok = true,
-            played = played,
-            wins = wins,
-            losses = losses,
-            mode = mode,
-          })
-        end
-
-        local err_text = tostring(write_err)
-        if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-          error(write_err)
-        end
-      end
-
-      return nk.json_encode({ ok = false, err = "retry_exhausted" })
-    end)
-
-    if not ok then
-      nk.logger_error("duel_match3_stats_record: " .. tostring(result))
-      return nk.json_encode({ ok = false, err = "server_error" })
+    if ctx == nil or ctx.user_id == nil or ctx.user_id == "" then
+      return nk.json_encode({ ok = false, err = "unauthorized" })
     end
-    return result
+    return nk.json_encode({ ok = false, err = "client_result_recording_disabled" })
+  end
+
+  local function record_user_result(user_id, result_id, mode, won)
+    for attempt = 1, 5 do
+      local val, version = Ach.storage_read_match3_summary_val(user_id)
+      local recent = type(val.match_result_ids) == "table" and val.match_result_ids or {}
+      for _, id in ipairs(recent) do
+        if id == result_id then return true end
+      end
+
+      val.played = math.max(0, tonumber(val.played) or 0) + 1
+      val.wins = math.max(0, tonumber(val.wins) or 0) + (won and 1 or 0)
+      val.losses = math.max(0, tonumber(val.losses) or 0) + (won and 0 or 1)
+      local modes, bag = mode_bag(val.modes, mode)
+      bag.played = bag.played + 1
+      bag.wins = bag.wins + (won and 1 or 0)
+      bag.losses = bag.losses + (won and 0 or 1)
+      val.modes = modes
+      -- Bounded deduplication history; the current match also keeps a success map.
+      local result_ids = {}
+      for i = math.max(1, #recent - 62), #recent do
+        result_ids[#result_ids + 1] = recent[i]
+      end
+      result_ids[#result_ids + 1] = result_id
+      val.match_result_ids = result_ids
+      val.updated_at = os.time()
+
+      local ok, err = pcall(function()
+        nk.storage_write({
+          {
+            collection = CFG.STATS_COLLECTION,
+            key = CFG.STATS_KEY,
+            user_id = user_id,
+            value = val,
+            version = version ~= nil and version ~= "" and version or "*",
+            permission_read = 1,
+            permission_write = 0,
+          },
+        })
+      end)
+      if ok then return true end
+      if string.find(tostring(err), "version", 1, true) == nil or attempt == 5 then
+        nk.logger_error("match3 authoritative result write failed: " .. tostring(err))
+        return false
+      end
+    end
+    return false
+  end
+
+  -- Internal API only: the finished authoritative match supplies identities and
+  -- mode. Local SoloBot and client RPC payloads never reach this path.
+  local function record_match_finish(state, winner, is_draw)
+    if state == nil or state.started ~= true or state.ended ~= true then return false end
+    -- Preserve existing behavior: draws do not increment wins/losses/played.
+    if is_draw == true or winner == nil or winner == "" then return false end
+    local players = state.players_sorted
+    if type(players) ~= "table" or #players ~= 2 or players[1] == players[2] then return false end
+    if winner ~= players[1] and winner ~= players[2] then return false end
+    local result_id = state.stats_result_id
+    if type(result_id) ~= "string" or result_id == "" then return false end
+
+    state._stats_finish_recorded = state._stats_finish_recorded or {}
+    local all_ok = true
+    for _, uid in ipairs(players) do
+      if Ach.is_human(uid) and state._stats_finish_recorded[uid] ~= true then
+        local ok, recorded = pcall(record_user_result, uid, result_id, match_stats_mode(state), uid == winner)
+        if ok and recorded then
+          state._stats_finish_recorded[uid] = true
+        else
+          all_ok = false
+          if not ok then nk.logger_error("match3 authoritative result failed: " .. tostring(recorded)) end
+        end
+      end
+    end
+    return all_ok
   end
 
   return {
@@ -333,5 +318,6 @@ return function(deps)
     stats_inc_arena_tournament_played = stats_inc_arena_tournament_played,
     duel_match3_stats_get = duel_match3_stats_get,
     duel_match3_stats_record = duel_match3_stats_record,
+    record_match_finish = record_match_finish,
   }
 end

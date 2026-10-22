@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Nakama;
+using Project.Utils;
 using UnityEngine;
 
 namespace Project.Character
@@ -27,14 +28,21 @@ namespace Project.Character
 
             try
             {
+                var session = NakamaBootstrap.Instance.Session;
+                var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
+                if (!ReferenceEquals(session, NakamaBootstrap.Instance.Session))
+                    return new CharacterGetRpcResponse { ok = false, err = "stale_session" };
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcCharacterGet, "{}", canceller: ct);
+                    session, RpcCharacterGet, "{}", canceller: ct);
 
                 var payload = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(payload))
                     return new CharacterGetRpcResponse { ok = false, err = "empty_payload" };
 
                 var model = JsonUtility.FromJson<CharacterGetRpcResponse>(payload);
+                if (!await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.IsCurrent(scope)).ConfigureAwait(false))
+                    return new CharacterGetRpcResponse { ok = false, err = "stale_session" };
+                if (model?.progression != null) model.progression.localAccountScope = scope;
                 return model ?? new CharacterGetRpcResponse { ok = false, err = "parse_failed" };
             }
             catch (Exception e)
@@ -105,20 +113,29 @@ namespace Project.Character
             if (NakamaBootstrap.Instance == null)
                 return new CharacterGetRpcResponse { ok = false, err = "nakama_not_initialized" };
 
+            var requestedScope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
             await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
             if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
                 return new CharacterGetRpcResponse { ok = false, err = "nakama_not_ready" };
 
             try
             {
+                var session = NakamaBootstrap.Instance.Session;
+                var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
+                if (!ReferenceEquals(session, NakamaBootstrap.Instance.Session)
+                    || (requestedScope != null && !string.Equals(requestedScope, scope, StringComparison.Ordinal)))
+                    return new CharacterGetRpcResponse { ok = false, err = "stale_session" };
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, rpcId, payload, canceller: ct);
+                    session, rpcId, payload, canceller: ct);
 
                 var body = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(body))
                     return new CharacterGetRpcResponse { ok = false, err = "empty_payload" };
 
                 var model = JsonUtility.FromJson<CharacterGetRpcResponse>(body);
+                if (!await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.IsCurrent(scope)).ConfigureAwait(false))
+                    return new CharacterGetRpcResponse { ok = false, err = "stale_session" };
+                if (model?.progression != null) model.progression.localAccountScope = scope;
                 return model ?? new CharacterGetRpcResponse { ok = false, err = "parse_failed" };
             }
             catch (Exception e)
@@ -127,17 +144,8 @@ namespace Project.Character
             }
         }
 
-        private static async Task<CharacterGetRpcResponse> RpcItemMoveAsync(string payload, CancellationToken ct)
-        {
-            if (NakamaBootstrap.Instance == null)
-                return new CharacterGetRpcResponse { ok = false, err = "nakama_not_initialized" };
-
-            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
-            if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
-                return new CharacterGetRpcResponse { ok = false, err = "nakama_not_ready" };
-
-            return await RpcCharacterPayloadAsync(RpcCharacterItemMove, payload, ct).ConfigureAwait(false);
-        }
+        private static Task<CharacterGetRpcResponse> RpcItemMoveAsync(string payload, CancellationToken ct) =>
+            RpcCharacterPayloadAsync(RpcCharacterItemMove, payload, ct);
     }
 }
 

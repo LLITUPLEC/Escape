@@ -86,6 +86,8 @@ namespace Project.UI
         private readonly ResourceValueBinding _ingotsBinding = new("ingots");
         private readonly ResourceValueBinding _matterBinding = new("matter");
         private readonly ResourceValueBinding _keysBinding = new("keys");
+        private string _displayedResourceScope;
+        private bool _hasDisplayedResources;
         private Button _mineButton;
         private Button _mine3DButton;
         private Button _workshopButton;
@@ -1144,6 +1146,8 @@ namespace Project.UI
         private void OnCachedResourcesChanged()
         {
             if (!PlayerResourcesService.TryReadCached(out var cached) || cached == null) return;
+            _displayedResourceScope = LocalAccountCacheScope.Current;
+            _hasDisplayedResources = true;
             EnsureHeaderResources();
             if (!HasAnyHeaderResourceBindings()) return;
             SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy));
@@ -1159,8 +1163,17 @@ namespace Project.UI
             EnsureHeaderResources();
             if (!HasAnyHeaderResourceBindings()) return;
 
-            if (PlayerResourcesService.TryReadCached(out var cached))
+            var scope = LocalAccountCacheScope.Current;
+            if (!string.Equals(scope, _displayedResourceScope, StringComparison.Ordinal))
             {
+                _displayedResourceScope = scope;
+                _hasDisplayedResources = false;
+                SetHeaderResourcesUnknown();
+            }
+            // Use the startup cache once, instead of repainting it on every periodic refresh.
+            if (!_hasDisplayedResources && PlayerResourcesService.TryReadCached(out var cached))
+            {
+                _hasDisplayedResources = true;
                 SetHeaderResourceText(_energyBinding, FormatEnergy(cached.energy));
                 SetHeaderResourceText(_oreBinding, FormatCompact(cached.ore));
                 SetHeaderResourceText(_goldBinding, FormatCompact(cached.gold));
@@ -1174,12 +1187,14 @@ namespace Project.UI
                 var model = await PlayerResourcesService.GetAsync(ct);
                 if (model == null || !model.ok)
                 {
-                    SetHeaderResourcesUnknown();
+                    if (!_hasDisplayedResources) SetHeaderResourcesUnknown();
                     if (debugUiStats)
                         Debug.Log($"[MainMenu] PlayerResources RPC not ok. err={model?.err}");
                     return;
                 }
 
+                _displayedResourceScope = LocalAccountCacheScope.Current;
+                _hasDisplayedResources = true;
                 SetHeaderResourceText(_energyBinding, FormatEnergy(model.energy));
                 SetHeaderResourceText(_oreBinding, FormatCompact(model.ore));
                 SetHeaderResourceText(_goldBinding, FormatCompact(model.gold));
@@ -1193,7 +1208,7 @@ namespace Project.UI
             }
             catch (Exception e)
             {
-                SetHeaderResourcesUnknown();
+                if (!_hasDisplayedResources) SetHeaderResourcesUnknown();
                 if (debugUiStats)
                     Debug.Log("[MainMenu] PlayerResources exception: " + e.Message);
             }

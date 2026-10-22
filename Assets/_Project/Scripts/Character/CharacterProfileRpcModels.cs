@@ -33,6 +33,7 @@ namespace Project.Character
     [Serializable]
     public sealed class Progression
     {
+        [NonSerialized] public string localAccountScope;
         public int level;
         public int xp;
         public long gold;

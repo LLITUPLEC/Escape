@@ -1,4 +1,6 @@
 local nk = require("nakama")
+local rate_ok, RateLimit = pcall(require, "modules.duel_api_rate_limit")
+if not rate_ok then RateLimit = require("duel_api_rate_limit") end
 
 local SESSION_EPOCH_META_KEY = "session_epoch"
 local NOTIFY_CODE_SESSION_REPLACED = 10001
@@ -85,7 +87,7 @@ local function duel_session_epoch_get(ctx, payload)
   return result
 end
 
-nk.register_rpc(duel_session_epoch_get, "duel_session_epoch_get")
+RateLimit.register_rpc(duel_session_epoch_get, "duel_session_epoch_get")
 
 --- Клиентский silent-restore / reconnect с сохранёнными email-токенами не вызывает AuthenticateEmail.
 --- Этот RPC явно захватывает сессию (epoch++) и вытесняет другие устройства.
@@ -106,4 +108,4 @@ local function duel_session_claim(ctx, payload)
   return result
 end
 
-nk.register_rpc(duel_session_claim, "duel_session_claim")
+RateLimit.register_rpc(duel_session_claim, "duel_session_claim")

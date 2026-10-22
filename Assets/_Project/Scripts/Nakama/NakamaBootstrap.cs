@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -8,6 +7,7 @@ using Nakama;
 using Project.Achievements;
 using Project.UI;
 using Project.Utils;
+using Project.Nakama.Security;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -29,7 +29,9 @@ namespace Project.Nakama
             go.AddComponent<NakamaBootstrap>();
         }
 
-        public static int GetLocalSessionEpoch() => PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
+        private static int _localSessionEpoch;
+        /// <summary>RPC payloads are also built on worker threads: never touch PlayerPrefs here.</summary>
+        public static int GetLocalSessionEpoch() => Volatile.Read(ref _localSessionEpoch);
 
         [SerializeField] private NakamaConnectionConfig config;
         public NakamaConnectionConfig Config
@@ -45,23 +47,16 @@ namespace Project.Nakama
         public bool IsReady => Socket != null && Socket.IsConnected && Session != null;
 
         /// <summary>Только с главного потока. Для фона используйте <see cref="UsesEmailSessionPersistenceAsync"/>.</summary>
-        public bool UsesEmailSessionPersistence => PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0;
+        public bool UsesEmailSessionPersistence => NakamaCredentialStore.UsesEmail;
 
         public Task<bool> UsesEmailSessionPersistenceAsync() =>
-            MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0);
+            MainThreadDispatcher.RunAsync(() => NakamaCredentialStore.UsesEmail);
 
-        private const string DeviceIdPrefKey = "nakama.device_id";
-        private const string DevDeviceIdPrefPrefix = "nakama.device_id.dev.";
-        /// <summary>Дубль DeviceID на диске — переживает часть «очисток кэша», в отличие от одного только PlayerPrefs.</summary>
-        private const string DeviceIdFileName = "nakama_device_id.txt";
         private const string RpcOnlinePingAndCount = "duel_online_ping_and_count";
         private const string RpcSessionEpochGet = "duel_session_epoch_get";
         /// <summary>Захват single-device сессии без AuthenticateEmail (silent restore / reconnect).</summary>
         private const string RpcSessionClaim = "duel_session_claim";
-        private const string PrefUseEmailSession = "nakama.use_email_session";
-        private const string PrefAuthToken = "nakama.session.auth_token";
-        private const string PrefRefreshToken = "nakama.session.refresh_token";
-        /// <summary>Локально сохранённый пароль (Base64) для silent re-auth после expiry JWT/refresh. Чистится только Logout/Wipe.</summary>
+        /// <summary>Ключ старых сборок: пароль больше не сохраняется; удаляем при миграции.</summary>
         private const string PrefSavedEmailPassword = "nakama.session.email_password";
         public const string PrefKnownLinkedEmail = "nakama.ui.known_linked_email";
         /// <summary>После удаления аккаунта / гость без email: при запуске обязателен ввод e-mail/пароля.</summary>
@@ -124,6 +119,8 @@ namespace Project.Nakama
             }
 
             Instance = this;
+            Volatile.Write(ref _localSessionEpoch, PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0));
+            DeleteLegacyEmailPasswordSync();
             DontDestroyOnLoad(gameObject);
             Project.Friends.FriendsRaceInviteHost.Ensure();
 
@@ -147,10 +144,10 @@ namespace Project.Nakama
 
             try
             {
+                await ApplyAuthEndpointScopeAsync().ConfigureAwait(true);
                 // Сразу затемняем UI, если похоже на гостя / post-wipe — иначе 3–5 с MainMenu с «—».
                 var needEarlyOverlay = PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0
-                    || (PlayerPrefs.GetInt(PrefUseEmailSession, 0) == 0
-                        && string.IsNullOrWhiteSpace(PlayerPrefs.GetString(PrefKnownLinkedEmail, "")));
+                    || (!NakamaCredentialStore.UsesEmail && !NakamaCredentialStore.HasKnownEmail);
                 if (needEarlyOverlay)
                     AuthSetupGate.EnsureBlockingOverlayVisible();
 
@@ -245,17 +242,18 @@ namespace Project.Nakama
             await _ensureConnectedGate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                if (Socket != null && Socket.IsConnected && Session != null &&
-                    !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)) &&
-                    string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal))
-                    return;
-
                 if (config == null)
                 {
                     config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
                     if (config == null)
                         throw new InvalidOperationException("NakamaConnectionConfig не найден в Resources.");
                 }
+
+                await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
+                if (Socket != null && Socket.IsConnected && Session != null &&
+                    !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)) &&
+                    string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal))
+                    return;
 
                 if (Client == null)
                 {
@@ -324,6 +322,7 @@ namespace Project.Nakama
                     throw new InvalidOperationException("NakamaConnectionConfig не найден.");
             }
 
+            await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
             if (Client == null)
             {
                 Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
@@ -345,16 +344,17 @@ namespace Project.Nakama
                 Socket = null;
             }
 
-            Session = await Client
+            var authenticated = await Client
                 .AuthenticateEmailAsync(email, password, username: null, create: create, vars: null, canceller: ct)
                 .ConfigureAwait(false);
             await MainThreadDispatcher.RunAsync(() =>
             {
-                PersistEmailSessionSync(Session);
-                PersistEmailCredentialsSync(email, password);
+                PersistEmailSessionSync(authenticated);
+                PersistKnownLinkedEmailSync(email);
                 PlayerPrefs.DeleteKey(PrefForceEmailSetup);
                 PlayerPrefs.Save();
             }).ConfigureAwait(false);
+            Session = authenticated;
 
             await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
@@ -378,6 +378,7 @@ namespace Project.Nakama
                 if (string.IsNullOrEmpty(deviceId)) return;
                 await Client.LinkDeviceAsync(Session, deviceId, canceller: ct).ConfigureAwait(false);
             }
+            catch (CredentialStorageException) { throw; }
             catch (Exception e)
             {
                 // Уже привязан / конфликт — не критично: email-сессия всё равно сохранена.
@@ -486,16 +487,8 @@ namespace Project.Nakama
         /// </summary>
         private async Task MaybeShowEmailSetupGateAsync(CancellationToken ct)
         {
-            var (force, hasSavedLogin) = await MainThreadDispatcher.RunAsync(() =>
-                (PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0,
-                    HasSavedEmailCredentialsSync())).ConfigureAwait(false);
-
-            // Полные credentials на диске — форма не нужна (ResolveSession сделает silent re-auth).
-            if (!force && hasSavedLogin)
-            {
-                AuthSetupGate.HideBlockingOverlayIfAny();
-                return;
-            }
+            var force = await MainThreadDispatcher.RunAsync(() =>
+                PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0).ConfigureAwait(false);
 
             var hasEmail = false;
             try
@@ -537,8 +530,7 @@ namespace Project.Nakama
                 return;
             }
 
-            // Известный email без пароля (старые установки): один раз покажем форму, чтобы сохранить пароль.
-            // Если force — всегда показываем.
+            // У текущего аккаунта ещё нет e-mail, либо после wipe требуется новая регистрация.
             await AuthSetupGate.ShowAndWaitAsync(this, ct).ConfigureAwait(true);
         }
 
@@ -566,6 +558,7 @@ namespace Project.Nakama
         {
             ClearAllEmailPersistenceSync();
             PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
+            Volatile.Write(ref _localSessionEpoch, 0);
             // Локальные claimed/stats достижений иначе переживают wipe и «горят» после нового аккаунта.
             AchievementProgressStorage.ClearAllLocalProgress();
             PlayerPrefs.Save();
@@ -658,7 +651,7 @@ namespace Project.Nakama
             if (Session == null || Client == null) return;
 
             var shouldClaim = await MainThreadDispatcher.RunAsync(() =>
-                    !string.IsNullOrWhiteSpace(PlayerPrefs.GetString(PrefKnownLinkedEmail, "")))
+                    NakamaCredentialStore.HasKnownEmail)
                 .ConfigureAwait(false);
             if (!shouldClaim)
                 return;
@@ -686,7 +679,9 @@ namespace Project.Nakama
 
         private static void PersistLocalSessionEpochSync(int epoch)
         {
-            PlayerPrefs.SetInt(SessionEpochLocalPrefKey, Mathf.Max(0, epoch));
+            var value = Mathf.Max(0, epoch);
+            Volatile.Write(ref _localSessionEpoch, value);
+            PlayerPrefs.SetInt(SessionEpochLocalPrefKey, value);
             PlayerPrefs.Save();
         }
 
@@ -703,7 +698,7 @@ namespace Project.Nakama
                     return;
                 }
 
-                var local = PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
+                var local = GetLocalSessionEpoch();
                 if (m.session_epoch > local)
                 {
                     BeginSessionReplacedFlow();
@@ -727,7 +722,7 @@ namespace Project.Nakama
                 return;
             }
 
-            var local = PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0);
+            var local = GetLocalSessionEpoch();
             if (serverEpoch > local) BeginSessionReplacedFlow();
         }
 
@@ -795,13 +790,14 @@ namespace Project.Nakama
                         var refreshed = await Client.SessionRefreshAsync(Session, canceller: ct).ConfigureAwait(false);
                         Session = refreshed;
                         var persist = await MainThreadDispatcher
-                            .RunAsync(() => PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0)
+                            .RunAsync(() => NakamaCredentialStore.UsesEmail)
                             .ConfigureAwait(false);
                         if (persist)
                             await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(refreshed))
                                 .ConfigureAwait(false);
                         return;
                     }
+                    catch (CredentialStorageException) { throw; }
                     catch (Exception e)
                     {
                         if (config != null && config.verboseLogging)
@@ -812,9 +808,9 @@ namespace Project.Nakama
                 }
                 else
                 {
-                    // Refresh протух/отсутствует — JWT больше не используем (credentials оставляем для silent re-auth).
+                    // Refresh протух/отсутствует — JWT больше не используем; восстановимся через linked device.
                     if (!string.IsNullOrEmpty(Session.RefreshToken) ||
-                        await MainThreadDispatcher.RunAsync(() => PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0)
+                        await MainThreadDispatcher.RunAsync(() => NakamaCredentialStore.UsesEmail)
                             .ConfigureAwait(false))
                     {
                         await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
@@ -829,14 +825,25 @@ namespace Project.Nakama
 
         private async Task<ISession> ResolveSessionAsync(CancellationToken ct)
         {
-            var (useEmail, auth, refresh) = await MainThreadDispatcher.RunAsync(() =>
-                (PlayerPrefs.GetInt(PrefUseEmailSession, 0) != 0,
-                    PlayerPrefs.GetString(PrefAuthToken, ""),
-                    PlayerPrefs.GetString(PrefRefreshToken, ""))).ConfigureAwait(false);
+            var saved = await MainThreadDispatcher.RunAsync(NakamaCredentialStore.Snapshot).ConfigureAwait(false);
+            var useEmail = saved.useEmail || !string.IsNullOrWhiteSpace(saved.knownEmail);
+            var knownEmail = saved.knownEmail;
+            var auth = saved.authToken;
+            var refresh = saved.refreshToken;
+            var expectedUserId = saved.userId;
 
             if (useEmail && !string.IsNullOrEmpty(auth))
             {
                 var restored = global::Nakama.Session.Restore(auth, string.IsNullOrEmpty(refresh) ? null : refresh);
+                // Миграция старых токенов: запоминаем аккаунт до удаления expired JWT.
+                if (string.IsNullOrEmpty(expectedUserId) && !string.IsNullOrEmpty(restored?.UserId))
+                {
+                    expectedUserId = restored.UserId;
+                    await MainThreadDispatcher.RunAsync(() =>
+                    {
+                        NakamaCredentialStore.SetUserId(restored.UserId);
+                    }).ConfigureAwait(false);
+                }
                 if (restored != null && !restored.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
                 {
                     // Auth ещё жив с запасом под AutoRefresh — можно использовать.
@@ -855,6 +862,7 @@ namespace Project.Nakama
                         await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(refreshed)).ConfigureAwait(false);
                         return refreshed;
                     }
+                    catch (CredentialStorageException) { throw; }
                     catch (Exception e)
                     {
                         if (config != null && config.verboseLogging)
@@ -864,29 +872,39 @@ namespace Project.Nakama
                 }
                 else
                 {
-                    // И auth, и refresh плохие — чистим только токены, credentials оставляем.
+                    // И auth, и refresh плохие — чистим только токены, сохраняем режим email-аккаунта.
                     await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
                 }
             }
 
-            // JWT/refresh протухли — silent re-auth по сохранённым e-mail/паролю (пока не Logout/Wipe).
-            var emailSession = await TryAuthenticateWithSavedEmailAsync(ct).ConfigureAwait(false);
-            if (emailSession != null)
-                return emailSession;
-
             var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
-            var deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, ct).ConfigureAwait(false);
+            // Для известного email-аккаунта отсутствие linked device требует ручного входа,
+            // а не создания нового гостевого профиля под свежим device id.
+            var deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, create: !useEmail, ct)
+                .ConfigureAwait(false);
             // Device, привязанный через LinkDevice, вернёт тот же user_id; сохраняем свежие токены,
             // только если на устройстве уже был сохранённый email-вход (не помечаем чистого гостя).
-            var keepEmailMode = await MainThreadDispatcher.RunAsync(HasSavedEmailCredentialsSync).ConfigureAwait(false);
-            if (keepEmailMode)
+            if (useEmail)
+            {
+                // LinkDevice может завершиться конфликтом с прежним guest-профилем.
+                // Такой device нельзя молча принять за ранее выбранный email-аккаунт.
+                var sameAccount = !string.IsNullOrEmpty(expectedUserId)
+                    && string.Equals(deviceSession.UserId, expectedUserId, StringComparison.Ordinal);
+                if (string.IsNullOrEmpty(expectedUserId) && !string.IsNullOrWhiteSpace(knownEmail))
+                {
+                    var account = await Client.GetAccountAsync(deviceSession, canceller: ct).ConfigureAwait(false);
+                    sameAccount = string.Equals(account?.Email?.Trim(), knownEmail.Trim(), StringComparison.OrdinalIgnoreCase);
+                }
+                if (!sameAccount)
+                    throw new InvalidOperationException("Не удалось восстановить прежний аккаунт через устройство. Войдите по e-mail снова.");
                 await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(deviceSession)).ConfigureAwait(false);
+            }
             return deviceSession;
         }
 
         /// <summary>
         /// После сбоя AutoRefresh («Refresh token invalid») — сброс JWT и переподключение
-        /// (сначала silent email, иначе device).
+        /// через ранее привязанный device id.
         /// </summary>
         public async Task RecoverSessionAfterRefreshFailureAsync(CancellationToken ct)
         {
@@ -916,7 +934,7 @@ namespace Project.Nakama
                    || msg.IndexOf("refresh token", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private async Task<ISession> AuthenticateDeviceWithGeneratedUsernameAsync(string deviceId, CancellationToken ct)
+        private async Task<ISession> AuthenticateDeviceWithGeneratedUsernameAsync(string deviceId, bool create, CancellationToken ct)
         {
             const int maxAttempts = 6;
             for (var attempt = 0; attempt < maxAttempts; attempt++)
@@ -927,7 +945,7 @@ namespace Project.Nakama
                     return await Client.AuthenticateDeviceAsync(
                         deviceId,
                         username: username,
-                        create: true,
+                        create: create,
                         canceller: ct).ConfigureAwait(false);
                 }
                 catch (ApiResponseException ex) when (ex.StatusCode == 409 && attempt < maxAttempts - 1)
@@ -940,7 +958,7 @@ namespace Project.Nakama
             return await Client.AuthenticateDeviceAsync(
                 deviceId,
                 username: CreatePlayerUsername(),
-                create: true,
+                create: create,
                 canceller: ct).ConfigureAwait(false);
         }
 
@@ -959,127 +977,16 @@ namespace Project.Nakama
         }
 
         /// <summary>
-        /// Стабильный DeviceID: PlayerPrefs → файл в persistentDataPath → native hardware id → gen- (только если native недоступен).
-        /// Один и тот же телефон не должен получать новый id после очистки prefs/кэша.
+        /// Device auth is a credential: preserve legacy IDs in the vault before deleting plaintext.
         /// </summary>
         private static string GetDeviceId()
         {
 #if UNITY_EDITOR
             var profileKey = GetDevelopmentProfileKey();
-            var prefKey = DevDeviceIdPrefPrefix + profileKey;
 #else
             var profileKey = "";
-            var prefKey = DeviceIdPrefKey;
 #endif
-            if (PlayerPrefs.HasKey(prefKey))
-            {
-                var saved = PlayerPrefs.GetString(prefKey);
-                if (!string.IsNullOrWhiteSpace(saved))
-                {
-                    PersistDeviceIdEverywhere(prefKey, saved);
-                    return saved;
-                }
-            }
-
-            var fromFile = TryReadDeviceIdFile(profileKey);
-            if (!string.IsNullOrWhiteSpace(fromFile))
-            {
-                PersistDeviceIdEverywhere(prefKey, fromFile);
-                return fromFile;
-            }
-
-#if !UNITY_EDITOR
-            var nativeId = SanitizeDeviceId(SystemInfo.deviceUniqueIdentifier);
-            if (!string.IsNullOrWhiteSpace(nativeId))
-            {
-                PersistDeviceIdEverywhere(prefKey, nativeId);
-                return nativeId;
-            }
-#endif
-            var generated = CreateGeneratedDeviceId(profileKey);
-            PersistDeviceIdEverywhere(prefKey, generated);
-            return generated;
-        }
-
-        private static void PersistDeviceIdEverywhere(string prefKey, string deviceId)
-        {
-            if (string.IsNullOrWhiteSpace(deviceId)) return;
-            PlayerPrefs.SetString(prefKey, deviceId);
-            PlayerPrefs.Save();
-            TryWriteDeviceIdFile(deviceId);
-        }
-
-        private static string GetDeviceIdFilePath(string profileKey)
-        {
-            var fileName = string.IsNullOrEmpty(profileKey)
-                ? DeviceIdFileName
-                : $"nakama_device_id.{profileKey}.txt";
-            return Path.Combine(Application.persistentDataPath, fileName);
-        }
-
-        private static string TryReadDeviceIdFile(string profileKey)
-        {
-            try
-            {
-                var path = GetDeviceIdFilePath(profileKey);
-                if (!File.Exists(path)) return "";
-                var raw = File.ReadAllText(path)?.Trim();
-                return string.IsNullOrWhiteSpace(raw) ? "" : raw;
-            }
-            catch
-            {
-                return "";
-            }
-        }
-
-        private static void TryWriteDeviceIdFile(string deviceId)
-        {
-            try
-            {
-#if UNITY_EDITOR
-                var profileKey = GetDevelopmentProfileKey();
-#else
-                var profileKey = "";
-#endif
-                var path = GetDeviceIdFilePath(profileKey);
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                File.WriteAllText(path, deviceId ?? "");
-            }
-            catch
-            {
-                // Best-effort durable backup.
-            }
-        }
-
-        private static string CreateGeneratedDeviceId(string profileKey)
-        {
-            var suffix = Guid.NewGuid().ToString("N");
-            var prefix = string.IsNullOrEmpty(profileKey) ? "gen" : $"dev-{profileKey}";
-            return $"{prefix}-{suffix}";
-        }
-
-        private static string SanitizeDeviceId(string raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-                return "";
-
-            var sb = new StringBuilder(raw.Length);
-            foreach (var c in raw)
-            {
-                if (char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
-                    sb.Append(c);
-                else
-                    sb.Append('-');
-            }
-
-            var sanitized = sb.ToString().Trim('-');
-            if (sanitized.Length > 128)
-                sanitized = sanitized.Substring(0, 128);
-            if (sanitized.Length < 10)
-                return "";
-            return sanitized;
+            return NakamaCredentialStore.GetDeviceId(profileKey);
         }
 
         private static string GetDevelopmentProfileKey()
@@ -1096,106 +1003,79 @@ namespace Project.Nakama
         private static void PersistEmailSessionSync(ISession s)
         {
             if (s == null || string.IsNullOrEmpty(s.AuthToken)) return;
-            PlayerPrefs.SetInt(PrefUseEmailSession, 1);
-            PlayerPrefs.SetString(PrefAuthToken, s.AuthToken);
-            PlayerPrefs.SetString(PrefRefreshToken, s.RefreshToken ?? "");
+            NakamaCredentialStore.PersistSession(s.AuthToken, s.RefreshToken, s.UserId);
+        }
+
+        private static void PersistKnownLinkedEmailSync(string email)
+        {
+            NakamaCredentialStore.SetKnownEmail(email);
+        }
+
+        private static void DeleteLegacyEmailPasswordSync()
+        {
+            if (!PlayerPrefs.HasKey(PrefSavedEmailPassword)) return;
+            PlayerPrefs.DeleteKey(PrefSavedEmailPassword);
             PlayerPrefs.Save();
         }
 
-        private static void PersistEmailCredentialsSync(string email, string password)
+        private async Task ApplyAuthEndpointScopeAsync()
         {
-            PlayerPrefs.SetString(PrefKnownLinkedEmail, email ?? "");
-            if (!string.IsNullOrEmpty(password))
-                PlayerPrefs.SetString(PrefSavedEmailPassword, EncodeStoredSecret(password));
-            PlayerPrefs.Save();
-        }
+            var changed = await MainThreadDispatcher.RunAsync(() =>
+                PrepareAuthEndpointScopeSync(config.GetScheme(), config.host, config.port)).ConfigureAwait(false);
+            if (!changed) return;
 
-        private static bool HasSavedEmailCredentialsSync()
-        {
-            return !string.IsNullOrWhiteSpace(PlayerPrefs.GetString(PrefKnownLinkedEmail, ""))
-                   && !string.IsNullOrEmpty(PlayerPrefs.GetString(PrefSavedEmailPassword, ""));
-        }
-
-        private static bool TryGetSavedEmailCredentialsSync(out string email, out string password)
-        {
-            email = PlayerPrefs.GetString(PrefKnownLinkedEmail, "");
-            password = DecodeStoredSecret(PlayerPrefs.GetString(PrefSavedEmailPassword, ""));
-            return !string.IsNullOrWhiteSpace(email) && !string.IsNullOrEmpty(password);
-        }
-
-        private async Task<ISession> TryAuthenticateWithSavedEmailAsync(CancellationToken ct)
-        {
-            var (email, password) = await MainThreadDispatcher.RunAsync(() =>
+            Session = null;
+            Client = null;
+            _socketBoundAuthToken = null;
+            if (Socket != null)
             {
-                if (!TryGetSavedEmailCredentialsSync(out var em, out var pw))
-                    return (null, null);
-                return (em, pw);
-            }).ConfigureAwait(false);
-
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
-                return null;
-
-            try
-            {
-                var session = await Client
-                    .AuthenticateEmailAsync(email, password, username: null, create: false, vars: null, canceller: ct)
-                    .ConfigureAwait(false);
-                await MainThreadDispatcher.RunAsync(() =>
+                try
                 {
-                    PersistEmailSessionSync(session);
-                    PersistEmailCredentialsSync(email, password);
-                }).ConfigureAwait(false);
-                // LinkDevice читает поле Session.
-                Session = session;
-                await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
-                if (config != null && config.verboseLogging)
-                    Debug.Log("[Nakama] Silent re-auth по сохранённому e-mail.");
-                return session;
-            }
-            catch (Exception e)
-            {
-                if (config != null && config.verboseLogging)
-                    Debug.LogWarning("[Nakama] Silent email re-auth не удался: " + e.Message);
-                return null;
+                    if (Socket.IsConnected)
+                        await Socket.CloseAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Старое соединение не должно мешать входу на новый endpoint.
+                }
+                finally
+                {
+                    Socket = null;
+                }
             }
         }
 
-        /// <summary>Только JWT/refresh. E-mail и пароль не трогаем — нужны для silent re-auth.</summary>
+        private static bool PrepareAuthEndpointScopeSync(string scheme, string host, int port)
+        {
+            var normalizedHost = (host ?? "").Trim().TrimEnd('.').ToLowerInvariant();
+            var endpoint = (scheme ?? "").Trim().ToLowerInvariant() + "://" + normalizedHost + ":"
+                + port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+#if UNITY_EDITOR
+            var profile = GetDevelopmentProfileKey();
+#else
+            var profile = "";
+#endif
+            var changed = NakamaCredentialStore.Prepare(endpoint, profile);
+            if (changed)
+            {
+                PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
+                Volatile.Write(ref _localSessionEpoch, 0);
+                PlayerPrefs.Save();
+            }
+            return changed;
+        }
+
+        /// <summary>Только JWT/refresh. Режим email-аккаунта сохраняем для linked device fallback.</summary>
         private static void ClearEmailTokenPrefsSync()
         {
-            PlayerPrefs.DeleteKey(PrefUseEmailSession);
-            PlayerPrefs.DeleteKey(PrefAuthToken);
-            PlayerPrefs.DeleteKey(PrefRefreshToken);
-            PlayerPrefs.Save();
+            NakamaCredentialStore.ClearTokens();
         }
 
         /// <summary>Полный сброс локального email-входа (Logout / Wipe).</summary>
         private static void ClearAllEmailPersistenceSync()
         {
-            ClearEmailTokenPrefsSync();
-            PlayerPrefs.DeleteKey(PrefKnownLinkedEmail);
-            PlayerPrefs.DeleteKey(PrefSavedEmailPassword);
-            PlayerPrefs.Save();
+            NakamaCredentialStore.ClearEmail();
         }
 
-        private static string EncodeStoredSecret(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return "";
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
-        }
-
-        private static string DecodeStoredSecret(string encoded)
-        {
-            if (string.IsNullOrEmpty(encoded)) return "";
-            try
-            {
-                return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
-            }
-            catch
-            {
-                // На случай старых/битых значений — не используем.
-                return "";
-            }
-        }
     }
 }

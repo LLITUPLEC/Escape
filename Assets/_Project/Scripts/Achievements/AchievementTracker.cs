@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using Project.Nakama;
 using UnityEngine;
 
 namespace Project.Achievements
 {
     /// <summary>
-    /// Локальное persist счётчиков и меток выданных наград. В будущем можно синхронизировать с Nakama.
+    /// Кэш серверного прогресса достижений, изолированный по адресу сервера и user_id.
     /// </summary>
     public static class AchievementProgressStorage
     {
@@ -14,14 +16,26 @@ namespace Project.Achievements
 
         private static Dictionary<string, int> _stats;
         private static HashSet<string> _claimedStepTokens;
+        private static string _loadedScope;
+        private static long _confirmedClaimRevision;
+        internal static long ConfirmedClaimRevision { get { EnsureLoaded(); return _confirmedClaimRevision; } }
+        private static string StatsKey => PrefStatsJson + "." + _loadedScope;
+        private static string ClaimedKey => PrefClaimedJson + "." + _loadedScope;
 
         public static void EnsureLoaded()
         {
-            if (_stats != null && _claimedStepTokens != null)
+            var scope = LocalAccountCacheScope.Current;
+            if (_stats != null && _claimedStepTokens != null && string.Equals(scope, _loadedScope, StringComparison.Ordinal))
                 return;
 
-            _stats = LoadDict(PrefStatsJson);
-            _claimedStepTokens = LoadSet(PrefClaimedJson);
+            _loadedScope = scope;
+            // Legacy values had no owner. Importing them could expose another account's progress.
+            PlayerPrefs.DeleteKey(PrefStatsJson);
+            PlayerPrefs.DeleteKey(PrefClaimedJson);
+            _stats = scope == null ? new Dictionary<string, int>(StringComparer.Ordinal) : LoadDict(StatsKey);
+            _claimedStepTokens = scope == null ? new HashSet<string>(StringComparer.Ordinal) : LoadSet(ClaimedKey);
+            AchievementUiPending.ClearAllAwaitToastTokens();
+            AchievementTracker.ClearFivePlusStreak();
         }
 
         public static int GetStat(string key)
@@ -34,7 +48,7 @@ namespace Project.Achievements
         {
             EnsureLoaded();
             _stats[key] = Mathf.Max(0, value);
-            SaveDict(PrefStatsJson, _stats);
+            if (_loadedScope != null) SaveDict(StatsKey, _stats);
         }
 
         public static void AddStat(string key, int delta)
@@ -54,7 +68,10 @@ namespace Project.Achievements
             EnsureLoaded();
             var t = StepToken(chainId, stepIndex);
             if (_claimedStepTokens.Add(t))
-                SaveSet(PrefClaimedJson, _claimedStepTokens);
+            {
+                _confirmedClaimRevision++;
+                if (_loadedScope != null) SaveSet(ClaimedKey, _claimedStepTokens);
+            }
         }
 
         /// <summary>
@@ -63,10 +80,17 @@ namespace Project.Achievements
         /// </summary>
         public static void ClearAllLocalProgress()
         {
+            EnsureLoaded();
+            _confirmedClaimRevision++;
             _stats = new Dictionary<string, int>(StringComparer.Ordinal);
             _claimedStepTokens = new HashSet<string>(StringComparer.Ordinal);
             PlayerPrefs.DeleteKey(PrefStatsJson);
             PlayerPrefs.DeleteKey(PrefClaimedJson);
+            if (_loadedScope != null)
+            {
+                PlayerPrefs.DeleteKey(StatsKey);
+                PlayerPrefs.DeleteKey(ClaimedKey);
+            }
             PlayerPrefs.Save();
             AchievementUiPending.ClearAllAwaitToastTokens();
             AchievementLifecycle.NotifyDataChanged();
@@ -74,13 +98,15 @@ namespace Project.Achievements
 
         /// <summary>
         /// Слияние с данными Nakama (achievement_sync): сервер авторитетен.
-        /// Если массив claimed/stats пришёл (в т.ч. пустой) — локальные значения заменяются, а не объединяются.
+        /// Пустые Lua-таблицы могут прийти как {} / null вместо массива: это также пустой серверный снимок.
         /// </summary>
         public static void MergeFromAuthoritativeSnapshot(
             IList<StringIntPair> serverStatsEntries,
             IList<string> serverClaimedTokens)
         {
             EnsureLoaded();
+            serverStatsEntries ??= Array.Empty<StringIntPair>();
+            serverClaimedTokens ??= Array.Empty<string>();
             var eligibleBeforeMerge = AchievementUiPending.CaptureEligibleClaimStepTokens();
 
             var changedClaims = false;
@@ -97,7 +123,7 @@ namespace Project.Achievements
                 if (nextClaims.Count != _claimedStepTokens.Count || !nextClaims.SetEquals(_claimedStepTokens))
                 {
                     _claimedStepTokens = nextClaims;
-                    SaveSet(PrefClaimedJson, _claimedStepTokens);
+                    if (_loadedScope != null) SaveSet(ClaimedKey, _claimedStepTokens);
                     changedClaims = true;
                 }
             }
@@ -114,7 +140,7 @@ namespace Project.Achievements
                 if (!StatsEqual(_stats, nextStats))
                 {
                     _stats = nextStats;
-                    SaveDict(PrefStatsJson, _stats);
+                    if (_loadedScope != null) SaveDict(StatsKey, _stats);
                     changedStats = true;
                 }
             }
@@ -138,6 +164,9 @@ namespace Project.Achievements
         }
 
         private static string StepToken(string chainId, int stepIndex) => chainId + ":" + stepIndex;
+
+        internal static string NormalizeEmptyProgressArrays(string json) => Regex.Replace(
+            json, "(\"(?:achievement_stats_flat|achievement_claimed)\"\\s*:\\s*)\\{\\s*\\}", "$1[]");
 
         private static Dictionary<string, int> LoadDict(string prefKey)
         {
