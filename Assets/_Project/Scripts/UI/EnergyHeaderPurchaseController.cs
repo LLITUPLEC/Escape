@@ -128,6 +128,7 @@ namespace Project.UI
         {
             EnsureModal();
             if (_root == null) return;
+            ExpeditionMetaPanels.ApplyEnergy(_root.transform, HideAll);
             ResetOfferQty(_matterRow);
             ResetOfferQty(_goldRow);
             _confirmRoot.SetActive(false);

@@ -1,0 +1,22 @@
+{
+  "direction": "B — Экспедиция в разлом",
+  "generated_on": "2026-10-23",
+  "mode": "built-in image_gen",
+  "asset": "Assets/_Project/Resources/Expedition/Art/battle-stage-v3.png",
+  "source": "C:/Users/ProKrust/.codex/generated_images/01a1655b-c2d1-7c82-ac74-d29bf058c701/exec-7ceded62-59ae-4a22-be7f-71e1436db825.png",
+  "reference": "C:/Users/ProKrust/AppData/Local/Temp/codex-clipboard-b00ed405-00af-4b19-9377-45d532a62a10.png",
+  "prompt": "Use case: stylized-concept. Asset type: production 2.5D Unity mobile game battle-stage backdrop, landscape 3:2. Input image 1 is ONLY a composition/style reference: reproduce the reference's subterranean rift confrontation stage and lighting, but REMOVE ALL characters, portraits, HUD, health bars, panels, numbers, icons, labels and text. One unified continuous environment: front-facing level camera slightly above a broad horizontal stone-and-industrial-metal duelling platform spanning the full lower foreground, teal chasm rising behind it, hanging chains, narrow suspended bridges in the middle distance, chunky supports at both extreme edges, small warm amber lanterns at left and right, weathered rust red fabric banners at the edges with no emblems. Platform must be level and physically usable under standing characters, its rear edge at around 45% image height, foreground stone lip at 92%; simple calm flat standing spots at x=22% and x=78%, y=80%. The center stays open, showing the cyan-teal rift and bridges. Composition MUST be a continuous side-view stage across the entire width, no split screens, no diagonal isometric floor dominating the image, no stitched panoramas. Top 25% is calmer/darker behind future live header UI. Existing style: sculpted hand-painted chunky matte material, believable game diorama, restrained detail, dark petrol #142E36/#285A60, warm stone #D8C5A2 and amber #EDAA53. Strong silhouette depth with teal distance and warm foreground, pleasing readable value grouping, not neon. NO people, humans, heroes, creatures, monsters, weapons, UI, borders, typography, watermarks or logos. Full bleed opaque raster background, landscape 1536 by 1024 composition.",
+  "transparent_background": false,
+  "visual_qa": {
+    "inspected": true,
+    "continuous_stage": true,
+    "no_baked_ui": true,
+    "no_characters": true
+  },
+  "import": {
+    "max_texture_size": 1024,
+    "android": "ETC2_RGB4",
+    "mipmaps": false,
+    "readable": false
+  }
+}

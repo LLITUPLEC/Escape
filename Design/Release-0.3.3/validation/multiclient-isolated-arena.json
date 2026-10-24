@@ -1,0 +1,305 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "eight independently authenticated clients enter one shared eight-player tournament"
+    },
+    {
+      "passed": true,
+      "check": "the tournament bracket contains exactly the eight temporary accounts"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "eight simultaneous arena joins charge every participant exactly one entry fee"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent deliveries of one legal arena prediction are accepted idempotently"
+    },
+    {
+      "passed": true,
+      "check": "repeating, replacing, clearing and restoring one prediction counts its achievement exactly once"
+    },
+    {
+      "passed": true,
+      "check": "own-pair, invalid-side and noninteger/out-of-range predictions are rejected without achievements"
+    },
+    {
+      "passed": true,
+      "check": "qf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "qf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "sf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "sf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "final: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "final: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "gold tournament grants its final prize exactly once"
+    },
+    {
+      "passed": true,
+      "check": "repeated completed-tournament polls cannot repeat its final prize"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": []
+}

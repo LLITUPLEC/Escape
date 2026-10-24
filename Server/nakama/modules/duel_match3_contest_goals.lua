@@ -18,7 +18,7 @@ return function(deps)
   local function default_rewards()
     return {
       { resource = "xp", amount = math.max(0, math.floor(tonumber(CFG.RACE_WIN_XP) or 200)) },
-      { resource = "matter", amount = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 10)) },
+      { resource = "matter", amount = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 4)) },
     }
   end
 
@@ -150,13 +150,19 @@ return function(deps)
   end
 
   function M.race_entry_costs()
-    local doc = read_doc()
-    return normalize_lines(doc.race and doc.race.entry, default_entry())
+    -- The two-player stake policy must agree with enter RPC and the public UI,
+    -- even if an older stored document still contains a different price.
+    return default_entry()
   end
 
   function M.race_rewards()
     local doc = read_doc()
-    return normalize_lines(doc.race and doc.race.rewards, default_rewards())
+    local out = {}
+    for _, line in ipairs(normalize_lines(doc.race and doc.race.rewards, default_rewards())) do
+      if line.resource ~= "matter" then out[#out + 1] = line end
+    end
+    out[#out + 1] = { resource = "matter", amount = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 4)) }
+    return out
   end
 
   --- Публичный конфиг для клиента (модалка входа / HUD).
@@ -166,6 +172,7 @@ return function(deps)
       entry = M.race_entry_costs(),
       rewards = M.race_rewards(),
       mana_bonus_every = math.max(1, math.floor(tonumber(CFG.RACE_MANA_BONUS_EVERY_ACTIONS) or 5)),
+      bot_entry_refund = true,
     }
   end
 

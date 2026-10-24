@@ -8,11 +8,15 @@
 [Bb]uilds/
 Logs/
 *.log
+!Design/Expedition-Implementation/validation/**/*.log
 
 # Unity user settings
 UserSettings/
 
 # Generated solution/project files
+.utmp/
+__pycache__/
+*.py[cod]
 *.csproj
 *.sln
 *.suo
@@ -35,6 +39,13 @@ Thumbs.db
 ParrelSync/
 
 # Secrets
+key_meshy.txt
+.utmp/expedition/
+.utmp/expedition-v2/
+.utmp/website-release-check/
+.utmp/validation-workshop/
+.utmp/Debug/
+.utmp/tools/debug/
 Assets/_Project/Resources/NakamaConnectionConfig.asset
 Assets/_Project/Resources/NakamaConnectionConfig.asset.meta
 

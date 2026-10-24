@@ -52,12 +52,18 @@ namespace Project.Achievements
         private AchievementTab _currentTab = AchievementTab.Obsession;
         private bool _wiredOpenButton;
         private AchievementStepDetailModal _stepDetailModal;
+        private ExpeditionAchievementsLayout _expeditionLayout;
+        private bool _visible;
+        private bool _shellAttached;
+        public bool IsVisible => _visible;
+        public event Action<bool> VisibilityChanged;
 
         private RectTransform _pendingBadgeRt;
         private CanvasGroup _pendingBadgeCanvasGroup;
         private TMP_Text _pendingBadgeText;
-        private Vector2 _pendingBadgeAnchoredRest;
-        private Coroutine _pendingBadgeIdleCo;
+        private AchievementChainDefinition[] _renderedCatalog;
+        private AchievementTab _renderedTab;
+        private bool _rowsBuilt;
         private BottomButtonAchievementBadgeConfig _openButtonBadgeConfig;
 
         private TabRewardBadgeRefs _tabBadgeObsession;
@@ -76,10 +82,21 @@ namespace Project.Achievements
         {
             AchievementProgressStorage.EnsureLoaded();
             ResolveRefsBestEffort();
+            if (ExpeditionTheme.Font != null) achievementUiFont = ExpeditionTheme.Font;
+            closeButton = ModalPanelCloseButton.EnsureTopRight(
+                closeButton,
+                sheetRect,
+                transform,
+                "AchievementsSheet/Header/CloseButton",
+                achievementUiFont,
+                Hide);
+            _expeditionLayout = ExpeditionUi.Ensure<ExpeditionAchievementsLayout>(gameObject);
+            _expeditionLayout.Build(sheetRect, tabObsession, tabSlaughter, tabDnn,
+                contentObsession, contentSlaughter, contentDnn, closeButton, achievementUiFont);
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, achievementUiFont);
             if (sheetRect != null)
             {
-                _sheetShownPos = sheetRect.anchoredPosition;
+                _sheetShownPos = Vector2.zero;
                 sheetRect.anchoredPosition = new Vector2(_sheetShownPos.x, hiddenAnchoredY);
             }
 
@@ -92,13 +109,6 @@ namespace Project.Achievements
 
             gameObject.SetActive(true);
 
-            closeButton = ModalPanelCloseButton.EnsureTopRight(
-                closeButton,
-                sheetRect,
-                transform,
-                "AchievementsSheet/Header/CloseButton",
-                achievementUiFont,
-                Hide);
             ModalPanelCloseButton.EnsureDimmerRaycast(dimmerButton);
             if (dimmerButton != null)
                 dimmerButton.onClick.AddListener(Hide);
@@ -115,8 +125,6 @@ namespace Project.Achievements
             TryBindOpenButton();
             EnsurePendingClaimBadge();
             RefreshClaimBadges();
-            StopPendingBadgeIdle();
-            _pendingBadgeIdleCo = StartCoroutine(PendingClaimBadgeIdleLoop());
             AchievementLifecycle.OnDataChanged += OnAchievementLifecycleChanged;
             _ = AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
         }
@@ -124,7 +132,6 @@ namespace Project.Achievements
         private void OnDisable()
         {
             AchievementLifecycle.OnDataChanged -= OnAchievementLifecycleChanged;
-            StopPendingBadgeIdle();
         }
 
         private void OnDestroy()
@@ -139,7 +146,7 @@ namespace Project.Achievements
 
         private void OnAchievementLifecycleChanged()
         {
-            RefreshGrid(_currentTab);
+            if (_visible) RefreshGrid(_currentTab);
             RefreshClaimBadges();
         }
 
@@ -249,6 +256,7 @@ namespace Project.Achievements
             ApplyToggleTabMuted(tabObsession, tab != AchievementTab.Obsession);
             ApplyToggleTabMuted(tabSlaughter, tab != AchievementTab.Slaughter);
             ApplyToggleTabMuted(tabDnn, tab != AchievementTab.Dnn);
+            _expeditionLayout?.SetActiveTab(tab);
         }
 
         private void ApplyToggleTabMuted(Toggle t, bool muted)
@@ -271,26 +279,35 @@ namespace Project.Achievements
             if (host == null || chainRowPrefab == null)
                 return;
 
-            foreach (var row in _spawnedRows)
+            var catalog = AchievementCatalog.Chains;
+            var rebuild = !_rowsBuilt || _renderedTab != tab || !ReferenceEquals(_renderedCatalog, catalog);
+            if (rebuild)
             {
-                if (row != null)
-                    Destroy(row.gameObject);
+                foreach (var row in _spawnedRows)
+                    if (row != null) { row.gameObject.SetActive(false); Destroy(row.gameObject); }
+                _spawnedRows.Clear();
+                foreach (var chain in catalog)
+                {
+                    if (chain == null || chain.Tab != tab) continue;
+                    var inst = Instantiate(chainRowPrefab, host);
+                    inst.SetExpeditionPresentation();
+                    inst.gameObject.SetActive(true);
+                    _spawnedRows.Add(inst);
+                }
+                _renderedCatalog = catalog;
+                _renderedTab = tab;
+                _rowsBuilt = true;
             }
-
-            _spawnedRows.Clear();
-
-            foreach (var chain in AchievementCatalog.Chains)
+            var rowIndex = 0;
+            foreach (var chain in catalog)
             {
-                if (chain.Tab != tab)
-                    continue;
-                var inst = Instantiate(chainRowPrefab, host);
-                inst.gameObject.SetActive(true);
+                if (chain == null || chain.Tab != tab) continue;
+                var inst = _spawnedRows[rowIndex++];
                 var icon = iconCatalog != null ? iconCatalog.GetDisplayIcon(chain.ChainId) : null;
                 inst.Bind(chain, OpenStepDetail, icon);
-                _spawnedRows.Add(inst);
+                _expeditionLayout?.StyleRow(inst, chain.TitleRu, chain, icon);
             }
-
-            AchievementsTmpMaterialRepair.RepairHierarchy(host, achievementUiFont);
+            if (rebuild) AchievementsTmpMaterialRepair.RepairHierarchy(host, achievementUiFont);
         }
 
         private void OpenStepDetail(string chainId, int stepIndex)
@@ -310,12 +327,18 @@ namespace Project.Achievements
                 onClaim = () => ClaimStepRoutineAsync(def.ChainId, stepIndex);
             }
 
-            _stepDetailModal.Show(def.TitleRu, def.Descriptions[stepIndex], reward, canClaim, claimed, onClaim);
+            var total = AchievementProgressStorage.GetStat(def.StatKey);
+            var requirement = def.Descriptions[stepIndex] + "\n\nСтупень " + (stepIndex + 1) + " из " + def.Thresholds.Length
+                + " · " + AchievementUiRules.StepProgress(def, stepIndex, total) + "/" + AchievementUiRules.StepTarget(def, stepIndex);
+            if (!claimed && !canClaim && total >= AchievementUiRules.CumulativeRequired(def, stepIndex))
+                requirement += "\nСначала получите награды предыдущих ступеней.";
+            _stepDetailModal.Show(def.TitleRu, requirement, reward, canClaim, claimed, onClaim);
         }
 
         private async void ClaimStepRoutineAsync(string chainId, int stepIndex)
         {
             await AchievementRewardClaim.TryClaimStepAsync(chainId, stepIndex, CancellationToken.None);
+            if (this == null) return;
             RefreshGrid(_currentTab);
             RefreshClaimBadges();
         }
@@ -364,7 +387,6 @@ namespace Project.Achievements
             _pendingBadgeRt.pivot = new Vector2(1f, 1f);
             _pendingBadgeRt.anchoredPosition = new Vector2(-10f, -8f);
             _pendingBadgeRt.sizeDelta = badgeSize;
-            _pendingBadgeAnchoredRest = _pendingBadgeRt.anchoredPosition;
             _pendingBadgeCanvasGroup.blocksRaycasts = false;
             _pendingBadgeCanvasGroup.interactable = false;
 
@@ -481,73 +503,6 @@ namespace Project.Achievements
                 alphaGroup.alpha = count > 0 ? 1f : 0f;
         }
 
-        private void StopPendingBadgeIdle()
-        {
-            if (_pendingBadgeIdleCo != null)
-            {
-                StopCoroutine(_pendingBadgeIdleCo);
-                _pendingBadgeIdleCo = null;
-            }
-
-            if (_pendingBadgeRt != null)
-            {
-                _pendingBadgeRt.anchoredPosition = _pendingBadgeAnchoredRest;
-                _pendingBadgeRt.localEulerAngles = Vector3.zero;
-            }
-        }
-
-        private IEnumerator PendingClaimBadgeIdleLoop()
-        {
-            while (isActiveAndEnabled)
-            {
-                TryBindOpenButton();
-                RefreshClaimBadges();
-                var n = AchievementUiPending.CountEligibleClaimSteps();
-                if (n <= 0)
-                {
-                    yield return new WaitForSecondsRealtime(1.85f);
-                    continue;
-                }
-
-                yield return new WaitForSecondsRealtime(5.2f);
-
-                if (_pendingBadgeRt == null || _pendingBadgeCanvasGroup == null
-                    || _pendingBadgeCanvasGroup.alpha < 0.01f
-                    || AchievementUiPending.CountEligibleClaimSteps() <= 0)
-                    continue;
-
-                yield return ShakeBadgeRoutine();
-            }
-        }
-
-        private IEnumerator ShakeBadgeRoutine()
-        {
-            var rt = _pendingBadgeRt;
-            if (rt == null)
-                yield break;
-
-            var rest = _pendingBadgeAnchoredRest;
-            const float dur = 0.52f;
-            var t = 0f;
-
-            while (t < dur)
-            {
-                t += Time.unscaledDeltaTime;
-                var k = t / dur;
-                var damping = Mathf.Lerp(1f, 0f, k);
-                var phase = k * Mathf.PI * 22f;
-                var bx = Mathf.Sin(phase) * 10f * damping;
-                var by = Mathf.Cos(phase * 0.93f + 1.1f) * 8f * damping;
-                rt.anchoredPosition = rest + new Vector2(bx, by);
-                rt.localEulerAngles =
-                    new Vector3(0f, 0f, Mathf.Sin(phase + 2.3f) * 9f * damping);
-                yield return null;
-            }
-
-            rt.anchoredPosition = rest;
-            rt.localEulerAngles = Vector3.zero;
-        }
-
         private static Transform FindDeepChild(Transform root, string name)
         {
             if (root == null) return null;
@@ -564,8 +519,7 @@ namespace Project.Achievements
 
         private void TogglePanel()
         {
-            var visible = rootCanvasGroup != null && rootCanvasGroup.alpha > 0.01f;
-            if (visible)
+            if (_visible)
                 Hide();
             else
                 Show();
@@ -573,10 +527,16 @@ namespace Project.Achievements
 
         private async void Show()
         {
+            if (!_shellAttached)
+            {
+                var host = GameObject.Find("ExpeditionAchievementsPageHost");
+                if (host != null) AttachToShell(host.transform as RectTransform);
+            }
+            if (_visible) return;
+            _visible = true;
+            _expeditionLayout?.RefreshGeometry();
+            if (sheetRect != null) _sheetShownPos = Vector2.zero;
             MainMenuHudLayering.BringPanelToFront(transform);
-            await AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
-            RefreshGrid(_currentTab);
-            RefreshClaimBadges();
             if (rootCanvasGroup != null)
             {
                 rootCanvasGroup.blocksRaycasts = true;
@@ -585,15 +545,38 @@ namespace Project.Achievements
 
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
+            if (sheetRect != null && (rootCanvasGroup == null || rootCanvasGroup.alpha <= .01f)) sheetRect.anchoredPosition = new Vector2(0, -12);
             _slideRoutine = StartCoroutine(AnimateSlide(show: true));
+            VisibilityChanged?.Invoke(true);
+            RefreshGrid(_currentTab);
+            RefreshClaimBadges();
+            await AchievementCatalogService.RefreshBeforePanelOpenAsync(CancellationToken.None);
+            if (this == null) return;
+            RefreshGrid(_currentTab);
+            RefreshClaimBadges();
+        }
+
+        public void Open() { Show(); }
+        public void Close() { Hide(); }
+        public void AttachToShell(RectTransform pageHost)
+        {
+            if (pageHost == null) return;
+            _shellAttached = true;
+            transform.SetParent(pageHost, false);
+            ExpeditionUi.SetRect(transform as RectTransform, 0, 0, 1, 1);
+            if (_expeditionLayout != null) _expeditionLayout.SetShellLayout(true);
         }
 
         private void Hide()
         {
             _stepDetailModal?.Hide();
+            if (!_visible) return;
+            _visible = false;
+            if (rootCanvasGroup != null) { rootCanvasGroup.blocksRaycasts = false; rootCanvasGroup.interactable = false; }
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
             _slideRoutine = StartCoroutine(AnimateSlide(show: false));
+            VisibilityChanged?.Invoke(false);
         }
 
         private IEnumerator AnimateSlide(bool show)
@@ -601,13 +584,14 @@ namespace Project.Achievements
             float fromA = rootCanvasGroup != null ? rootCanvasGroup.alpha : 0f;
             float toA = show ? 1f : 0f;
             Vector2 fromY = sheetRect != null ? sheetRect.anchoredPosition : Vector2.zero;
-            Vector2 toY = show ? _sheetShownPos : new Vector2(_sheetShownPos.x, hiddenAnchoredY);
+            Vector2 toY = show ? Vector2.zero : new Vector2(0, -12);
 
             float t = 0f;
-            while (t < slideDuration)
+            var pageDuration = Mathf.Clamp(slideDuration, .08f, .18f);
+            while (t < pageDuration)
             {
                 t += Time.unscaledDeltaTime;
-                var k = Mathf.Clamp01(t / slideDuration);
+                var k = Mathf.Clamp01(t / pageDuration);
                 var ease = k * k * (3f - 2f * k);
                 if (rootCanvasGroup != null)
                     rootCanvasGroup.alpha = Mathf.Lerp(fromA, toA, ease);

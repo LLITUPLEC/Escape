@@ -1,0 +1,61 @@
+{
+  "origin": "Exact successful Editor bridge replies extracted from qa-results.jsonl.",
+  "helper": "Project.Editor.ExpeditionIterationQa.Run(\"nickname-input\")",
+  "records": [
+    {
+      "id": "c6e67e534ec84171944c7c910feaadf7",
+      "ok": true,
+      "message": "Raycast tap NicknameButton",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    },
+    {
+      "id": "736e1c0f4406472195abc82b3cfc1bcc",
+      "ok": true,
+      "message": "Real input raycast, character insertion and Backspace passed; text restored, no save submitted",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    },
+    {
+      "id": "59f17f2cb5ec4cefaaf35ed82ecef820",
+      "ok": true,
+      "message": "Raycast tap Cancel",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    },
+    {
+      "id": "08d4a95bf5ab4aa884c37929c2f4e8fa",
+      "ok": true,
+      "message": "Raycast tap NicknameButton",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    },
+    {
+      "id": "1586775697a44fa4bae725433c9982e3",
+      "ok": true,
+      "message": "Real input raycast, character insertion and Backspace passed; text restored, no save submitted",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    },
+    {
+      "id": "933f0d166ae8436d8c080b14543ca5bd",
+      "ok": true,
+      "message": "Raycast tap Cancel",
+      "path": "",
+      "playing": true,
+      "compiling": false
+    }
+  ],
+  "tested_text": "QaProbe12",
+  "after_backspace": "QaProbe1",
+  "original_text_restored": true,
+  "save_submitted": false,
+  "reopen_passed": true,
+  "native_android_ime_tested": false,
+  "platform_note": "WindowsEditor TMP shouldHideSoftKeyboard has desktop-specific semantics. The corrected helper checks this property only on mobile platforms; no physical Android IME was exercised."
+}

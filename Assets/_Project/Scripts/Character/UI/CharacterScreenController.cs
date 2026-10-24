@@ -32,6 +32,10 @@ namespace Project.Character.UI
 
         private CancellationTokenSource _cts;
         private bool _visible;
+        private bool _shellAttached;
+        public bool IsVisible => _visible;
+        public event Action<bool> VisibilityChanged;
+        private int _openRequestVersion;
         private CharacterDragSlotHandle _selectedHandle;
 
         private GameObject _modalOverlay;
@@ -40,10 +44,6 @@ namespace Project.Character.UI
         private CharacterItemInfoModalView _infoModal;
         private int _modalOpenedFrame = -1000;
         private int _screenOpenedFrame = -1000;
-        private Canvas _parentCanvas;
-        private bool _prevOverrideSorting;
-        private int _prevSortingOrder;
-        private const int CharacterScreenSortingOrder = 32760;
         private Coroutine _hideOverlayRoutine;
         private CharacterGetRpcResponse _lastProfile;
         private GameObject _sellConfirmRoot;
@@ -63,10 +63,11 @@ namespace Project.Character.UI
             dragController.SlotClicked += HandleSlotClicked;
             dragController.ProfileUpdated += HandleProfileUpdated;
             AchievementLifecycle.OnCombatStatsUpdated += HandleCombatStatsUpdated;
-            _parentCanvas = GetComponentInParent<Canvas>(true);
 
-            _nicknameEditor = GetComponent<CharacterNicknameEditor>() ?? gameObject.AddComponent<CharacterNicknameEditor>();
+            _nicknameEditor = Project.UI.ExpeditionUi.Ensure<CharacterNicknameEditor>(gameObject);
             _nicknameEditor.EnsureWired();
+            if (view != null)
+                view.ApplyExpeditionLayout(levelText, closeButton, _nicknameEditor.NameLabel, _nicknameEditor.EditButton);
 
             _cts = new CancellationTokenSource();
             EnsureModalUi();
@@ -93,9 +94,7 @@ namespace Project.Character.UI
                     return;
                 }
 
-                var panelRect = view != null ? view.GetPanelRootRectTransform() : null;
-                var isInsidePanel = panelRect != null && RectTransformUtility.RectangleContainsScreenPoint(panelRect, pressPos, null);
-                if (!isInsidePanel) Close();
+                // The shared shell owns page navigation; tapping the HUD never dismisses this section.
             }
         }
 
@@ -121,11 +120,25 @@ namespace Project.Character.UI
 
         public void Open()
         {
+            if (!_shellAttached)
+            {
+                var host = GameObject.Find("ExpeditionCharacterPageHost");
+                if (host != null) AttachToShell(host.transform as RectTransform);
+            }
+            if (_visible) return;
             _ = OpenAsync();
+        }
+
+        public void AttachToShell(RectTransform pageHost)
+        {
+            if (pageHost == null || view == null) return;
+            _shellAttached = true;
+            view.AttachToShell(pageHost);
         }
 
         public void Close()
         {
+            _openRequestVersion++;
             if (_nicknameEditor != null) _nicknameEditor.CloseEditor();
             HideModals(true);
             SetVisible(false);
@@ -139,6 +152,7 @@ namespace Project.Character.UI
 
         private async Task OpenAsync()
         {
+            var requestVersion = ++_openRequestVersion;
             SetVisible(true);
             if (view != null) view.EnsureBuilt();
 
@@ -148,7 +162,7 @@ namespace Project.Character.UI
 
             await RunOnMainThreadAsync(() =>
             {
-                if (!_visible) return;
+                if (this == null || ct.IsCancellationRequested || !_visible || requestVersion != _openRequestVersion) return;
                 if (profile == null || !profile.ok)
                 {
                     var err = profile == null ? "null" : (string.IsNullOrEmpty(profile.err) ? "unknown" : profile.err);
@@ -173,19 +187,33 @@ namespace Project.Character.UI
                 }
             });
 
-            if (_nicknameEditor != null)
+            if (!ct.IsCancellationRequested && requestVersion == _openRequestVersion && _nicknameEditor != null)
                 await _nicknameEditor.RefreshAsync(ct).ConfigureAwait(false);
         }
 
         private void SetVisible(bool visible)
         {
+            var changed = _visible != visible;
             _visible = visible;
-            if (!visible) HideModals(true);
-            ConfigureCanvasSortingForScreen(visible);
+            if (!visible)
+            {
+                if (dragController != null) dragController.CancelActiveDrag();
+                HideModals(true);
+            }
             if (view != null) view.SetVisible(visible);
             else gameObject.SetActive(visible);
             if (visible) _screenOpenedFrame = Time.frameCount;
+            if (changed) VisibilityChanged?.Invoke(visible);
         }
+
+        private void CancelPointerGesture()
+        {
+            if (dragController != null) dragController.CancelActiveDrag();
+            if (view != null) view.CancelInventoryGesture();
+        }
+
+        private void OnApplicationFocus(bool focused) { if (!focused) CancelPointerGesture(); }
+        private void OnApplicationPause(bool paused) { if (paused) CancelPointerGesture(); }
 
         private void HandleSlotClicked(CharacterDragSlotHandle handle)
         {
@@ -333,6 +361,11 @@ namespace Project.Character.UI
                 if (_selectedHandle != null && _actionModal != null)
                     ShowActionModalNear(_selectedHandle.transform as RectTransform);
             });
+
+            Project.UI.ExpeditionMetaPanels.StylePopup(_sellConfirmRoot.transform);
+            var messageLayout = _sellConfirmText.GetComponent<LayoutElement>();
+            if (messageLayout != null) messageLayout.minHeight = messageLayout.preferredHeight = 110f;
+            Project.UI.ExpeditionUi.StyleButton(yes, true, 34);
 
             _sellConfirmRoot.SetActive(false);
         }
@@ -841,24 +874,6 @@ namespace Project.Character.UI
 #endif
             pointerPos = default;
             return false;
-        }
-
-        private void ConfigureCanvasSortingForScreen(bool visible)
-        {
-            if (_parentCanvas == null) _parentCanvas = GetComponentInParent<Canvas>(true);
-            if (_parentCanvas == null) return;
-
-            if (visible)
-            {
-                _prevOverrideSorting = _parentCanvas.overrideSorting;
-                _prevSortingOrder = _parentCanvas.sortingOrder;
-                _parentCanvas.overrideSorting = true;
-                _parentCanvas.sortingOrder = CharacterScreenSortingOrder;
-                return;
-            }
-
-            _parentCanvas.overrideSorting = _prevOverrideSorting;
-            _parentCanvas.sortingOrder = _prevSortingOrder;
         }
 
         private static Task RunOnMainThreadAsync(System.Action a)

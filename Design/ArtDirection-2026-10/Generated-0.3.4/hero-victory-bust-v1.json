@@ -1,0 +1,14 @@
+{
+  "source_dimensions": "1254x1254 RGBA",
+  "tool": "built-in image_gen",
+  "references": [
+    "Assets/_Project/Resources/Expedition/Art/hero.png",
+    "Design/ArtDirection-2026-10/B-expedition/12-match-states.png"
+  ],
+  "prompt_file": "hero-victory-bust-v1-prompt.txt",
+  "android_max_texture_size": 1024,
+  "transparency_preserved": true,
+  "purpose": "Waist-up victory pose matching the existing Expedition hero",
+  "saved": "Assets/_Project/Resources/Expedition/Art/hero-victory-bust-v1.png",
+  "android_format": "ETC2_RGBA8"
+}

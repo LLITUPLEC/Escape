@@ -1,0 +1,165 @@
+{
+  "direction": "B — Экспедиция в разлом",
+  "mode": "built-in image_gen",
+  "generated_on": "2026-10-22",
+  "purpose": "Production runtime art textures separated from live Unity interface",
+  "assets": [
+    {
+      "file": "hub-backdrop.png",
+      "ref": "01-hub.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity mobile game environment backdrop, portrait 9:16.\nInput image 1 is STYLE AND ENVIRONMENT reference only; REMOVE every interface element and all text and the character. Primary request: clean beautiful isometric cutaway shelter at the mouth of a deep mineral turquoise fissure. A working elevator entrance on the left, compact glowing forge and bench at upper right, small circular training/arena terminal on the middle right. Connected landings, one stair, cables, chunky steel railings, warm hanging lamps, painted rock masses. Central platform empty for live characters. Focus visually on middle 60%; surrounding teal fog opens depth. Broad readable masses; modest prop count. Style/medium: the same refined adult 2.5D sculpted hand-painted diorama as the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Color palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise.\nCRITICAL: this is a GAME ENVIRONMENT BACKDROP TEXTURE, not an interface screenshot. Do not render ANY UI, HUD, text, letters, digits, labels, buttons, icons, frame, border, cards, screen overlay, watermark, logo, currency, character, monster or hero. Natural lanterns and objects only. Quiet low-detail top 15% and bottom 25% so real Unity UI can cover them cleanly. Full bleed portrait 9:16.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-fcd94967-8628-4fc1-b23e-191b9c67b6f7.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/01-hub.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/hub-backdrop.png",
+      "transparent_background": false,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true
+      }
+    },
+    {
+      "file": "workshop-backdrop.png",
+      "ref": "05-workshop.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity mobile game environment backdrop, portrait 9:16.\nInput image 1 is STYLE AND ENVIRONMENT reference only; REMOVE every interface element and all text and every character. Primary request: atmospheric industrial mine workshop. Compact broad working furnace and chimney on left, one central anvil on a sturdy block, broad workbench on right, a few hanging tools and a small developing metal shoulder plate. Warm fire pools against calm dark mineral teal shadows. Empty clear centre workspace. Scene focus in upper middle 45%; lower 40% naturally dark stone floor and simple vague shadow so live crafting controls read well. No dense racks of tiny objects. Style/medium: the same refined adult 2.5D sculpted hand-painted diorama as the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Color palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise.\nCRITICAL: this is a GAME ENVIRONMENT BACKDROP TEXTURE, not an interface screenshot. Do not render ANY UI, HUD, text, letters, digits, labels, buttons, icons, frame, border, cards, screen overlay, watermark, logo, currency, character, monster or hero. Natural lanterns and objects only. Quiet low-detail top 15% and bottom 25% so real Unity UI can cover them cleanly. Full bleed portrait 9:16.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-db1a1769-e2df-4d06-b159-103ab2e554b8.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/05-workshop.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/workshop-backdrop.png",
+      "transparent_background": false,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true
+      }
+    },
+    {
+      "file": "arena-backdrop.png",
+      "ref": "08-arena.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity mobile game environment backdrop, portrait 9:16.\nInput image 1 is STYLE AND ENVIRONMENT reference only; REMOVE every interface element and all text and all hero characters and diagrams. Primary request: one coherent underground industrial duelling arena, not a collage. Empty broad circular raised steel and stone combat platform in the central middle, framed by dark steel railings and warm lanterns. A few distant anonymous indistinct spectator silhouettes only in far upper background bleachers, as small low-detail environmental shapes, no featured figures. Teal rift falls away behind, a short entrance walkway at one side. Arena feels built inside a mine, simple substantial geometry and depth. Quiet dark upper and lower thirds reserved for live Unity UI. Style/medium: the same refined adult 2.5D sculpted hand-painted diorama as the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Color palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise.\nCRITICAL: this is a GAME ENVIRONMENT BACKDROP TEXTURE, not an interface screenshot. Do not render ANY UI, HUD, text, letters, digits, labels, buttons, icons, frame, border, cards, screen overlay, watermark, logo, currency, character, monster or hero. Natural lanterns and objects only. Quiet low-detail top 15% and bottom 25% so real Unity UI can cover them cleanly. Full bleed portrait 9:16.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-3d2b5689-8f6a-4e39-be1e-8ede402e966d.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/08-arena.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/arena-backdrop.png",
+      "transparent_background": false,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true
+      }
+    },
+    {
+      "file": "mine-backdrop.png",
+      "ref": "03-mine-3d.png",
+      "prompt": "Use case: stylized-concept\nStyle/medium: refined adult 2.5D sculpted hand-painted diorama matching the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise. NO interface, HUD, icons, text, letters, numbers, labels, frames, border, cards, diagram, screen overlay, logo or watermark.\nAsset type: production Unity mobile mine ROUTE backdrop, full bleed portrait 9:16.\nInput image 1 is environment STYLE reference only, remove ALL text, UI, labels, characters, monsters, numbers and overlay. A deep vertical cutaway mine shaft in subtly isometric 2.5D view, painted rock walls at left and right, a vertical lift rail, 4 substantial modular empty steel landings at different depths. The middle area of each landing is shadowed and simple; teal fog separates levels. A few tiny warm lamps integrated into walls. Do not depict any boss, creature or hero. Make it a quiet subdued backdrop for live interactive floor cards: overall contrast modest, center 60% mostly misty teal/dark shadow, form strongest at edges. Top 15% and bottom 25% especially low detail for UI. NOT a game screenshot; environmental art only.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-23ac4bce-b4b6-4498-b4db-f4ee701cff20.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/03-mine-3d.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/mine-backdrop.png",
+      "transparent_background": false,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true
+      }
+    },
+    {
+      "file": "character-backdrop.png",
+      "ref": "06-character.png",
+      "prompt": "Use case: stylized-concept\nStyle/medium: refined adult 2.5D sculpted hand-painted diorama matching the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise. NO interface, HUD, icons, text, letters, numbers, labels, frames, border, cards, diagram, screen overlay, logo or watermark.\nAsset type: production Unity mobile character inspection backdrop, full bleed portrait 9:16.\nInput image 1 is environment STYLE reference only. Remove ALL UI, every icon, equipment frame, text, hero and props from foreground. Empty calm industrial inspection alcove carved into the mine, broad dark stone and painted steel architecture at edges, softly lit simple circular stone and steel platform at middle-lower center around 65% from top, just enough space for a single full-body character later. The center is very simple subdued petrol mist and plain shadowed rock, calm top and bottom. Sparse soft warm lantern rim lights on far sides, deep mineral teal behind. No character, monster, equipment or floating objects. No ornate framing, no gear pictograms, no pedestal inscriptions. This is only a beautiful understated game environment into which actual Unity UI and a separate hero sprite will be inserted.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-84901e35-009d-4f98-a333-33f548bf801d.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/06-character.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/character-backdrop.png",
+      "transparent_background": false,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true
+      }
+    },
+    {
+      "file": "hero.png",
+      "ref": "06-character.png",
+      "prompt": "Use case: stylized-concept\nStyle/medium: refined adult 2.5D sculpted hand-painted diorama matching the reference, large chunky bevelled forms, economical surface detail, matte materials, industrial mining refuge rather than medieval fantasy. Palette: petrol shadows #142E36, mineral teal #285A60, sand/ivory #D8C5A2, warm amber #EDAA53, sparse muted coral #D56B51. No childlike proportions, no neon, no photoreal texture noise. NO interface, HUD, icons, text, letters, numbers, labels, frames, border, cards, diagram, screen overlay, logo or watermark.\nAsset type: production Unity character sprite, genuine TRANSPARENT background RGBA cutout.\nInput image 1 is CHARACTER DESIGN and style reference only. Reproduce the same adult masked hooded miner as one isolated full-body character, three-quarter front view facing slightly to camera-right, neutral ready standing stance, head and boots completely in frame with generous alpha padding. Brown sand hood and practical working coat, black twin-filter respirator and amber goggles, a small warm circular chest lamp, worn matte metal shoulder guards and knees, rugged trousers, heavy boots, gloves, compact backpack. Believable adult proportions and chunky readable silhouette, no chibi. Empty gloved hands hanging naturally; no weapon held, no pickaxe or gun, no extra items. Exact entire figure visible, detailed but broad forms readable on phone. Real transparency surrounding every edge, no floor, pedestal, scene, background, gradient, shadow plane, badges or equipment frames.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-810df050-4664-479b-911f-cf0bf87083cb.png",
+      "original_source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-7cb4cfc2-8044-4f54-ae54-c35284f754f0.png",
+      "refinements": [
+        {
+          "mode": "built-in image_gen",
+          "prompt": "Use case: background-extraction\nAsset type: production Unity game character sprite, genuine transparent PNG cutout.\nInput image 1 is an EDIT TARGET. Keep this EXACT miner character, full body, identity, every clothing piece, hand position, pose, rendering style and colors unchanged. Change ONLY the background/alpha: remove the entire atmospheric brown halo/glow/gradient surrounding the figure and all residual floor/shadow. Make every pixel outside the character silhouette fully transparent, including spaces between arms and body and between legs. Keep only the warm light ON the character from the chest lamp; do not keep any surrounding glow outside the silhouette. Preserve natural antialiased opaque edges. Do not add a background, checkerboard, pedestal, floor, shadow plane, text, frame or objects. Entire character head and boot soles must remain completely visible. True clean isolated character asset with transparent alpha.",
+          "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-810df050-4664-479b-911f-cf0bf87083cb.png",
+          "edit_target": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-7cb4cfc2-8044-4f54-ae54-c35284f754f0.png"
+        }
+      ],
+      "reference": "Design/ArtDirection-2026-10/B-expedition/06-character.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/hero.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true,
+        "complete_character": true
+      }
+    },
+    {
+      "file": "monster.png",
+      "ref": "10-battle.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity monster sprite, genuine TRANSPARENT RGBA cutout.\nInput image 1 is creature design and style reference ONLY. Extract/recreate just the stone guardian creature seen at the upper right of reference as a single isolated full-body character, from head to entire feet, with generous transparent padding. The large mineral guardian has a broad hunched silhouette, massive rounded boulder shoulders and fists, a heavy roughly humanoid rocky body, short strong legs, layered dark charcoal and slate stone facets with a few subtle amber molten cracks and warmly glowing eyes. Neutral combative stance, slightly facing camera-left in a three-quarter front view, fists held naturally down/forward. Adult sophisticated stylized sculpted chunky matte forms with broad readable shapes, no tiny texture noise, mining industrial game art, petrol teal shadow and warm amber glow. Do not exaggerate to neon. Keep full head and every foot/hand inside canvas. Constraints: NO scenery, NO floor, NO pedestal, NO background, NO gradient, NO large shadow plane, NO smoke surrounding creature, NO interface, HUD, text, icons, letters, digits, labels, frame, borders, cards, watermark, other characters, weapons or hero. Genuine transparent background alpha surrounding only the creature, no fake checkerboard. Make an optimized readable single game character asset, not a screenshot.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-5ee296c1-5e8f-489a-9763-df3a04cd83a4.png",
+      "reference": "Design/ArtDirection-2026-10/B-expedition/10-battle.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/monster.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_ui": true,
+        "complete_character": true
+      }
+    },
+    {
+      "file": "ui-plate.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/ui-plate.png",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-e6782986-b950-4b66-8371-7a75f436ebfe.png",
+      "mode": "built-in image_gen",
+      "generated_on": "2026-10-23",
+      "transparent_background": true,
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity nine-slice UI PANEL SPRITE texture, one single rectangular front surface, landscape aspect ratio 3:1.\nPrimary request: generate ONE front-on perfectly orthographic rectangular industrial metal UI plate with small clipped/bevelled corners, consistent with an adult stylized hand-painted 2.5D mining game. The plate fills nearly the entire canvas edge to edge, with only a few transparent pixels at the outer perimeter and small cut corner triangles. Flat straight horizontal/vertical edges, parallel opposite edges, NO perspective. The four corners are clipped by a tiny 45-degree diagonal, at most 32 pixel design depth; nine-slice compatible. Central 85 percent of the plate must be quiet, smooth, near-uniform light gray-white so live text remains readable.\nCRITICAL COLORS: GRAYSCALE ONLY, neutral tintable metal texture. Interior RGB approximately 235, rim gray RGB approximately 170 to 230. Do not render a dark or colored plate: Unity will tint it petrol, amber, or teal. Restrained slightly darker broad bevelled rim, soft top-left light gives a tangible subtly sculpted matte surface, a few extremely subtle sparse handpainted metal strokes only, no distracting speckles or dense scratches. Matte practical chunky industrial geometry, sophisticated and calm, no ornate fantasy.\nTransparency: true transparent alpha ONLY outside the panel silhouette and outside the clipped corners; the plate interior is opaque. No outer glow, shadow outside, drop shadow plane, background, fake checkerboard, scene, table, phone, artboard or additional panels.\nAvoid: any text, symbols, icons, digits, numbers, logos, branding, watermarks, screws, rivets, bolts, lights, colored pixels, ornamental decoration, inset subpanels, extra objects. Exactly one blank grayscale surface. Landscape 3:1.",
+      "initial_source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-ba71d297-781e-406b-a6b5-ffc4c771d5c8.png",
+      "refinements": [
+        {
+          "prompt": "Use case: precise-object-edit\nAsset type: one production Unity 9-slice UI panel sprite.\nInput image 1 is EDIT TARGET. Keep the neutral grayscale stylized matte industrial metal surface, but correct its bounds and edges for 9-slicing.\nCRITICAL: the panel's straight top edge must be at canvas Y=0 and its straight bottom edge at canvas Y=height-1. Its left edge must be at X=0 and right edge at X=width-1. NO transparent horizontal or vertical margin/padding outside the rectangle. The surface bleeds to all four canvas edges. Transparency ONLY in four tiny 45-degree clipped-corner triangular cutouts (corner depth max 24 px). Do not put transparency or speckles anywhere else.\nKeep landscape3:1 aspect ratio. Rim only 20–30px thick, slightly darker neutral gray170–220. Make central smooth 90% very light neutral gray RGB235, nearly uniform, extremely restrained paint texture; no noise. All edges perfectly horizontal/vertical, no perspective. The image must be directly usable with a 48pixel Unity sprite border. Nothing outside panel except the four small transparent triangles. No text, icons, symbols, bolts, hardware, numbers, labels, colored pixels, frames around canvas, drop shadow, scene or fake checkerboard. True alpha in corner cutouts only.",
+          "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-e6782986-b950-4b66-8371-7a75f436ebfe.png",
+          "edit_target": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-ba71d297-781e-406b-a6b5-ffc4c771d5c8.png"
+        }
+      ],
+      "visual_qa": {
+        "inspected": true,
+        "width": 2172,
+        "height": 724,
+        "no_text_or_icons": true,
+        "neutral_grayscale_center": true,
+        "alpha_corner": 0,
+        "alpha_center": 252,
+        "center_rgb": [
+          217,
+          217,
+          217
+        ],
+        "nine_slice": true,
+        "bounds": "Straight edges touch canvas bounds, alpha only outside clipped corners.",
+        "recommended_sprite_border": "48–64 pixels; 64 fully protects the clipped corners at 2172 px source width."
+      }
+    }
+  ],
+  "qa": {
+    "backdrop_dimensions": {
+      "width": 941,
+      "height": 1672
+    },
+    "hero_dimensions": {
+      "width": 1024,
+      "height": 1536
+    },
+    "monster_dimensions": {
+      "width": 1377,
+      "height": 1142
+    },
+    "alpha_verified": "Character PNGs have real alpha (minimum 0; maximum 254). RGB in fully transparent pixels can contain a soft halo, but alpha=0 there.",
+    "existing_ability_icons_and_match_pieces_unchanged": true
+  },
+  "usage": {
+    "backdrops": "Use as full-bleed 2D background; overlay real Unity UI and runtime characters. No mockup text is baked into the images.",
+    "characters": "Use RGBA with alpha blending. Do not use opaque material."
+  },
+  "third_party_credits_used": false
+}

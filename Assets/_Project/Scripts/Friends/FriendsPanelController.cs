@@ -66,6 +66,10 @@ namespace Project.Friends
         private bool _onlineRefreshInFlight;
         private CancellationTokenSource _friendsCts;
         private CancellationTokenSource _onlineCts;
+        private bool _visible;
+        private bool _shellAttached;
+        public bool IsVisible => _visible;
+        public event Action<bool> VisibilityChanged;
         private readonly List<FriendsPlayerRowView> _friendRows = new List<FriendsPlayerRowView>();
         private readonly List<FriendsPlayerRowView> _onlineRows = new List<FriendsPlayerRowView>();
         private FriendListEntry _actionTarget;
@@ -101,12 +105,13 @@ namespace Project.Friends
             if (_sheetRect == null)
                 BuildUi();
 
-            uiFont = AchievementUiFontLoader.Resolve(uiFont);
+            uiFont = ExpeditionTheme.Font;
+            if (uiFont == null) uiFont = AchievementUiFontLoader.Resolve(uiFont);
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, uiFont);
 
             if (_sheetRect != null)
             {
-                _sheetShownPos = _sheetRect.anchoredPosition;
+                _sheetShownPos = Vector2.zero;
                 _sheetRect.anchoredPosition = new Vector2(_sheetShownPos.x, hiddenAnchoredY);
             }
 
@@ -133,6 +138,8 @@ namespace Project.Friends
                 _dimmerButton.onClick.AddListener(Hide);
             }
 
+            ExpeditionMetaPanels.ApplyFriends(transform);
+
             WireTabs();
             WireToolbar();
             TryBindOpenButton();
@@ -143,6 +150,7 @@ namespace Project.Friends
 
         private void OnEnable()
         {
+            ExpeditionMetaPanels.ApplyFriends(transform);
             TryBindOpenButton();
             EnsurePendingInviteBadge();
             StopPendingBadgeIdle();
@@ -153,6 +161,8 @@ namespace Project.Friends
         {
             StopPendingBadgeIdle();
             _incomingBadgeCts?.Cancel();
+            _friendsCts?.Cancel();
+            _onlineCts?.Cancel();
         }
 
         private void OnDestroy()
@@ -717,6 +727,7 @@ namespace Project.Friends
         {
             ApplyToggleTabMuted(_tabFriends, _currentTab != FriendsTab.Friends);
             ApplyToggleTabMuted(_tabOnline, _currentTab != FriendsTab.Online);
+            ExpeditionMetaPanels.UpdateTabs(transform);
         }
 
         private void ApplyToggleTabMuted(Toggle t, bool muted)
@@ -753,13 +764,20 @@ namespace Project.Friends
 
         private void TogglePanel()
         {
-            var visible = _rootCanvasGroup != null && _rootCanvasGroup.alpha > 0.01f;
-            if (visible) Hide();
+            if (_visible) Hide();
             else Show();
         }
 
         private void Show()
         {
+            if (!_shellAttached)
+            {
+                var host = GameObject.Find("ExpeditionFriendsPageHost");
+                if (host != null) AttachToShell(host.transform as RectTransform);
+            }
+            if (_visible) return;
+            _visible = true;
+            ExpeditionMetaPanels.ApplyFriends(transform);
             HideAddFriendOverlay();
             HideActionPopup();
             HideRemoveConfirm();
@@ -772,10 +790,21 @@ namespace Project.Friends
 
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
+            if (_sheetRect != null && (_rootCanvasGroup == null || _rootCanvasGroup.alpha <= .01f)) _sheetRect.anchoredPosition = new Vector2(0, -12);
             _slideRoutine = StartCoroutine(AnimateSlide(show: true));
+            VisibilityChanged?.Invoke(true);
 
             if (_currentTab == FriendsTab.Friends)
                 _ = RefreshFriendsAsync();
+        }
+
+        public void Open() { Show(); }
+        public void Close() { Hide(); }
+        public void AttachToShell(RectTransform pageHost)
+        {
+            if (pageHost == null) return;
+            _shellAttached = true;
+            ExpeditionMetaPanels.AttachPage(transform, pageHost);
         }
 
         private void Hide()
@@ -785,9 +814,13 @@ namespace Project.Friends
             HideRemoveConfirm();
             _friendsCts?.Cancel();
             _onlineCts?.Cancel();
+            if (!_visible) return;
+            _visible = false;
+            if (_rootCanvasGroup != null) { _rootCanvasGroup.blocksRaycasts = false; _rootCanvasGroup.interactable = false; }
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
             _slideRoutine = StartCoroutine(AnimateSlide(show: false));
+            VisibilityChanged?.Invoke(false);
         }
 
         private IEnumerator AnimateSlide(bool show)
@@ -795,13 +828,14 @@ namespace Project.Friends
             float fromA = _rootCanvasGroup != null ? _rootCanvasGroup.alpha : 0f;
             float toA = show ? 1f : 0f;
             Vector2 fromY = _sheetRect != null ? _sheetRect.anchoredPosition : Vector2.zero;
-            Vector2 toY = show ? _sheetShownPos : new Vector2(_sheetShownPos.x, hiddenAnchoredY);
+            Vector2 toY = show ? Vector2.zero : new Vector2(0, -12);
 
             float t = 0f;
-            while (t < slideDuration)
+            var pageDuration = Mathf.Clamp(slideDuration, .08f, .18f);
+            while (t < pageDuration)
             {
                 t += Time.unscaledDeltaTime;
-                var k = Mathf.Clamp01(t / slideDuration);
+                var k = Mathf.Clamp01(t / pageDuration);
                 var ease = k * k * (3f - 2f * k);
                 if (_rootCanvasGroup != null)
                     _rootCanvasGroup.alpha = Mathf.Lerp(fromA, toA, ease);
@@ -824,15 +858,17 @@ namespace Project.Friends
 
         private async System.Threading.Tasks.Task RefreshFriendsAsync()
         {
-            if (_friendsRefreshInFlight)
+            if (_friendsRefreshInFlight && _friendsCts != null && !_friendsCts.IsCancellationRequested)
                 return;
             _friendsRefreshInFlight = true;
             _friendsCts?.Cancel();
             _friendsCts?.Dispose();
             _friendsCts = new CancellationTokenSource();
+            var request = _friendsCts;
             var ct = _friendsCts.Token;
 
             SetFriendsStatus("Загрузка...");
+            ExpeditionMetaPanels.SetFriendsEmpty(transform, false, false);
 
             try
             {
@@ -852,7 +888,8 @@ namespace Project.Friends
                     }
 
                     ApplyFriends(result.Friends);
-                    SetFriendsStatus(result.Friends.Length == 0 ? "Нет друзей" : string.Empty);
+                    SetFriendsStatus(string.Empty);
+                    ExpeditionMetaPanels.SetFriendsEmpty(transform, false, result.Friends.Length == 0);
                     ApplyIncomingInviteBadge(CountIncomingInList(result.Friends));
                 });
             }
@@ -862,21 +899,23 @@ namespace Project.Friends
             }
             finally
             {
-                _friendsRefreshInFlight = false;
+                if (ReferenceEquals(_friendsCts, request)) _friendsRefreshInFlight = false;
             }
         }
 
         private async System.Threading.Tasks.Task RefreshOnlineAsync()
         {
-            if (_onlineRefreshInFlight)
+            if (_onlineRefreshInFlight && _onlineCts != null && !_onlineCts.IsCancellationRequested)
                 return;
             _onlineRefreshInFlight = true;
             _onlineCts?.Cancel();
             _onlineCts?.Dispose();
             _onlineCts = new CancellationTokenSource();
+            var request = _onlineCts;
             var ct = _onlineCts.Token;
 
             SetOnlineStatus("Загрузка...");
+            ExpeditionMetaPanels.SetFriendsEmpty(transform, true, false);
 
             try
             {
@@ -898,7 +937,8 @@ namespace Project.Friends
                     }
 
                     ApplyOnline(result.Players);
-                    SetOnlineStatus(result.Players.Length == 0 ? "Никого нет онлайн" : string.Empty);
+                    SetOnlineStatus(string.Empty);
+                    ExpeditionMetaPanels.SetFriendsEmpty(transform, true, result.Players.Length == 0);
                     if (_onlineFooterText != null)
                         _onlineFooterText.text = $"Всего {result.Total}, показано {result.Shown}";
                 });
@@ -909,7 +949,7 @@ namespace Project.Friends
             }
             finally
             {
-                _onlineRefreshInFlight = false;
+                if (ReferenceEquals(_onlineCts, request)) _onlineRefreshInFlight = false;
             }
         }
 
@@ -924,6 +964,7 @@ namespace Project.Friends
                 if (entry == null) continue;
                 var row = FriendsPlayerRowView.Create(_friendsContent, uiFont, showFriendControls: true);
                 row.BindFriend(entry, OnRemoveFriendClicked, OnAcceptFriendClicked, OnActionFriendClicked);
+                ExpeditionMetaPanels.ApplyFriendRow(row);
                 _friendRows.Add(row);
             }
 
@@ -943,6 +984,7 @@ namespace Project.Friends
                 if (entry == null) continue;
                 var row = FriendsPlayerRowView.Create(_onlineContent, uiFont, showFriendControls: false);
                 row.BindOnline(entry);
+                ExpeditionMetaPanels.ApplyFriendRow(row);
                 _onlineRows.Add(row);
             }
 

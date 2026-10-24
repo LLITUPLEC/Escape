@@ -97,6 +97,7 @@ namespace Project.UI
                 onOk.Invoke();
                 Destroy(root);
             });
+            ExpeditionSystemDialogs.ApplySession(root, panelRt, txt, btn);
         }
 
         private static void EnsureEventSystem()

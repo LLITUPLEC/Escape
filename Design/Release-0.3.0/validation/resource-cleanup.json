@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-23",
+  "heavy_legacy_font_excluded": true,
+  "legacy_atlas_dimensions": [
+    4096,
+    4096
+  ],
+  "legacy_atlas_uncompressed_bytes": 16777216,
+  "removed_generated_resources": [
+    {
+      "reason": "Replaced by production PT Serif SDF",
+      "path": "Assets/_Project/Resources/Expedition/ExpeditionSans.asset"
+    },
+    {
+      "reason": "Replaced by production painted metal frame",
+      "path": "Assets/_Project/Resources/Expedition/Art/ui-plate.png"
+    },
+    {
+      "reason": "Replaced by corrected primary-button-v2",
+      "path": "Assets/_Project/Resources/Expedition/UI/primary-button.png"
+    },
+    {
+      "reason": "Unused generated duplicate; no serialized or code references",
+      "path": "Assets/_Project/Resources/Expedition/Art/monster.png"
+    }
+  ],
+  "original_tracked_raster_files": 186,
+  "modified_original_raster_files": [],
+  "mine_scene_3d_in_enabled_build_scenes": false,
+  "design_reference_images_outside_build_assets": true
+}

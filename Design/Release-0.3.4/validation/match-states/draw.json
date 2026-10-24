@@ -1,0 +1,26 @@
+{
+    "state": "passed",
+    "fixture": "draw",
+    "error": "",
+    "screenshot": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\screenshots\\match-state-draw.png",
+    "frame": 5262,
+    "cancelCallbacks": 3,
+    "backCallbacks": 3,
+    "completed": true,
+    "passed": true,
+    "rpcOrAccountActions": false,
+    "checks": [
+        "state uses a real root overlay canvas above battle and shell",
+        "content has safe-area container",
+        "actual full-screen environment sprite present",
+        "victory/defeat/draw heading follows actual Show parameters",
+        "outcome heading fits its frame",
+        "refund notice follows real context only",
+        "actual reward rows are in a scrollable viewport",
+        "true reward value fits its padded cell: +200",
+        "true reward value fits its padded cell: +2",
+        "fixture continue has no external persistent callbacks",
+        "repeated theme application retains exactly one continue callback",
+        "primary action remains inside physical safe area"
+    ]
+}

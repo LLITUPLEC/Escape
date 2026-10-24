@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "version": "0.3.5",
+  "sha256": "eeeee9b46779fb2b46357f3a1c7ed2f61f8d23e6c6959c232fc54ed7c15da189",
+  "checked_by": "sha256sum on complete server immutable APK; matches local signed/validated build",
+  "proxy_config_unchanged": true,
+  "server_runtime_changed": false
+}

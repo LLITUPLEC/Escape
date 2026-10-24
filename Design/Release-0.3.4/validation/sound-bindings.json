@@ -1,0 +1,9 @@
+{
+  "real_manager_serialized_clip_binding_probe": "passed",
+  "meta_sha256": "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c",
+  "wav_sha256": "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341",
+  "fury_clip": "Assets/_Project/Audio/SFX/Bloodlust_cast.ogg",
+  "result": "passed",
+  "shield_clip": "Assets/_Project/Audio/SFX/Heroism_Cast.ogg",
+  "critical_sound_unchanged": true
+}

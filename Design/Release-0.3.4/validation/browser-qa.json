@@ -1,0 +1,17 @@
+{
+  "result": "passed",
+  "physical_device_tested": false,
+  "checked_at_utc": "2026-10-24T09:29:52.8102215Z",
+  "checks": {
+    "version_and_size": "0.3.4 · 97.1 MiB",
+    "screenshot": "public-release-browser.png",
+    "changelog_heading_and_content": "passed",
+    "both_download_links": "Escape-0.3.4-45ee39a11284.apk",
+    "fresh_game_screenshots_in_bundle": "published"
+  },
+  "scope": "Browser visual check of published changelog and AX links; CSS unchanged; no new responsive or physical-device test",
+  "viewport_width": 1265,
+  "viewport_height": 712,
+  "url": "https://prokrust-play.ru/escape/#release",
+  "version": "0.3.4"
+}

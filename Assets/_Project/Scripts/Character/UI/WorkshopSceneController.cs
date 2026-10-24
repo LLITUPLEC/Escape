@@ -56,6 +56,10 @@ namespace Project.Character.UI
         private Button _rushButton;
         private RectTransform _buttonsRoot;
         private readonly List<GameObject> _recipeRows = new();
+        private ExpeditionWorkshopLayout _expeditionLayout;
+        private int _lastTimerSecond = -1;
+        private int _lastSelectedDetailState = -1;
+        private bool _craftRequestInFlight;
 
         private const float WorkshopSlotSquareSize = 200f;
         private const float WorkshopColumnWidth = 220f;
@@ -81,8 +85,12 @@ namespace Project.Character.UI
         {
             Project.Nakama.NakamaBootstrap.EnsureExists();
             ResolveRefs();
+            // The expedition workshop uses eight production queues, rather than a second equipment silhouette.
+            applyDefaultWorkshopAnchors = false;
+            applyEquipmentStyleCraftLayout = false;
             BuildExtraUiIfNeeded();
             WireCraftSlots();
+            _expeditionLayout = ExpeditionWorkshopLayout.Install(workshopBackground, craftSlotsRoot, OnClaimReadyClicked);
         }
 
 
@@ -96,6 +104,9 @@ namespace Project.Character.UI
         private void Update()
         {
             if (_profile == null || !_profile.ok) return;
+            var now = NowUnix();
+            if (_lastTimerSecond == now) return;
+            _lastTimerSecond = now;
             UpdateSlotTimersAndIcons();
         }
 
@@ -552,11 +563,23 @@ namespace Project.Character.UI
         private async Task RefreshAsync()
         {
             _cts?.Cancel();
+            _cts?.Dispose();
             _cts = new CancellationTokenSource();
             var ct = _cts.Token;
-            var resp = await CharacterProfileService.GetAsync(ct).ConfigureAwait(true);
-            _profile = resp;
-            ApplyProfile(resp);
+            try
+            {
+                var resp = await CharacterProfileService.GetAsync(ct).ConfigureAwait(true);
+                if (this == null || ct.IsCancellationRequested) return;
+                _profile = resp;
+                ApplyProfile(resp);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e)
+            {
+                if (this == null || ct.IsCancellationRequested) return;
+                if (hintText != null) hintText.text = "Не удалось загрузить мастерскую. Проверьте соединение.";
+                Debug.LogWarning("[Workshop] Profile refresh failed: " + e.Message);
+            }
         }
 
         private void ApplyProfile(CharacterGetRpcResponse resp)
@@ -569,13 +592,19 @@ namespace Project.Character.UI
                 var p = resp.progression;
                 if (hintText != null && p != null)
                 {
-                    hintText.text =
-                        $"Руда: {p.ore}   Золото: {p.gold}   Слитки: зел. {CountDef(resp, "ingot_green")}, син. {CountDef(resp, "ingot_blue")}, фиол. {CountDef(resp, "ingot_purple")}, тесс. {CountDef(resp, "tesseract")}\n" +
-                        "Крафт по таймеру; готовое — «Забрать в сундук».";
+                    hintText.text = _expeditionLayout != null
+                        ? "Выберите очередь и рецепт. Готовое снаряжение отправится в сундук."
+                        : $"Руда: {p.ore}   Золото: {p.gold}   Слитки: зел. {CountDef(resp, "ingot_green")}, син. {CountDef(resp, "ingot_blue")}, фиол. {CountDef(resp, "ingot_purple")}, тесс. {CountDef(resp, "tesseract")}\n" +
+                          "Крафт по таймеру; готовое — «Забрать в сундук».";
                 }
             }
 
             UpdateSlotTimersAndIcons();
+            if (_selectedSlot < 0 && resp != null && resp.ok)
+            {
+                _selectedSlot = 0;
+                if (_recipeHeader != null) _recipeHeader.text = "Рецепты / " + SlotRu[0];
+            }
             if (_selectedSlot >= 0) RebuildRecipeList();
             UpdateDetailPanel();
             UpdateSlotSelectionVisual();
@@ -587,12 +616,27 @@ namespace Project.Character.UI
             _selectedSlot = slotIndex;
             _selectedOutputDefId = null;
             if (_recipeHeader != null)
-                _recipeHeader.text = "Слот: " + SlotRu[slotIndex];
+                _recipeHeader.text = (_expeditionLayout != null ? "Рецепты / " : "Слот: ") + SlotRu[slotIndex];
             RebuildRecipeList();
             UpdateDetailPanel();
             UpdateSlotSelectionVisual();
             UpdateItemStatsVisibility();
             UpdateButtonsRootVisibility();
+            if (_expeditionLayout != null && WorkshopState(slotIndex) == WorkshopSlotState.Empty)
+                _expeditionLayout.OpenRecipes();
+        }
+
+        private void OnClaimReadyClicked()
+        {
+            if (_craftRequestInFlight || _profile == null || !_profile.ok) return;
+            // An explicit click claims one ready production queue through the same guarded action.
+            for (var i = 0; i < 8; i++)
+            {
+                if (WorkshopState(i) != WorkshopSlotState.Ready) continue;
+                OnSlotClicked(i);
+                _ = OnClaimClicked();
+                return;
+            }
         }
 
         private enum WorkshopSlotState { Empty, Busy, Ready }
@@ -608,57 +652,69 @@ namespace Project.Character.UI
 
         private async Task OnCreateClicked()
         {
-            if (_profile == null || !_profile.ok || _selectedSlot < 0 || string.IsNullOrEmpty(_selectedOutputDefId))
+            if (_craftRequestInFlight || _profile == null || !_profile.ok || _selectedSlot < 0 || string.IsNullOrEmpty(_selectedOutputDefId))
                 return;
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
-            var resp = await CharacterProfileService.WorkshopCraftStartAsync(_selectedSlot, _selectedOutputDefId, ct).ConfigureAwait(true);
-            if (!resp.ok)
-            {
-                if (hintText != null) hintText.text = "Ошибка: " + ErrToRu(resp.err);
-                return;
-            }
-            _profile = resp;
-            ApplyProfile(resp);
+            var slot = _selectedSlot;
+            var output = _selectedOutputDefId;
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftStartAsync(slot, output, ct));
         }
 
         private async Task OnClaimClicked()
         {
-            if (_profile == null || !_profile.ok || _selectedSlot < 0) return;
+            if (_craftRequestInFlight || _profile == null || !_profile.ok || _selectedSlot < 0) return;
             await ClaimAtSlot(_selectedSlot);
         }
 
         private async Task OnRushClicked()
         {
-            if (_profile == null || !_profile.ok || _selectedSlot < 0) return;
+            if (_craftRequestInFlight || _profile == null || !_profile.ok || _selectedSlot < 0) return;
             if (WorkshopState(_selectedSlot) != WorkshopSlotState.Busy) return;
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
-            var resp = await CharacterProfileService.WorkshopCraftRushAsync(_selectedSlot, ct).ConfigureAwait(true);
-            if (!resp.ok)
-            {
-                if (hintText != null) hintText.text = "Ошибка: " + ErrToRu(resp.err);
-                return;
-            }
-            _profile = resp;
-            ApplyProfile(resp);
+            var slot = _selectedSlot;
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftRushAsync(slot, ct));
         }
 
         private async Task ClaimAtSlot(int slotIndex)
         {
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftClaimAsync(slotIndex, ct));
+        }
+
+        private async Task RunCraftRequestAsync(Func<CancellationToken, Task<CharacterGetRpcResponse>> request)
+        {
+            if (_craftRequestInFlight) return;
+            _craftRequestInFlight = true;
+            foreach (var button in new[] { _createButton, _claimButton, _rushButton })
+                if (button != null) button.interactable = false;
             _cts?.Cancel();
+            _cts?.Dispose();
             _cts = new CancellationTokenSource();
             var ct = _cts.Token;
-            var resp = await CharacterProfileService.WorkshopCraftClaimAsync(slotIndex, ct).ConfigureAwait(true);
-            if (!resp.ok)
+            try
             {
-                if (hintText != null) hintText.text = "Ошибка: " + ErrToRu(resp.err);
-                return;
+                var resp = await request(ct).ConfigureAwait(true);
+                if (this == null || ct.IsCancellationRequested) return;
+                if (resp == null || !resp.ok)
+                {
+                    if (hintText != null) hintText.text = "Ошибка: " + (resp == null ? "нет ответа от мастерской" : ErrToRu(resp.err));
+                    return;
+                }
+                _profile = resp;
+                ApplyProfile(resp);
             }
-            _profile = resp;
-            ApplyProfile(resp);
+            catch (OperationCanceledException) { }
+            catch (Exception e)
+            {
+                if (this == null || ct.IsCancellationRequested) return;
+                if (hintText != null) hintText.text = "Связь с мастерской прервана. Попробуйте ещё раз.";
+                Debug.LogWarning("[Workshop] Craft request failed: " + e.Message);
+            }
+            finally
+            {
+                if (this != null)
+                {
+                    _craftRequestInFlight = false;
+                    UpdateDetailPanel();
+                }
+            }
         }
 
         private void RebuildRecipeList()
@@ -701,15 +757,40 @@ namespace Project.Character.UI
                 {
                     _selectedOutputDefId = idCopy;
                     UpdateDetailPanel();
+                    UpdateRecipeSelectionVisual();
+                    if (_expeditionLayout != null) _expeditionLayout.CloseRecipes();
                 });
                 _recipeRows.Add(line);
+                if (_expeditionLayout != null) _expeditionLayout.StyleRecipeRow(line, false);
             }
 
             if (_recipeRows.Count == 0 && _recipeHeader != null)
+            {
                 _recipeHeader.text = SlotRu[_selectedSlot] + ": нет изученных рецептов для этого слота";
+                if (_expeditionLayout != null)
+                {
+                    var empty = new GameObject("NoRecipes", typeof(RectTransform), typeof(LayoutElement));
+                    empty.transform.SetParent(_recipeContent, false);
+                    empty.GetComponent<LayoutElement>().minHeight = 130f;
+                    CreateUiText("Hint", empty.transform,
+                        "Изучайте рецепты, найденные в шахте. Здесь появятся доступные варианты снаряжения.",
+                        24, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one,
+                        new Vector2(20f, 8f), new Vector2(-20f, -8f));
+                    _recipeRows.Add(empty);
+                }
+            }
 
             AutoSelectFirstLearnedRecipe(firstLearnedId);
             UpdateItemStatsVisibility();
+            UpdateRecipeSelectionVisual();
+        }
+
+        private void UpdateRecipeSelectionVisual()
+        {
+            if (_expeditionLayout == null) return;
+            foreach (var row in _recipeRows)
+                if (row != null) _expeditionLayout.StyleRecipeRow(row,
+                    row.name == "Recipe_" + _selectedOutputDefId);
         }
 
         private void AddRecipeOwnedStatusLabel(Transform recipeLine, ItemDefinition def)
@@ -820,7 +901,7 @@ namespace Project.Character.UI
         private void UpdateItemStatsVisibility()
         {
             if (_itemStatsText == null) return;
-            var show = _selectedSlot >= 0 && SlotHasLearnedRecipes(_selectedSlot);
+            var show = _selectedSlot >= 0 && (WorkshopState(_selectedSlot) != WorkshopSlotState.Empty || SlotHasLearnedRecipes(_selectedSlot));
             _itemStatsText.gameObject.SetActive(show);
         }
 
@@ -841,6 +922,7 @@ namespace Project.Character.UI
             UpdateButtonsRootVisibility();
             if (_profile == null || !_profile.ok || _selectedSlot < 0)
             {
+                _lastSelectedDetailState = -1;
                 _detailText.text = "";
                 UpdateItemStatsPreview(null);
                 UpdateCreateButtonVisual(false, null, false, null);
@@ -850,11 +932,12 @@ namespace Project.Character.UI
             }
 
             var st = WorkshopState(_selectedSlot);
+            _lastSelectedDetailState = (int)st;
             if (st == WorkshopSlotState.Ready)
             {
                 var oid = GetWorkshopOut(_selectedSlot);
                 var def = itemCatalog != null ? itemCatalog.Get(oid) : null;
-                _detailText.text = "Готово: " + (def != null ? def.DisplayName : oid) + " — нажмите слот или «Забрать».";
+                _detailText.text = "Готово: " + (def != null ? def.DisplayName : oid) + " — заберите в сундук.";
                 UpdateItemStatsPreview(def);
                 UpdateCreateButtonVisual(false, null, false, null);
                 if (_createButton != null) _createButton.interactable = false;
@@ -862,7 +945,7 @@ namespace Project.Character.UI
                 if (_claimButton != null)
                 {
                     _claimButton.gameObject.SetActive(true);
-                    _claimButton.interactable = true;
+                    _claimButton.interactable = !_craftRequestInFlight;
                 }
                 return;
             }
@@ -880,7 +963,7 @@ namespace Project.Character.UI
                 if (_rushButton != null)
                 {
                     _rushButton.gameObject.SetActive(true);
-                    _rushButton.interactable = (_profile.progression?.gold ?? 0) >= 500;
+                    _rushButton.interactable = !_craftRequestInFlight && (_profile.progression?.gold ?? 0) >= 500;
                 }
                 return;
             }
@@ -930,13 +1013,46 @@ namespace Project.Character.UI
             var canCraft = okRes && recipeLearned;
             UpdateCreateButtonVisual(canCraft, od, true, BuildCraftShortfallLines(od, ore, gold, ing, tess, needOre, needGold, needIngotN, ingotId, needTess, fodderOk, resOk));
             if (_createButton != null)
-                _createButton.interactable = canCraft;
+                _createButton.interactable = canCraft && !_craftRequestInFlight;
+            if (_expeditionLayout != null)
+            {
+                var materials = new List<ExpeditionWorkshopLayout.MaterialState>(4)
+                {
+                    new() { icon = Project.UI.ExpeditionResourceIcons.Get("ore"), name = "Руда", owned = ore, required = needOre },
+                    new() { icon = Project.UI.ExpeditionResourceIcons.Get("gold"), name = "Золото", owned = gold, required = needGold }
+                };
+                if (needIngotN > 0)
+                    materials.Add(new ExpeditionWorkshopLayout.MaterialState { icon = itemCatalog.GetDisplayIcon(itemCatalog.Get(ingotId)),
+                        name = ResolveItemDisplayName(ingotId), owned = ing, required = needIngotN });
+                if (needTess > 0)
+                    materials.Add(new ExpeditionWorkshopLayout.MaterialState { icon = itemCatalog.GetDisplayIcon(itemCatalog.Get("tesseract")),
+                        name = "Тессеракт", owned = tess, required = needTess });
+                var fodderDef = FindFodderDefinition(od);
+                var fodderText = fodderDef != null ? (fodderOk ? "✓ " : "Нужен: ") + fodderDef.DisplayName : "";
+                _expeditionLayout.SetMaterials(materials.ToArray(), fodderText);
+            }
         }
 
         private void UpdateCreateButtonVisual(bool canCraft, ItemDefinition od, bool recipeSelected, string shortfallText)
         {
             if (_createButton == null) return;
             WorkshopRecipePanelSetup.EnsureCreateButtonStatusUi(_createButton, out _createButtonLabel, out _createButtonStatusIcon);
+
+            if (_expeditionLayout != null)
+            {
+                var occupied = _selectedSlot >= 0 && WorkshopState(_selectedSlot) != WorkshopSlotState.Empty;
+                _createButton.gameObject.SetActive(!occupied);
+                if (_createButtonStatusIcon != null) _createButtonStatusIcon.gameObject.SetActive(false);
+                if (_createButtonLabel != null)
+                {
+                    _createButtonLabel.text = canCraft ? "СОЗДАТЬ" : recipeSelected ? "НЕ ХВАТАЕТ МАТЕРИАЛОВ" : "ВЫБЕРИТЕ РЕЦЕПТ";
+                    _createButtonLabel.color = canCraft && !_craftRequestInFlight
+                        ? ExpeditionWorkshopLayout.Ink : ExpeditionWorkshopLayout.Ivory;
+                }
+                if (!canCraft && !string.IsNullOrWhiteSpace(shortfallText) && _detailText != null)
+                    _detailText.text += "\n<color=#D5A47C>Не хватает: " + shortfallText + "</color>";
+                return;
+            }
 
             var showStatus = recipeSelected && od != null;
             if (_createButtonStatusIcon != null)
@@ -1033,6 +1149,12 @@ namespace Project.Character.UI
 
         private void UpdateItemStatsPreview(ItemDefinition def)
         {
+            if (_expeditionLayout != null)
+            {
+                var icon = def != null && itemCatalog != null ? itemCatalog.GetDisplayIcon(def) : null;
+                _expeditionLayout.SetItemPreview(icon, def != null ? "◷ " + FormatDuration(WorkshopCraftRules.CraftDurationSeconds(def)) : "",
+                    _profile != null && _profile.ok && _selectedSlot >= 0 && WorkshopState(_selectedSlot) == WorkshopSlotState.Empty);
+            }
             if (_itemStatsText == null) return;
             UpdateItemStatsVisibility();
             if (!_itemStatsText.gameObject.activeSelf) return;
@@ -1061,8 +1183,17 @@ namespace Project.Character.UI
 
             var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
             var qualityRu = WorkshopCraftRules.QualityRu(def.Quality);
-            var coloredTitle = ColorizeRichText(title, def.ColorDisplayName);
-            var coloredQuality = ColorizeRichText(qualityRu, def.ColorDisplayName);
+            var previewColor = def.ColorDisplayName;
+            if (_expeditionLayout != null)
+                previewColor = def.Quality switch
+                {
+                    ItemQualityTier.Normal => new Color32(146, 195, 167, 255),
+                    ItemQualityTier.Rare => new Color32(135, 184, 213, 255),
+                    ItemQualityTier.Epic => new Color32(187, 157, 209, 255),
+                    _ => ExpeditionWorkshopLayout.Amber
+                };
+            var coloredTitle = ColorizeRichText(title, previewColor);
+            var coloredQuality = ColorizeRichText(qualityRu, previewColor);
             var head = $"{coloredTitle}  ·  T{def.Tier}, {coloredQuality}";
             if (lines.Count == 0)
                 return head + "\n— в каталоге нет бонусов к статам (или они нулевые).";
@@ -1321,7 +1452,7 @@ namespace Project.Character.UI
         private void UpdateSlotTimersAndIcons()
         {
             if (_slotTimers == null || _profile == null || !_profile.ok) return;
-            EnsureCraftSlotBusyGlowSprite();
+            if (_expeditionLayout == null) EnsureCraftSlotBusyGlowSprite();
 
             for (var i = 0; i < 8; i++)
             {
@@ -1339,17 +1470,22 @@ namespace Project.Character.UI
                         var ic = outDef != null ? itemCatalog.GetDisplayIcon(outDef) : null;
                         _slotIcons[i].sprite = ic;
                         _slotIcons[i].color = Color.white;
+                        _slotIcons[i].enabled = ic != null;
                     }
                     else
                     {
                         _slotIcons[i].sprite = null;
                         _slotIcons[i].color = new Color(1f, 1f, 1f, 0.12f);
+                        if (_expeditionLayout != null) _slotIcons[i].enabled = false;
                     }
                 }
 
                 if (_slotBgImages != null && _slotBgImages[i] != null)
                 {
-                    if (crafting && craftSlotBusyGlowSprite != null)
+                    if (_expeditionLayout != null)
+                        _expeditionLayout.SetQueueState(i, crafting, crafting && wEnd <= NowUnix(),
+                            crafting && outDef != null ? 1f - Mathf.Clamp01((float)(wEnd - NowUnix()) / Mathf.Max(1, WorkshopCraftRules.CraftDurationSeconds(outDef))) : 0f);
+                    else if (crafting && craftSlotBusyGlowSprite != null)
                     {
                         _slotBgImages[i].sprite = craftSlotBusyGlowSprite;
                         var glow = outDef != null ? outDef.ColorDisplayName : Color.white;
@@ -1367,12 +1503,16 @@ namespace Project.Character.UI
 
                 if (_slotTimers[i] == null) continue;
                 if (!crafting)
-                    _slotTimers[i].text = "";
+                    _slotTimers[i].text = _expeditionLayout != null ? "Пусто" : "";
                 else if (wEnd > NowUnix())
                     _slotTimers[i].text = FormatRemaining(wEnd - NowUnix());
                 else
                     _slotTimers[i].text = "Готово!";
             }
+
+            // A completed timer must reveal Claim immediately, without requiring another server refresh.
+            if (_expeditionLayout != null && _selectedSlot >= 0 && _lastSelectedDetailState != (int)WorkshopState(_selectedSlot))
+                UpdateDetailPanel();
         }
 
         private void EnsureCraftSlotBusyGlowSprite()

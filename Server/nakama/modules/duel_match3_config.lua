@@ -183,7 +183,7 @@ local CFG = {  SIZE = 6,
   RACE_MANA_BONUS_EVERY_ACTIONS = 5,
   --- Fallback награды/входа, если Storage duel_match3_contest_goals пуст.
   RACE_WIN_XP = 200,
-  RACE_WIN_MATTER = 10,
+  RACE_WIN_MATTER = 4,
   --- Ничья в «Спуске»: опыт + полный возврат entry (matter и др.).
   RACE_DRAW_XP = 200,
   RACE_ENTRY_MATTER = 2,

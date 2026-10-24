@@ -1,4 +1,5 @@
 using System;
+using Project.UI;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -74,6 +75,12 @@ namespace Project.Match3
         private Image _spinnerImage;
         private Vector3 _spinnerBaseScale = Vector3.one;
         private float _animTime;
+        private bool _expeditionStyle;
+        private Button _boundCancel;
+        private TMP_Text _modeText, _elapsedText, _headingText;
+        private string _modeLabel;
+        private float _searchStartedAt;
+        private int _lastElapsedSecond = -1;
 #if UNITY_EDITOR
         private bool _pendingValidateApply;
 #endif
@@ -85,8 +92,7 @@ namespace Project.Match3
                 ApplyPresetIfNeeded();
             ApplyVisualSettings();
 
-            if (cancelButton != null)
-                cancelButton.onClick.AddListener(() => OnCancelClicked?.Invoke());
+            BindCancelCallback();
 
             if (spinnerRect != null)
             {
@@ -140,6 +146,18 @@ namespace Project.Match3
             if (!gameObject.activeInHierarchy || spinnerRect == null)
                 return;
 
+            if (_expeditionStyle)
+            {
+                spinnerRect.Rotate(0, 0, -95 * Time.unscaledDeltaTime);
+                var seconds = Mathf.Max(0, Mathf.FloorToInt(Time.unscaledTime - _searchStartedAt));
+                if (seconds != _lastElapsedSecond && _elapsedText != null)
+                {
+                    _lastElapsedSecond = seconds;
+                    _elapsedText.text = "Прошло " + (seconds / 60).ToString("00") + ":" + (seconds % 60).ToString("00");
+                }
+                return;
+            }
+
             spinnerRect.Rotate(0f, 0f, spinnerRotationSpeed * Time.unscaledDeltaTime);
 
             _animTime += Time.unscaledDeltaTime * Mathf.Max(0.1f, spinnerPulseSpeed);
@@ -159,17 +177,90 @@ namespace Project.Match3
         private void OnEnable()
         {
             _animTime = 0f;
+            _searchStartedAt = Time.unscaledTime;
+            _lastElapsedSecond = -1;
             if (spinnerRect != null)
                 spinnerRect.localScale = _spinnerBaseScale;
         }
 
         public void Show(string message)
         {
+            if (!_expeditionStyle) UseExpeditionStyle();
+            BindCancelCallback();
             gameObject.SetActive(true);
             if (statusText != null) statusText.text = message;
+            if (_headingText != null)
+            {
+                var connecting = !string.IsNullOrEmpty(message) &&
+                    (message.IndexOf("Восстановление", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     message.IndexOf("подключения", StringComparison.OrdinalIgnoreCase) >= 0);
+                _headingText.text = connecting ? "ПОДКЛЮЧЕНИЕ К БОЮ" : "ПОИСК СОПЕРНИКА";
+            }
         }
 
         public void Hide() => gameObject.SetActive(false);
+
+        public void SetModeLabel(string modeLabel)
+        {
+            _modeLabel = modeLabel;
+            if (_modeText != null)
+                _modeText.text = string.IsNullOrWhiteSpace(_modeLabel) ? "Подготовка матча" : "Режим: " + _modeLabel;
+        }
+
+        public void UseExpeditionStyle(string modeLabel = null)
+        {
+            ResolveReferences();
+            var safe = ExpeditionMatchStates.PrepareOverlay(this, 2500);
+            if (modeLabel != null) SetModeLabel(modeLabel);
+            if (_expeditionStyle) { BindCancelCallback(); return; }
+            _expeditionStyle = true;
+            foreach (var layout in GetComponentsInChildren<LayoutGroup>(true)) layout.enabled = false;
+            foreach (var fitter in GetComponentsInChildren<ContentSizeFitter>(true)) fitter.enabled = false;
+            var oldSpinner = spinnerRect;
+            var heading = ExpeditionMatchStates.Panel(safe, "SearchHeadingFrame", .10f, .76f, .90f, .89f);
+            _headingText = ExpeditionUi.Text(heading.transform, "SearchHeading", "ПОИСК СОПЕРНИКА", 53,
+                .055f, .40f, .945f, .86f, TextAlignmentOptions.Center);
+            _headingText.fontStyle = FontStyles.Bold;
+            _headingText.enableAutoSizing = true; _headingText.fontSizeMin = 34; _headingText.fontSizeMax = 53;
+            _modeText = ExpeditionUi.Text(heading.transform, "ActualSearchMode", "", 30,
+                .06f, .12f, .94f, .39f, TextAlignmentOptions.Center);
+            _modeText.color = ExpeditionTheme.Muted;
+            SetModeLabel(_modeLabel);
+            ExpeditionMatchStates.Portrait(safe, "LocalExplorerPortrait", .075f, .455f, .39f, .73f, false, true);
+            ExpeditionMatchStates.Portrait(safe, "UnknownOpponentPortrait", .61f, .455f, .925f, .73f, true, true);
+            var you = ExpeditionUi.Text(safe, "LocalParticipantCaption", "ВЫ", 24, .08f, .425f, .385f, .452f, TextAlignmentOptions.Center);
+            you.color = ExpeditionTheme.Amber;
+            ExpeditionUi.Text(safe, "UnknownParticipantCaption", "СОПЕРНИК", 24, .615f, .425f, .92f, .452f, TextAlignmentOptions.Center);
+            spinnerRect = ExpeditionUi.Rect(safe, "MechanicalSearchRotor", .5f, .59f, .5f, .59f);
+            spinnerRect.sizeDelta = new Vector2(190, 190);
+            spinnerRect.gameObject.AddComponent<ExpeditionMatchSpinner>().raycastTarget = false;
+            _spinnerImage = null; _spinnerBaseScale = Vector3.one;
+            _elapsedText = ExpeditionUi.Text(safe, "ElapsedSearchTime", "Прошло 00:00", 25,
+                .345f, .435f, .655f, .48f, TextAlignmentOptions.Center);
+            if (statusText == null)
+                statusText = ExpeditionUi.Text(safe, "ActualSearchStatus", "", 30, .10f, .30f, .90f, .365f);
+            ExpeditionMatchStates.Place(statusText, safe, .10f, .30f, .90f, .365f, 30);
+            if (cancelButton == null)
+                cancelButton = ExpeditionUi.Button(safe, "CancelBtn", "Отмена", .26f, .205f, .74f, .282f, null, false, 42);
+            cancelButton.transform.SetParent(safe, false);
+            ExpeditionUi.SetRect(cancelButton.transform as RectTransform, .26f, .205f, .74f, .282f);
+            ExpeditionUi.StyleButton(cancelButton, false, 42);
+            ExpeditionUi.Label(cancelButton, string.IsNullOrEmpty(cancelLabelText) ? "Отмена" : cancelLabelText);
+            ExpeditionMatchStates.StyleCancel(cancelButton);
+            if (oldSpinner != null) oldSpinner.gameObject.SetActive(false);
+            if (modalWindowRect != null) modalWindowRect.gameObject.SetActive(false);
+            BindCancelCallback();
+        }
+
+        private void BindCancelCallback()
+        {
+            if (_boundCancel == cancelButton) return;
+            if (_boundCancel != null) _boundCancel.onClick.RemoveListener(HandleCancel);
+            _boundCancel = cancelButton;
+            if (_boundCancel != null) _boundCancel.onClick.AddListener(HandleCancel);
+        }
+
+        private void HandleCancel() => OnCancelClicked?.Invoke();
 
         private void ResolveReferences()
         {
@@ -223,6 +314,7 @@ namespace Project.Match3
 
         private void ApplyVisualSettings()
         {
+            if (_expeditionStyle) return;
             if (dimBackgroundImage != null)
                 dimBackgroundImage.color = dimBackgroundColor;
 

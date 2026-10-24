@@ -198,7 +198,9 @@ namespace Project.UI
                 }
             }
 
-            EnsureMine3DButton(layout);
+            // Expedition uses one lightweight 2.5D shaft. The old experiment stays in source only.
+            var retiredMine = FindChildByName(layout, mine3DButtonName, StringComparison.OrdinalIgnoreCase);
+            if (retiredMine != null) retiredMine.gameObject.SetActive(false);
 
             if (_workshopButton == null)
             {
@@ -844,6 +846,7 @@ namespace Project.UI
         {
             EnsureServerAuraModal();
             PopulateServerAuraModal(_serverAuraLast);
+            ExpeditionSystemDialogs.ApplyAura(_serverAuraModalRoot, _serverAuraModalHeaderText, _serverAuraModalStatsRoot, _serverAuraModalFooterText);
             _serverAuraModalRoot?.SetActive(true);
         }
 

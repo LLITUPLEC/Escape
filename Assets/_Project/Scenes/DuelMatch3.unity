@@ -1106,8 +1106,9 @@ MonoBehaviour:
   sfxLineClear: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
   sfxAbilitySquare: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
   sfxAbilityCross: {fileID: 8300000, guid: b103f754fc7e6a248a65c76c889cd5fe, type: 3}
-  sfxAbilityPetard: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
-  sfxAbilityFury: {fileID: 8300000, guid: 9cd1cb6321548c2459986b735c7b9500, type: 3}
+  sfxAbilityPetard: {fileID: 8300000, guid: 6443996cca964de0b2fd98d6b5a3f9b1, type: 3}
+  sfxAbilityFury: {fileID: 8300000, guid: 1ca2fcab325d26d499506a66086d7e01, type: 3}
+  sfxAbilityShield: {fileID: 8300000, guid: 11ba5af1643c7f746a5dab7c863043c5, type: 3}
   sfxCascadeFall: {fileID: 8300000, guid: 2c5292ba5cf254919a6b9e2b18e04f49, type: 3}
   sfxExtraTurn: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
   sfxTimerEnd: {fileID: 8300000, guid: 35fbad8cdde724f11ba6481f1e64af71, type: 3}
@@ -1130,6 +1131,7 @@ MonoBehaviour:
   rewardBlueprintSprite: {fileID: 0}
   rewardTesseractSprite: {fileID: 0}
   itemCatalog: {fileID: 11400000, guid: 1e007d3c1d27cfc4d894d77c6cb422e6, type: 2}
+  presentationMonsterCatalog: {fileID: 11400000, guid: 55457cccd3eccbe4dbc43f14f7b9dc60, type: 2}
   damagePopupPrefab: {fileID: 1563794341977534896, guid: 2d1a3b4c5e6f708192a3b4c5d6e7f809, type: 3}
   affixCatalog: {fileID: 11400000, guid: 0cb93842da3f91b4ebb3067fb38bcbc6, type: 2}
   cheatRowsOverlayCellsPrefab: {fileID: 8564567523557899235, guid: 2c5f112379cf13343935c7cab488f4b8, type: 3}

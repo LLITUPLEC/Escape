@@ -1,0 +1,50 @@
+{
+  "checked_at_utc": "2026-10-23T20:06:32.076171+00:00",
+  "mode": "Read-only source audit. Root cleaned the candidates while release docs were being written; audit author edited/deleted no Assets.",
+  "search_scope": "Before cleanup: exact Resources.Load keys in all Assets C#; candidate GUIDs in Assets/ProjectSettings unity,prefab,asset,mat,controller,anim,playable,json files.",
+  "candidates": [
+    {
+      "file": "Assets/_Project/Resources/Expedition/Art/battle-stage-v3.png",
+      "source_bytes_before_cleanup": 2248524,
+      "source_mib_before_cleanup": 2.144,
+      "guid_before_cleanup": "d4c3d1198bd34087b76b82ee2d3ffd18",
+      "serialized_guid_references": [],
+      "condition_before_cleanup": "Replaced by battle-world-v4. Only Editor importer rule named the old PNG, no runtime key references.",
+      "file_exists_after_root_cleanup": false,
+      "meta_exists_after_root_cleanup": false
+    },
+    {
+      "file": "Assets/_Project/Resources/Expedition/Art/mine-landing-v2.png",
+      "source_bytes_before_cleanup": 2130751,
+      "source_mib_before_cleanup": 2.032,
+      "guid_before_cleanup": "63fee981c69647029f2d94628f0439a7",
+      "serialized_guid_references": [],
+      "condition_before_cleanup": "Replaced by mine-chamber-v3 / mine-chamber-damp-v3. No runtime key references.",
+      "file_exists_after_root_cleanup": false,
+      "meta_exists_after_root_cleanup": false
+    },
+    {
+      "file": "Assets/_Project/Resources/Expedition/Art/workshop-forge-v2.png",
+      "source_bytes_before_cleanup": 2798759,
+      "source_mib_before_cleanup": 2.669,
+      "guid_before_cleanup": "58a43908a61149cf9815da41d268b147",
+      "serialized_guid_references": [],
+      "condition_before_cleanup": "Initially still Resources.Load at ExpeditionWorkshopLayout.cs:56 while Image.enabled=false. Cleanup requires removing its foreground loader/construction, not only hiding its Image.",
+      "file_exists_after_root_cleanup": false,
+      "meta_exists_after_root_cleanup": false
+    }
+  ],
+  "source_png_total_bytes_before_cleanup": 7178034,
+  "current_workshop_forge_literal_present": false,
+  "size_limit": "PNG source bytes are not measured APK or GPU-memory savings.",
+  "keep": [
+    {
+      "key": "mine-gate-v2",
+      "reason": "Used by ExpeditionMinePresentation and MonsterModalView."
+    },
+    {
+      "key": "mine-encounter-v2",
+      "reason": "Used by MonsterModalView environment."
+    }
+  ]
+}

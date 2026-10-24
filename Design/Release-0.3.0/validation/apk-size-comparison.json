@@ -1,0 +1,8 @@
+{
+  "old_development_apk_bytes": 215744861,
+  "new_release_apk_bytes": 99453871,
+  "old_mib": 205.8,
+  "new_mib": 94.8,
+  "reduction_percent": 53.9,
+  "comparison_note": "Difference includes production build settings, native code stripping and resource cleanup; it is not attributed to art cleanup alone."
+}

@@ -1,0 +1,23 @@
+{
+  "development_build": false,
+  "build_result": "Succeeded",
+  "build_errors": 0,
+  "unity_data_entries": 9,
+  "physical_device_tested": false,
+  "manifest_parsed": true,
+  "debuggable_attribute_present": false,
+  "build_warnings": 2,
+  "native_abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "sha256": "eeeee9b46779fb2b46357f3a1c7ed2f61f8d23e6c6959c232fc54ed7c15da189",
+  "date": "2026-10-24T16:22:22+03:00",
+  "version": "0.3.5",
+  "build_seconds": 450.6351155,
+  "signature_verified": true,
+  "version_code": 7,
+  "apk": "Escape-Expedition-0.3.5-20261024-131406.apk",
+  "debuggable": false,
+  "bytes": 101834055
+}

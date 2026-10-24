@@ -144,7 +144,7 @@ return function(deps)
         xp = tonumber(CFG.RACE_WIN_XP) or 200,
         gold = 0,
         ore = 0,
-        matter = tonumber(CFG.RACE_WIN_MATTER) or 10,
+        matter = tonumber(CFG.RACE_WIN_MATTER) or 4,
         ingots = 0,
         tesseract = 0,
         key_id = "",
@@ -157,7 +157,8 @@ return function(deps)
       xp = flat.xp,
       gold = flat.gold,
       ore = flat.ore,
-      matter = flat.matter,
+      -- Old stored/frozen reward lines must not reinstate the previous 10 matter.
+      matter = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 4)),
       ingots = flat.ingots,
       tesseract = flat.tesseract,
       key_id = flat.key_id,
@@ -183,6 +184,10 @@ return function(deps)
   end
 
   local function settle_race(state, winner, is_draw, game_over_payload)
+    local against_bot = false
+    for _, uid in ipairs(state.players_sorted or {}) do
+      if string.sub(tostring(uid), 1, 7) == "zz-bot-" then against_bot = true end
+    end
     local entry = type(get_race_entry) == "function" and get_race_entry() or nil
     if type(entry) ~= "table" then
       nk.logger_error("race settlement unavailable")
@@ -192,14 +197,20 @@ return function(deps)
       local flat = { xp = 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
       if is_draw then
         flat.xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200))
-        -- Refund the immutable paid receipt, never the current entry config.
-        for _, cost in ipairs(costs) do flat[cost.resource] = (flat[cost.resource] or 0) + cost.amount end
       elseif uid == winner then
         flat = resolve_race_reward_opts(state)
       elseif state.mode ~= "pve" then
         -- Preserve the existing human PvP loss award. Race is outside PvE,
         -- so the PvE server aura must not multiply this fixed 10 XP.
         flat.xp = 10
+      end
+      if against_bot then
+        -- Bot fallback never pays a monetary victory prize. Preserve the existing
+        -- XP policy while returning this human's actual, immutable paid stake.
+        flat = { xp = flat.xp or 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
+      end
+      if is_draw or against_bot then
+        for _, cost in ipairs(costs) do flat[cost.resource] = (flat[cost.resource] or 0) + cost.amount end
       end
       apply_flat_rewards_to_progress(progress, flat)
       if flat.energy then progress.energy = (tonumber(progress.energy) or 0) + flat.energy end
@@ -219,10 +230,11 @@ return function(deps)
     end
     state.race_rewards_by_user = rewards
     local reward = rewards[winner or ""]
-    if is_draw then
+    if is_draw or against_bot then
       for _, uid in ipairs(state.players_sorted or {}) do if rewards[uid] then reward = rewards[uid]; break end end
     end
     state.last_reward = reward
+    if against_bot and type(game_over_payload) == "table" then game_over_payload.entryRefund = true end
     fill_game_over_reward_fields(game_over_payload, reward)
     return true
   end

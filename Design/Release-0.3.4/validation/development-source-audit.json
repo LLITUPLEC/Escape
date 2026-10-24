@@ -1,0 +1,72 @@
+{
+  "checked_date": "2026-10-24",
+  "method": "Bounded read-only source review; independently confirmed by root/art review and documentation collection reads",
+  "result": "four_known_blockers_source_confirmed",
+  "live_storage_read": false,
+  "network_requests": false,
+  "source_files_sha256": {
+    "Server/nakama/modules/duel_match3.lua": "8fd1d17b033a45fd85df30a7802803a09b98eed618bfc338da84cc2478c2d120",
+    "Server/nakama/modules/duel_leaderboard.lua": "16c48ee57837dfe63f55455964b2a37843f7493ccc2f67e382cb4827d0a088ec",
+    "Server/nakama/modules/duel_match3_economy_rpc.lua": "061b111a3b93b9a46ae8e97ccee202272ac4943ffc7a42f1e3f0edfeb9979dc8",
+    "Server/nakama/modules/arena_tournament.lua": "baca68c515c1aa030d16276e1a78fb058aa3ce61828fe33b7789b1d163a8fae2",
+    "Server/nakama/data/duel_match3_item_defs.json": "0d365607878ccd35d054d72eb4a7664d2b6fb710b24881d14e3c4c0a970038c6",
+    "Server/nakama/data/achievement_catalog.example.json": "3ee6e30e39047cfff3ce36385bf989bcdf1ec8bf3b330eb2a87ff096c546b259"
+  },
+  "blockers": [
+    {
+      "id": "durable_pending_results",
+      "source": "Server/nakama/modules/duel_match3.lua",
+      "lines": [
+        28,
+        44,
+        55,
+        67,
+        5604
+      ],
+      "finding": "Pending arena/Race result and game-over payload retained in in-memory match state, no durable recovery in termination path."
+    },
+    {
+      "id": "periodic_leaderboard_payout",
+      "source": "Server/nakama/modules/duel_leaderboard.lua",
+      "lines": [
+        67,
+        99
+      ],
+      "finding": "GET reward preview only; bounded runtime review found no period payout worker."
+    },
+    {
+      "id": "full_chest_loot",
+      "source": "Server/nakama/modules/duel_match3.lua",
+      "lines": [
+        3444,
+        3477,
+        3492
+      ],
+      "finding": "Item add failure leaves inventory uncommitted while progression commits and response still lists calculated loot."
+    },
+    {
+      "id": "legendary_recipe_source",
+      "sources": [
+        "Server/nakama/modules/duel_match3_economy_rpc.lua:475",
+        "Server/nakama/data/duel_match3_item_defs.json:596",
+        "Server/nakama/modules/duel_match3.lua:2987",
+        "Server/nakama/modules/arena_tournament.lua:181"
+      ],
+      "finding": "Gold recipe required; normal mine reward path supports green/blue/purple and arena final currency only."
+    }
+  ],
+  "local_example_only": {
+    "source": "Server/nakama/data/achievement_catalog.example.json",
+    "lines": [
+      21,
+      35
+    ],
+    "finding": "Reward text140 vs hp_flat190; current live Storage not rechecked."
+  },
+  "not_fixed_by_release034": true,
+  "limitations": [
+    "Not an all-encompassing audit or proof of absence of other bugs.",
+    "Source confirmation does not establish current live catalog contents.",
+    "No gameplay/economy/server changes performed by documentation task."
+  ]
+}

@@ -17,10 +17,19 @@ namespace Project.Character.UI
         private int _invIndex;
         private EquipmentSlotId _eqSlot;
         private bool _dragStarted;
+        private CharacterInventoryScrollRelay _inventoryGesture;
 
         public CharacterDragSlotKind Kind => _kind;
         public int InventoryIndex => _invIndex;
         public EquipmentSlotId EquipmentSlot => _eqSlot;
+
+        public void CancelInteraction()
+        {
+            _dragStarted = false;
+            _inventoryGesture?.CancelGesture();
+        }
+
+        private void OnDisable() { CancelInteraction(); }
 
         public void Configure(CharacterSheetDragController controller, CharacterDragSlotKind kind, int invIndex, EquipmentSlotId eqSlot)
         {
@@ -28,10 +37,16 @@ namespace Project.Character.UI
             _kind = kind;
             _invIndex = invIndex;
             _eqSlot = eqSlot;
+            _inventoryGesture = kind == CharacterDragSlotKind.Inventory ? GetComponent<CharacterInventoryScrollRelay>() : null;
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
+            if (_inventoryGesture != null && _inventoryGesture.BeginGesture(eventData))
+            {
+                _dragStarted = false;
+                return;
+            }
             if (_controller == null || !_controller.CanBeginInteraction(this))
             {
                 _dragStarted = false;
@@ -44,12 +59,23 @@ namespace Project.Character.UI
 
         public void OnDrag(PointerEventData eventData)
         {
+            if (_inventoryGesture != null && _inventoryGesture.IsScrolling)
+            {
+                _inventoryGesture.DragScroll(eventData);
+                return;
+            }
             if (!_dragStarted) return;
             _controller?.OnSlotDrag(eventData);
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
+            if (_inventoryGesture != null)
+            {
+                var wasScrolling = _inventoryGesture.IsScrolling;
+                _inventoryGesture.EndGesture(eventData);
+                if (wasScrolling) { _dragStarted = false; return; }
+            }
             if (!_dragStarted) return;
             _dragStarted = false;
             _controller?.OnSlotEndDrag(this, eventData);
@@ -58,12 +84,13 @@ namespace Project.Character.UI
         public void OnDrop(PointerEventData eventData)
         {
             var src = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<CharacterDragSlotHandle>() : null;
-            if (src == null || _controller == null || src == this) return;
+            if (src == null || !src._dragStarted || _controller == null || src._controller != _controller || src == this) return;
             _controller.TryMoveFromDrop(src, this);
         }
 
         public void OnPointerClick(PointerEventData eventData)
         {
+            if (_dragStarted || (_inventoryGesture != null && _inventoryGesture.BlocksClick)) return;
             if (_controller == null || !_controller.CanBeginInteraction(this)) return;
             _controller.NotifySlotClick(this);
         }

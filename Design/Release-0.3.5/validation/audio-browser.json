@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-24T16:27:37.6932619+03:00",
+  "url": "https://prokrust-play.ru/escape/audio-035/",
+  "cards": 20,
+  "audio_players": 1,
+  "horizontal_overflow_at_observed_viewport": false,
+  "example_A_readyState": 4,
+  "example_A_duration": 10.53,
+  "example_A_error": null,
+  "B_switch_callback_observed": true,
+  "radio_selection_and_export_confirmed": true,
+  "test_selection_restored_to_zero": true,
+  "human_listening_performed": false,
+  "physical_android_tested": false,
+  "screenshot": "audio-page-browser.png"
+}

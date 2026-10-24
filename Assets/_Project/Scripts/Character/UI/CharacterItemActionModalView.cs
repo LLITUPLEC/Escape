@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -48,6 +49,7 @@ namespace Project.Character.UI
             EnsureDefaults();
             var rect = PanelRect;
             if (rect != null) rect.anchoredPosition = anchoredPosition;
+            ExpeditionItemDialogs.ClampAction(rect);
 
             gameObject.SetActive(true);
             if (_showRoutine != null) StopCoroutine(_showRoutine);
@@ -142,7 +144,7 @@ namespace Project.Character.UI
         private void EnsureDefaults()
         {
             if (panel == null) panel = transform as RectTransform;
-            if (panelCanvasGroup == null) panelCanvasGroup = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
+            if (panelCanvasGroup == null) panelCanvasGroup = ExpeditionItemDialogs.EnsureComponent<CanvasGroup>(gameObject);
             if (infoButton == null) infoButton = transform.Find("InfoButton")?.GetComponent<Button>();
             if (sellButton == null) sellButton = transform.Find("SellButton")?.GetComponent<Button>();
 
@@ -150,6 +152,7 @@ namespace Project.Character.UI
             EnsureButtonLabelRaycast(sellButton);
             EnsureButtonFx(infoButton);
             EnsureButtonFx(sellButton);
+            ExpeditionItemDialogs.ApplyAction(PanelRect, infoButton, sellButton);
         }
 
         private static void EnsureButtonLabelRaycast(Button button)

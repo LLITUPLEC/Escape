@@ -1,0 +1,96 @@
+{
+  "battle_slots_count": 13,
+  "battle_pairs_count": 10,
+  "functional_pairs_count": 10,
+  "slots": [
+    {
+      "slot": "sfxLineClear",
+      "audition_id": "line_clear",
+      "excluded": false,
+      "declaration_line": 67
+    },
+    {
+      "slot": "sfxCascadeFall",
+      "audition_id": "cascade_fall",
+      "excluded": false,
+      "declaration_line": 73
+    },
+    {
+      "slot": "sfxAbilitySquare",
+      "audition_id": "ability_square",
+      "excluded": false,
+      "declaration_line": 68
+    },
+    {
+      "slot": "sfxAbilityCross",
+      "audition_id": "ability_cross",
+      "excluded": false,
+      "declaration_line": 69
+    },
+    {
+      "slot": "sfxAbilityPetard",
+      "audition_id": "ability_petard",
+      "excluded": false,
+      "declaration_line": 70
+    },
+    {
+      "slot": "sfxDamageHit",
+      "audition_id": "damage_hit",
+      "excluded": false,
+      "declaration_line": 76
+    },
+    {
+      "slot": "sfxExtraTurn",
+      "audition_id": "extra_turn",
+      "excluded": false,
+      "declaration_line": 74
+    },
+    {
+      "slot": "sfxTimerEnd",
+      "audition_id": "timer_end",
+      "excluded": false,
+      "declaration_line": 75
+    },
+    {
+      "slot": "sfxVictory",
+      "audition_id": "victory",
+      "excluded": false,
+      "declaration_line": 78
+    },
+    {
+      "slot": "sfxDefeat",
+      "audition_id": "defeat",
+      "excluded": false,
+      "declaration_line": 79
+    },
+    {
+      "slot": "sfxAbilityFury",
+      "excluded": true,
+      "existing_asset": "Assets/_Project/Audio/SFX/Bloodlust_cast.ogg",
+      "declaration_line": 71
+    },
+    {
+      "slot": "sfxAbilityShield",
+      "excluded": true,
+      "existing_asset": "Assets/_Project/Audio/SFX/Heroism_Cast.ogg",
+      "declaration_line": 72
+    },
+    {
+      "slot": "sfxDamageCrit",
+      "excluded": true,
+      "existing_asset": "Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav",
+      "declaration_line": 77
+    }
+  ],
+  "read_source_files": [
+    "Assets/_Project/Scripts/Match3/DuelMatch3Manager.cs",
+    "Assets/_Project/Scripts/Match3/UI/Match3SearchingPanel.cs",
+    "Assets/_Project/Scripts/Character/UI/WorkshopSceneController.cs",
+    "Assets/_Project/Scripts/UI/MineSceneController.cs",
+    "Assets/_Project/Scripts/UI/ExpeditionMinePresentation.cs",
+    "Assets/_Project/Scripts/UI/ExpeditionTheme.cs",
+    "Tools/Audio/generate_expedition_sfx.py"
+  ],
+  "functional_audio_hooks_exist": false,
+  "notes": "Functional triggers are proposals, not integrated callbacks. Draw currently shares victory."
+}

@@ -1,0 +1,1537 @@
+{
+  "version": "0.3.5",
+  "status": "audition_only_not_integrated",
+  "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+  "styles": {
+    "A": {
+      "title": "Минерал и металл",
+      "description": "Сдержанные каменные сколы, механические защёлки, сухая латунь; короткая комната."
+    },
+    "B": {
+      "title": "Резонанс и пар",
+      "description": "Инерционные пластины, пневматика, воздушные выбросы и минеральный резонанс; чуть более пространственный хвост."
+    }
+  },
+  "seed": 3502026,
+  "effects": [
+    {
+      "id": "line_clear",
+      "title": "Ряд камней",
+      "category": "battle",
+      "existing_slot": "sfxLineClear",
+      "trigger": "DuelMatch3Manager.ApplyRemoteBoardSync: animSteps.phase == 1",
+      "description": "Три хрупких каменных скола / воздушная кристаллическая россыпь",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/line_clear.wav",
+          "duration_seconds": 0.31,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 29804,
+          "peak_dbfs": -7.459,
+          "rms_dbfs": -21.191,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -1e-08,
+          "clipped_samples": 0,
+          "sha256": "2bad1e5c7710bacc98df3b7260ccd671895d0d3af4a9bd2a940bb2cd4fba10bc",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/line_clear.wav",
+          "duration_seconds": 0.31,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 29804,
+          "peak_dbfs": -7.904,
+          "rms_dbfs": -20.264,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 6.8e-08,
+          "clipped_samples": 0,
+          "sha256": "cf6d530ac252462a54c9ac16b4791f82c00c6f69ab2a88f02b8390683c970a60",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/line_clear_A-gap-B.wav",
+        "duration_seconds": 1.77,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 169964,
+        "peak_dbfs": -7.459,
+        "rms_dbfs": -25.258,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 1e-08,
+        "clipped_samples": 0,
+        "sha256": "78a312ab76042916235b24561083778e38fc1215885f1c89f158d3f388503457",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "cascade_fall",
+      "title": "Каскад: падение камней",
+      "category": "battle",
+      "existing_slot": "sfxCascadeFall",
+      "trigger": "DuelMatch3Manager.ApplyRemoteBoardSync: animSteps.phase == 2",
+      "description": "Мелкая падающая галька / полые минеральные касания",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/cascade_fall.wav",
+          "duration_seconds": 0.43,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 41324,
+          "peak_dbfs": -7.571,
+          "rms_dbfs": -20.037,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -8.6e-08,
+          "clipped_samples": 0,
+          "sha256": "817a7c2e1362808558ed9ae2f4f67bc16d5c5febde4e200177a21b0536e01d34",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/cascade_fall.wav",
+          "duration_seconds": 0.43,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 41324,
+          "peak_dbfs": -7.937,
+          "rms_dbfs": -19.602,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 5.9e-08,
+          "clipped_samples": 0,
+          "sha256": "c35605f26b4aa3462434e6dcacd487e838e7b0b8492c4b0c02e9ab514c44e1bc",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/cascade_fall_A-gap-B.wav",
+        "duration_seconds": 2.01,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 193004,
+        "peak_dbfs": -7.571,
+        "rms_dbfs": -23.501,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": -6e-09,
+        "clipped_samples": 0,
+        "sha256": "b3301660385b0df99db6e3a4141e15c0e43d4d3372dfedd5567aee4759f443ac",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ability_square",
+      "title": "Способность: квадрат",
+      "category": "battle",
+      "existing_slot": "sfxAbilitySquare",
+      "trigger": "DuelMatch3Manager.ApplyRemoteBoardSync: actionType == 3",
+      "description": "Четыре плотных скола / сжатие резонансной плиты",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ability_square.wav",
+          "duration_seconds": 0.61,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 58604,
+          "peak_dbfs": -7.92,
+          "rms_dbfs": -23.202,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -8e-08,
+          "clipped_samples": 0,
+          "sha256": "97f56614dab00355d96e5ea9ac9240cdec1ec2c50f2b00adc99ff465dad2bcef",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ability_square.wav",
+          "duration_seconds": 0.61,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 58604,
+          "peak_dbfs": -7.577,
+          "rms_dbfs": -20.918,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 4.4e-08,
+          "clipped_samples": 0,
+          "sha256": "928730a4ee4764f61ddda1fd3b9698423eb21882e38f6920fc81b9a7d20ecfb9",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ability_square_A-gap-B.wav",
+        "duration_seconds": 2.37,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 227564,
+        "peak_dbfs": -7.577,
+        "rms_dbfs": -24.795,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": -9e-09,
+        "clipped_samples": 0,
+        "sha256": "15a83f651c56303f3c6fe726bb5fd621711548a4a1d891ea521f4d471871041e",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ability_cross",
+      "title": "Способность: крест",
+      "category": "battle",
+      "existing_slot": "sfxAbilityCross",
+      "trigger": "DuelMatch3Manager.ApplyRemoteBoardSync: actionType == 2",
+      "description": "Пересекающиеся металлические срезы / два паровых выброса",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ability_cross.wav",
+          "duration_seconds": 0.57,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 54764,
+          "peak_dbfs": -6.846,
+          "rms_dbfs": -21.26,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 1.06e-07,
+          "clipped_samples": 0,
+          "sha256": "95028eacbf3e9f189c7adf3c2b6a537e91894e1be6f07b1d067b2f56f136f23f",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ability_cross.wav",
+          "duration_seconds": 0.57,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 54764,
+          "peak_dbfs": -7.114,
+          "rms_dbfs": -20.826,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -4.2e-08,
+          "clipped_samples": 0,
+          "sha256": "c8517edc685f9e3f6181560cfdbc9cc64cc375aa02728ab30a6c90d1c3a128d5",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ability_cross_A-gap-B.wav",
+        "duration_seconds": 2.29,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 219884,
+        "peak_dbfs": -6.846,
+        "rms_dbfs": -24.067,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 1.6e-08,
+        "clipped_samples": 0,
+        "sha256": "7706ea147312311b67621b3f251c780c2102ffa0a3c355130def186a1eb2bae0",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ability_petard",
+      "title": "Способность: петарда",
+      "category": "battle",
+      "existing_slot": "sfxAbilityPetard",
+      "trigger": "DuelMatch3Manager.ApplyRemoteBoardSync: actionType == 4",
+      "description": "Компактный пороховой удар с осколками / разряд накопленного давления",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ability_petard.wav",
+          "duration_seconds": 0.88,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 84524,
+          "peak_dbfs": -6.468,
+          "rms_dbfs": -23.144,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 1.251e-06,
+          "clipped_samples": 0,
+          "sha256": "4c5671a955af9a0a326f63dd062cda8b4a1660c45d7c6ba21ee00217673c704b",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ability_petard.wav",
+          "duration_seconds": 0.88,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 84524,
+          "peak_dbfs": -5.961,
+          "rms_dbfs": -21.7,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -7.8e-08,
+          "clipped_samples": 0,
+          "sha256": "ea515fe4bfa7e67ec25fc3418c77add2ebd14d52879e300cf1c81f04d33ca73c",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ability_petard_A-gap-B.wav",
+        "duration_seconds": 2.91,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 279404,
+        "peak_dbfs": -5.961,
+        "rms_dbfs": -24.546,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 3.55e-07,
+        "clipped_samples": 0,
+        "sha256": "30755fd0fc50dc80122dadd4011791c1a3ccab5fb16f5d8cb223e1792bfcf97e",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "damage_hit",
+      "title": "Обычное попадание",
+      "category": "battle",
+      "existing_slot": "sfxDamageHit",
+      "trigger": "DuelMatch3Manager: HP decrease and !critTriggered",
+      "description": "Глухой удар по ткани и пластине / короткий силовой импульс",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/damage_hit.wav",
+          "duration_seconds": 0.34,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 32684,
+          "peak_dbfs": -7.511,
+          "rms_dbfs": -21.802,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 7e-09,
+          "clipped_samples": 0,
+          "sha256": "04bc89461152d49d305e395945f1b8d678c3427a2a39a86645a1ba91efa80035",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/damage_hit.wav",
+          "duration_seconds": 0.34,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 32684,
+          "peak_dbfs": -7.863,
+          "rms_dbfs": -21.803,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -1.5e-08,
+          "clipped_samples": 0,
+          "sha256": "8c622fe392d332e00c9028a835fa7f0322f127e2dc2888041c602edcb35becef",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/damage_hit_A-gap-B.wav",
+        "duration_seconds": 1.83,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 175724,
+        "peak_dbfs": -7.511,
+        "rms_dbfs": -26.102,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": -1e-09,
+        "clipped_samples": 0,
+        "sha256": "2937f96d19e8725f80f4da0631b2e73d2d60924f5c5fa6c21c557ce9379a9198",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "extra_turn",
+      "title": "Дополнительный ход",
+      "category": "battle",
+      "existing_slot": "sfxExtraTurn",
+      "trigger": "DuelMatch3Manager: msg.extraTurn",
+      "description": "Защёлка с минеральным отблеском / отпирающийся паровой клапан",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/extra_turn.wav",
+          "duration_seconds": 0.66,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 63404,
+          "peak_dbfs": -7.196,
+          "rms_dbfs": -19.987,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 2.5e-08,
+          "clipped_samples": 0,
+          "sha256": "e2e64b0d05162cabf6fd5f97037a9465993e23b3ca33e00c1bb0fa370f9fa27a",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/extra_turn.wav",
+          "duration_seconds": 0.66,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 63404,
+          "peak_dbfs": -7.315,
+          "rms_dbfs": -19.987,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -1.7e-08,
+          "clipped_samples": 0,
+          "sha256": "b48de1240cc5086865403398c693338e06b4535d8bf6809a94d16ca7cbb2c3ac",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/extra_turn_A-gap-B.wav",
+        "duration_seconds": 2.47,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 237164,
+        "peak_dbfs": -7.196,
+        "rms_dbfs": -22.708,
+        "active_rms_dbfs": -19.463,
+        "dc_offset": 2e-09,
+        "clipped_samples": 0,
+        "sha256": "4065aa793a42cfc0611f6a538c05c02862e9a4ff12d5cb98cc58b689e08c3331",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "timer_end",
+      "title": "Время хода истекло",
+      "category": "battle",
+      "existing_slot": "sfxTimerEnd",
+      "trigger": "DuelMatch3Manager: turn deadline expires",
+      "description": "Два механических стопора / остановка пневматического затвора",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/timer_end.wav",
+          "duration_seconds": 0.42,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 40364,
+          "peak_dbfs": -6.92,
+          "rms_dbfs": -20.68,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 6.5e-08,
+          "clipped_samples": 0,
+          "sha256": "87c7486894f4d23cd46aa3a54e06fd587f0d8cd7760a7355e6c1dde592124881",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/timer_end.wav",
+          "duration_seconds": 0.42,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 40364,
+          "peak_dbfs": -6.99,
+          "rms_dbfs": -20.546,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -3e-09,
+          "clipped_samples": 0,
+          "sha256": "ab6476bff9e8749ed7a87d9c615d35d3bfd4a02b3e55639e5ad75b0f484fb78f",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/timer_end_A-gap-B.wav",
+        "duration_seconds": 1.99,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 191084,
+        "peak_dbfs": -6.92,
+        "rms_dbfs": -24.358,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 1.3e-08,
+        "clipped_samples": 0,
+        "sha256": "24c4fb75d2284df1e0c92889355c557e9e52e45e0d6b3ca1942fdbcabd7c4b1a",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "victory",
+      "title": "Победа",
+      "category": "battle",
+      "existing_slot": "sfxVictory",
+      "trigger": "DuelMatch3Manager: won; current draw also uses this slot",
+      "description": "Открытие тяжёлого замка и тёплый металл / высвобождение яркого резонанса",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/victory.wav",
+          "duration_seconds": 1.42,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 136364,
+          "peak_dbfs": -7.184,
+          "rms_dbfs": -21.021,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -6.1e-08,
+          "clipped_samples": 0,
+          "sha256": "f1a2401aa46826de507c837df06b73f2a78f6157030973c113cf0419be75f6d6",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/victory.wav",
+          "duration_seconds": 1.42,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 136364,
+          "peak_dbfs": -7.189,
+          "rms_dbfs": -20.303,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 4.8e-08,
+          "clipped_samples": 0,
+          "sha256": "8932a603d29bbc7714d456483ede2f4c1abe86e52bd596c7cf57d9c49a651709",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/victory_A-gap-B.wav",
+        "duration_seconds": 3.99,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 383084,
+        "peak_dbfs": -7.184,
+        "rms_dbfs": -22.124,
+        "active_rms_dbfs": -19.46,
+        "dc_offset": -5e-09,
+        "clipped_samples": 0,
+        "sha256": "206705fb78cbfa25dc3ba39b889f1650d1af4840cb4cc23a102d16f3db1d3861",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "defeat",
+      "title": "Поражение",
+      "category": "battle",
+      "existing_slot": "sfxDefeat",
+      "trigger": "DuelMatch3Manager: !won && !isDraw",
+      "description": "Оседающий затвор и пыль / затухание давления и гул пластины",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/defeat.wav",
+          "duration_seconds": 1.22,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 117164,
+          "peak_dbfs": -6.839,
+          "rms_dbfs": -20.725,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -2.4e-08,
+          "clipped_samples": 0,
+          "sha256": "60e396963abf041cdcf86df4de207a7f5c8e730fea66ac9cd127564304217891",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/defeat.wav",
+          "duration_seconds": 1.22,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 117164,
+          "peak_dbfs": -6.838,
+          "rms_dbfs": -20.772,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 2e-08,
+          "clipped_samples": 0,
+          "sha256": "968c9dc4a689c424ad4eb771e1dc5a714e35ba4f08167e7160b0235d0bef55c8",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/defeat_A-gap-B.wav",
+        "duration_seconds": 3.59,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 344684,
+        "peak_dbfs": -6.838,
+        "rms_dbfs": -22.426,
+        "active_rms_dbfs": -19.429,
+        "dc_offset": -1e-09,
+        "clipped_samples": 0,
+        "sha256": "492e06047beb93c54f8f2873b40f6875eddafe9f73fa96cb8390257c8d07dbc5",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ui_click",
+      "title": "Нажатие / выбор",
+      "category": "ui",
+      "existing_slot": null,
+      "trigger": "ExpeditionUi.Button / existing Unity Button.onClick",
+      "description": "Маленькая латунная защёлка / керамический переключатель с воздухом",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ui_click.wav",
+          "duration_seconds": 0.15,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 14444,
+          "peak_dbfs": -11.362,
+          "rms_dbfs": -24.347,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": 1.02e-07,
+          "clipped_samples": 0,
+          "sha256": "9c49bd7f03b8be99d73dd710984cad335a97cfc26c10f3d58447122efd088922",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ui_click.wav",
+          "duration_seconds": 0.15,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 14444,
+          "peak_dbfs": -11.327,
+          "rms_dbfs": -24.347,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": 6.8e-08,
+          "clipped_samples": 0,
+          "sha256": "d5d761f947d6d5e69b98eb2a3139169bb7da4219066baf4c214bb5f28838c0c9",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ui_click_A-gap-B.wav",
+        "duration_seconds": 1.45,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 139244,
+        "peak_dbfs": -11.327,
+        "rms_dbfs": -31.189,
+        "active_rms_dbfs": -23.0,
+        "dc_offset": 1.8e-08,
+        "clipped_samples": 0,
+        "sha256": "cee16d35c66d4b8fef494646a243bfb19207b0464c649bd0fa3151cf550fb2a4",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ui_back",
+      "title": "Назад / отмена",
+      "category": "ui",
+      "existing_slot": null,
+      "trigger": "Match3SearchingPanel.HandleCancel; modal close; navigation back",
+      "description": "Мягкий обратный ход механизма / короткий обратный клапан",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ui_back.wav",
+          "duration_seconds": 0.21,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 20204,
+          "peak_dbfs": -10.739,
+          "rms_dbfs": -23.918,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": 7.6e-08,
+          "clipped_samples": 0,
+          "sha256": "28387485419eb2a9c3e74f2e114aef1896b788d36db8f8bf7b13bc810adec13b",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ui_back.wav",
+          "duration_seconds": 0.21,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 20204,
+          "peak_dbfs": -10.836,
+          "rms_dbfs": -23.918,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": 5.1e-08,
+          "clipped_samples": 0,
+          "sha256": "0b0da23b327f57f6793f755c7506e8a6adfa8fe64614cb643ddfbbbbd51a3789",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ui_back_A-gap-B.wav",
+        "duration_seconds": 1.57,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 150764,
+        "peak_dbfs": -10.739,
+        "rms_dbfs": -29.644,
+        "active_rms_dbfs": -23.0,
+        "dc_offset": 1.7e-08,
+        "clipped_samples": 0,
+        "sha256": "6d549655c1cb437050f55eaa774673f97d0ee3ffe4e4a4ddd31ac678e438a1ba",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "ui_blocked",
+      "title": "Действие недоступно / ошибка",
+      "category": "ui",
+      "existing_slot": null,
+      "trigger": "Workshop resource shortfall or rejected response; Mine insufficient resources",
+      "description": "Двойной упор защёлки / глухой сброс заблокированного клапана",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/ui_blocked.wav",
+          "duration_seconds": 0.34,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 32684,
+          "peak_dbfs": -10.766,
+          "rms_dbfs": -24.001,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": -1.3e-08,
+          "clipped_samples": 0,
+          "sha256": "dd2c9e82f044c5755f68278b20d995f861aef2e810713559a825635dc53158a6",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/ui_blocked.wav",
+          "duration_seconds": 0.34,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 32684,
+          "peak_dbfs": -11.099,
+          "rms_dbfs": -24.001,
+          "active_rms_dbfs": -23.0,
+          "dc_offset": 1.7e-08,
+          "clipped_samples": 0,
+          "sha256": "5f2bb7bdb33018ddb3efc960ca1c15efa7080f779bd0a4009114c6e328313f8c",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/ui_blocked_A-gap-B.wav",
+        "duration_seconds": 1.83,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 175724,
+        "peak_dbfs": -10.766,
+        "rms_dbfs": -28.301,
+        "active_rms_dbfs": -23.0,
+        "dc_offset": 1e-09,
+        "clipped_samples": 0,
+        "sha256": "c887631bf404b287c9c7443f0c78faed6339d6d803406d032aaba5df8329802e",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "queue_enter",
+      "title": "Встать в очередь",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "DuelMatch3Manager.FindMatchAsync: ticket accepted, not button intent",
+      "description": "Завод пружины и фиксация / набор давления и поворот ротора",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/queue_enter.wav",
+          "duration_seconds": 0.63,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 60524,
+          "peak_dbfs": -7.221,
+          "rms_dbfs": -20.251,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -1.2e-08,
+          "clipped_samples": 0,
+          "sha256": "6d368ddf2c15dbf162fae0003b40e8e4c1de2014dc6da0f1cbab331aae370d7d",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/queue_enter.wav",
+          "duration_seconds": 0.63,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 60524,
+          "peak_dbfs": -7.548,
+          "rms_dbfs": -20.25,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -6.7e-08,
+          "clipped_samples": 0,
+          "sha256": "ddc9a1cb51152010f1c51dce6d8cc7f71ba21a8f70637b6ab830df644d51ec89",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/queue_enter_A-gap-B.wav",
+        "duration_seconds": 2.41,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 231404,
+        "peak_dbfs": -7.221,
+        "rms_dbfs": -23.067,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": -2.1e-08,
+        "clipped_samples": 0,
+        "sha256": "ca2b43785f990eb3e2da9833939a64f766879884de11b543188980e939ac7095",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "match_ready",
+      "title": "Матч подтверждён",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "DuelMatch3Manager: successful matched/join confirmation, never local progress",
+      "description": "Сходятся два металлических замка / две резонансные створки",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/match_ready.wav",
+          "duration_seconds": 0.81,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 77804,
+          "peak_dbfs": -6.917,
+          "rms_dbfs": -20.196,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 1.8e-08,
+          "clipped_samples": 0,
+          "sha256": "fc5061623da7fc14c8c0940118d24f3c7ab848117c8d8148a9dc3143400d46a5",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/match_ready.wav",
+          "duration_seconds": 0.81,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 77804,
+          "peak_dbfs": -7.089,
+          "rms_dbfs": -20.196,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 2e-09,
+          "clipped_samples": 0,
+          "sha256": "cfa3379a6e345c84f40af7a51a6c3985a5a37d7e0750aad445c074b62aeed397",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/match_ready_A-gap-B.wav",
+        "duration_seconds": 2.77,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 265964,
+        "peak_dbfs": -6.917,
+        "rms_dbfs": -22.526,
+        "active_rms_dbfs": -19.405,
+        "dc_offset": 6e-09,
+        "clipped_samples": 0,
+        "sha256": "a25f5cc0b66dd77b2c30e3cbb1ce4210667f1757e05701f042ebc98720152e99",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "craft_start",
+      "title": "Крафт начат / ускорен",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "WorkshopSceneController.RunCraftRequestAsync: successful Start or Rush response",
+      "description": "Два удара кузнечного молотка / ковка с паровым выбросом",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/craft_start.wav",
+          "duration_seconds": 0.78,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 74924,
+          "peak_dbfs": -6.799,
+          "rms_dbfs": -21.259,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -3.7e-08,
+          "clipped_samples": 0,
+          "sha256": "2fe35e19011001444b1a7ef977bf0ef5db0cfcb66dd7db2ebe835bc2c423bd6f",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/craft_start.wav",
+          "duration_seconds": 0.78,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 74924,
+          "peak_dbfs": -7.491,
+          "rms_dbfs": -20.226,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -4.8e-08,
+          "clipped_samples": 0,
+          "sha256": "cfb1b02d6e036519b52fc7b17404d1c13c6f354aa77fc3de1cae46a982313b4d",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/craft_start_A-gap-B.wav",
+        "duration_seconds": 2.71,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 260204,
+        "peak_dbfs": -6.799,
+        "rms_dbfs": -23.11,
+        "active_rms_dbfs": -19.463,
+        "dc_offset": -2.5e-08,
+        "clipped_samples": 0,
+        "sha256": "04d9f19579380bb58e5fcaeb6ddd1e10b620a2b41991f9fca0cd05b802cbe02a",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "craft_ready",
+      "title": "Предмет готов",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "WorkshopSceneController: Busy -> Ready once, not each timer refresh",
+      "description": "Остывающая деталь и лёгкий звон / кристаллизация и выпуск пара",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/craft_ready.wav",
+          "duration_seconds": 0.8,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 76844,
+          "peak_dbfs": -7.351,
+          "rms_dbfs": -20.402,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 9.9e-08,
+          "clipped_samples": 0,
+          "sha256": "b040fbb5c1d9d94b29a881762a7a9730b9222da494a3ecb7822452a209af07c1",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/craft_ready.wav",
+          "duration_seconds": 0.8,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 76844,
+          "peak_dbfs": -7.481,
+          "rms_dbfs": -20.402,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 3.8e-08,
+          "clipped_samples": 0,
+          "sha256": "476770375724159282d40cd8da890f31089684a836f3fc75c5b724293aadf5d3",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/craft_ready_A-gap-B.wav",
+        "duration_seconds": 2.75,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 264044,
+        "peak_dbfs": -7.351,
+        "rms_dbfs": -22.754,
+        "active_rms_dbfs": -19.467,
+        "dc_offset": 4e-08,
+        "clipped_samples": 0,
+        "sha256": "b784dc9244cc4123862a918ab825f32fbdff758989afcb2cbaac9a8bf8282d4a",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "reward_claim",
+      "title": "Забрать предмет / награду",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "WorkshopSceneController.ClaimAtSlot: successful response; confirmed reward claim",
+      "description": "Фурнитура, несколько монет и ткань / резонанс артефакта и мягкий щелчок",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/reward_claim.wav",
+          "duration_seconds": 0.68,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 65324,
+          "peak_dbfs": -6.943,
+          "rms_dbfs": -21.804,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 9.3e-08,
+          "clipped_samples": 0,
+          "sha256": "ea2ac572ee0b1f1151c22e2b259016ab6a1605ddbb7a29f33b195c7b71d428de",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/reward_claim.wav",
+          "duration_seconds": 0.68,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 65324,
+          "peak_dbfs": -7.54,
+          "rms_dbfs": -20.117,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": -2.5e-08,
+          "clipped_samples": 0,
+          "sha256": "319ee75355202a343c60ecb81b35b3fb222bdbcf4c61ae25d0b5af6c8b6953da",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/reward_claim_A-gap-B.wav",
+        "duration_seconds": 2.51,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 241004,
+        "peak_dbfs": -6.943,
+        "rms_dbfs": -23.54,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 1.8e-08,
+        "clipped_samples": 0,
+        "sha256": "4de35faa7096a9fcadf88fbe65b10083b1d25bfb57288f3c099edc2602c10deb",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "mine_elevator",
+      "title": "Поездка лифта",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "ExpeditionMinePresentation: accepted tap travel; one-shot, not manual scroll",
+      "description": "Трос, редуктор и тормоз / гидравлика, шестерни и запор",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/mine_elevator.wav",
+          "duration_seconds": 1.48,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 142124,
+          "peak_dbfs": -6.381,
+          "rms_dbfs": -20.03,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 4.9e-08,
+          "clipped_samples": 0,
+          "sha256": "dedb9426487f11ba4ade736dca061afba5f5dcfe68c6659d190f2d7174471eb0",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/mine_elevator.wav",
+          "duration_seconds": 1.48,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 142124,
+          "peak_dbfs": -7.352,
+          "rms_dbfs": -20.03,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 8.3e-08,
+          "clipped_samples": 0,
+          "sha256": "9f10e381c0a47d037d4232638046efb80fd3eefb31267f5f22d7289ab8326bdf",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/mine_elevator_A-gap-B.wav",
+        "duration_seconds": 4.11,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 394604,
+        "peak_dbfs": -6.381,
+        "rms_dbfs": -21.455,
+        "active_rms_dbfs": -19.5,
+        "dc_offset": 4.7e-08,
+        "clipped_samples": 0,
+        "sha256": "57b817149114c08c89ff0bdbd4e93d87e4dc03a9fdc711786436cc40111aab0f",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    },
+    {
+      "id": "barrier_unlock",
+      "title": "Открытие барьера / подтверждение призыва",
+      "category": "functional",
+      "existing_slot": null,
+      "trigger": "MineSceneController: successful BarrierUnlock or Summon response",
+      "description": "Размыкание цепей и каменная осыпь / цепь, пар и угасающие искры",
+      "integrated": false,
+      "variants": {
+        "A": {
+          "file": "A/barrier_unlock.wav",
+          "duration_seconds": 1.22,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 117164,
+          "peak_dbfs": -7.033,
+          "rms_dbfs": -20.919,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 1.011e-06,
+          "clipped_samples": 0,
+          "sha256": "369fb86b11a9202810bc6ab430bbb7a6877c065b7f07ea1afc2e2f4eb9ef7929",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "A"
+        },
+        "B": {
+          "file": "B/barrier_unlock.wav",
+          "duration_seconds": 1.22,
+          "sample_rate": 48000,
+          "channels": 1,
+          "bits_per_sample": 16,
+          "bytes": 117164,
+          "peak_dbfs": -7.447,
+          "rms_dbfs": -20.919,
+          "active_rms_dbfs": -19.5,
+          "dc_offset": 5.8e-08,
+          "clipped_samples": 0,
+          "sha256": "3a9c4280ea2c8049b0ec2629767b1d0c65dbfe92cc8442551d811e7159e6ed94",
+          "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+          "style": "B"
+        }
+      },
+      "pair_preview": {
+        "file": "pairs/barrier_unlock_A-gap-B.wav",
+        "duration_seconds": 3.59,
+        "sample_rate": 48000,
+        "channels": 1,
+        "bits_per_sample": 16,
+        "bytes": 344684,
+        "peak_dbfs": -7.033,
+        "rms_dbfs": -22.596,
+        "active_rms_dbfs": -19.476,
+        "dc_offset": 3.63e-07,
+        "clipped_samples": 0,
+        "sha256": "20b4940fceacef9784f7a3dff4f812ec2cbab52108d475c52acfc0043e30b889",
+        "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples"
+      },
+      "pair_active_rms_difference_db": 0.0
+    }
+  ],
+  "montages": {
+    "A": {
+      "file": "montages/style-A.wav",
+      "duration_seconds": 27.21,
+      "sample_rate": 48000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "bytes": 2612204,
+      "peak_dbfs": -6.381,
+      "rms_dbfs": -23.905,
+      "active_rms_dbfs": -19.481,
+      "dc_offset": 9e-08,
+      "clipped_samples": 0,
+      "sha256": "f0900bdf6e2c5f7a6de71f274dca6e6899d35b7632b98e875a64fa1531063b0b",
+      "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+      "markers": [
+        {
+          "id": "line_clear",
+          "start_seconds": 0.25,
+          "end_seconds": 0.56
+        },
+        {
+          "id": "cascade_fall",
+          "start_seconds": 1.21,
+          "end_seconds": 1.64
+        },
+        {
+          "id": "ability_square",
+          "start_seconds": 2.29,
+          "end_seconds": 2.9
+        },
+        {
+          "id": "ability_cross",
+          "start_seconds": 3.55,
+          "end_seconds": 4.12
+        },
+        {
+          "id": "ability_petard",
+          "start_seconds": 4.77,
+          "end_seconds": 5.65
+        },
+        {
+          "id": "damage_hit",
+          "start_seconds": 6.3,
+          "end_seconds": 6.64
+        },
+        {
+          "id": "extra_turn",
+          "start_seconds": 7.29,
+          "end_seconds": 7.95
+        },
+        {
+          "id": "timer_end",
+          "start_seconds": 8.6,
+          "end_seconds": 9.02
+        },
+        {
+          "id": "victory",
+          "start_seconds": 9.67,
+          "end_seconds": 11.09
+        },
+        {
+          "id": "defeat",
+          "start_seconds": 11.74,
+          "end_seconds": 12.96
+        },
+        {
+          "id": "ui_click",
+          "start_seconds": 13.61,
+          "end_seconds": 13.76
+        },
+        {
+          "id": "ui_back",
+          "start_seconds": 14.41,
+          "end_seconds": 14.62
+        },
+        {
+          "id": "ui_blocked",
+          "start_seconds": 15.27,
+          "end_seconds": 15.61
+        },
+        {
+          "id": "queue_enter",
+          "start_seconds": 16.26,
+          "end_seconds": 16.89
+        },
+        {
+          "id": "match_ready",
+          "start_seconds": 17.54,
+          "end_seconds": 18.35
+        },
+        {
+          "id": "craft_start",
+          "start_seconds": 19.0,
+          "end_seconds": 19.78
+        },
+        {
+          "id": "craft_ready",
+          "start_seconds": 20.43,
+          "end_seconds": 21.23
+        },
+        {
+          "id": "reward_claim",
+          "start_seconds": 21.88,
+          "end_seconds": 22.56
+        },
+        {
+          "id": "mine_elevator",
+          "start_seconds": 23.21,
+          "end_seconds": 24.69
+        },
+        {
+          "id": "barrier_unlock",
+          "start_seconds": 25.34,
+          "end_seconds": 26.56
+        }
+      ]
+    },
+    "B": {
+      "file": "montages/style-B.wav",
+      "duration_seconds": 27.21,
+      "sample_rate": 48000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "bytes": 2612204,
+      "peak_dbfs": -5.961,
+      "rms_dbfs": -23.498,
+      "active_rms_dbfs": -19.47,
+      "dc_offset": 8e-09,
+      "clipped_samples": 0,
+      "sha256": "a5ff85d0d954a83c30cc8ce092d5580eb0f3e56b9a48b80a7b86a8b6a322f62a",
+      "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+      "markers": [
+        {
+          "id": "line_clear",
+          "start_seconds": 0.25,
+          "end_seconds": 0.56
+        },
+        {
+          "id": "cascade_fall",
+          "start_seconds": 1.21,
+          "end_seconds": 1.64
+        },
+        {
+          "id": "ability_square",
+          "start_seconds": 2.29,
+          "end_seconds": 2.9
+        },
+        {
+          "id": "ability_cross",
+          "start_seconds": 3.55,
+          "end_seconds": 4.12
+        },
+        {
+          "id": "ability_petard",
+          "start_seconds": 4.77,
+          "end_seconds": 5.65
+        },
+        {
+          "id": "damage_hit",
+          "start_seconds": 6.3,
+          "end_seconds": 6.64
+        },
+        {
+          "id": "extra_turn",
+          "start_seconds": 7.29,
+          "end_seconds": 7.95
+        },
+        {
+          "id": "timer_end",
+          "start_seconds": 8.6,
+          "end_seconds": 9.02
+        },
+        {
+          "id": "victory",
+          "start_seconds": 9.67,
+          "end_seconds": 11.09
+        },
+        {
+          "id": "defeat",
+          "start_seconds": 11.74,
+          "end_seconds": 12.96
+        },
+        {
+          "id": "ui_click",
+          "start_seconds": 13.61,
+          "end_seconds": 13.76
+        },
+        {
+          "id": "ui_back",
+          "start_seconds": 14.41,
+          "end_seconds": 14.62
+        },
+        {
+          "id": "ui_blocked",
+          "start_seconds": 15.27,
+          "end_seconds": 15.61
+        },
+        {
+          "id": "queue_enter",
+          "start_seconds": 16.26,
+          "end_seconds": 16.89
+        },
+        {
+          "id": "match_ready",
+          "start_seconds": 17.54,
+          "end_seconds": 18.35
+        },
+        {
+          "id": "craft_start",
+          "start_seconds": 19.0,
+          "end_seconds": 19.78
+        },
+        {
+          "id": "craft_ready",
+          "start_seconds": 20.43,
+          "end_seconds": 21.23
+        },
+        {
+          "id": "reward_claim",
+          "start_seconds": 21.88,
+          "end_seconds": 22.56
+        },
+        {
+          "id": "mine_elevator",
+          "start_seconds": 23.21,
+          "end_seconds": 24.69
+        },
+        {
+          "id": "barrier_unlock",
+          "start_seconds": 25.34,
+          "end_seconds": 26.56
+        }
+      ]
+    }
+  },
+  "showcases": {
+    "A": {
+      "file": "showcases/showcase-A.wav",
+      "duration_seconds": 10.53,
+      "sample_rate": 48000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "bytes": 1010924,
+      "peak_dbfs": -6.468,
+      "rms_dbfs": -25.395,
+      "active_rms_dbfs": -19.502,
+      "dc_offset": 9.7e-08,
+      "clipped_samples": 0,
+      "sha256": "b8a1e6b79acf8a0a33db1cdc732136eb138c3346a0934252dc7e57ccf5ace07c",
+      "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+      "markers": [
+        {
+          "id": "ui_click",
+          "start_seconds": 0.3,
+          "end_seconds": 0.45
+        },
+        {
+          "id": "cascade_fall",
+          "start_seconds": 1.45,
+          "end_seconds": 1.88
+        },
+        {
+          "id": "ability_cross",
+          "start_seconds": 2.88,
+          "end_seconds": 3.45
+        },
+        {
+          "id": "ability_petard",
+          "start_seconds": 4.45,
+          "end_seconds": 5.33
+        },
+        {
+          "id": "craft_start",
+          "start_seconds": 6.33,
+          "end_seconds": 7.11
+        },
+        {
+          "id": "victory",
+          "start_seconds": 8.11,
+          "end_seconds": 9.53
+        }
+      ]
+    },
+    "B": {
+      "file": "showcases/showcase-B.wav",
+      "duration_seconds": 10.53,
+      "sample_rate": 48000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "bytes": 1010924,
+      "peak_dbfs": -5.961,
+      "rms_dbfs": -24.593,
+      "active_rms_dbfs": -19.448,
+      "dc_offset": -3e-09,
+      "clipped_samples": 0,
+      "sha256": "57e240cfc23ddc92f5ffafdc2bbb6ac216cb795272342ea1ae87ccab7a0163af",
+      "source": "Original deterministic procedural PCM synthesis; no recorded or stock samples",
+      "markers": [
+        {
+          "id": "ui_click",
+          "start_seconds": 0.3,
+          "end_seconds": 0.45
+        },
+        {
+          "id": "cascade_fall",
+          "start_seconds": 1.45,
+          "end_seconds": 1.88
+        },
+        {
+          "id": "ability_cross",
+          "start_seconds": 2.88,
+          "end_seconds": 3.45
+        },
+        {
+          "id": "ability_petard",
+          "start_seconds": 4.45,
+          "end_seconds": 5.33
+        },
+        {
+          "id": "craft_start",
+          "start_seconds": 6.33,
+          "end_seconds": 7.11
+        },
+        {
+          "id": "victory",
+          "start_seconds": 8.11,
+          "end_seconds": 9.53
+        }
+      ]
+    }
+  },
+  "excluded_slots": [
+    "sfxAbilityFury",
+    "sfxAbilityShield",
+    "sfxDamageCrit"
+  ],
+  "human_listening_performed": false,
+  "device_listening_performed": false
+}

@@ -41,7 +41,8 @@ return function(deps)
   local api = { Entry = Entry }
   api.duel_match3_race_info = rpc("duel_match3_race_info", function()
     local cfg = deps.ContestGoals.race_public_config()
-    return { ok = true, goal_mana = cfg.goal_mana, mana_bonus_every = cfg.mana_bonus_every, entry = cfg.entry, rewards = cfg.rewards }
+    return { ok = true, goal_mana = cfg.goal_mana, mana_bonus_every = cfg.mana_bonus_every, entry = cfg.entry, rewards = cfg.rewards,
+      bot_entry_refund = cfg.bot_entry_refund == true }
   end, true)
   api.duel_match3_race_enter = rpc("duel_match3_race_enter", function(uid)
     local entry_costs = costs()

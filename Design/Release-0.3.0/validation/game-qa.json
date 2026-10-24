@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-23",
+  "unity_version": "6000.3.9f1",
+  "screens": [
+    "hub",
+    "character",
+    "mine",
+    "workshop",
+    "recipes",
+    "dossier",
+    "arena",
+    "achievements",
+    "rating",
+    "friends"
+  ],
+  "capture_source": "Unity ScreenCapture, actual running game at 1440x3088",
+  "character_slots": "3 left + 3 right + 2 weapon slots below",
+  "inventory_columns": 4,
+  "inventory_visible_rows": 2,
+  "inventory_scroll_from_filled_cell": true,
+  "inventory_drag_cancel_cleared_ghost": true,
+  "inventory_item_preserved": true,
+  "navigation_raycast_checks": true,
+  "dossier_attack_caption_unwrapped": true,
+  "dossier_overlay_and_energy_popup_overlay": true,
+  "real_pve_board_and_server_updates_tested": true,
+  "battle_original_piece_sprites_unchanged": true,
+  "battle_five_original_ability_icons_preserved": true,
+  "quit_confirmation_styled_and_button_verified": true,
+  "font_ellipsis_regular_bold_weight_pass": true,
+  "font_clear_dynamic_data_on_build": false,
+  "mine_duplicate_resource_poll_removed": true,
+  "physical_android_device_tested": false,
+  "device_fps_measured": false,
+  "mine_first_floor_top_and_twelfth_bottom": true,
+  "mine_scroll_first_last": [
+    1,
+    0
+  ],
+  "header_current_values_only": true,
+  "ability_cost_labels_after_refresh": [
+    30,
+    20,
+    20,
+    40,
+    30
+  ],
+  "ability_cost_check_scope": "UI-only fixture through production Refresh; no match or RPC"
+}

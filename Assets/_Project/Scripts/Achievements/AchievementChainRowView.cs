@@ -10,9 +10,30 @@ namespace Project.Achievements
         [SerializeField] private AchievementChainSlotView[] slots;
         [SerializeField] private Graphic[] arrows;
         [SerializeField] private bool overrideArrowColorByState;
+        private AchievementChainDefinition _chain;
+        private Action<string, int> _onStepClick;
+        private bool _expeditionPresentation;
+        public AchievementChainSlotView[] Slots => slots;
+
+        public void SetExpeditionPresentation()
+        {
+            _expeditionPresentation = true;
+            if (slots == null || slots.Length == 0) slots = GetComponentsInChildren<AchievementChainSlotView>(true);
+            foreach (var slot in slots) if (slot != null) slot.SetExpeditionPresentation();
+            if (arrows != null) foreach (var arrow in arrows) if (arrow != null) arrow.gameObject.SetActive(false);
+        }
+
+        public void OpenStep(int stepIndex)
+        {
+            if (_chain?.Thresholds == null || stepIndex < 0 || stepIndex >= _chain.Thresholds.Length) return;
+            _onStepClick?.Invoke(_chain.ChainId, stepIndex);
+        }
 
         public void Bind(AchievementChainDefinition chain, Action<string, int> onStepClick, Sprite chainIcon = null)
         {
+            if (chain?.Thresholds == null) return;
+            _chain = chain;
+            _onStepClick = onStepClick;
             var stat = AchievementProgressStorage.GetStat(chain.StatKey);
             var n = chain.Thresholds.Length;
 
@@ -49,8 +70,8 @@ namespace Project.Achievements
                 var canClaimReward = AchievementRewardClaim.CanClaimStep(chain, i);
 
                 slot.Apply(chain.ChainId, i, tierColor,
-                    chain.Descriptions[i],
-                    chain.RewardTexts[i],
+                    chain.Descriptions != null && i < chain.Descriptions.Length ? chain.Descriptions[i] : string.Empty,
+                    chain.RewardTexts != null && i < chain.RewardTexts.Length ? chain.RewardTexts[i] : string.Empty,
                     numerator,
                     stepNeed,
                     locked,
@@ -62,7 +83,7 @@ namespace Project.Achievements
 
                 if (arrows != null && i < n - 1 && i < arrows.Length && arrows[i] != null)
                 {
-                    arrows[i].gameObject.SetActive(true);
+                    arrows[i].gameObject.SetActive(!_expeditionPresentation);
                     if (overrideArrowColorByState)
                         arrows[i].color = locked ? new Color(0.35f, 0.35f, 0.37f, 1f) : new Color(1f, 0.82f, 0.16f, 1f);
                 }

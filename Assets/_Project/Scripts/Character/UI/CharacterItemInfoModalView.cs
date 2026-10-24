@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -28,6 +29,7 @@ namespace Project.Character.UI
 
         private Coroutine _showRoutine;
         private Coroutine _hideRoutine;
+        private ExpeditionItemDialogs _expeditionDialog;
         public float HideDuration => hideDuration;
 
         public RectTransform PanelRect => panel != null ? panel : transform as RectTransform;
@@ -127,6 +129,7 @@ namespace Project.Character.UI
         public void SetStats(string value)
         {
             if (statsText != null) statsText.text = value ?? string.Empty;
+            if (_expeditionDialog != null) _expeditionDialog.RefreshContent();
         }
 
         public void SetEquipButton(bool visible, bool interactable, string text)
@@ -209,7 +212,7 @@ namespace Project.Character.UI
         private void EnsureDefaults()
         {
             if (panel == null) panel = transform as RectTransform;
-            if (panelCanvasGroup == null) panelCanvasGroup = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
+            if (panelCanvasGroup == null) panelCanvasGroup = ExpeditionItemDialogs.EnsureComponent<CanvasGroup>(gameObject);
             if (titleText == null) titleText = transform.Find("Title")?.GetComponent<TMP_Text>();
             if (slotText == null) slotText = transform.Find("Slot")?.GetComponent<TMP_Text>();
             if (descText == null) descText = transform.Find("Desc")?.GetComponent<TMP_Text>();
@@ -235,8 +238,8 @@ namespace Project.Character.UI
             if (descText != null) descText.richText = true;
             if (statsText != null) statsText.richText = true;
 
-            if (titleText != null) titleText.fontStyle = FontStyles.Underline;
-            if (descText != null) descText.fontStyle = FontStyles.Italic;
+            _expeditionDialog = ExpeditionItemDialogs.ApplyInfo(PanelRect, titleText, slotText, descText, statsText,
+                closeButton, equipToggleButton, learnRecipeButton, salvageButton);
         }
 
         /// <summary>
@@ -247,6 +250,8 @@ namespace Project.Character.UI
             if (descText != null) return;
             descText = transform.Find("Desc")?.GetComponent<TMP_Text>();
             if (descText != null) return;
+            // A procedural fallback may add this component before its labels are constructed.
+            if (titleText == null && statsText == null) return;
 
             var go = new GameObject("Desc", typeof(RectTransform), typeof(TextMeshProUGUI));
             var rt = go.GetComponent<RectTransform>();
@@ -281,6 +286,11 @@ namespace Project.Character.UI
 
         private void AdjustStatsAnchorsForDesc(bool hasDescription)
         {
+            if (_expeditionDialog != null)
+            {
+                _expeditionDialog.RefreshContent();
+                return;
+            }
             if (statsText == null) return;
             var statsRt = statsText.rectTransform;
             statsRt.anchorMin = new Vector2(0.06f, 0.22f);

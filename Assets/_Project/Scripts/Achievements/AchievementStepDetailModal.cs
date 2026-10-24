@@ -1,4 +1,5 @@
 using System;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,9 +9,6 @@ namespace Project.Achievements
     /// <summary>Модалка с текстом условия и награды для шага цепочки (открывается по тапу по слоту).</summary>
     public sealed class AchievementStepDetailModal : MonoBehaviour
     {
-        private const string RewardFontResourcePath = "Fonts & Materials/LiberationSans SDF";
-        private const string RewardMaterialResourcePath = "Fonts & Materials/LiberationSans SDF - Drop Shadow";
-
         private CanvasGroup _rootCg;
         private TMP_Text _titleTmp;
         private TMP_Text _bodyTmp;
@@ -108,6 +106,7 @@ namespace Project.Achievements
 
             AchievementsTmpMaterialRepair.RepairHierarchy(root, _font);
             ApplyRewardFontPreset();
+            ExpeditionItemDialogs.ApplyAchievement(root, _titleTmp, _bodyTmp, _rewardTmp, _primaryButton, Hide);
         }
 
         private TMP_Text MakeTmp(Transform parent, string name, string text, float size, FontStyles fs)
@@ -177,6 +176,7 @@ namespace Project.Achievements
                     _primaryButton.onClick.AddListener(Hide);
             }
 
+            ExpeditionItemDialogs.ApplyAchievement(transform, _titleTmp, _bodyTmp, _rewardTmp, _primaryButton, Hide);
             gameObject.SetActive(true);
             if (_rootCg != null)
             {
@@ -193,14 +193,11 @@ namespace Project.Achievements
             if (_rewardTmp == null)
                 return;
 
-            var rewardFont = Resources.Load<TMP_FontAsset>(RewardFontResourcePath);
+            var rewardFont = ExpeditionTheme.Font;
             if (rewardFont != null)
                 _rewardTmp.font = rewardFont;
 
-            var dropShadowPreset = Resources.Load<Material>(RewardMaterialResourcePath);
-            if (dropShadowPreset != null)
-                _rewardTmp.fontSharedMaterial = dropShadowPreset;
-            else if (rewardFont != null && rewardFont.material != null)
+            if (rewardFont != null && rewardFont.material != null)
                 _rewardTmp.fontSharedMaterial = rewardFont.material;
         }
 

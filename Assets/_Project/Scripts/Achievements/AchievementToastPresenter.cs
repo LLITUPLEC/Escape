@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using Project.UI;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Project.Achievements
 {
@@ -27,6 +29,13 @@ namespace Project.Achievements
         private void Awake()
         {
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, ResolvePreferredFont());
+            if (panelRect != null)
+            {
+                var surface = panelRect.GetComponent<Image>();
+                if (surface != null) { ExpeditionUi.StylePanel(surface, ExpeditionTheme.Teal); surface.raycastTarget = false; }
+            }
+            StyleToastText(titleTmp, 30, ExpeditionTheme.Ivory);
+            StyleToastText(rewardTmp, 28, ExpeditionTheme.Amber);
 
             if (canvasGroup != null)
             {
@@ -50,6 +59,18 @@ namespace Project.Achievements
         private void OnEnable()
         {
             AchievementLifecycle.OnRewardClaimed += Enqueue;
+        }
+
+        private static void StyleToastText(TMP_Text text, float size, Color color)
+        {
+            if (text == null) return;
+            text.font = ExpeditionTheme.Font;
+            text.color = color;
+            text.fontSize = text.fontSizeMax = size;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = size * .78f;
+            text.raycastTarget = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
         }
 
         private void OnDisable()

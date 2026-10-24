@@ -1,0 +1,59 @@
+{
+  "result": "passed",
+  "scope": "Production DTO snapshots from isolated backend decoded by actual Unity renderer; local rendering invokes no match/RPC/bet",
+  "snapshots": [
+    {
+      "name": "after-qf",
+      "source_snapshot_index": 2,
+      "rows": 6,
+      "known_hp_values": 8,
+      "verify_id": "7b8d08aec3564ac18a37b0dddda28c4e"
+    },
+    {
+      "name": "after-sf",
+      "source_snapshot_index": 4,
+      "rows": 7,
+      "known_hp_values": 12,
+      "verify_id": "647c481da5194c9e95a20bd821978179"
+    },
+    {
+      "name": "qf-countdown",
+      "source_snapshot_index": 0,
+      "rows": 4,
+      "known_hp_values": 0,
+      "verify_id": "4513b3c40d2d4972bf5db1ff81df14ba"
+    }
+  ],
+  "checks": [
+    "retained quarterfinal history into semifinals",
+    "actual winners/routes and known/unknown HP",
+    "HUD/navigation hidden and locked",
+    "original UI/data restored; previous bridge polling resumes"
+  ],
+  "replies": [
+    {
+      "id": "7b8d08aec3564ac18a37b0dddda28c4e",
+      "message": "after-qf: Production DTO decoded; 6 real rows, 8 known HP values, actual winner routes and hidden/locked HUD verified; no RPC/match invoked."
+    },
+    {
+      "id": "c31a1a205fab4f1c87feb1f7d0e6067e",
+      "message": "Original UI/data restored. Normal bridge polling resumes if originally enabled."
+    },
+    {
+      "id": "647c481da5194c9e95a20bd821978179",
+      "message": "after-sf: Production DTO decoded; 7 real rows, 12 known HP values, actual winner routes and hidden/locked HUD verified; no RPC/match invoked."
+    },
+    {
+      "id": "2d4efc21c1464cc991a14a02b28f23af",
+      "message": "Original UI/data restored. Normal bridge polling resumes if originally enabled."
+    },
+    {
+      "id": "4513b3c40d2d4972bf5db1ff81df14ba",
+      "message": "qf-countdown: Production DTO decoded; 4 real rows, 0 known HP values, actual winner routes and hidden/locked HUD verified; no RPC/match invoked."
+    },
+    {
+      "id": "09433111e5e6487d8d2b6c3e11171c04",
+      "message": "Original UI/data restored. Normal bridge polling resumes if originally enabled."
+    }
+  ]
+}

@@ -135,6 +135,7 @@ namespace Project.Match3
     {
         public string winnerUserId;
         public bool isDraw;
+        public bool entryRefund;
         public int rewardXp;
         public int rewardGold;
         public int rewardOre;

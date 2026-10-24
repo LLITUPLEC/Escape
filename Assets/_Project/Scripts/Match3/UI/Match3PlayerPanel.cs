@@ -54,8 +54,25 @@ namespace Project.Match3
         private bool _furyVisualActive;
         private bool _raceHudMode;
         private int _raceGoalMana;
+        private int _lastDisplayedMaxMana;
         private RectTransform _raceGoalMarker;
         private Transform _raceTrack;
+        private bool _expeditionStyle;
+        internal bool IsRaceHudMode => _raceHudMode;
+
+        public void UseExpeditionStyle()
+        {
+            _expeditionStyle = true;
+            ResolveReferences();
+            SetupBarValueText(hpFill, hpText);
+            SetupBarValueText(manaFill, manaText);
+            ExpeditionBattleLayout.ApplyPlayerContents(this);
+            if (combatStatsName != null &&
+                (combatStatsName.text.Contains("...") || combatStatsName.text.Contains("…") ||
+                 combatStatsName.text.Contains("Урон:")))
+                combatStatsName.text = "Ожидание боя";
+            _visualStyleApplied = true;
+        }
 
         private void Start()
         {
@@ -179,14 +196,16 @@ namespace Project.Match3
         {
             if (nameText != null)
             {
-                nameText.fontSize = NameFontSize;
-                nameText.enableAutoSizing = false;
+                nameText.fontSize = _expeditionStyle ? 25f : NameFontSize;
+                nameText.enableAutoSizing = _expeditionStyle;
+                if (_expeditionStyle) { nameText.fontSizeMin = 16; nameText.fontSizeMax = 25; }
                 nameText.text = playerName;
             }
         }
 
         public void UpdateStats(int hp, int maxHp, int mana, int maxMana)
         {
+            _lastDisplayedMaxMana = Mathf.Max(1, maxMana);
             if (!_visualStyleApplied)
             {
                 ResolveReferences();
@@ -227,6 +246,14 @@ namespace Project.Match3
             var heal = Mathf.Max(0, healBonus);
             var crit = Mathf.Max(0f, critChancePercent);
 
+            if (_expeditionStyle && combatStatsName != null)
+            {
+                combatStatsName.fontSize = 22f;
+                combatStatsName.text = $"{dmg} УРОН  ·  {arm} БРОНЯ\n{heal} ЛЕЧ.  ·  {crit:0.#}% КРИТ";
+                if (combatStatsValue != null) combatStatsValue.gameObject.SetActive(false);
+                return;
+            }
+
             if (combatStatsName != null && combatStatsValue != null)
             {
                 combatStatsName.fontSize = CombatStatsFontSize;
@@ -259,7 +286,9 @@ namespace Project.Match3
         public void UpdateBuffState(int shieldStacks, int shieldTurnsRemaining)
         {
             if (buffStateText == null) return;
-            buffStateText.text = shieldStacks > 0 ? $"Щит x{shieldStacks} ({Mathf.Max(0, shieldTurnsRemaining)})" : string.Empty;
+            buffStateText.text = shieldStacks > 0 ? $"Щит ×{shieldStacks} · {Mathf.Max(0, shieldTurnsRemaining)} х." : string.Empty;
+            if (_expeditionStyle && buffStateText.transform.parent != null && buffStateText.transform.parent.name == "ExpeditionShieldBadge")
+                buffStateText.transform.parent.gameObject.SetActive(!_raceHudMode && shieldStacks > 0);
         }
 
         /// <summary>
@@ -291,6 +320,8 @@ namespace Project.Match3
 
         public void ShowDamagePopup(int damageAmount, bool isCrit, bool manaDrainStyle)
         {
+            if (_expeditionStyle && damageAmount > 0)
+                GetComponent<ExpeditionBattleResponse>()?.Pulse(isCrit, manaDrainStyle);
             if (damagePopup == null) return;
             damagePopup.Play(damageAmount, isCrit, manaDrainStyle);
         }
@@ -357,10 +388,18 @@ namespace Project.Match3
                 if (manaText != null)
                     manaText.transform.SetAsLastSibling();
             }
-            else if (_raceGoalMarker != null)
+            else
             {
-                _raceGoalMarker.gameObject.SetActive(false);
+                if (_raceGoalMarker != null) _raceGoalMarker.gameObject.SetActive(false);
+                var normalFill = mpTrack != null ? mpTrack.Find("MpBarFill")?.GetComponent<Image>() : null;
+                if (normalFill != null) manaFill = normalFill;
+                if (mpValue != null) manaText = mpValue.GetComponent<TMP_Text>();
+                if (combatStatsName != null) combatStatsName.gameObject.SetActive(true);
+                if (combatStatsValue != null) combatStatsValue.gameObject.SetActive(!_expeditionStyle);
+                if (buffStateText != null) buffStateText.gameObject.SetActive(true);
+                SetupBarValueText(manaFill, manaText);
             }
+            if (_expeditionStyle) ExpeditionBattleLayout.ApplyPlayerContents(this);
         }
 
         private static readonly Color RaceGoalMarkerColor = new Color(0x16 / 255f, 1f, 0f, 1f);
@@ -392,18 +431,25 @@ namespace Project.Match3
             EnsureRaceGoalMarker();
             if (_raceGoalMarker == null) return;
 
-            if (_raceGoalMana <= 0)
+            var maxMana = maxManaHint > 0 ? maxManaHint : _lastDisplayedMaxMana;
+            if (_raceGoalMana <= 0 || maxMana <= 0)
             {
                 _raceGoalMarker.gameObject.SetActive(false);
                 return;
             }
 
-            // Right-stretch: Top/Bottom = 0, Pos X = -(20% цели). Пример: цель 250 → X = -50.
-            _raceGoalMarker.anchorMin = new Vector2(1f, 0f);
-            _raceGoalMarker.anchorMax = new Vector2(1f, 1f);
+            // The target is a fraction of the actual mana capacity, independent of screen/bar width.
+            var fraction = Mathf.Clamp01((float)_raceGoalMana / maxMana);
+            _raceGoalMarker.anchorMin = new Vector2(fraction, 0f);
+            _raceGoalMarker.anchorMax = new Vector2(fraction, 1f);
             _raceGoalMarker.pivot = new Vector2(0.5f, 0.5f);
             _raceGoalMarker.sizeDelta = new Vector2(5f, 0f);
-            _raceGoalMarker.anchoredPosition = new Vector2(-_raceGoalMana * 0.2f, 0f);
+            _raceGoalMarker.anchoredPosition = Vector2.zero;
+            if (_expeditionStyle)
+            {
+                _raceGoalMarker.sizeDelta = new Vector2(5, -10);
+                _raceGoalMarker.anchoredPosition = new Vector2(7 - 14 * fraction, 0);
+            }
             var img = _raceGoalMarker.GetComponent<Image>();
             if (img != null) img.color = RaceGoalMarkerColor;
             _raceGoalMarker.gameObject.SetActive(true);
@@ -457,10 +503,32 @@ namespace Project.Match3
                 gainPopup.Play(manaAmount, GainPopupView.GainKind.Mana, GainPopupView.ArcSide.Random);
         }
 
-        private static void ApplyBarFill(Image fillImage, float ratio)
+        internal void RefreshExpeditionBars()
+        {
+            if (!_expeditionStyle) return;
+            if (hpFill != null) ApplyBarFill(hpFill, hpFill.fillAmount);
+            if (manaFill != null) ApplyBarFill(manaFill, manaFill.fillAmount);
+        }
+
+        private void ApplyBarFill(Image fillImage, float ratio)
         {
             if (fillImage == null) return;
             ratio = Mathf.Clamp01(ratio);
+
+            if (_expeditionStyle)
+            {
+                // The rect expresses the ratio once. Image.Filled plus a ratio-sized
+                // rect applied it twice and overwrote the frame's interior padding.
+                fillImage.type = Image.Type.Simple;
+                fillImage.fillAmount = ratio;
+                fillImage.raycastTarget = false;
+                var fillRect = fillImage.rectTransform;
+                fillRect.anchorMin = Vector2.zero;
+                fillRect.anchorMax = new Vector2(ratio, 1);
+                fillRect.offsetMin = new Vector2(7, 5);
+                fillRect.offsetMax = new Vector2(7 - 14 * ratio, -5);
+                return;
+            }
 
             fillImage.type = Image.Type.Filled;
             fillImage.fillMethod = Image.FillMethod.Horizontal;
@@ -490,6 +558,11 @@ namespace Project.Match3
 
         private void ApplyVisualStyle()
         {
+            if (_expeditionStyle)
+            {
+                ExpeditionBattleLayout.ApplyPlayerContents(this);
+                return;
+            }
             // Старые версии по ошибке вешали срез на корень панели (фон).
             foreach (var wrong in GetComponents<RightCornerCutEffect>())
                 Destroy(wrong);
@@ -546,10 +619,10 @@ namespace Project.Match3
             valueText.overflowMode = TextOverflowModes.Overflow;
             valueText.textWrappingMode = TextWrappingModes.NoWrap;
             valueText.enableAutoSizing = true;
-            valueText.fontSizeMin = BarValueAutoSizeMin;
-            valueText.fontSizeMax = BarValueAutoSizeMax;
+            valueText.fontSizeMin = _expeditionStyle ? 17 : BarValueAutoSizeMin;
+            valueText.fontSizeMax = _expeditionStyle ? 23 : BarValueAutoSizeMax;
             // Базовый размер для авто-подбора (иначе иногда остаётся слишком мелким из префаба).
-            valueText.fontSize = BarValueAutoSizeMax;
+            valueText.fontSize = _expeditionStyle ? 23 : BarValueAutoSizeMax;
             valueText.raycastTarget = false;
         }
 
@@ -576,6 +649,7 @@ namespace Project.Match3
 
         private void EnsureCombatStatsFrameSize()
         {
+            if (_expeditionStyle) return;
             if (combatStatsName == null && combatStatsValue == null) return;
             var frameRt = (combatStatsName != null ? combatStatsName.transform.parent : combatStatsValue.transform.parent) as RectTransform;
             if (frameRt == null) return;

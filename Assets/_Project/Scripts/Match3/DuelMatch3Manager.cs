@@ -58,6 +58,9 @@ namespace Project.Match3
         [SerializeField] private Match3SearchingPanel searchingPanelPrefab;
         [Tooltip("Game-over result overlay")]
         [SerializeField] private Match3GameOverPanel  gameOverPanelPrefab;
+        [Tooltip("Реальные портреты противников для 12 этажей шахты.")]
+        [SerializeField] private MonsterCatalog presentationMonsterCatalog;
+        private Sprite _expeditionHeroPortrait;
 
         [Header("Audio (Match3 SFX)")]
         [SerializeField] private AudioSource sfxSource;
@@ -66,6 +69,7 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxAbilityCross;
         [SerializeField] private AudioClip sfxAbilityPetard;
         [SerializeField] private AudioClip sfxAbilityFury;
+        [SerializeField] private AudioClip sfxAbilityShield;
         [SerializeField] private AudioClip sfxCascadeFall;
         [SerializeField] private AudioClip sfxExtraTurn;
         [SerializeField] private AudioClip sfxTimerEnd;
@@ -314,6 +318,7 @@ namespace Project.Match3
 
             EnsureCamera();
             BuildUI();
+            _searchingPanel?.SetModeLabel(_isSoloBotMode ? "Экспедиция" : _pvpRaceQueue ? "Спуск" : _pvpProQueue ? "Дуэль Pro" : "Дуэль");
             // Любой вход в DuelMatch3 (поиск/PvE/друзья) снимает висящие предложения Спуска.
             FriendsRaceInviteHost.InvalidatePendingForMatchEntry();
             _ = LoadMyProgressionLevelAsync(_cts.Token);
@@ -916,16 +921,21 @@ namespace Project.Match3
             var bot = _pveBots[_selectedPveBotIndex];
             if (bot == null) return;
             if (_pveBotTitleText != null)
-                _pveBotTitleText.text = $"{bot.name} ({bot.id})";
+                _pveBotTitleText.text = bot.name;
             if (_pveBotStatsText != null)
             {
+                var difficulty = _pveProgress?.mine?.current_difficulty ?? "easy";
+                var difficultyRu = difficulty == "hard" ? "Тяжёлая" : difficulty == "medium" ? "Средняя" : "Лёгкая";
                 _pveBotStatsText.text =
-                    $"Этаж: {Mathf.Max(1, bot.floor)} {(bot.is_boss ? "(босс)" : "")}\n" +
-                    $"Сложность: {(_pveProgress?.mine?.current_difficulty ?? "easy")}\n" +
-                    $"HP бонус: +{bot.hp_bonus}\n" +
-                    $"Старт. мана: {bot.start_mana}\n" +
-                    $"Награда: +{bot.reward_xp} XP, +{bot.reward_gold} золота, +{bot.reward_ore} руды";
+                    $"Этаж {Mathf.Max(1, bot.floor)} / {difficultyRu}{(bot.is_boss ? " / Хранитель" : "")}\n" +
+                    $"Здоровье: {150 + Mathf.Max(0, bot.hp_bonus)}\n" +
+                    $"Начальная мана: {bot.start_mana}\n" +
+                    $"Награда: {bot.reward_xp} опыта\n" +
+                    $"{bot.reward_gold} золота / {bot.reward_ore} руды";
             }
+            var definition = presentationMonsterCatalog != null ? presentationMonsterCatalog.GetByFloor(Mathf.Max(1, bot.floor)) : null;
+            ExpeditionBattleLayout.SetPveOpponentPreview(_pveSelectorRoot != null ? _pveSelectorRoot.transform : null,
+                definition != null ? definition.Icon : null);
         }
 
         private void SelectPrevPveBot()
@@ -1534,7 +1544,8 @@ namespace Project.Match3
                 else if (string.Equals(_arenaGameOverRound, "final", StringComparison.Ordinal))
                     arenaTitle = "Победа в турнире!";
             }
-            _gameOverPanel?.Show(won, null, arenaTitle);
+            if (_hud != null && _hud.affixTooltipRoot != null) _hud.affixTooltipRoot.gameObject.SetActive(false);
+            _gameOverPanel?.Show(won, _lastRewardText, arenaTitle);
             // Ничья в Спуске тоже с наградой (refund entry + XP) — не подменять на fake loss XP.
             RefreshGameOverRewardRows(won || isDraw);
         }
@@ -1804,7 +1815,7 @@ namespace Project.Match3
                         _lastRewardText = BuildRewardLinesTextFull(rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
                     }
                     else if (!_isSoloBotMode &&
-                             (msg.isDraw || string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal)))
+                             (msg.isDraw || msg.entryRefund || string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal)))
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
                         var rgold = Mathf.Max(0, msg.rewardGold);
@@ -1830,6 +1841,7 @@ namespace Project.Match3
                             _myProgressionLevel = msg.newLevel;
                         _lastRewardText = BuildRewardLinesTextFull(
                             rxp, rgold, rore, rmatter, ringots, rkeyId, rkeyAmt, rblueprint, rrecipe, rtess);
+                        if (msg.entryRefund) _lastRewardText = "Бой с ботом · взнос возвращён\n" + _lastRewardText;
                     }
                     _pendingGameOver = true;
                     _pendingGameOverDraw = msg.isDraw;
@@ -2053,6 +2065,7 @@ namespace Project.Match3
                 }
                 else if (msg.actionType == 5)
                 {
+                    PlaySfx(sfxAbilityShield);
                     _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
                 }
                 else if (msg.actionType == 6)
@@ -2556,7 +2569,6 @@ namespace Project.Match3
                 {
                     ApplyFury(actorStats, board);
                     keepTurn = true;
-                    PlaySfx(sfxAbilityFury);
                     if (_boardView != null) _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
                     return true;
                 }
@@ -3020,6 +3032,31 @@ namespace Project.Match3
                 _myPanel.UpdateAvatarLevel(ResolveMyAvatarLevel());
             if (_opPanel != null)
                 _opPanel.UpdateAvatarLevel(ResolveOpAvatarLevel());
+            ApplyExpeditionPortraits();
+        }
+
+        private void ApplyExpeditionPortraits()
+        {
+            if (_expeditionHeroPortrait == null)
+                _expeditionHeroPortrait = Resources.Load<Sprite>("Expedition/Art/hero");
+            if (_myPanel != null && _myPanel.avatarImage != null && _expeditionHeroPortrait != null)
+            {
+                _myPanel.avatarImage.sprite = _expeditionHeroPortrait;
+                ExpeditionBattlePortrait.MarkFullBody(_myPanel.avatarImage);
+                _myPanel.avatarImage.color = Color.white;
+                if (_myPanel.avatarPlaceholderText != null) _myPanel.avatarPlaceholderText.gameObject.SetActive(false);
+            }
+            if (_opPanel == null || _opPanel.avatarImage == null) return;
+            var monster = _isSoloBotMode && presentationMonsterCatalog != null
+                ? presentationMonsterCatalog.GetByFloor(Mathf.Clamp(_activePveBotFloor, 1, 12)) : null;
+            var portrait = _isSoloBotMode ? (monster != null ? monster.Icon : null) : _expeditionHeroPortrait;
+            if (portrait == null) return;
+            _opPanel.avatarImage.sprite = portrait;
+            if (!_isSoloBotMode) ExpeditionBattlePortrait.MarkFullBody(_opPanel.avatarImage);
+            else if (monster != null && (monster.Floor == 1 || monster.Floor == 2 || monster.Floor == 4))
+                ExpeditionBattlePortrait.MarkFullBody(_opPanel.avatarImage, monster.Floor == 4 ? .5f : .6f);
+            _opPanel.avatarImage.color = Color.white;
+            if (_opPanel.avatarPlaceholderText != null) _opPanel.avatarPlaceholderText.gameObject.SetActive(false);
         }
 
         private int ResolveMyAvatarLevel()
@@ -3256,8 +3293,9 @@ namespace Project.Match3
             if (sfxLineClear == null)    sfxLineClear    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav");
             if (sfxAbilitySquare == null) sfxAbilitySquare = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
             if (sfxAbilityCross == null) sfxAbilityCross = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav");
-            if (sfxAbilityPetard == null) sfxAbilityPetard = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav");
-            if (sfxAbilityFury == null)   sfxAbilityFury   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/Bloodlust.wav");
+            if (sfxAbilityPetard == null) sfxAbilityPetard = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_petard.wav");
+            if (sfxAbilityFury == null)   sfxAbilityFury   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Bloodlust_cast.ogg");
+            if (sfxAbilityShield == null) sfxAbilityShield = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Heroism_Cast.ogg");
             if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav");
             if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
             if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
@@ -3326,6 +3364,8 @@ namespace Project.Match3
         private void TryAutoAssignUiPrefabsInEditor()
         {
 #if UNITY_EDITOR
+            if (presentationMonsterCatalog == null)
+                presentationMonsterCatalog = AssetDatabase.LoadAssetAtPath<MonsterCatalog>("Assets/_Project/Data/Match3/Monsters/MainMonsterCatalog.asset");
             if (damagePopupPrefab == null)
                 damagePopupPrefab = AssetDatabase.LoadAssetAtPath<DamagePopupView>("Assets/_Project/Prefabs/UI/DamagePopup.prefab");
             if (hudPrefab == null)
@@ -3964,6 +4004,17 @@ namespace Project.Match3
         private void WireQuitButton(Transform canvasRoot)
         {
             var quitTr = FindDescendant(canvasRoot, "QuitBtn");
+            // Presentation may have moved the button into a safe-area container
+            // under the actual canvas. Resolve from the board's canvas as needed.
+            if (quitTr == null && _boardView != null)
+            {
+                var canvas = _boardView.GetComponentInParent<Canvas>();
+                if (canvas != null)
+                {
+                    canvasRoot = canvas.rootCanvas.transform;
+                    quitTr = FindDescendant(canvasRoot, "QuitBtn");
+                }
+            }
             if (quitTr == null) return;
             var btn = quitTr.GetComponent<Button>();
             if (btn == null) return;
@@ -3971,6 +4022,13 @@ namespace Project.Match3
             _matchCanvasRoot = canvasRoot;
             EnsureQuitConfirmDialog(canvasRoot);
             btn.onClick.AddListener(ShowQuitConfirmDialog);
+        }
+
+        private void OnEnable()
+        {
+            // Runtime UnityEvent listeners are not restored by a Play-mode script
+            // reload. Rebind the existing UI without restarting combat setup.
+            if (_matchCanvasRoot != null) WireQuitButton(_matchCanvasRoot);
         }
 
         private void EnsureQuitConfirmDialog(Transform canvasRoot)
@@ -4016,6 +4074,7 @@ namespace Project.Match3
 
         private void ShowQuitConfirmDialog()
         {
+            if (_hud != null && _hud.affixTooltipRoot != null) _hud.affixTooltipRoot.gameObject.SetActive(false);
             if (_matchCanvasRoot != null)
                 EnsureQuitConfirmDialog(_matchCanvasRoot);
             if (_quitConfirmRoot == null) return;
@@ -4066,8 +4125,6 @@ namespace Project.Match3
             EnsureDamagePopupWidgets(_opPanel);
             EnsureGainPopupWidgets(_opPanel);
 
-            WireQuitButton(root);
-
             _searchingPanel.OnCancelClicked -= QuitToMenu;
             _searchingPanel.OnCancelClicked += QuitToMenu;
 
@@ -4085,6 +4142,11 @@ namespace Project.Match3
             }
 
             RefreshAvatarLevelUI();
+            // Create the dialog before presentation styles existing overlays.
+            EnsureQuitConfirmDialog(root);
+            ExpeditionBattleLayout.Install(gameObject.scene);
+            // Bind after presentation has finished reparenting the visible button.
+            WireQuitButton(root);
         }
 
         private void BuildUiRuntimeProcedural()

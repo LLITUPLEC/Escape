@@ -1,10 +1,13 @@
 using System;
+using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
+using Project.UI;
 using Project.Utils;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Project.Character.UI
@@ -23,10 +26,15 @@ namespace Project.Character.UI
         private TMP_InputField _input;
         private TMP_Text _costText;
         private TMP_Text _statusText;
-        private bool _busy;
+        private bool _opening;
+        private bool _saving;
+        private int _editorGeneration;
         private CancellationTokenSource _cts;
+        private Coroutine _focusRoutine;
 
         public bool IsEditing => _modalRoot != null && _modalRoot.activeSelf;
+        internal TMP_Text NameLabel => nameLabel;
+        internal Button EditButton => editButton;
 
         private void Awake()
         {
@@ -36,10 +44,11 @@ namespace Project.Character.UI
 
         private void OnDestroy()
         {
-            if (editButton != null) editButton.onClick.RemoveListener(OpenEditor);
+            CloseEditor();
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
+            if (_modalRoot != null) Destroy(_modalRoot);
         }
 
         public void EnsureWired()
@@ -68,11 +77,8 @@ namespace Project.Character.UI
                 }
             }
 
-            if (editButton != null)
-            {
-                editButton.onClick.RemoveListener(OpenEditor);
-                editButton.onClick.AddListener(OpenEditor);
-            }
+            // The settings controller owns the rename entry point. Resolving the old
+            // button here is only needed by the character layout that hides it.
         }
 
         public async Task RefreshAsync(CancellationToken ct)
@@ -105,42 +111,59 @@ namespace Project.Character.UI
 
         public void CloseEditor()
         {
+            _editorGeneration++;
+            if (_focusRoutine != null)
+            {
+                StopCoroutine(_focusRoutine);
+                _focusRoutine = null;
+            }
+            if (_input != null) _input.DeactivateInputField();
+            var events = EventSystem.current;
+            if (events != null && events.currentSelectedGameObject != null && _modalRoot != null &&
+                events.currentSelectedGameObject.transform.IsChildOf(_modalRoot.transform))
+                events.SetSelectedGameObject(null);
             if (_modalRoot != null)
                 _modalRoot.SetActive(false);
-            _busy = false;
+            _opening = false;
         }
 
-        private void OpenEditor()
+        public async void OpenEditor(Transform modalParent = null)
         {
-            _ = OpenEditorAsync();
+            if (IsEditing) return;
+            try { await OpenEditorAsync(modalParent); }
+            catch (OperationCanceledException) { }
+            catch (Exception error) { Debug.LogException(error, this); }
         }
 
-        private async Task OpenEditorAsync()
+        private async Task OpenEditorAsync(Transform modalParent)
         {
-            if (_busy) return;
-            await MainThreadDispatcher.RunAsync(() =>
-            {
-                EnsureWired();
-                EnsureModal();
-            }).ConfigureAwait(false);
-
+            if (_opening || _saving) return;
+            _opening = true;
+            var generation = ++_editorGeneration;
             var ct = _cts != null ? _cts.Token : CancellationToken.None;
-
-            _busy = true;
             NicknameStatusRpcResponse st = null;
             try
             {
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (this == null || ct.IsCancellationRequested || generation != _editorGeneration) return;
+                    EnsureWired();
+                    EnsureModal(modalParent);
+                }).ConfigureAwait(false);
+                if (ct.IsCancellationRequested || generation != _editorGeneration) return;
                 st = await NicknameService.GetStatusAsync(ct).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) { return; }
             finally
             {
-                _busy = false;
+                if (generation == _editorGeneration) _opening = false;
             }
 
-            if (ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested || generation != _editorGeneration) return;
 
             await MainThreadDispatcher.RunAsync(() =>
             {
+                if (this == null || ct.IsCancellationRequested || generation != _editorGeneration) return;
                 _status = st;
                 var current = _status != null && _status.ok && !string.IsNullOrWhiteSpace(_status.username)
                     ? _status.username
@@ -152,8 +175,24 @@ namespace Project.Character.UI
                 {
                     _modalRoot.SetActive(true);
                     _modalRoot.transform.SetAsLastSibling();
+                    if (_focusRoutine != null) StopCoroutine(_focusRoutine);
+                    _focusRoutine = StartCoroutine(FocusInputAfterOpening(generation));
                 }
             }).ConfigureAwait(false);
+        }
+
+        private IEnumerator FocusInputAfterOpening(int generation)
+        {
+            // Wait until the opening button has finished its pointer event and the
+            // inactive TMP field has enabled its text renderer and selection caret.
+            yield return null;
+            _focusRoutine = null;
+            if (generation != _editorGeneration || !IsEditing || _input == null) yield break;
+            Canvas.ForceUpdateCanvases();
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(_input.gameObject);
+            _input.Select();
+            _input.ActivateInputField();
         }
 
         private void UpdateCostHint()
@@ -173,7 +212,7 @@ namespace Project.Character.UI
 
         private async void OnSaveClicked()
         {
-            if (_busy || _input == null) return;
+            if (_opening || _saving || _input == null) return;
             var next = (_input.text ?? "").Trim();
             var minLen = _status != null && _status.min_len > 0 ? _status.min_len : 3;
             var maxLen = _status != null && _status.max_len > 0 ? _status.max_len : 17;
@@ -191,51 +230,69 @@ namespace Project.Character.UI
                 // сразу отправляем; сервер спишет золото.
             }
 
-            _busy = true;
+            _saving = true;
+            var generation = _editorGeneration;
             if (_statusText != null) _statusText.text = "Сохранение…";
             var ct = _cts != null ? _cts.Token : CancellationToken.None;
             NicknameChangeRpcResponse resp = null;
             try
             {
                 resp = await NicknameService.ChangeAsync(next, ct).ConfigureAwait(false);
+                if (ct.IsCancellationRequested) return;
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (this == null || ct.IsCancellationRequested) return;
+                    if (resp == null || !resp.ok)
+                    {
+                        if (_statusText != null && generation == _editorGeneration)
+                            _statusText.text = NicknameService.DescribeError(resp);
+                        return;
+                    }
+
+                    SetNameLabel(resp.username);
+                    _status = new NicknameStatusRpcResponse
+                    {
+                        ok = true,
+                        username = resp.username,
+                        nickname_changes = resp.nickname_changes,
+                        next_change_gold_cost = resp.next_change_gold_cost,
+                        free_change_available = false,
+                        min_len = minLen,
+                        max_len = maxLen,
+                    };
+                    if (generation == _editorGeneration) CloseEditor();
+                }).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) { }
             finally
             {
-                _busy = false;
+                _saving = false;
             }
-
-            if (ct.IsCancellationRequested) return;
-
-            await MainThreadDispatcher.RunAsync(() =>
-            {
-                if (resp == null || !resp.ok)
-                {
-                    if (_statusText != null)
-                        _statusText.text = NicknameService.DescribeError(resp);
-                    return;
-                }
-
-                SetNameLabel(resp.username);
-                _status = new NicknameStatusRpcResponse
-                {
-                    ok = true,
-                    username = resp.username,
-                    nickname_changes = resp.nickname_changes,
-                    next_change_gold_cost = resp.next_change_gold_cost,
-                    free_change_available = false,
-                    min_len = minLen,
-                    max_len = maxLen,
-                };
-                CloseEditor();
-            }).ConfigureAwait(false);
         }
 
-        private void EnsureModal()
+        private void EnsureModal(Transform modalParent)
         {
-            if (_modalRoot != null) return;
-            var parent = GetComponentInParent<Canvas>()?.transform ?? transform;
+            var ownerCanvas = GetComponentInParent<Canvas>();
+            var parent = modalParent != null ? modalParent
+                : ownerCanvas != null ? ownerCanvas.rootCanvas.transform : transform;
+            if (_modalRoot != null)
+            {
+                if (_modalRoot.transform.parent != parent)
+                {
+                    _modalRoot.transform.SetParent(parent, false);
+                    Stretch(_modalRoot.GetComponent<RectTransform>());
+                }
+                return;
+            }
 
-            _modalRoot = new GameObject("NicknameEditModal", typeof(RectTransform));
+            _modalRoot = new GameObject("NicknameEditModal", typeof(RectTransform), typeof(CanvasGroup));
+            // Configure TMP references before OnEnable creates the caret and caches
+            // its viewport mask. The editor must not inherit a hidden hero page.
+            _modalRoot.SetActive(false);
+            var group = _modalRoot.GetComponent<CanvasGroup>();
+            group.ignoreParentGroups = true;
+            group.alpha = 1;
+            group.interactable = group.blocksRaycasts = true;
             var rootRt = _modalRoot.GetComponent<RectTransform>();
             rootRt.SetParent(parent, false);
             Stretch(rootRt);
@@ -289,6 +346,21 @@ namespace Project.Character.UI
             canvas.overrideSorting = true;
             canvas.sortingOrder = 32766;
             _modalRoot.AddComponent<GraphicRaycaster>();
+            ExpeditionMetaPanels.StylePopup(_modalRoot.transform);
+            var inputSlot = _input.transform.parent as RectTransform;
+            if (inputSlot != null)
+            {
+                var inputHeight = ExpeditionUi.Ensure<LayoutElement>(inputSlot.gameObject);
+                inputHeight.minHeight = inputHeight.preferredHeight = 100;
+                ExpeditionUi.StylePanel(inputSlot.GetComponent<Image>(), ExpeditionTheme.Teal);
+            }
+            var statusHeight = ExpeditionUi.Ensure<LayoutElement>(_statusText.gameObject);
+            statusHeight.minHeight = statusHeight.preferredHeight = 90;
+            ExpeditionUi.StyleButton(save, true, 34);
+            ExpeditionUi.StyleButton(cancel, false, 34);
+            foreach (var button in new[] { save, cancel })
+                foreach (var label in button.GetComponentsInChildren<TMP_Text>(true))
+                    ExpeditionUi.SetRect(label.rectTransform, .025f, .04f, .975f, .96f);
             _modalRoot.SetActive(false);
         }
 
@@ -306,6 +378,7 @@ namespace Project.Character.UI
             go.transform.SetParent(parent, false);
             go.GetComponent<LayoutElement>().minHeight = size + 10f;
             var t = go.GetComponent<TextMeshProUGUI>();
+            t.font = ExpeditionTheme.Font;
             t.text = text;
             t.fontSize = size;
             t.fontStyle = style;
@@ -321,42 +394,65 @@ namespace Project.Character.UI
             slot.transform.SetParent(parent, false);
             slot.GetComponent<LayoutElement>().minHeight = 48f;
             slot.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.12f, 1f);
+            slot.GetComponent<Image>().raycastTarget = false;
 
-            var inputGo = new GameObject(name, typeof(RectTransform), typeof(TMP_InputField));
+            var inputGo = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
             var irt = inputGo.GetComponent<RectTransform>();
             irt.SetParent(slot.transform, false);
             Stretch(irt);
 
+            var viewportGo = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D));
+            var viewport = viewportGo.GetComponent<RectTransform>();
+            viewport.SetParent(irt, false);
+            Stretch(viewport);
+
             var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
             var tr = textGo.GetComponent<RectTransform>();
-            tr.SetParent(irt, false);
+            tr.SetParent(viewport, false);
             Stretch(tr);
             tr.offsetMin = new Vector2(12f, 6f);
             tr.offsetMax = new Vector2(-12f, -6f);
             var text = textGo.GetComponent<TextMeshProUGUI>();
-            text.fontSize = 22;
-            text.color = Color.white;
+            text.font = ExpeditionTheme.Font;
+            text.fontSize = 34;
+            text.color = ExpeditionTheme.Ivory;
             text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.raycastTarget = false;
 
             var phGo = new GameObject("Placeholder", typeof(RectTransform), typeof(TextMeshProUGUI));
             var phr = phGo.GetComponent<RectTransform>();
-            phr.SetParent(irt, false);
+            phr.SetParent(viewport, false);
             Stretch(phr);
             phr.offsetMin = new Vector2(12f, 6f);
             phr.offsetMax = new Vector2(-12f, -6f);
             var ph = phGo.GetComponent<TextMeshProUGUI>();
             ph.text = placeholder;
-            ph.fontSize = 20;
-            ph.fontStyle = FontStyles.Italic;
-            ph.color = new Color(1f, 1f, 1f, 0.35f);
+            ph.font = ExpeditionTheme.Font;
+            ph.fontSize = 30;
+            ph.fontStyle = FontStyles.Normal;
+            ph.color = ExpeditionTheme.Muted;
             ph.alignment = TextAlignmentOptions.MidlineLeft;
+            ph.raycastTarget = false;
 
             var input = inputGo.GetComponent<TMP_InputField>();
-            input.textViewport = irt;
+            var inputBackground = ExpeditionUi.Ensure<Image>(inputGo);
+            ExpeditionUi.StylePanel(inputBackground, ExpeditionTheme.Teal);
+            inputBackground.raycastTarget = true;
+            input.targetGraphic = inputBackground;
+            input.textViewport = viewport;
             input.textComponent = text;
             input.placeholder = ph;
+            // TMP applies fontAsset immediately to textComponent and placeholder.
+            input.fontAsset = ExpeditionTheme.Font;
             input.characterLimit = 17;
             input.lineType = TMP_InputField.LineType.SingleLine;
+            input.contentType = TMP_InputField.ContentType.Standard;
+            input.keyboardType = TouchScreenKeyboardType.ASCIICapable;
+            input.readOnly = false;
+            input.shouldHideSoftKeyboard = false;
+            input.shouldActivateOnSelect = true;
+            input.interactable = true;
+            input.richText = false;
             return input;
         }
 

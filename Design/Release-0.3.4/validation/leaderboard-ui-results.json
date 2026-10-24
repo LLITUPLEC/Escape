@@ -1,0 +1,37 @@
+{
+  "result": "passed",
+  "scope": "Four actual prefabs with labelled UI-only entries; no real leaderboard/score mutation",
+  "passes": 2,
+  "checks": [
+    "gold/silver/bronze/normal frames with actual bound rank,score,secondary",
+    "no avatar/podium; horizontal readable text",
+    "second pass after old podium art/resource loader removal",
+    "temporary rows removed; original rows and scroll restored"
+  ],
+  "replies": [
+    {
+      "id": "e6d96c4fcdd5470ea6917eb6bb1d22c2",
+      "message": "SHOWN: four actual row prefabs with explicitly labelled UI-only entries, no podium or player figures. VerifyLeaderboard(), then RestoreLeaderboard(); no RPC, rewards or account writes."
+    },
+    {
+      "id": "6f6298d18f7a4fdaa323ab3a1d2d79e4",
+      "message": "PASS: actual four row prefabs bind correct rank/score/secondary values; distinct gold/silver/bronze imported frames; ordinary frame; no avatar/podium; readable horizontal text. UI-only fixture still shown; RestoreLeaderboard() required."
+    },
+    {
+      "id": "c0dc4dc006ce4d68987e569450ce5304",
+      "message": "RESTORED: temporary UI rows removed, actual rows and scroll restored. Open/refresh retains the controller's existing server-read behavior."
+    },
+    {
+      "id": "312f43557b4542c8b210182a50b95e9b",
+      "message": "SHOWN: four actual row prefabs with explicitly labelled UI-only entries, no podium or player figures. VerifyLeaderboard(), then RestoreLeaderboard(); no RPC, rewards or account writes."
+    },
+    {
+      "id": "404f3ae62b494b4f9498f1fc5ae8595d",
+      "message": "PASS: actual four row prefabs bind correct rank/score/secondary values; distinct gold/silver/bronze imported frames; ordinary frame; no avatar/podium; readable horizontal text. UI-only fixture still shown; RestoreLeaderboard() required."
+    },
+    {
+      "id": "bbc1e9bdd1624bc1b2864e15354cbe2c",
+      "message": "RESTORED: temporary UI rows removed, actual rows and scroll restored. Open/refresh retains the controller's existing server-read behavior."
+    }
+  ]
+}

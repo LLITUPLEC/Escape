@@ -1,0 +1,3 @@
+PASS: latest filter wins when old response arrives last
+PASS: close/reopen starts a fresh friends request and ignores stale completion
+PASS: closed nickname editor stays closed and pending save blocks a second save flow

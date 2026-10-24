@@ -190,6 +190,7 @@ namespace Project.UI
 
         private void GoMatch3()
         {
+            if (ArenaMatch8Bridge.IsParticipationLocked) return;
             Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
@@ -199,6 +200,7 @@ namespace Project.UI
 
         private void GoMatch3Pro()
         {
+            if (ArenaMatch8Bridge.IsParticipationLocked) return;
             Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(true);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
@@ -208,7 +210,7 @@ namespace Project.UI
 
         private async void OpenRaceEnterConfirm()
         {
-            if (_raceBusy) return;
+            if (_raceBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
             EnsureRaceConfirmModal();
             EnsureRaceIcons();
 
@@ -233,6 +235,7 @@ namespace Project.UI
             {
                 _raceConfirmRoot.transform.SetAsLastSibling();
                 _raceConfirmRoot.SetActive(true);
+                ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
             }
 
             try
@@ -265,15 +268,16 @@ namespace Project.UI
             if (_raceCostCaption != null)
                 _raceCostCaption.text = FormatCostCaption(entry);
             if (_raceRewardCaption != null)
-                _raceRewardCaption.text = "Награда за победу";
+                _raceRewardCaption.text = "Победа над игроком";
             if (_raceGoalText != null)
             {
                 var goal = info.goal_mana > 0 ? info.goal_mana : 200;
-                _raceGoalText.text = $"Цель - набрать первым {goal} маны";
+                _raceGoalText.text = $"Первым набрать {goal} маны. С ботом — возврат взноса.";
                 _raceGoalText.gameObject.SetActive(true);
             }
             PopulateResourceRow(_raceCostRow, entry);
             PopulateResourceRow(_raceRewardRow, rewards);
+            if (_raceConfirmRoot != null) ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
         }
 
         private static string FormatCostCaption(RaceResourceLine[] entry)
@@ -286,7 +290,7 @@ namespace Project.UI
 
         private async void ConfirmRaceEnterAndGo()
         {
-            if (_raceBusy) return;
+            if (_raceBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
             _raceBusy = true;
             if (_match3Race != null) _match3Race.interactable = false;
             if (_raceErrorText != null)
@@ -301,6 +305,7 @@ namespace Project.UI
                     throw new Exception("nakama_not_initialized");
 
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                if (ArenaMatch8Bridge.IsParticipationLocked) return;
                 var payload = JsonUtility.ToJson(new RaceEnterRpcRequest
                 {
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
@@ -318,6 +323,18 @@ namespace Project.UI
                     return;
                 }
 
+                var tournamentLocked = ArenaMatch8Bridge.IsParticipationLocked;
+                if (tournamentLocked)
+                {
+                    // A tournament may have formed while the paid Race request
+                    // was in flight. Do not switch scenes or strand its receipt.
+                    var refund = await NakamaBootstrap.Instance.Client.RpcAsync(session,
+                        "duel_match3_race_cancel", payload, canceller: _cts.Token);
+                    if (!LocalAccountCacheScope.IsCurrent(scope)) return;
+                    var refunded = JsonUtility.FromJson<PlayerResourcesRpcResponse>(refund?.Payload ?? "");
+                    if (refunded != null && refunded.ok) model = refunded;
+                }
+
                 PlayerResourcesService.PatchCachedFromProgression(new Progression
                 {
                     localAccountScope = scope,
@@ -331,6 +348,7 @@ namespace Project.UI
                 });
 
                 HideRaceConfirm();
+                if (tournamentLocked || ArenaMatch8Bridge.IsParticipationLocked) return;
                 Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
                 Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(true);
                 Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
@@ -483,7 +501,10 @@ namespace Project.UI
         {
             if (row == null) return;
             for (var i = row.childCount - 1; i >= 0; i--)
+            {
+                row.GetChild(i).gameObject.SetActive(false);
                 Destroy(row.GetChild(i).gameObject);
+            }
 
             if (lines == null || lines.Length == 0)
             {
@@ -598,7 +619,7 @@ namespace Project.UI
             return new[]
             {
                 new RaceResourceLine { resource = "xp", amount = 200 },
-                new RaceResourceLine { resource = "matter", amount = 10 },
+                new RaceResourceLine { resource = "matter", amount = 4 },
             };
         }
 
@@ -714,7 +735,7 @@ namespace Project.UI
 
         private void GoBots()
         {
-            if (_botsBusy) return;
+            if (_botsBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
             _botsBusy = true;
             if (_bots != null) _bots.interactable = false;
             SetBotsButtonText("Загрузка...");
@@ -725,6 +746,7 @@ namespace Project.UI
 
         private void BackToMainMenu()
         {
+            if (ArenaMatch8Bridge.IsParticipationLocked) return;
             if (string.IsNullOrWhiteSpace(mainMenuSceneName)) return;
             SceneManager.LoadScene(mainMenuSceneName);
         }

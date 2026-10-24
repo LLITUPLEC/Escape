@@ -61,6 +61,9 @@ namespace Project.Match3
         private bool _squareBound;
         private bool _shieldBound;
         private bool _furyBound;
+        private bool _expeditionStyle;
+
+        public void UseExpeditionStyle() => _expeditionStyle = true;
 
         private void Awake()
         {
@@ -148,6 +151,11 @@ namespace Project.Match3
             ApplyCooldownOverlayRow(crossButton, crossCooldown, stats.crossCooldown);
             ApplyCooldownOverlayRow(squareButton, squareCooldown, stats.squareCooldown);
             ApplyCooldownOverlayRow(furyButton, !disableShieldAndFury && furyCooldown, stats.furyCooldown);
+            if (_expeditionStyle)
+            {
+                ApplyCooldownOverlayRow(petardButton, petardCooldown, stats.petardCooldown);
+                ApplyCooldownOverlayRow(shieldButton, !disableShieldAndFury && shieldCooldown, stats.shieldCooldown);
+            }
 
             ApplyAdaptiveButtonLayout();
         }
@@ -191,22 +199,32 @@ namespace Project.Match3
 
             if (rt == null)
                 rt = tmp.rectTransform;
+            // The legacy cooldown label may live outside the button. It must belong to
+            // the actual ability and draw above its icon/cooldown decoration.
+            rt.SetParent(petardButton.transform, false);
+            rt.SetAsLastSibling();
 
-            // top-stretch, height 50, Pos Y 50
-            rt.anchorMin = new Vector2(0f, 1f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(0.5f, 1f);
-            rt.sizeDelta = new Vector2(0f, 50f);
-            rt.anchoredPosition = new Vector2(0f, 50f);
+            if (_expeditionStyle)
+                Project.UI.ExpeditionUi.SetRect(rt, .08f, .59f, .63f, .79f);
+            else
+            {
+                // Legacy panel: top-stretch above the icon.
+                rt.anchorMin = new Vector2(0f, 1f);
+                rt.anchorMax = new Vector2(1f, 1f);
+                rt.pivot = new Vector2(0.5f, 1f);
+                rt.sizeDelta = new Vector2(0f, 50f);
+                rt.anchoredPosition = new Vector2(0f, 50f);
+            }
 
             tmp.gameObject.SetActive(true);
-            tmp.text = Mathf.Max(0, bank).ToString();
+            tmp.text = (_expeditionStyle ? "−" : "") + Mathf.Max(0, bank);
+            if (_expeditionStyle) tmp.font = Project.UI.ExpeditionTheme.Font;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.enableAutoSizing = true;
-            tmp.fontSizeMin = 18f;
-            tmp.fontSizeMax = 72f;
-            tmp.color = new Color(0.35f, 0.85f, 1f, 1f);
+            tmp.fontSizeMin = _expeditionStyle ? 22f : 18f;
+            tmp.fontSizeMax = _expeditionStyle ? 30f : 72f;
+            tmp.color = new Color(0.45f, 0.92f, 1f, 1f);
             tmp.outlineWidth = 0.2f;
             tmp.outlineColor = new Color32(0, 0, 0, 220);
         }
@@ -243,6 +261,8 @@ namespace Project.Match3
 
             var baseCol = dimmed ? AbilityDimmedIcon : Color.white;
             img.color = selected ? Color.Lerp(baseCol, Color.white, 0.38f) : baseCol;
+            var selectionRule = button.transform.Find("ExpeditionSelectedRule");
+            if (selectionRule != null) selectionRule.gameObject.SetActive(selected);
         }
 
         private static void SetCostLabel(Button button, int cost)
@@ -253,10 +273,17 @@ namespace Project.Match3
             var tmp = tr.GetComponent<TMP_Text>();
             if (tmp != null)
             {
-                tmp.text = cost > 0 ? cost.ToString() : string.Empty;
-                tmp.fontSize = AbilityCostFontSize;
+                tmp.text = Mathf.Max(0, cost).ToString();
+                var corner = button.GetComponent<ExpeditionAbilityCostCorner>();
+                if (corner != null)
+                {
+                    corner.RefreshPresentation();
+                    return;
+                }
+                var expedition = button.GetComponentInParent<ExpeditionBattleLayout>() != null;
+                tmp.fontSize = expedition ? 24f : AbilityCostFontSize;
                 tmp.enableAutoSizing = false;
-                tmp.color = AbilityCostTextColor;
+                tmp.color = expedition ? Project.UI.ExpeditionTheme.Amber : AbilityCostTextColor;
             }
         }
 
@@ -317,6 +344,7 @@ namespace Project.Match3
 
         private void ApplyAdaptiveButtonLayout()
         {
+            if (_expeditionStyle) return;
             var panelRt = transform as RectTransform;
             if (panelRt == null) return;
 

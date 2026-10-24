@@ -1,0 +1,81 @@
+{
+  "direction": "A — Глубинный форпост",
+  "date": "2026-10-22",
+  "mode": "built-in image_gen",
+  "scope": "Две целевые правки готовых концептуальных изображений. Игровые ресурсы, сцены и код не изменялись.",
+  "status": "complete",
+  "iterations": "Ровно один вызов редактирования на каждое изображение.",
+  "original_outputs_preserved": true,
+  "revisions": [
+    {
+      "file": "10-battle.png",
+      "input": {
+        "path": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Design\\ArtDirection-2026-10\\A-forpost\\10-battle.png",
+        "sha256": "0605932e825097e623772499ba6724a6d5678f938c4c4bd7841367028c9a655c",
+        "width": 941,
+        "height": 1672,
+        "bytes": 2883253
+      },
+      "original_generated_source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1651a-4482-71c0-8b5e-dcb41763cd17\\exec-cb897b0e-8eae-4658-9c78-8b83599ef7b0.png",
+      "prompt": "Use case: precise-object-edit\nAsset type: portrait mobile game art-direction concept, existing completed screenshot.\nInput image 1 is the EDIT TARGET. Preserve it aggressively.\nPrimary request: Change ONLY the icon inside the FIRST ability card at the very bottom-left, the card labeled «Крест» with mana cost 20. Its current icon is an ankh and must instead depict a plus-shaped area-of-effect blast made of exactly FIVE glowing square board cells: one central square plus one adjacent square above, below, left and right. Distinct small square tiles forming a clean plus silhouette, with the existing warm amber/gold blast lighting. No loop or ankh shape. Keep icon within its current card and current icon area.\nInvariants: Keep the «Крест» label, mana droplet, cost20, card frame and card size exactly as in the source. Preserve the OTHER FOUR ability cards (Квадрат, Петарда, Щит, Ярость), all their icons, labels and sample costs. Preserve the exact6×6 board, 36pieces, every existing piece type/location, all avatars, health/mana bars, top HUD text, turn timer24, environment, creatures, protagonist, framing, texture, palette, lighting, proportions and image size. Do not correct or refine any other text, number, cost or detail. The result must look like the identical screenshot with only this one ability icon replaced. Opaque background.",
+      "generated_output": {
+        "path": "C:/Users/ProKrust/.codex/generated_images/01a1651a-7a6c-7e52-88cf-3ab60942d885/exec-06532e70-59e4-4c49-9483-3da832337999.png",
+        "sha256": "53f61a0c29eeadf52ed862590a9b519721a15b15dbba780a7320f4bb49d623cd",
+        "width": 941,
+        "height": 1672,
+        "bytes": 2617355
+      },
+      "saved_output": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Design\\ArtDirection-2026-10\\A-forpost\\10-battle.png",
+      "intent": "Заменить только иконку первого умения «Крест»: анх → плюс из пяти квадратных клеток.",
+      "qa": {
+        "method": "Визуальный осмотр входного локального изображения через view_image и результата встроенной генерации; проверка PNG-размера и SHA-256.",
+        "dimensions_preserved": true,
+        "target_change_verified": true,
+        "checks": [
+          "Иконка «Крест» стала плюсом из пяти отчётливых квадратных клеток: центр и четыре соседа.",
+          "Поле сохраняет 6 строк × 6 столбцов, всего 36 фишек; типы и расположение визуально сохранены.",
+          "Название «Крест», стоимость20, четыре остальных умения, HUD и композиция визуально сохранены.",
+          "Остальные образцовые числа и подписи намеренно не корректировались."
+        ],
+        "pixel_identity_claimed": false,
+        "limitation": "Генеративная правка; визуальная сохранность не означает побитовую идентичность всех остальных пикселей. Это концепт, а не спецификация баланса.",
+        "browser_qa": "Не выполнялась и для этой правки не требовалась."
+      }
+    },
+    {
+      "file": "13-achievements.png",
+      "input": {
+        "path": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Design\\ArtDirection-2026-10\\A-forpost\\13-achievements.png",
+        "sha256": "5a154e159fc460cb4da4047d9fb86f735d5aef9b88a31164e656a1e4f0dcea58",
+        "width": 941,
+        "height": 1672,
+        "bytes": 2389631
+      },
+      "original_generated_source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1651a-4482-71c0-8b5e-dcb41763cd17\\exec-f675bdab-df86-4e87-a144-a3aa1df47359.png",
+      "prompt": "Use case: text-localization\nAsset type: existing portrait mobile game achievement-screen concept.\nInput image 1 is the EDIT TARGET. Preserve it aggressively.\nPrimary request: In ONLY the bottom achievement row, replace its title «Свои среди своих» with the exact Russian text «Мастер дуэлей». Directly below that title, replace the condition «Проведи 50 боёв в кооперации» with the exact Russian text «Победи в 50 дуэлях».\nKeep the same condensed readable ivory Cyrillic font, baseline alignment and row text styling; the new shorter text must fit naturally in the same title and subtitle areas.\nInvariants: Change nothing except those TWO text strings inside the bottom achievement row. Keep that row's left medal icon with people unchanged. Preserve its chain nodes, check/locks, sample progress5/20/50, progress line, button, layout, size, margins and textures. Preserve all other achievement rows, all other text and sample values, illustration, top resource HUD, updated-achievement toast, tabs, bottom navigation, palette, lighting and full portrait framing. Do not correct or refine any other labels, numbers, mechanic samples or details. Do not add cooperative gameplay. The result must look like the identical screenshot with only the bottom row's title and condition replaced. Opaque background.",
+      "generated_output": {
+        "path": "C:/Users/ProKrust/.codex/generated_images/01a1651a-7a6c-7e52-88cf-3ab60942d885/exec-68fa6382-9b23-474f-9830-72029512c91b.png",
+        "sha256": "db7d8c2ff0a857270366b3ceea294e6adb899ec0b6525867ca6f3e76dd7e8f40",
+        "width": 941,
+        "height": 1672,
+        "bytes": 2155165
+      },
+      "saved_output": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Design\\ArtDirection-2026-10\\A-forpost\\13-achievements.png",
+      "intent": "Заменить только нижние заголовок/условие: «Мастер дуэлей» / «Победи в 50 дуэлях».",
+      "qa": {
+        "method": "Визуальный осмотр входного локального изображения через view_image и результата встроенной генерации; проверка PNG-размера и SHA-256.",
+        "dimensions_preserved": true,
+        "target_change_verified": true,
+        "checks": [
+          "Нижний заголовок читается точно «Мастер дуэлей».",
+          "Нижнее условие читается точно «Победи в 50 дуэлях».",
+          "Остальные строки, групповая медаль, узлы5/20/50, кнопки, HUD и композиция визуально сохранены.",
+          "Новая кооперативная механика не заявляется; остальные образцовые числа намеренно не корректировались."
+        ],
+        "pixel_identity_claimed": false,
+        "limitation": "Генеративная правка; визуальная сохранность не означает побитовую идентичность всех остальных пикселей. Это концепт, а не спецификация баланса.",
+        "browser_qa": "Не выполнялась и для этой правки не требовалась."
+      }
+    }
+  ]
+}

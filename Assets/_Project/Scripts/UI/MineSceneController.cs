@@ -107,6 +107,7 @@ namespace Project.UI
         private readonly Dictionary<string, Text> _difficultyLabels = new();
         private CancellationTokenSource _cts;
         private ScrollRect _cardsScroll;
+        private ExpeditionMinePresentation _expeditionPresentation;
 
         private GameObject _modalRoot;
         private Text _modalTitle;
@@ -160,6 +161,7 @@ namespace Project.UI
         /// <summary>Сервер: duel_character_get learned_recipe_ids — для скрытия строки рецепта в модалке монстра.</summary>
         private string[] _cachedLearnedRecipeIds = Array.Empty<string>();
         private EnergyHeaderPurchaseController _energyHeaderPurchase;
+        private RectTransform _expeditionEnergyModalHost;
         private Transform _headerResourcesRoot;
         private Sprite _lockSprite;
         private Sprite _oreSprite;
@@ -321,6 +323,7 @@ namespace Project.UI
             EnsureSummonConfirmDialog();
             EnsureDifficultyTabs();
             EnsureHeaderResources();
+            EnsureExpeditionPresentation();
             TryApplyCachedMineCatalogSnapshot();
         }
 
@@ -336,6 +339,11 @@ namespace Project.UI
         private void OnDisable()
         {
             _energyHeaderPurchase = null;
+            if (_expeditionEnergyModalHost != null)
+            {
+                Destroy(_expeditionEnergyModalHost.gameObject);
+                _expeditionEnergyModalHost = null;
+            }
             if (_insufficientResourcesToastRoutine != null)
             {
                 StopCoroutine(_insufficientResourcesToastRoutine);
@@ -998,7 +1006,7 @@ namespace Project.UI
             if (_summonConfirmRoot == null || _summonConfirmMessageText == null)
                 return;
             _summonConfirmFloor = floor;
-            _summonConfirmMessageText.text = $"Потратить {SummonEnergyCost} эн / {SummonGoldCost} зол?";
+            _summonConfirmMessageText.text = $"Призвать противника на этаж {floor}?\nСтоимость: {SummonEnergyCost} энергии и {SummonGoldCost} золота.";
             _summonConfirmRoot.transform.SetAsLastSibling();
             _summonConfirmRoot.SetActive(true);
         }
@@ -1018,43 +1026,46 @@ namespace Project.UI
             rootRt.anchorMax = Vector2.one;
             rootRt.offsetMin = Vector2.zero;
             rootRt.offsetMax = Vector2.zero;
-            root.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            root.GetComponent<Image>().color = new Color(0.015f, 0.04f, 0.05f, 0.82f);
             root.GetComponent<Image>().raycastTarget = true;
 
-            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            var safe = new GameObject("SummonSafeArea", typeof(RectTransform));
+            safe.transform.SetParent(rootRt, false);
+            var safeRt = safe.GetComponent<RectTransform>();
+            safeRt.anchorMin = Vector2.zero;
+            safeRt.anchorMax = Vector2.one;
+            safeRt.offsetMin = safeRt.offsetMax = Vector2.zero;
+            safe.AddComponent<ExpeditionSafeArea>();
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
             var panelRt = panel.GetComponent<RectTransform>();
-            panelRt.SetParent(rootRt, false);
-            panelRt.anchorMin = new Vector2(0.5f, 0.5f);
-            panelRt.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRt.pivot = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(440f, 220f);
-            panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 1f);
-
-            var v = panel.GetComponent<VerticalLayoutGroup>();
-            v.padding = new RectOffset(22, 22, 18, 18);
-            v.spacing = 18f;
-            v.childAlignment = TextAnchor.MiddleCenter;
-            v.childControlHeight = true;
-            v.childControlWidth = true;
-
-            _summonConfirmMessageText = CreateText(panel.transform, "Message", string.Empty, 20, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
-            var msgLe = _summonConfirmMessageText.gameObject.AddComponent<LayoutElement>();
-            msgLe.minHeight = 56f;
-            msgLe.preferredHeight = 64f;
-            msgLe.flexibleWidth = 1f;
+            panelRt.SetParent(safeRt, false);
+            ExpeditionUi.SetRect(panelRt, .07f, .38f, .93f, .62f);
+            ExpeditionUi.StylePanel(panel.GetComponent<Image>(), ExpeditionTheme.Panel);
+            var title = CreateText(panel.transform, "Title", "ПРИЗЫВ ПРОТИВНИКА", 34, TextAnchor.MiddleLeft,
+                new Vector2(.065f, .72f), new Vector2(.935f, .92f));
+            title.color = ExpeditionTheme.Amber;
+            title.fontStyle = FontStyle.Bold;
+            title.raycastTarget = false;
+            _summonConfirmMessageText = CreateText(panel.transform, "Message", string.Empty, 28, TextAnchor.MiddleLeft,
+                new Vector2(.065f, .36f), new Vector2(.935f, .70f));
+            _summonConfirmMessageText.color = ExpeditionTheme.Ivory;
+            _summonConfirmMessageText.raycastTarget = false;
+            _summonConfirmMessageText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _summonConfirmMessageText.verticalOverflow = VerticalWrapMode.Truncate;
 
             var row = new GameObject("ButtonsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             row.GetComponent<RectTransform>().SetParent(panel.transform, false);
+            ExpeditionUi.SetRect(row.GetComponent<RectTransform>(), .065f, .09f, .935f, .29f);
             var rowH = row.GetComponent<HorizontalLayoutGroup>();
-            rowH.spacing = 24f;
+            rowH.spacing = 18f;
             rowH.childAlignment = TextAnchor.MiddleCenter;
             rowH.childControlHeight = true;
             rowH.childControlWidth = true;
-            var rowLe = row.AddComponent<LayoutElement>();
-            rowLe.preferredHeight = 48f;
+            rowH.childForceExpandHeight = true;
+            rowH.childForceExpandWidth = true;
 
-            MakeSummonConfirmButton(row.transform, "Да", OnSummonConfirmYesClicked);
             MakeSummonConfirmButton(row.transform, "Нет", OnSummonConfirmNoClicked);
+            MakeSummonConfirmButton(row.transform, "Да", OnSummonConfirmYesClicked);
 
             root.SetActive(false);
             _summonConfirmRoot = root;
@@ -1065,15 +1076,14 @@ namespace Project.UI
             var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             go.GetComponent<RectTransform>().SetParent(parent, false);
             var img = go.GetComponent<Image>();
-            img.color = new Color(0.22f, 0.48f, 0.82f, 1f);
             var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
             var le = go.GetComponent<LayoutElement>();
-            le.preferredWidth = 130f;
-            le.preferredHeight = 42f;
-            le.minHeight = 42f;
-            var txt = CreateText(go.transform, "Text", label, 18, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
-            txt.color = Color.white;
+            le.flexibleWidth = 1f;
+            le.minHeight = 56f;
+            var txt = CreateText(go.transform, "Text", label == "Да" ? "ПРИЗВАТЬ" : "ОТМЕНА", 29, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);
             txt.raycastTarget = false;
+            ExpeditionUi.StyleButton(btn, label == "Да", 29);
             btn.onClick.AddListener(onClick);
         }
 
@@ -1177,6 +1187,12 @@ namespace Project.UI
 
         private void ApplyRows()
         {
+            if (_expeditionPresentation != null)
+            {
+                ApplyExpeditionRows();
+                return;
+            }
+
             foreach (var kv in _rows)
             {
                 var floor = kv.Key;
@@ -1382,6 +1398,11 @@ namespace Project.UI
 
         private void FocusFloor(int floor)
         {
+            if (_expeditionPresentation != null)
+            {
+                _expeditionPresentation.SelectFloor(floor);
+                return;
+            }
             if (!_rows.ContainsKey(floor))
                 return;
 
@@ -1392,6 +1413,67 @@ namespace Project.UI
             }
 
             OpenMonsterModal(floor);
+        }
+
+        private void EnsureExpeditionPresentation()
+        {
+            if (IsMine3DScene) return;
+            var background = GameObject.Find("MineBackground");
+            if (background == null) return;
+            _expeditionPresentation = ExpeditionMinePresentation.Install(background.transform,
+                OpenMonsterModal, OnSummonWhistleClicked);
+            ExpeditionMinePresentation.ApplyDifficultyStyle(_difficultyTabsRoot, _difficulty);
+            ApplyExpeditionRows();
+        }
+
+        /// <summary>The new route is a view of the same server catalog, barriers and respawn timers.</summary>
+        private void ApplyExpeditionRows()
+        {
+            if (_expeditionPresentation == null) return;
+            var hasCatalog = _botByFloor.Count > 0;
+            var current = Mathf.Clamp(GetUnlockedFloorForCurrentDifficulty(), 1, 12);
+            for (var floor = 1; floor <= 12; floor++)
+            {
+                _botByFloor.TryGetValue(floor, out var bot);
+                _mineByFloor.TryGetValue(floor, out var mine);
+                var definition = ResolveMonsterDefinition(bot, floor);
+                var requirement = GetBarrierRequirement(floor);
+                var barrier = new StringBuilder();
+                if (requirement != null)
+                {
+                    if (requirement.ore > 0) barrier.Append("Руда ").Append(FormatCompact(requirement.ore));
+                    if (requirement.gold > 0) barrier.Append("  ·  Золото ").Append(FormatCompact(requirement.gold));
+                    if (requirement.matter > 0) barrier.Append("  ·  Материя ").Append(FormatCompact(requirement.matter));
+                }
+                var rewards = new StringBuilder();
+                if (bot != null)
+                {
+                    if (bot.reward_ore > 0) rewards.Append("Руда ").Append(FormatCompact(MineRewardFormat.ScaleRewardAmount(bot.reward_ore, _difficulty)));
+                    if (bot.reward_gold > 0)
+                    {
+                        if (rewards.Length > 0) rewards.Append("  ·  ");
+                        rewards.Append("Золото ").Append(FormatCompact(MineRewardFormat.ScaleRewardAmount(bot.reward_gold, _difficulty)));
+                    }
+                    if (bot.reward_xp > 0 && rewards.Length == 0)
+                        rewards.Append("Опыт ").Append(FormatCompact(MineRewardFormat.ScaleRewardAmount(bot.reward_xp, _difficulty)));
+                }
+                _expeditionPresentation.SetFloor(new ExpeditionMinePresentation.FloorState
+                {
+                    floor = floor,
+                    unlocked = IsFloorUnlocked(floor),
+                    boss = IsMineBossFloor(floor) || (mine != null && mine.is_boss),
+                    current = floor == current,
+                    hasCatalog = hasCatalog,
+                    respawnSeconds = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0,
+                    wins = mine != null ? mine.wins : 0,
+                    name = bot != null && !string.IsNullOrWhiteSpace(bot.name) ? bot.name
+                        : definition != null ? definition.DisplayName : "Неизведанная глубина",
+                    rewards = rewards.Length > 0 ? rewards.ToString() : "Награды и условия — в досье",
+                    barrierCost = barrier.ToString(),
+                    portrait = definition != null ? definition.Icon : null
+                });
+            }
+            _expeditionPresentation.SetProgress(current, hasCatalog);
         }
 
         private void EnsureModal()
@@ -1421,6 +1503,9 @@ namespace Project.UI
                 _modalRoot = null;
                 return;
             }
+
+            if (!IsMine3DScene)
+                view.ApplyExpeditionStyle();
 
             _modalTitle = view.TitleText;
             _modalCloseButton = view.CloseButton;
@@ -1488,8 +1573,12 @@ namespace Project.UI
             _botByFloor.TryGetValue(_selectedFloor, out var bot);
             if (_modalFightButton != null)
                 _modalFightButton.interactable = respawn <= 0 && bot != null;
-            _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(_selectedFloor);
-            ApplyDismissButtonCosts(_modalCanSummon, bot);
+            var canSummon = respawn > 0 && bot != null && !IsMineBossFloor(_selectedFloor);
+            if (_modalCanSummon != canSummon)
+            {
+                _modalCanSummon = canSummon;
+                ApplyDismissButtonCosts(_modalCanSummon, bot);
+            }
         }
 
         private async void OpenMonsterModal(int floor)
@@ -1505,6 +1594,13 @@ namespace Project.UI
 
             var unlocked = IsFloorUnlocked(floor);
             var respawn = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0;
+            var dossierView = _modalRoot.GetComponent<MonsterModalView>();
+            if (!IsMine3DScene && dossierView != null)
+            {
+                var definition = ResolveMonsterDefinition(bot, floor);
+                dossierView.SetExpeditionContext(definition != null ? definition.Icon : null, floor,
+                    _difficulty == "hard" ? "Тяжёлая" : _difficulty == "medium" ? "Средняя" : "Лёгкая", !unlocked);
+            }
             var affix = mine != null ? mine.affix : "";
             ApplyAffixVisual(affix);
 
@@ -1519,6 +1615,7 @@ namespace Project.UI
                 if (_modalBarrierInfo != null)
                     _modalBarrierInfo.text = BuildBarrierInfoText(floor, req);
                 PopulateBarrierRequirements(floor, req);
+                if (dossierView != null) dossierView.RefreshDynamicStyles();
                 _modalCanUnlock = req != null;
                 _modalCanSummon = false;
                 ApplyModalFooterBarrierLayout(barrierMode: true);
@@ -1563,6 +1660,7 @@ namespace Project.UI
                 return;
 
             PopulateMonsterRewards(bot);
+            if (dossierView != null) dossierView.RefreshDynamicStyles();
 
             _modalCanUnlock = false;
             _modalCanSummon = respawn > 0 && bot != null && !IsMineBossFloor(floor);
@@ -1579,9 +1677,9 @@ namespace Project.UI
         {
             if (_modalStatTexts == null || _modalStatTexts.Length < 6)
                 return;
-            _modalStatTexts[0].text = $"HP: {hp}";
-            _modalStatTexts[1].text = $"Урон: {dmg}";
-            _modalStatTexts[2].text = $"Броня: {armor}";
+            _modalStatTexts[0].text = IsMine3DScene ? $"HP: {hp}" : $"Здоровье\n{hp}";
+            _modalStatTexts[1].text = IsMine3DScene ? $"Урон: {dmg}" : $"Атака\n{dmg}";
+            _modalStatTexts[2].text = IsMine3DScene ? $"Броня: {armor}" : $"Броня\n{armor}";
             _modalStatTexts[3].text = $"Крит: {Mathf.RoundToInt(crit * 100f)}%";
             _modalStatTexts[4].text = $"Мана: {mana}";
             _modalStatTexts[5].text = respawnSec > 0 ? $"Появится: {FormatSeconds(respawnSec)}" : "—";
@@ -1664,27 +1762,33 @@ namespace Project.UI
 
         private async Task SummonSelectedFloorAsync()
         {
-            if (NakamaBootstrap.Instance == null || _cts == null || _cts.IsCancellationRequested)
+            if (_summonInFlight || NakamaBootstrap.Instance == null || _cts == null || _cts.IsCancellationRequested)
                 return;
 
+            var requestedFloor = _selectedFloor;
+            var requestedDifficulty = _difficulty;
+            var token = _cts.Token;
             _summonInFlight = true;
-            _modalDismissButton.interactable = false;
+            if (_modalDismissButton != null) _modalDismissButton.interactable = false;
+            if (_expeditionPresentation != null) _expeditionPresentation.SetSummonBusy(true);
 
             try
             {
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                await NakamaBootstrap.Instance.EnsureConnectedAsync(token);
+                if (this == null || token.IsCancellationRequested) return;
                 if (!NakamaBootstrap.Instance.IsReady || NakamaBootstrap.Instance.Client == null || NakamaBootstrap.Instance.Session == null)
                     return;
 
                 var request = new SummonRequest
                 {
-                    floor = _selectedFloor,
-                    difficulty = _difficulty,
+                    floor = requestedFloor,
+                    difficulty = requestedDifficulty,
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch()
                 };
                 var reqJson = JsonUtility.ToJson(request);
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcMineSummon, reqJson, canceller: _cts.Token);
+                    NakamaBootstrap.Instance.Session, RpcMineSummon, reqJson, canceller: token);
+                if (this == null || token.IsCancellationRequested) return;
                 var payload = rpc?.Payload;
                 if (string.IsNullOrWhiteSpace(payload))
                     return;
@@ -1704,16 +1808,17 @@ namespace Project.UI
                     return;
                 }
 
-                if (_mineByFloor.TryGetValue(_selectedFloor, out var mine) && mine != null)
+                if (string.Equals(_difficulty, requestedDifficulty, StringComparison.OrdinalIgnoreCase)
+                    && _mineByFloor.TryGetValue(requestedFloor, out var mine) && mine != null)
                 {
                     mine.respawn_left_seconds = 0;
                 }
 
                 ApplyRows();
-                CloseMonsterModal();
+                if (_selectedFloor == requestedFloor) CloseMonsterModal();
                 try
                 {
-                    await RefreshResourcesAsync(_cts.Token);
+                    await RefreshResourcesAsync(token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1731,6 +1836,7 @@ namespace Project.UI
             finally
             {
                 _summonInFlight = false;
+                if (_expeditionPresentation != null) _expeditionPresentation.SetSummonBusy(false);
                 if (_modalDismissButton != null)
                     _modalDismissButton.interactable = true;
             }
@@ -2064,9 +2170,34 @@ namespace Project.UI
             if (_energyHeaderPurchase != null) return;
             EnsureHudIconReferences();
             // Модалка не зависит от HeaderResources: в MineScene шапки ресурсов может не быть.
-            var modalParent = FindMonsterModalParent()
+            Transform modalParent;
+            if (!IsMine3DScene)
+            {
+                // This can run before the shared shell exists. A dedicated overlay root keeps
+                // shortage purchases above the dossier (240), rather than inside MineCanvas's camera.
+                if (_expeditionEnergyModalHost == null)
+                {
+                    var host = new GameObject("MineEnergyModalHost", typeof(RectTransform), typeof(Canvas),
+                        typeof(CanvasScaler), typeof(GraphicRaycaster));
+                    SceneManager.MoveGameObjectToScene(host, gameObject.scene);
+                    _expeditionEnergyModalHost = host.GetComponent<RectTransform>();
+                    var canvas = host.GetComponent<Canvas>();
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                    canvas.sortingOrder = 260;
+                    var scaler = host.GetComponent<CanvasScaler>();
+                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                    scaler.referenceResolution = new Vector2(1080, 1920);
+                    scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                    scaler.matchWidthOrHeight = .5f;
+                }
+                modalParent = _expeditionEnergyModalHost;
+            }
+            else
+            {
+                modalParent = FindMonsterModalParent()
                               ?? GetComponentInParent<Canvas>()?.transform
                               ?? FindFirstObjectByType<Canvas>()?.transform;
+            }
             if (modalParent == null) return;
             _energyHeaderPurchase = new EnergyHeaderPurchaseController(
                 modalParent,
@@ -2551,6 +2682,9 @@ namespace Project.UI
             ApplyOneDifficultyTabVisual("medium", "СРЕДНЯЯ");
             ApplyOneDifficultyTabVisual("hard", "ТЯЖЁЛАЯ");
 
+            if (_expeditionPresentation != null)
+                ExpeditionMinePresentation.ApplyDifficultyStyle(_difficultyTabsRoot, _difficulty);
+
             if (IsMine3DScene)
                 Mine3DUiBevel.ApplyDifficultySelection(_difficulty);
         }
@@ -2880,7 +3014,7 @@ namespace Project.UI
             {
                 entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
                 _modalMonsterRewardsColumnsRoot.gameObject.SetActive(true);
-                RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, 6, stackIconOverValue: true);
+                RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, IsMine3DScene ? 6 : 4, stackIconOverValue: true);
                 return;
             }
 
@@ -2994,7 +3128,7 @@ namespace Project.UI
             if (entries.Count == 0)
                 entries.Add(new RewardEntry { icon = null, text = "Награды: —", color = Color.white });
 
-            RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, 6, stackIconOverValue: true);
+            RenderIconValueGrid(_modalMonsterRewardsColumnsRoot, entries, IsMine3DScene ? 6 : 4, stackIconOverValue: true);
             _modalMonsterRewardsColumnsRoot.gameObject.SetActive(true);
         }
 
@@ -3503,7 +3637,7 @@ namespace Project.UI
         private void ApplyFightButtonCosts(PveBotInfo bot)
         {
             EnsureFooterRowWithCostStrip(_modalFightButton, "В бой");
-            SetFooterPrefix(_modalFightButton, "В бой");
+            SetFooterPrefix(_modalFightButton, IsMine3DScene ? "В бой" : "АТАКОВАТЬ");
             PopulateCostStrip(_modalFightButton, CoalesceCost(bot != null ? bot.cost_attack : null, DefaultCostAttack()));
         }
 
@@ -3530,7 +3664,10 @@ namespace Project.UI
         {
             if (btn == null) return;
             if (btn.transform.Find(MineFooterRowName) != null)
+            {
+                ApplyExpeditionFightFooterLayout(btn);
                 return;
+            }
 
             Text oldLabel = null;
             for (var i = 0; i < btn.transform.childCount; i++)
@@ -3573,7 +3710,8 @@ namespace Project.UI
             var prefix = prefixGo.GetComponent<Text>();
             prefix.font = GetBuiltinFont();
             prefix.fontSize = 20;
-            prefix.color = Color.white;
+            prefix.color = !IsMine3DScene && btn == _modalFightButton
+                ? new Color32(15, 35, 42, 255) : Color.white;
             prefix.alignment = TextAnchor.MiddleCenter;
             prefix.raycastTarget = false;
             prefix.text = prefixText;
@@ -3597,6 +3735,38 @@ namespace Project.UI
             var stripFitter = strip.AddComponent<ContentSizeFitter>();
             stripFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             stripFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            ApplyExpeditionFightFooterLayout(btn);
+        }
+
+        private void ApplyExpeditionFightFooterLayout(Button btn)
+        {
+            if (IsMine3DScene || btn == null || btn != _modalFightButton) return;
+            var row = btn.transform.Find(MineFooterRowName);
+            if (row == null) return;
+            var oldLayout = row.GetComponent<HorizontalLayoutGroup>();
+            if (oldLayout != null) oldLayout.enabled = false;
+            var prefix = row.Find("Prefix")?.GetComponent<Text>();
+            if (prefix != null)
+            {
+                var oldFitter = prefix.GetComponent<ContentSizeFitter>();
+                if (oldFitter != null) oldFitter.enabled = false;
+                ExpeditionUi.SetRect(prefix.rectTransform, .05f, .1f, .68f, .9f);
+                prefix.font = ExpeditionTheme.LegacyFont;
+                prefix.fontSize = 29;
+                prefix.horizontalOverflow = HorizontalWrapMode.Overflow;
+                prefix.verticalOverflow = VerticalWrapMode.Truncate;
+                prefix.resizeTextForBestFit = true;
+                prefix.resizeTextMinSize = 22;
+                prefix.resizeTextMaxSize = 29;
+            }
+            var strip = row.Find("CostStrip") as RectTransform;
+            if (strip != null)
+            {
+                var oldFitter = strip.GetComponent<ContentSizeFitter>();
+                if (oldFitter != null) oldFitter.enabled = false;
+                ExpeditionUi.SetRect(strip, .70f, .13f, .96f, .87f);
+            }
+            btn.GetComponent<ExpeditionButtonFeedback>()?.Configure(true);
         }
 
         private static void SetFooterPrefix(Button btn, string prefix)
@@ -3659,7 +3829,8 @@ namespace Project.UI
                 var amt = amtGo.GetComponent<Text>();
                 amt.font = GetBuiltinFont();
                 amt.fontSize = 19;
-                amt.color = Color.white;
+                amt.color = !IsMine3DScene && btn == _modalFightButton
+                    ? new Color32(15, 35, 42, 255) : Color.white;
                 amt.alignment = TextAnchor.MiddleLeft;
                 amt.horizontalOverflow = HorizontalWrapMode.Overflow;
                 amt.verticalOverflow = VerticalWrapMode.Truncate;
@@ -3673,6 +3844,7 @@ namespace Project.UI
                 amtLe.flexibleHeight = 0f;
                 amtLe.minWidth = 0f;
             }
+            ApplyExpeditionFightFooterLayout(btn);
         }
 
         /// <summary>

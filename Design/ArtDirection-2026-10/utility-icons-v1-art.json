@@ -1,0 +1,54 @@
+{
+  "direction": "B — Экспедиция в разлом",
+  "mode": "built-in image_gen",
+  "generated_on": "2026-10-23",
+  "asset": "utility-icons-atlas.png",
+  "destination": "Assets/_Project/Resources/Expedition/UI/utility-icons-atlas.png",
+  "source": "C:/Users/ProKrust/.codex/generated_images/01a1655b-c2d1-7c82-ac74-d29bf058c701/exec-617892ec-1d86-41c5-b7d5-9703839b5f9e.png",
+  "reference": "Assets/_Project/Resources/Expedition/UI/ui-icons-atlas.png",
+  "prompt": "Use case: stylized-concept. Asset type: a production Unity UI icon atlas with exactly TWO independent dimensional object icons. Input image 1 is the existing 20-icon atlas, ONLY style/material/lighting reference. Match its sculpted hand-painted game-object look precisely: chunky practical industrial mining RPG, worn dark ivory steel, aged bronze, broad beveled highlights, restrained dark teal reflected shadows, clear warm top-left illumination. These must be physical miniature objects rendered as textured 2.5D painted sculptures, NOT flat glyphs, emoji, pixel art, vector symbols, line art or silhouettes. Canvas: landscape EXACTLY 2:1 aspect, two equal square tiles side by side. Each object centered in its tile, no overlap; at least 12% entirely transparent padding on all tile edges. Genuine transparent RGBA background throughout all padding and holes. LEFT TILE: an unmistakable ACHIEVEMENT TROPHY CUP, a solid warm bronze/gold bowl with two substantial curved side handles, short stem, small chunky square steel-and-bronze base; softly hammered and weathered material, thick visibly modeled rim, readable broad forms, subtle dimensional depth, no text or engraving. RIGHT TILE: a single SETTINGS GEAR, an eight-tooth industrial steel gear wheel with thick chamfered teeth, a dark open circular center hole, a modest aged bronze inner bearing rim; show a little of its substantial extruded thickness and top-left beveled edges, nearly front-on three-quarter angle so its round gear silhouette remains perfectly clear at 48px. The cup and gear have consistent object scale around 75% of their square tiles, consistent matte material quality and lighting, shallow self-shadow only within their own silhouettes. No background, checkerboard, UI cards, frames, tile dividers, floor, cast shadows outside silhouettes, labels, numbers, branding or watermark. In particular the gear hole and space between cup handles must be truly alpha-transparent. Production bitmap sprite quality, 1536x768 composition.",
+  "transparent_background": true,
+  "sprite_names": [
+    "trophy",
+    "settings"
+  ],
+  "source_dimensions": [
+    1774,
+    887
+  ],
+  "sprite_cells": [
+    [
+      0,
+      0,
+      887,
+      887
+    ],
+    [
+      887,
+      0,
+      887,
+      887
+    ]
+  ],
+  "sha256": "52e46e52fa67d244c9a12c1bd6b2951e2d6297debaf3555b19b7539fe95c95bd",
+  "import": {
+    "sprite_mode": "Multiple",
+    "shape": "Texture2D",
+    "max_size": 1024,
+    "android_format": "ASTC_6x6",
+    "mipmaps": false,
+    "readable": false
+  },
+  "validation": {
+    "visual_inspection": true,
+    "holes_and_gutters_transparent": true,
+    "trophy_body_alpha": 253,
+    "gear_body_alpha": 252,
+    "gear_center_alpha": 0,
+    "patch_check": true,
+    "runtime_preview_compile_exit": 0,
+    "editor_preview_compile_exit": 0,
+    "unity_import_executed": false,
+    "assets_touched": false
+  }
+}

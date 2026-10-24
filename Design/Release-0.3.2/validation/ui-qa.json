@@ -1,0 +1,294 @@
+{
+  "version": "0.3.2",
+  "checked_at": "2026-10-23T21:05:33.154293+03:00",
+  "environment": "Unity 6000.3.9f1 Windows Editor Play Mode; actual game scenes; 1440x3088 Game View",
+  "physical_device_tested": false,
+  "native_android_ime_tested": false,
+  "fps_measured": false,
+  "gc_profiled": false,
+  "result": "passed_with_stated_scope",
+  "evidence_scope": {
+    "requested_since_utc": "2026-10-23T17:00:00Z",
+    "source": ".utmp/expedition/qa-results.jsonl",
+    "copied_log": "qa-results.jsonl",
+    "source_first_line_1_based": 427,
+    "source_last_line_1_based": 552,
+    "source_first_id": "41dfc897d61c41cfb527ca7b813b3f57",
+    "source_last_id": "4fd813f4d07848bcb38e51c68be980e3",
+    "filter_note": "Bridge replies contain no timestamps. Current 0.3.2 iteration selected from original resource-icons Prepare marker through release032 build request, by record IDs and original line range, corroborated by current 032 screenshot mtimes and mine report startedUtc. This is not an exact per-record timestamp filter.",
+    "copied_record_count": 126
+  },
+  "checks": [
+    {
+      "name": "Navigation order and duplicate shelter signs",
+      "status": "passed",
+      "mode": "actual runtime navigation + production hierarchy",
+      "evidence_ids": [
+        "56feef0a53e446caafdde68acd4a5fa8"
+      ],
+      "screenshots": [
+        "screenshots/hub.png"
+      ]
+    },
+    {
+      "name": "Header actions inset and original resource icons",
+      "status": "passed",
+      "mode": "real header and original AssetDatabase sprite identity; utility bitmap art visually reviewed",
+      "evidence_ids": [
+        "a05a1b634e40490385e2911fc2cb36ca"
+      ],
+      "screenshots": [
+        "screenshots/hub.png",
+        "screenshots/character.png",
+        "screenshots/mine.png"
+      ]
+    },
+    {
+      "name": "Nickname pointer input, insertion, Backspace and reopening",
+      "status": "passed",
+      "mode": "actual TMP input and EventSystem pointer raycast; QaProbe12 -> QaProbe1; two runs; original text restored; no Save submitted",
+      "evidence_ids": [
+        "736e1c0f4406472195abc82b3cfc1bcc",
+        "1586775697a44fa4bae725433c9982e3"
+      ],
+      "report": "nickname-input-results.json"
+    },
+    {
+      "name": "Equipment empty hints and rarity backgrounds/rims",
+      "status": "passed",
+      "mode": "real CharacterScreenView.BindEquipmentAndInventory using actual cached ItemCatalog definitions; all eight slots; normal/rare/epic; automatic and explicit restore; no RPC",
+      "evidence_ids": [
+        "b4b063b056cb4063a16781ddefcd6816",
+        "e56b3fcd5a0040ff967866c9d0683fa5",
+        "16ca0d2110b44a81827d3d3f4fac422d"
+      ],
+      "report": "equipment-probe-results.json",
+      "screenshots": [
+        "screenshots/character.png"
+      ]
+    },
+    {
+      "name": "Supplies, achievements and character navigation",
+      "status": "passed",
+      "mode": "actual raycast taps; achievements three tabs visually checked by root",
+      "evidence_ids": [
+        "4d398a10df0a4b81acfb03dd3878e965",
+        "9eacc49515e94e91a364b0856f0c5ff0",
+        "148e6ad32e804058a77f245787964df9",
+        "fe5fd634543b4705a30c8c2afe2d0f06"
+      ]
+    },
+    {
+      "name": "Workshop original ore/gold and Settings opening",
+      "status": "passed",
+      "mode": "actual Workshop visual review and Settings raycast; private settings screenshot excluded from gallery",
+      "evidence_ids": [
+        "0d5ff2c366e944a5ab33cb0ae0e170a8",
+        "b044408299a24b08b1dee5a47e9c14d4",
+        "62ed775599a742d5a63c8d316283bf49"
+      ]
+    },
+    {
+      "name": "Mine smooth travel, retarget and manual scroll cancellation",
+      "status": "passed",
+      "mode": "actual rendered-frame probe; no RPC/resource action; behavior probe, not FPS measurement",
+      "evidence_ids": [
+        "8ce779186fcf40c9acb50fb9b2fa5a2d"
+      ],
+      "report": "mine-travel-play.json"
+    },
+    {
+      "name": "Mine locked Depth4 and return to Depth1",
+      "status": "passed",
+      "mode": "actual raycast taps; final full chains and about 1.4 floor heights visually reviewed; no barrier unlock",
+      "evidence_ids": [
+        "2a62e5b846ee4125b9588bf8d5a40ce7",
+        "ff1e9c1e44bc401181363c2f89e14035"
+      ],
+      "screenshots": [
+        "screenshots/mine.png"
+      ]
+    },
+    {
+      "name": "Arena stake overlays and cleanup",
+      "status": "passed",
+      "mode": "three real stake chooser variants, no fee selected; overlay absent after leaving ArenaMenu",
+      "evidence_ids": [
+        "fe9f07932e8d43cead32858db4f871ae",
+        "6015de286a31442aa79b00535f37010e",
+        "9053e25e3a214b3b8f01a38b7e0079d4",
+        "449aa0a4f6b5471b93c5d969c479a7c4"
+      ]
+    },
+    {
+      "name": "Battle HP/MP at 0/50/100 percent",
+      "status": "passed",
+      "mode": "production header with UI-only values and restored original modes/data; numeric labels, 7/5 insets, width ratio*(trackWidth-14), glyph containment",
+      "evidence_ids": [
+        "a2c18095bf554a5185f2eaf3ae65e718",
+        "f78447e5829f46e28fa30fa3741afb00"
+      ],
+      "screenshots": [
+        "screenshots/battle.png"
+      ]
+    },
+    {
+      "name": "Battle stats popover",
+      "status": "passed",
+      "mode": "actual EventSystem raycast invokes production IPointerClickHandler; opens and closes; original presentation restored",
+      "evidence_ids": [
+        "e602fb2dda744c6f91c5259316b934f3"
+      ]
+    },
+    {
+      "name": "Race presentation",
+      "status": "passed",
+      "mode": "view-only fixture calls production SetRaceHudMode, MP60/240, goal200 at83.33%, last-turn and +3 bonus; restore confirmed; no completed network match",
+      "evidence_ids": [
+        "08a9df0c7d1544b9801583b8c989082d",
+        "5a9ea517b367477cb16fdb8303b62072"
+      ]
+    },
+    {
+      "name": "Actual solo battle and affix tooltip",
+      "status": "passed",
+      "mode": "actual StartBoss raycast, live local solo battle capture, actual tooltip open/close; no reward claim test",
+      "evidence_ids": [
+        "6f7fa3c9b4304c00828789a804d23b51",
+        "d2b66012bfa14a23a72bc949c1be6819",
+        "b72e3498c7b643be87cec3e65921f090"
+      ],
+      "screenshots": [
+        "screenshots/battle.png"
+      ]
+    },
+    {
+      "name": "Audio import and wiring",
+      "status": "passed",
+      "mode": "13 serialized SFX import/assignment; critical reference unchanged; no physical phone playback test",
+      "evidence_ids": [
+        "a7036a5e983c47c2bf405250b138c2d0"
+      ]
+    },
+    {
+      "name": "Runtime, Editor and Android-player conditional C# compilation",
+      "status": "passed",
+      "mode": "Roslyn validation-release032; Runtime and Editor exit0 reported by root with empty compiler logs; player-symbol report exit0; not an IL2CPP/APK result",
+      "reports": [
+        "runtime-compile.log",
+        "editor-compile.log",
+        "player-config-result.json",
+        "player-config-compile.log"
+      ]
+    }
+  ],
+  "superseded_failures": [
+    {
+      "id": "76262a5ab46f464d90e4e9d1326e618e",
+      "reason": "Original inactive partial nickname modal, repaired by assigning TMP text references before font; superseded by two final actual input passes."
+    },
+    {
+      "reason": "Intermediate desktop-only shouldHideSoftKeyboard assertion was invalid on WindowsEditor; helper corrected to apply assertion only on mobile platforms, then final input checks passed twice.",
+      "id": "7a176527034f4767b354c313f1c43958"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "screenshots/hub.png",
+      "source": ".utmp/expedition/screenshots/publish-032-hub.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5801550,
+      "sha256": "ef49faea7ff8e9fe0f3e661f4357fb1b92d4accca4d59a6feb0ff3fad5a33a45",
+      "source_modified_utc": "2026-10-23T20:59:08.046834+03:00"
+    },
+    {
+      "file": "screenshots/character.png",
+      "source": ".utmp/expedition/screenshots/publish-032-character.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5690347,
+      "sha256": "4dabd3fc6d726c83764050b751d6f49c8f49348c3e74b05b429047f018ff10a7",
+      "source_modified_utc": "2026-10-23T20:59:21.563282+03:00"
+    },
+    {
+      "file": "screenshots/mine.png",
+      "source": ".utmp/expedition/screenshots/publish-032-mine.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5209318,
+      "sha256": "91102a4ab011b70e834826bcdf0327c33ee708f06b997d6874efa0eb45304291",
+      "source_modified_utc": "2026-10-23T20:59:55.250534+03:00"
+    },
+    {
+      "file": "screenshots/battle.png",
+      "source": ".utmp/expedition/screenshots/publish-032-battle-final.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4983155,
+      "sha256": "5c72179dae7aa28d5a4d6cbaed2d1cfd39ecb2b3b558235568eb3e5f8953e475",
+      "source_modified_utc": "2026-10-23T21:01:54.810627+03:00"
+    }
+  ],
+  "privacy": "Public gallery contains only hub, character, mine and battle. Settings/email and nickname-input screenshots are not copied.",
+  "android_build": {
+    "status": "succeeded",
+    "result": "Succeeded",
+    "started_utc": "2026-10-23T18:02:08.4400941Z",
+    "finished_utc": "2026-10-23T18:09:55.8628615Z",
+    "seconds": 463.35752499999995,
+    "errors": 0,
+    "warnings": 2,
+    "version": "0.3.2",
+    "version_code": 4,
+    "bytes": 100209427,
+    "sha256": "4b85dd95f488365fa5228b56045cae06f79fd7995360031ebc04aae369883596",
+    "native_abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "development_build": false,
+    "debuggable": false,
+    "signature_verified": true,
+    "signature_scheme": "v2",
+    "signing_certificate": "Existing Android Debug certificate; see apk-signature.txt. Nondevelopment/nondebuggable flags are independent of certificate type.",
+    "report": "apk-validation.json",
+    "unity_build_report": "android-build-status.json",
+    "size_note": "APK bytes come from apk-validation.json. android-build-status.json bytes is Unity BuildReport.summary.totalSize, not the APK file size."
+  },
+  "publishing": {
+    "status": "published",
+    "url": "https://prokrust-play.ru/escape/",
+    "apk_url": "https://prokrust-play.ru/escape/downloads/Escape-0.3.2-4b85dd95f488.apk",
+    "reports": [
+      "deploy-result.json",
+      "public-release.json",
+      "server-apk-hash.json"
+    ],
+    "http_checks": "passed",
+    "full_server_apk_sha256_matches": true,
+    "browser_proof": "passed; see browser-qa.json and screenshots/public-release.png, screenshots/public-character.png"
+  },
+  "limits": [
+    "No physical Android IME, touch, lifecycle or phone speaker test.",
+    "No FPS/frame-time/GC profiling on device; mine frame probe verifies behavior only.",
+    "Nickname test restores text and does not submit a server rename.",
+    "Equipment fixtures use real cached catalog definitions and UI binders, restore data, and do not submit inventory RPCs.",
+    "Epic chest and feet definitions use their real catalog fallback icons; unique item artwork is not claimed.",
+    "Normal/rare/epic equipment colors exercised; legendary/gold not exercised by this fixture.",
+    "Race fixture is presentation-only and is not a completed network match.",
+    "No paid tournament entry, barrier unlock or reward claim was used to perform these checks.",
+    "Successful C# conditional compilation does not confirm APK/IL2CPP completion or publishing."
+  ],
+  "audio_preservation": {
+    "report": "audio-preservation.json",
+    "critical_audio_unchanged": true,
+    "critical_meta_unchanged": true
+  },
+  "adb_devices": {
+    "source": "Root confirmed executed adb devices command; no raw receipt was saved.",
+    "result": "List of devices attached; no connected device rows.",
+    "connected_devices": 0,
+    "physical_device_tested": false
+  }
+}

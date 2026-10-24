@@ -1,0 +1,169 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "public Race policy reports entry two, human prize four and bot stake refund"
+    },
+    {
+      "passed": true,
+      "check": "Race entry cost deducts exactly two matter for a disposable account"
+    },
+    {
+      "passed": true,
+      "check": "Race entry cost deducts exactly two matter for a disposable account"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "Race queue selects authoritative Race rules and configured mana goal"
+    },
+    {
+      "passed": true,
+      "check": "a started human Race binds both entry receipts and rejects cancellation"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "paid human Race retains both two-matter fees and pays the winner four matter exactly once"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "human Race receipts preserve the existing loss ten XP and win two hundred XP"
+    },
+    {
+      "passed": true,
+      "check": "settled human receipts cannot be refunded by repeated cancellation"
+    },
+    {
+      "passed": true,
+      "check": "repeated pending Race entry charges the configured two matter only once"
+    },
+    {
+      "passed": true,
+      "check": "pending Race cancellation refunds its exact entry once"
+    },
+    {
+      "passed": true,
+      "check": "a cancelled entry cannot start a Race bot match"
+    },
+    {
+      "passed": true,
+      "check": "a paid Race entry can start a bot match"
+    },
+    {
+      "passed": true,
+      "check": "paid bot Race accepts its owner and sends a Race board"
+    },
+    {
+      "passed": true,
+      "check": "paid bot match uses authoritative Race rules"
+    },
+    {
+      "passed": true,
+      "check": "a claimed Race entry cannot be refunded while its match is active"
+    },
+    {
+      "passed": true,
+      "check": "one paid entry cannot create a second active Race match"
+    },
+    {
+      "passed": true,
+      "check": "bot Race forfeit reports the human stake refund without an extra victory prize or loss XP"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "bot Race loss returns its actual paid two matter exactly once"
+    },
+    {
+      "passed": true,
+      "check": "duplicate bot forfeit and repeated cancellation preserve one loss, unchanged XP and one refund"
+    },
+    {
+      "passed": true,
+      "check": "a settled Race entry cannot be reused after match completion"
+    },
+    {
+      "passed": true,
+      "check": "legacy paid receipt migrates its actual multi-resource stake without charging today's entry"
+    },
+    {
+      "passed": true,
+      "check": "migrated paid receipt starts a bot Race"
+    },
+    {
+      "passed": true,
+      "check": "bot loss refund payload uses actual receipt seven/eleven/thirteen without extra four matter"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "durable settled reward retains the actual paid multi-resource stake"
+    },
+    {
+      "passed": true,
+      "check": "legacy bot receipt refunds each resource once despite duplicate forfeit and repeated cancellation"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": []
+}

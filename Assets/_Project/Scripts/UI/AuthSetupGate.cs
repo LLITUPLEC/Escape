@@ -44,6 +44,7 @@ namespace Project.UI
             labelRt.offsetMax = Vector2.zero;
             label.alignment = TextAnchor.MiddleCenter;
 
+            ExpeditionSystemDialogs.ApplyConnection(root, label);
             _blockingOverlay = root;
         }
 
@@ -172,6 +173,7 @@ namespace Project.UI
                 () => _ = SubmitAsync(preferRestore: false));
             AddActionButton(panel.transform, "У меня уже есть аккаунт", new Color(0.28f, 0.35f, 0.55f, 1f),
                 () => _ = SubmitAsync(preferRestore: true));
+            ExpeditionSystemDialogs.ApplyAuth(root, panelRt, email, pass, status);
         }
 
         private static void AddActionButton(Transform parent, string label, Color color, Action onClick)

@@ -39,23 +39,84 @@ namespace Project.Character.UI
         private ItemCatalog _activeCatalog;
 
         private bool _dragConfigured;
+        private CharacterExpeditionLayout _expeditionLayout;
+        private Canvas _screenCanvas;
+        private bool _shellAttached;
+        private bool _targetVisible;
+        private bool _hasBeenVisible;
+        private bool _transitioning;
+        private RectTransform _transitionPanel;
+
+        internal CharacterExpeditionLayout ApplyExpeditionLayout(TMP_Text level, Button close, TMP_Text nickname, Button editNickname)
+        {
+            EnsureBuilt();
+            _expeditionLayout = Project.UI.ExpeditionUi.Ensure<CharacterExpeditionLayout>(gameObject);
+            _expeditionLayout.Build(GetPanelRootRectTransform(), equipmentRoot as RectTransform, inventoryRoot as RectTransform,
+                _equipmentSlots, _inventorySlots, new[] { hpText, damageText, armorText, healText, critText },
+                level, close, nickname, editNickname, profileLoadErrorText);
+            return _expeditionLayout;
+        }
 
         public void SetVisible(bool visible)
         {
-            if (root == null)
+            _transitionPanel = GetPanelRootRectTransform();
+            if (root == null) root = Project.UI.ExpeditionUi.Ensure<CanvasGroup>(gameObject);
+            if (visible)
             {
-                gameObject.SetActive(visible);
-                return;
+                _screenCanvas = Project.UI.ExpeditionUi.Ensure<Canvas>(gameObject);
+                _screenCanvas.overrideSorting = !_shellAttached;
+                _screenCanvas.sortingOrder = _shellAttached ? 0 : 71;
+                _screenCanvas.enabled = true;
+                Project.UI.ExpeditionUi.Ensure<GraphicRaycaster>(gameObject);
+                if (_expeditionLayout != null) _expeditionLayout.RefreshLayout();
+                _hasBeenVisible = true;
             }
-            root.alpha = visible ? 1f : 0f;
+            else
+            {
+                CancelInventoryGesture();
+            }
+            _targetVisible = visible;
             root.interactable = visible;
             root.blocksRaycasts = visible;
+            if (!_hasBeenVisible)
+            {
+                root.alpha = 0;
+                _transitioning = false;
+                if (_screenCanvas != null) _screenCanvas.enabled = false;
+                return;
+            }
+            _transitioning = true;
         }
+
+        public void AttachToShell(RectTransform pageHost)
+        {
+            if (pageHost == null) return;
+            transform.SetParent(pageHost, false);
+            Project.UI.ExpeditionUi.SetRect(transform as RectTransform, 0, 0, 1, 1);
+            _shellAttached = true;
+            _screenCanvas = GetComponent<Canvas>();
+            if (_screenCanvas != null) { _screenCanvas.overrideSorting = false; _screenCanvas.sortingOrder = 0; _screenCanvas.enabled = true; }
+            if (_expeditionLayout != null) _expeditionLayout.SetShellLayout(true);
+        }
+
+        private void Update()
+        {
+            if (!_transitioning || root == null) return;
+            var target = _targetVisible ? 1f : 0f;
+            root.alpha = Mathf.MoveTowards(root.alpha, target, Time.unscaledDeltaTime / .18f);
+            if (_transitionPanel != null) _transitionPanel.anchoredPosition = new Vector2(0, (1f - root.alpha) * -12f);
+            if (!Mathf.Approximately(root.alpha, target)) return;
+            _transitioning = false;
+            if (!_targetVisible && _screenCanvas != null) _screenCanvas.enabled = false;
+        }
+
+        public void CancelInventoryGesture() { if (_expeditionLayout != null) _expeditionLayout.CancelInventoryGesture(); }
 
         public void EnsureBuilt()
         {
             if (_equipmentSlots.Count == 0) CollectOrBuildEquipment();
             if (_inventorySlots.Count == 0) CollectOrBuildInventory();
+            _expeditionLayout?.RefreshLayout();
         }
 
         public void SetStats(int hp, int damage, int armor, int healing, float critChance01)
@@ -115,6 +176,7 @@ namespace Project.Character.UI
                 if (bySlot[i] != null) bySlot[i].Set(def, icon);
                 _equipmentDefIds[i] = id;
             }
+            _expeditionLayout?.RefreshEmptyEquipment(_equipmentDefIds);
 
             if (_inventoryDefIds.Length != inventorySize)
                 _inventoryDefIds = new string[inventorySize];
@@ -152,6 +214,7 @@ namespace Project.Character.UI
                 _inventoryCounts[dataIdx] = cnt;
                 slotView.SetStackCount(cnt);
             }
+            _expeditionLayout?.RefreshInventory();
         }
 
         public bool TryGetInventoryItem(int inventoryIndex, out string itemId, out ItemDefinition itemDef)
@@ -231,7 +294,7 @@ namespace Project.Character.UI
                 slot.SetIconRaycast(false);
                 var root = slot.gameObject;
                 EnsureRaycastTarget(root);
-                var h = root.GetComponent<CharacterDragSlotHandle>() ?? root.AddComponent<CharacterDragSlotHandle>();
+                var h = Project.UI.ExpeditionUi.Ensure<CharacterDragSlotHandle>(root);
                 var serverIdx = slot.InventorySlotIndex >= 0 ? slot.InventorySlotIndex : i;
                 h.Configure(drag, CharacterDragSlotKind.Inventory, serverIdx, default);
             }
@@ -242,7 +305,7 @@ namespace Project.Character.UI
                 var btn = eq.GetComponentInChildren<UnityEngine.UI.Button>(true);
                 var target = btn != null ? btn.gameObject : eq.gameObject;
                 EnsureRaycastTarget(target);
-                var h = target.GetComponent<CharacterDragSlotHandle>() ?? target.AddComponent<CharacterDragSlotHandle>();
+                var h = Project.UI.ExpeditionUi.Ensure<CharacterDragSlotHandle>(target);
                 h.Configure(drag, CharacterDragSlotKind.Equipment, -1, eq.SlotId);
             }
 

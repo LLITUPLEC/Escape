@@ -1,0 +1,26 @@
+{
+    "state": "passed",
+    "fixture": "refund",
+    "error": "",
+    "screenshot": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\screenshots\\match-state-refund.png",
+    "frame": 5283,
+    "cancelCallbacks": 3,
+    "backCallbacks": 4,
+    "completed": true,
+    "passed": true,
+    "rpcOrAccountActions": false,
+    "checks": [
+        "state uses a real root overlay canvas above battle and shell",
+        "content has safe-area container",
+        "actual full-screen environment sprite present",
+        "victory/defeat/draw heading follows actual Show parameters",
+        "outcome heading fits its frame",
+        "refund notice follows real context only",
+        "actual refund message survives hidden rewardText fallback",
+        "actual reward rows are in a scrollable viewport",
+        "true reward value fits its padded cell: +2",
+        "fixture continue has no external persistent callbacks",
+        "repeated theme application retains exactly one continue callback",
+        "primary action remains inside physical safe area"
+    ]
+}

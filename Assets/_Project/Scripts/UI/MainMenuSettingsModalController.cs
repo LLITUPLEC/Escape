@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
+using Project.Character.UI;
 using Project.Nakama;
 using Project.Utils;
 using TMPro;
@@ -41,6 +42,8 @@ namespace Project.UI
         [SerializeField] private Button closeButton;
 
         private Button _settingsButton;
+        private Button _nicknameButton;
+        private CharacterNicknameEditor _nicknameEditor;
         private GameObject _modalGo;
         private GameObject _deleteConfirmRoot;
         private bool _busy;
@@ -48,6 +51,7 @@ namespace Project.UI
         /// <summary>Исходная позиция Panel до сдвига от IME (мобильная клавиатура).</summary>
         private Vector2 _modalPanelBaseAnchoredPos;
         private bool _hasStoredModalPanelBasePos;
+        private readonly Vector3[] _keyboardLayoutCorners = new Vector3[4];
 
         private void Awake()
         {
@@ -62,6 +66,8 @@ namespace Project.UI
             ResolveUiReferences();
             EnsureInputsUnderSlots();
             WireModalButtons();
+            if (_modalGo != null) ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
+            EnsureNicknameSettingsAction();
 
             if (_modalGo != null)
                 _modalGo.SetActive(false);
@@ -71,18 +77,25 @@ namespace Project.UI
         {
             if (_settingsButton != null)
                 _settingsButton.onClick.RemoveListener(OpenModal);
+            if (_nicknameButton != null) _nicknameButton.onClick.RemoveListener(OpenNicknameEditor);
+            if (_nicknameEditor != null) _nicknameEditor.CloseEditor();
             UnwireModalButtons();
         }
 
         private void OnEnable()
         {
             if (_modalGo != null && _modalGo.activeSelf)
+            {
+                ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
+                EnsureNicknameSettingsAction();
                 _ = RefreshStatusAsync(CancellationToken.None);
+            }
         }
 
         private void Update()
         {
             if (_modalGo == null || !_modalGo.activeSelf) return;
+            if (_nicknameEditor != null && _nicknameEditor.IsEditing) return;
 
             if (TryBackPressed())
                 CloseModal();
@@ -110,6 +123,7 @@ namespace Project.UI
             if (_modalGo == null || !_modalGo.activeSelf || modalPanelRect == null || !_hasStoredModalPanelBasePos)
                 return;
 
+            modalPanelRect.anchoredPosition = _modalPanelBaseAnchoredPos;
             float obscuringPx = ComputeKeyboardObscuringHeightPx();
             float lift = KeyboardObscuringPixelsToPanelLift(obscuringPx);
             modalPanelRect.anchoredPosition = _modalPanelBaseAnchoredPos + new Vector2(0f, lift);
@@ -158,24 +172,31 @@ namespace Project.UI
 
         private float KeyboardObscuringPixelsToPanelLift(float obscuringPx)
         {
-            if (obscuringPx <= 0f)
+            if (obscuringPx <= 0f || modalPanelRect == null)
                 return 0f;
 
-            var canvas = modalPanelRect != null ? modalPanelRect.GetComponentInParent<Canvas>() : null;
+            var focusedInput = emailInput != null && emailInput.isFocused ? emailInput
+                : passwordInput != null && passwordInput.isFocused ? passwordInput : null;
+            if (focusedInput == null) return 0f;
+
+            var canvas = modalPanelRect.GetComponentInParent<Canvas>();
             float scale = canvas != null ? canvas.scaleFactor : 1f;
             if (scale < 0.01f)
                 scale = 1f;
-
-            float lift = obscuringPx / scale;
-            var parent = modalPanelRect.parent as RectTransform;
-            if (parent != null)
-            {
-                float maxByParent = parent.rect.height * 0.42f;
-                if (maxByParent > 1f)
-                    lift = Mathf.Min(lift, maxByParent);
-            }
-
-            return lift;
+            var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            var field = focusedInput.transform as RectTransform;
+            if (field == null) return 0f;
+            field.GetWorldCorners(_keyboardLayoutCorners);
+            var fieldBottom = Mathf.Min(RectTransformUtility.WorldToScreenPoint(camera, _keyboardLayoutCorners[0]).y,
+                RectTransformUtility.WorldToScreenPoint(camera, _keyboardLayoutCorners[3]).y);
+            modalPanelRect.GetWorldCorners(_keyboardLayoutCorners);
+            var panelTop = Mathf.Max(RectTransformUtility.WorldToScreenPoint(camera, _keyboardLayoutCorners[1]).y,
+                RectTransformUtility.WorldToScreenPoint(camera, _keyboardLayoutCorners[2]).y);
+            var safe = Screen.safeArea;
+            var safeTop = safe.height > 0 && safe.yMax <= Screen.height + 1 ? safe.yMax : Screen.height;
+            var needed = Mathf.Max(0, obscuringPx + 24 * scale - fieldBottom);
+            var available = Mathf.Max(0, safeTop - 8 * scale - panelTop);
+            return Mathf.Min(needed, available) / scale;
         }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -364,6 +385,8 @@ namespace Project.UI
         {
             if (_modalGo == null) return;
             _modalGo.SetActive(true);
+            ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
+            EnsureNicknameSettingsAction();
             if (modalPanelGroup != null)
                 modalPanelGroup.alpha = 1f;
             if (modalPanelRect != null)
@@ -376,6 +399,9 @@ namespace Project.UI
 
         private void CloseModal()
         {
+            if (_nicknameEditor != null) _nicknameEditor.CloseEditor();
+            if (emailInput != null) emailInput.DeactivateInputField();
+            if (passwordInput != null) passwordInput.DeactivateInputField();
             if (modalPanelRect != null && _hasStoredModalPanelBasePos)
                 modalPanelRect.anchoredPosition = _modalPanelBaseAnchoredPos;
             if (_modalGo != null)
@@ -389,6 +415,43 @@ namespace Project.UI
             if (loginButton != null) loginButton.interactable = !busy;
             if (logoutAccountButton != null) logoutAccountButton.interactable = !busy;
             if (deleteAccountButton != null) deleteAccountButton.interactable = !busy;
+            if (_nicknameButton != null) _nicknameButton.interactable = !busy;
+        }
+
+        private void EnsureNicknameSettingsAction()
+        {
+            if (_modalGo == null || modalPanelRect == null) return;
+            if (_nicknameEditor == null) _nicknameEditor = ExpeditionUi.Ensure<CharacterNicknameEditor>(gameObject);
+            if (_nicknameButton == null)
+                _nicknameButton = ExpeditionUi.Button(modalPanelRect, "NicknameButton", "Изменить имя",
+                    .065f, .805f, .935f, .89f, OpenNicknameEditor, false, 34);
+            _nicknameButton.interactable = !_busy;
+            var title = modalPanelRect.Find("Title")?.GetComponent<TMP_Text>();
+            if (title != null) title.text = "НАСТРОЙКИ";
+            if (statusText != null) ExpeditionUi.SetRect(statusText.rectTransform, .065f, .715f, .935f, .795f);
+            if (linkedEmailLineText != null) ExpeditionUi.SetRect(linkedEmailLineText.rectTransform, .065f, .635f, .935f, .705f);
+            SetSettingsRect("ExpeditionEmailCaption", .065f, .603f, .935f, .631f);
+            if (emailInputSlot != null) ExpeditionUi.SetRect(emailInputSlot, .065f, .529f, .935f, .594f);
+            SetSettingsRect("ExpeditionPasswordCaption", .065f, .493f, .935f, .521f);
+            if (passwordInputSlot != null) ExpeditionUi.SetRect(passwordInputSlot, .065f, .419f, .935f, .484f);
+            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, .065f, .322f, .935f, .395f);
+            if (loginButton != null) ExpeditionUi.SetRect(loginButton.transform as RectTransform, .065f, .228f, .935f, .301f);
+            if (logoutAccountButton != null) ExpeditionUi.SetRect(logoutAccountButton.transform as RectTransform, .065f, .134f, .935f, .207f);
+            if (deleteAccountButton != null) ExpeditionUi.SetRect(deleteAccountButton.transform as RectTransform, .065f, .040f, .935f, .103f);
+        }
+
+        private void SetSettingsRect(string name, float x0, float y0, float x1, float y1)
+        {
+            var rect = modalPanelRect.Find(name) as RectTransform;
+            if (rect != null) ExpeditionUi.SetRect(rect, x0, y0, x1, y1);
+        }
+
+        private void OpenNicknameEditor()
+        {
+            if (_busy || _nicknameEditor == null || _modalGo == null || !_modalGo.activeSelf) return;
+            if (emailInput != null) emailInput.DeactivateInputField();
+            if (passwordInput != null) passwordInput.DeactivateInputField();
+            _nicknameEditor.OpenEditor(_modalGo.transform);
         }
 
         /// <summary>Любые изменения UI после await — только через очередь главного потока.</summary>
@@ -691,6 +754,7 @@ namespace Project.UI
             {
                 _deleteConfirmRoot.SetActive(false);
             });
+            ExpeditionMetaPanels.StylePopup(_deleteConfirmRoot.transform);
         }
 
         private async Task ConfirmDeleteAccountAsync()

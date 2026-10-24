@@ -1,0 +1,627 @@
+{
+  "version": "0.3.4",
+  "target_version_code": 6,
+  "prepared_at_utc": "2026-10-24T08:52:48.249235+00:00",
+  "result": "passed_with_stated_scope",
+  "evidence_status": "current_iteration_actual_QA_archived",
+  "source_scope": "Current iteration eleven requested changes; no previous release screenshots or results presented as0.3.4 proof",
+  "physical_device_tested": false,
+  "native_android_ime_tested": false,
+  "fps_measured": false,
+  "gc_profiled": false,
+  "checks": [
+    {
+      "request": 1,
+      "id": "audio",
+      "description": "Serialized Fury/Shield OGG bindings checked and original critical WAV/meta SHA preserved; no actual PlayOneShot execution or playback/audition test.",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "sound-bindings.json",
+        "battle-polish-results.json"
+      ],
+      "evidence_ids": [
+        "caa2162cfe9145d48dfa837eb425bf28",
+        "db724ea7bac6457881bcc5e1bfd3105d"
+      ],
+      "scope_note": "Bindings/hash only. No actual ability cast, PlayOneShot or listening in Editor or on a physical phone.",
+      "actual_PlayOneShot_tested": false,
+      "audition_performed": false,
+      "physical_phone_playback_tested": false
+    },
+    {
+      "request": 2,
+      "id": "match_states",
+      "description": "Production searching/result panels, authoritative reward rows, actions and scrolling",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "match-states-results.json",
+        "result-row-integration.json"
+      ],
+      "evidence_ids": [
+        "e64815ba782d44978c661968263e388d",
+        "75f15eb66d3343b1ace13220f0a65e9c",
+        "26ddba2fbf3a4322bb52b9bd180b1658"
+      ]
+    },
+    {
+      "request": 3,
+      "id": "tournament_lifecycle",
+      "description": "Queue-only exit; HUD/nav/modes hidden and input blocked; bracket navigation lock and restore",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "queue-lifecycle-results.json",
+        "arena-dto-ui-results.json"
+      ],
+      "evidence_ids": [
+        "7b58f187f9524396b7d855ef49a00571",
+        "0ad47d45a8944e84b686fda508799cfb"
+      ]
+    },
+    {
+      "request": 4,
+      "id": "bracket_history_hp",
+      "description": "Production DTO QF/SF/final; solid real HP bars, zero/unknown HP, connectors, QF history and winner/loser states",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "arena-dto-ui-results.json",
+        "multiclient-isolated-arena.json"
+      ],
+      "evidence_ids": [
+        "7b8d08aec3564ac18a37b0dddda28c4e",
+        "647c481da5194c9e95a20bd821978179",
+        "4513b3c40d2d4972bf5db1ff81df14ba"
+      ]
+    },
+    {
+      "request": 5,
+      "id": "leaderboard_rows",
+      "description": "Actual four row prefabs; gold/silver/bronze frames, normal frame; no podium/portraits; real bound values and filters",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "leaderboard-ui-results.json",
+        "resource-cleanup.json"
+      ],
+      "evidence_ids": [
+        "6f6298d18f7a4fdaa323ab3a1d2d79e4",
+        "404f3ae62b494b4f9498f1fc5ae8595d",
+        "bbc1e9bdd1624bc1b2864e15354cbe2c"
+      ]
+    },
+    {
+      "request": 6,
+      "id": "achievement_states_aspect",
+      "description": "Green claimed ticks/Получено; explicit eligible claim action; ordered claims; actual renderer mesh source aspect; three tabs/delta progress",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "achievement-ui-results.json"
+      ],
+      "evidence_ids": [
+        "0cb4d189c9b640b5a2d026b82f2923c7",
+        "cd8410cd274c4afaa151637a2a054ce7"
+      ]
+    },
+    {
+      "request": 7,
+      "id": "race_petard_mana",
+      "description": "Actual server-provided petard mana-drain prediction −N at0/24/50, grows from destroyed capsules, capped50; not a stock count or mana-bar maximum.",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "battle-polish-results.json"
+      ],
+      "evidence_ids": [
+        "ee8b96008f284a82a78665b524ee9dc4",
+        "8d8936c2d17549c1864caa0342ea249b",
+        "db724ea7bac6457881bcc5e1bfd3105d",
+        "a76cbe9cd89b4dfd9b4ddd38684a4862"
+      ]
+    },
+    {
+      "request": 8,
+      "id": "startup_no_legacy_flash",
+      "description": "First entry/scene returns do not draw the old MainMenu frame before shell",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "startup-qa.json"
+      ],
+      "evidence_ids": [
+        "82ec6f8d9b9f45f2827c98f142b99a7f"
+      ]
+    },
+    {
+      "request": 9,
+      "id": "online_counter",
+      "description": "Compact borderless lime-green online value",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "gallery-manifest.json",
+        "qa-results.jsonl"
+      ],
+      "evidence_ids": [
+        "325a7cc52a9e4c80a36aa7b03b4f25f6"
+      ],
+      "scope_note": "Actual hub visual review by root and final gallery; not an independent online-count server audit."
+    },
+    {
+      "request": 10,
+      "id": "turn_timer_shield_affix",
+      "description": "Turn above timer above real board; enlarged shield stays outside stat popover; readable right affix; input preserved",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "battle-polish-results.json"
+      ],
+      "evidence_ids": [
+        "caa2162cfe9145d48dfa837eb425bf28"
+      ]
+    },
+    {
+      "request": 11,
+      "id": "cooldown_number_only",
+      "description": "Live cooldown writers show number without КД and retain disabled/available behavior",
+      "status": "passed_in_stated_scope",
+      "reports": [
+        "battle-polish-results.json"
+      ],
+      "evidence_ids": [
+        "caa2162cfe9145d48dfa837eb425bf28",
+        "db724ea7bac6457881bcc5e1bfd3105d"
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "screenshots/hub.png",
+      "source": ".utmp/expedition/screenshots/publish-034-hub.png",
+      "scope": "Actual Editor scene",
+      "note": "Restored account/cache values; public alias",
+      "website_gallery": true,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5805668,
+      "sha256": "98b577471e027d67af10258e3f4330ea4ca70be40f8ecb86b3872e21878966b0",
+      "source_modified_utc": "2026-10-24T09:12:17.668413+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/character.png",
+      "source": ".utmp/expedition/screenshots/publish-034-character.png",
+      "scope": "Actual Editor scene",
+      "note": "Real character page; no equipment mutation by capture",
+      "website_gallery": true,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5622634,
+      "sha256": "15a8f65be433141a23b3803a73bc8c44ae7d38d247edb68e7b15f830551b8d19",
+      "source_modified_utc": "2026-10-24T09:06:29.373946+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/mine.png",
+      "source": ".utmp/expedition/screenshots/publish-034-mine.png",
+      "scope": "Actual Editor scene",
+      "note": "Actual mine page; no barrier unlock by capture",
+      "website_gallery": true,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 6081783,
+      "sha256": "72ff98523a5166e5d34d8f22049567df15c4225509dd735b2b0ce184f7bad790",
+      "source_modified_utc": "2026-10-24T09:06:31.575370+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/achievements.png",
+      "source": ".utmp/expedition/screenshots/publish-034-achievements.png",
+      "scope": "Actual Editor scene after fixture restoration",
+      "note": "Actual achievement page; temporary state probe restored before capture",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4326309,
+      "sha256": "d1b1cdc17867e2c343481a1c6077a928276db1c58152760ec3aee15255f61370",
+      "source_modified_utc": "2026-10-24T09:12:16.625354+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/ranking.png",
+      "source": ".utmp/expedition/screenshots/publish-034-ranking.png",
+      "scope": "UI-only fixture using production row prefabs",
+      "note": "Four explicitly labelled UI-фикстура entries; not real leaderboard entrants; later restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4913837,
+      "sha256": "378c53dc8dda7dbc9a42bca5a194f58ec5a855213163a55a613bd57eaa0efa65",
+      "source_modified_utc": "2026-10-24T09:15:51.421446+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/battle-shield.png",
+      "source": ".utmp/expedition/screenshots/publish-034-battle-shield.png",
+      "scope": "UI-only battle-state fixture on actual local board",
+      "note": "Timer60,shield/popover,cooldown2; no real ability use; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5214090,
+      "sha256": "002e777c0f84b0a4e54eb08ffea8b2e0c5df075d22000679efd986cd4bdd7ed4",
+      "source_modified_utc": "2026-10-24T09:12:12.516683+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/race-bank50.png",
+      "source": ".utmp/expedition/screenshots/publish-034-race-bank50.png",
+      "scope": "UI-only battle-state fixture on actual local board",
+      "note": "Race bank50 and server-like state values; not a paid Race match; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5218861,
+      "sha256": "a3722c72afb30d7cd0c7f4606d6aa3902a2f1ed512a3f675ab34859aabc02798",
+      "source_modified_utc": "2026-10-24T09:12:13.528980+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/tournament-queue.png",
+      "source": ".utmp/expedition/screenshots/publish-034-tournament-queue.png",
+      "scope": "UI-only queue-state fixture",
+      "note": "Only existing exit raycast reachable; leave/refund callback locally replaced; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5147491,
+      "sha256": "c4c2afe1588f409c8c1d71d44660d94d8d11f9480ae8c60c44ebf8eb6d8ce296",
+      "source_modified_utc": "2026-10-24T09:05:53.365053+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/bracket-sf.png",
+      "source": ".utmp/expedition/screenshots/publish-034-bracket-sf.png",
+      "scope": "UI fixture decoded from actual isolated-backend production DTO",
+      "note": "Real after-QF snapshot rendered locally; not a tournament played by this Unity client; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5043129,
+      "sha256": "d04dcde49eeef1b769f8b547fa19cb28587fa2cc56c2f7024402a0a4d4559fb8",
+      "source_modified_utc": "2026-10-24T09:05:54.868763+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/bracket-final.png",
+      "source": ".utmp/expedition/screenshots/publish-034-bracket-final.png",
+      "scope": "UI fixture decoded from actual isolated-backend production DTO",
+      "note": "Real after-SF snapshot rendered locally; not a tournament played by this Unity client; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5028386,
+      "sha256": "bfd73b89a75aa193faebe2fd3aeb0af8a47a6dd7a5343c764087aaeeae374a00",
+      "source_modified_utc": "2026-10-24T09:06:24.881571+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/bracket-qf.png",
+      "source": ".utmp/expedition/screenshots/publish-034-bracket-qf.png",
+      "scope": "UI fixture decoded from actual isolated-backend production DTO",
+      "note": "Real QF-countdown snapshot with unknown HP rendered locally; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5089880,
+      "sha256": "5075c44b3f78b1ea0f485e498e2b55aa4ab76807b3c1c65888b67d7f61f33ef2",
+      "source_modified_utc": "2026-10-24T09:06:26.389588+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/victory-real-rows.png",
+      "source": ".utmp/expedition/screenshots/publish-034-victory-real-rows.png",
+      "scope": "UI-only integration fixture through actual manager reward-row writer",
+      "note": "Temporary +120/+240/+85 rows rendered by real manager; not a credited victory reward; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4080118,
+      "sha256": "16d4170b4d4455cef460e0e6cc5141c8d6a8094c14c3374d5c7f411cd0ad1a9f",
+      "source_modified_utc": "2026-10-24T09:10:43.455602+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/refund-real-rows.png",
+      "source": ".utmp/expedition/screenshots/publish-034-refund-real-rows.png",
+      "scope": "UI-only integration fixture through actual manager reward-row writer",
+      "note": "Temporary +2 refund context; not a paid entry or refund RPC; restored",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 3600533,
+      "sha256": "68c090cb928d5d1fa284b47839f1d69be8c8aa88651d7f361c0e50672e6b5a63",
+      "source_modified_utc": "2026-10-24T09:11:22.462653+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/match-state-search.png",
+      "source": ".utmp/expedition/screenshots/match-state-search.png",
+      "scope": "Local production-renderer fixture",
+      "note": "Unknown opponent; no matchmaking or found-player fabrication",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 3990730,
+      "sha256": "a95c3d569d1230ccd02c687c677ceb54f34f5d9ba4582bc016c3cfdaec33e934",
+      "source_modified_utc": "2026-10-24T09:12:08.044324+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/match-state-defeat.png",
+      "source": ".utmp/expedition/screenshots/match-state-defeat.png",
+      "scope": "Local production-renderer fixture",
+      "note": "Temporary defeat result; no real match completion",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 3761220,
+      "sha256": "14961823f4bb09043a51c7b06941ac99cbb01a87e1bc0a668435a57a19c329b7",
+      "source_modified_utc": "2026-10-24T09:12:09.547623+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/match-state-draw.png",
+      "source": ".utmp/expedition/screenshots/match-state-draw.png",
+      "scope": "Local production-renderer fixture",
+      "note": "Temporary draw result; no real match completion",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 3699080,
+      "sha256": "76e097c4adf8fa519918d63255990fbffe03def845eeee4e86dcc280379a3534",
+      "source_modified_utc": "2026-10-24T09:12:10.028133+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    },
+    {
+      "file": "screenshots/match-state-many-rewards.png",
+      "source": ".utmp/expedition/screenshots/match-state-many-rewards.png",
+      "scope": "Local production-renderer fixture",
+      "note": "Twelve temporary rows, overflow and last-line scroll; not credited inventory/rewards",
+      "website_gallery": false,
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4303198,
+      "sha256": "88330f8300ac18a40b5084f5be19bc97a5b88db557dc06c769080b5dc2cd2dad",
+      "source_modified_utc": "2026-10-24T09:12:11.051990+00:00",
+      "root_visual_reviewed": true,
+      "physical_device_capture": false
+    }
+  ],
+  "compiler_checks": {
+    "result": "passed",
+    "runtime_exit_code": 0,
+    "editor_exit_code": 0,
+    "android_player_conditional_exit_code": 0,
+    "report": "compiler-results.json",
+    "logs": [
+      "runtime-compile.log",
+      "editor-compile.log",
+      "player-config-compile.log"
+    ],
+    "player_report": "player-config-result.json",
+    "scope": "Managed Roslyn check; separate from running release IL2CPP build."
+  },
+  "android_build": {
+    "status": "succeeded",
+    "result": "Succeeded",
+    "report": "android-build-status.json",
+    "validation_report": "apk-validation.json",
+    "signature_report": "apk-signature.txt",
+    "started_utc": "2026-10-24T09:16:18.9075094Z",
+    "output_filename": "Escape-Expedition-0.3.4-20261024-091618.apk",
+    "version": "0.3.4",
+    "version_code": 6,
+    "seconds": 496.1063134,
+    "errors": 0,
+    "warnings": 2,
+    "bytes": 101805879,
+    "size_mib": 97.1,
+    "sha256": "45ee39a11284774b74e76a29873be0136f3c66f0cd0570cabe58e0df580b4a0a",
+    "native_abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "development_build": false,
+    "debuggable": false,
+    "signature_verified": true,
+    "signature_scheme_v2_verified": true,
+    "physical_device_tested": false
+  },
+  "update_compatibility": {
+    "same_certificate_as": "0.3.3",
+    "result": "passed",
+    "signer_certificate_sha256": "a813aa59b19a728fa65298fc9fe7c921f7eed37285edee0c912852f1b2fc26b0",
+    "physical_upgrade_tested": false,
+    "version_code_current": 6,
+    "version_code_previous": 5,
+    "status": "passed",
+    "report": "update-compatibility.json",
+    "scope": "Static same-certificate and versionCode5-to6 check; no on-device upgrade test."
+  },
+  "publishing": {
+    "status": "published",
+    "report": "deploy-result.json",
+    "url": "https://prokrust-play.ru/escape/",
+    "apk_url": "https://prokrust-play.ru/escape/downloads/Escape-0.3.4-45ee39a11284.apk",
+    "bytes": 101805879,
+    "sha256": "45ee39a11284774b74e76a29873be0136f3c66f0cd0570cabe58e0df580b4a0a",
+    "public_checks": {
+      "status": "passed",
+      "report": "public-release.json",
+      "previous_apk_retained": true,
+      "api_health_status": 200,
+      "apk_range_status": 206
+    },
+    "full_server_apk_hash": {
+      "status": "passed",
+      "report": "server-apk-hash.json",
+      "sha256": "45ee39a11284774b74e76a29873be0136f3c66f0cd0570cabe58e0df580b4a0a"
+    },
+    "browser": {
+      "status": "passed",
+      "report": "browser-qa.json",
+      "screenshot": "public-release-browser.png",
+      "scope": "Browser visual check of published changelog and AX links; CSS unchanged; no new responsive or physical-device test",
+      "viewport": [
+        1265,
+        712
+      ],
+      "physical_device_tested": false
+    }
+  },
+  "server_runtime": {
+    "status": "deployed_verified",
+    "report": "runtime-deploy-result.json",
+    "tested_runtime_sha256": "4df827d71553c806353dd2a0a49ea58e9bbaf6599938b5fa34818daeff482f7e",
+    "note": "Final production deployment follows separate isolated108-check run; earlier preparation artifacts remain stage snapshots."
+  },
+  "critical_sound": {
+    "status": "passed",
+    "baseline_release": "0.3.3",
+    "expected_wav_sha256": "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341",
+    "expected_meta_sha256": "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c",
+    "real_manager_serialized_clip_binding_probe": "passed",
+    "meta_sha256": "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c",
+    "wav_sha256": "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341",
+    "fury_clip": "Assets/_Project/Audio/SFX/Bloodlust_cast.ogg",
+    "result": "passed",
+    "shield_clip": "Assets/_Project/Audio/SFX/Heroism_Cast.ogg",
+    "critical_sound_unchanged": true,
+    "report": "sound-bindings.json",
+    "physical_phone_playback_tested": false,
+    "actual_PlayOneShot_tested": false,
+    "audition_performed": false
+  },
+  "prepared_helpers": {
+    "leaderboard": [
+      "Project.Editor.ExpeditionMetaRowsQa.ShowLeaderboard()",
+      "Project.Editor.ExpeditionMetaRowsQa.VerifyLeaderboard()",
+      "Project.Editor.ExpeditionMetaRowsQa.RestoreLeaderboard()"
+    ],
+    "achievement_states": "Project.Editor.ExpeditionMetaRowsQa.RunAchievementStates()",
+    "achievement_regression": "Project.Editor.ExpeditionAchievementsQa.Run(\"all\")",
+    "executed_by_docs_task": false
+  },
+  "limits": [
+    "No physical Android install/upgrade/IME/touch/resume/phone audio test.",
+    "No device FPS/frame-time/GC profiling, sustained load or crash-recovery validation asserted.",
+    "Ranking entries and result reward rows are explicit temporary fixture values; not real entrants or credited rewards.",
+    "Bracket local UI uses real isolated-backend DTO snapshots; this Unity client did not play that paid tournament.",
+    "OGG bindings/hash only: no actual PlayOneShot execution or audition in Editor or on a phone.",
+    "Removed PNG source bytes are not measured APK/GPU-memory savings.",
+    "Published browser proof is desktop1265x712; no new responsive/physical-device test. Same certificate/versionCode does not demonstrate on-device upgrade."
+  ],
+  "checked_at_utc": "2026-10-24T09:19:57.966579+00:00",
+  "environment": "Unity6000.3.9f1 Windows Editor Play Mode;1440x3088 Game View",
+  "evidence_scope": {
+    "source": ".utmp/expedition/qa-results.jsonl",
+    "copied": "qa-results.jsonl",
+    "source_first_line_1_based": 723,
+    "source_last_line_1_based": 842,
+    "source_first_id": "aefbf6daf3284f05a55af3d053f3d9b1",
+    "source_last_id": "ac8d7fe69c1841258a0670eff40c800a",
+    "copied_record_count": 120,
+    "note": "Exact current iteration boundary from root. Replies have no timestamps; preserve source line/ID range. Includes initial queue probe, final verified passes and late early-tap timing incident."
+  },
+  "startup_frames": [
+    {
+      "file": "startup/startup-first-01.png",
+      "source": ".utmp/expedition/screenshots/startup-first-01.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 4912755,
+      "sha256": "0d8422326a39f5741db75a928d373cf40e53bcb86381c2c09334e298b644dfa0",
+      "scope": "Actual first MainMenu render frames; frame1 opaque startup cover, frames2-3 world/header with hidden legacy"
+    },
+    {
+      "file": "startup/startup-first-02.png",
+      "source": ".utmp/expedition/screenshots/startup-first-02.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5496411,
+      "sha256": "da7819afeac80e9e05f79ea450104461a4a1c2b55a05b6e1c17cca999dc43428",
+      "scope": "Actual first MainMenu render frames; frame1 opaque startup cover, frames2-3 world/header with hidden legacy"
+    },
+    {
+      "file": "startup/startup-first-03.png",
+      "source": ".utmp/expedition/screenshots/startup-first-03.png",
+      "width": 1440,
+      "height": 3088,
+      "bytes": 5805086,
+      "sha256": "226fee07f1f4945599f8d55ebb6a170d4a322040701b52a0a07b8643d9ba21a8",
+      "scope": "Actual first MainMenu render frames; frame1 opaque startup cover, frames2-3 world/header with hidden legacy"
+    }
+  ],
+  "backend": {
+    "isolated_arena": {
+      "status": "passed",
+      "checks_passed": 108,
+      "errors": 0,
+      "report": "multiclient-isolated-arena.json",
+      "manifest": "multiclient-runtime-manifest.json",
+      "scope": "Disposable accounts on isolated backend; real matches/protocol transactions, not a load test."
+    },
+    "local_lua": {
+      "arena_invariants": 27,
+      "race_regressions": 37,
+      "report": "arena-lua-and-race-regression.log"
+    },
+    "public_runtime_deployment": {
+      "production_idle_preflight": true,
+      "version": "0.3.4",
+      "rollback_required": false,
+      "backup": "/opt/escape/backups/runtime-release-20261024T090402Z",
+      "result": "passed",
+      "security_checks_passed": 25,
+      "health_passed": true,
+      "deployment_log": "runtime-deploy.log",
+      "existing_api_configuration_changed": false,
+      "tested_runtime_sha256": "4df827d71553c806353dd2a0a49ea58e9bbaf6599938b5fa34818daeff482f7e",
+      "dashboard_checks_passed": 3,
+      "report": "runtime-deploy-result.json"
+    }
+  },
+  "resource_cleanup": {
+    "report": "resource-cleanup.json",
+    "result": "passed",
+    "removed_source_bytes": 2762012,
+    "apk_savings_measured": false
+  },
+  "automation_incidents": [
+    {
+      "reply_id": "e4ebe66cde92447eaf61d118deb2beaa",
+      "source_line_1_based": 740,
+      "kind": "first_frame_queue_probe_and_blocker_hardening",
+      "resolution": "Queue creation and raycast verification split by actual render; blocker strengthened; final verify7b58f187f9524396b7d855ef49a00571 passes all3 underlying points and only exit; restored."
+    },
+    {
+      "reply_id": "418785ea4c08493490ba24fcad1fd1b8",
+      "source_line_1_based": 831,
+      "kind": "request_before_UI_ready",
+      "resolution": "Tap issued before active button/EventSystem ready; scene-ready reply87d905d3cabd4c79b98d7f37d7be188b then actual rating tap4dc5e1e24ced49cb9bf66eb52ef3aa4d and full repeated row fixture passed. Not retained as a product defect."
+    }
+  ],
+  "global_network_scope": "No blanket no-RPC assertion: ordinary Unity lobby/profile reads continue; isolated backend tests execute real disposable-account matches. Only each named local UI fixture guarantees its stated no-RPC/no-spend/no-write boundary.",
+  "release_candidate_status": "deliverable_published_validated",
+  "delivery_checked_at_utc": "2026-10-24T09:29:52.8102215Z"
+}

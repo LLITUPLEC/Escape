@@ -1,0 +1,12 @@
+{
+    "state": "succeeded",
+    "output": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Builds/Expedition/Escape-Expedition-20261022-221310.apk",
+    "result": "Succeeded",
+    "message": "",
+    "startedUtc": "2026-10-22T22:13:10.2242710Z",
+    "finishedUtc": "2026-10-22T22:34:29.6864575Z",
+    "bytes": 2380958029,
+    "seconds": 1276.0658164,
+    "errors": 0,
+    "warnings": 3
+}

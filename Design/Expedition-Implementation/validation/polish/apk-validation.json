@@ -1,0 +1,19 @@
+{
+  "build_result": "Succeeded",
+  "signature_verified": true,
+  "development_build": true,
+  "physical_device_tested": false,
+  "unity_data_entries": 152,
+  "native_abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "manifest_parsed": true,
+  "date": "2026-10-23T01:35:11+03:00",
+  "bytes": 215744861,
+  "sha256": "800DA7B1FF1A931A07EA830C4E235BB767ACB58D433F001D67A5E92CB0A3CF6E",
+  "build_errors": 0,
+  "build_warnings": 3,
+  "apk": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\Builds\\Expedition\\Escape-Expedition-20261022-221310.apk",
+  "build_seconds": 1276.0658164
+}

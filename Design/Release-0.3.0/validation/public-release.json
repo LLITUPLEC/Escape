@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-23T03:14:51.0393123+03:00",
+  "apk_sha256": "17e666a68265504bae2857c39b978d0d39ac999a5a64613dc32888523003a8bc",
+  "page_status": 200,
+  "version": "0.3.0",
+  "apk_mime": "application/vnd.android.package-archive",
+  "apk_bytes": 99453871,
+  "url": "https://prokrust-play.ru/escape/",
+  "apk_head_status": 200,
+  "apk_range_status": 206,
+  "apk_url": "https://prokrust-play.ru/escape/downloads/Escape-0.3.0-17e666a68265.apk",
+  "api_health_status": 200,
+  "apk_zip_header_verified": true,
+  "manifest_status": 200
+}

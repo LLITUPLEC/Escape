@@ -107,7 +107,7 @@ namespace Project.Achievements
             EnsureLoaded();
             serverStatsEntries ??= Array.Empty<StringIntPair>();
             serverClaimedTokens ??= Array.Empty<string>();
-            var eligibleBeforeMerge = AchievementUiPending.CaptureEligibleClaimStepTokens();
+            var eligibleBeforeMerge = AchievementUiPending.CaptureReachedUnclaimedStepTokens();
 
             var changedClaims = false;
             var changedStats = false;
@@ -145,7 +145,7 @@ namespace Project.Achievements
                 }
             }
 
-            var newAwaitClaims = AchievementUiPending.RaiseNewEligibleSince(eligibleBeforeMerge);
+            var newAwaitClaims = AchievementUiPending.RaiseNewCompletedSince(eligibleBeforeMerge);
             if (changedClaims || changedStats || newAwaitClaims > 0)
                 AchievementLifecycle.NotifyDataChanged();
         }
@@ -266,9 +266,9 @@ namespace Project.Achievements
             if (delta == 0 || string.IsNullOrEmpty(key))
                 return;
             AchievementProgressStorage.EnsureLoaded();
-            var eligibleBeforeStat = AchievementUiPending.CaptureEligibleClaimStepTokens();
+            var eligibleBeforeStat = AchievementUiPending.CaptureReachedUnclaimedStepTokens();
             AchievementProgressStorage.AddStat(key, delta);
-            AchievementUiPending.RaiseNewEligibleSince(eligibleBeforeStat);
+            AchievementUiPending.RaiseNewCompletedSince(eligibleBeforeStat);
             AchievementLifecycle.NotifyDataChanged();
         }
 

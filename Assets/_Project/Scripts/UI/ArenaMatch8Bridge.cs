@@ -72,8 +72,13 @@ namespace Project.UI
         private GameObject _backButtonGo;
         private GameObject _statsCardGo;
         private bool _queueUiLocked;
+        private bool _participationLocked;
+        private GameObject _participationBlocker;
+        private static ArenaMatch8Bridge _activeBridge;
+        public static bool IsParticipationLocked => _activeBridge != null && _activeBridge._participationLocked;
 
         private GameObject _modalRoot;
+        private Canvas _overlayCanvas;
         private Transform _modalPanel;
         private TMP_Text _modalTitle;
         private Transform _modalCloseButtonTr;
@@ -87,16 +92,25 @@ namespace Project.UI
         private ArenaTournamentState _lastTournament;
         private Toggle _bettingToggle;
         private bool _bettingUiEnabled;
+#if UNITY_EDITOR
+        internal Action<int, int> EditorBetRequestOverride;
+#endif
         private bool _betsOpen;
         private string _bettingRound = "";
         private string _myUserId = "";
         private readonly Dictionary<int, int> _myBetSidesBySlot = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> _pendingBetVersions = new Dictionary<int, int>();
+        private Task _betWriteTail = Task.CompletedTask;
+        private int _nextBetVersion;
+        private int _betLifetime;
+        private string _betContextId = "";
         private GameObject _toastRoot;
         private TMP_Text _toastText;
         private Coroutine _toastRoutine;
 
         private Coroutine _pollRoutine;
         private bool _busyJoin;
+        private int _pollVersion;
         private string _selectedArenaKind = ArenaKindSmith;
         /// <summary>Последняя выбранная/просматриваемая ставка — для poll (отдельные очереди по bet_tier).</summary>
         private string _previewBetTier = "";
@@ -204,6 +218,10 @@ namespace Project.UI
             public string display_b;
             public float hp_a;
             public float hp_b;
+            public float hp_max_a;
+            public float hp_max_b;
+            public bool hp_known_a;
+            public bool hp_known_b;
             public string status;
             public string winner_uid;
         }
@@ -294,6 +312,7 @@ namespace Project.UI
             PlayerPrefs.Save();
             ApplyBettingUiToAllRows();
             UpdatePrizeFooter(_lastTournament);
+            if (_lastTournament != null && _bracketRoot != null) UpdateTournamentSummary(_lastTournament);
         }
 
         private void ApplyBettingUiToAllRows()
@@ -308,6 +327,13 @@ namespace Project.UI
         {
             if (row == null) return;
             var select = row.GetComponent<PairRowBetSelect>();
+            var pairView = row.GetComponent<ExpeditionArenaPairTag>();
+            if (pairView != null && !pairView.Current)
+            {
+                if (select != null) select.ApplyState(false, false, -1);
+                ExpeditionArenaOverlays.SetBetControlsVisible(row, false);
+                return;
+            }
             if (select == null)
             {
                 var a = FindDeep(row, PairRowBetSelect.BetAName);
@@ -328,15 +354,29 @@ namespace Project.UI
             if (_myBetSidesBySlot.TryGetValue(slot, out var s))
                 side = s;
             select.ApplyState(showBets, interactable, side);
+            ExpeditionArenaOverlays.ApplyPairCard(row);
+            ExpeditionArenaOverlays.SetBetControlsVisible(row, showBets);
         }
 
         private void SyncMyBetsFromTournament(ArenaTournamentState t)
         {
+            var round = t?.betting_round ?? "";
+            var contextId = t?.id ?? "";
+            if (!string.Equals(_bettingRound, round, StringComparison.Ordinal) || !string.Equals(_betContextId, contextId, StringComparison.Ordinal))
+                _pendingBetVersions.Clear();
             _betsOpen = t != null && t.bets_open;
-            _bettingRound = t != null ? (t.betting_round ?? "") : "";
+            _bettingRound = round;
+            _betContextId = contextId;
+            MergeAuthoritativeBets(t?.my_bets);
+        }
+
+        private void MergeAuthoritativeBets(ArenaSideBet[] bets)
+        {
+            var optimistic = new Dictionary<int, int>();
+            foreach (var pending in _pendingBetVersions)
+                if (_myBetSidesBySlot.TryGetValue(pending.Key, out var side)) optimistic[pending.Key] = side;
             _myBetSidesBySlot.Clear();
-            if (t?.my_bets == null) return;
-            foreach (var b in t.my_bets)
+            foreach (var b in bets ?? Array.Empty<ArenaSideBet>())
             {
                 if (b == null || b.slot <= 0) continue;
                 var side = -1;
@@ -344,6 +384,13 @@ namespace Project.UI
                 else if (string.Equals(b.side, "b", StringComparison.OrdinalIgnoreCase)) side = 1;
                 if (side >= 0)
                     _myBetSidesBySlot[b.slot] = side;
+            }
+            // Preserve an optimistic selection only while its own request is in
+            // flight, including an optimistic cancellation (missing local key).
+            foreach (var pending in _pendingBetVersions)
+            {
+                _myBetSidesBySlot.Remove(pending.Key);
+                if (optimistic.TryGetValue(pending.Key, out var side)) _myBetSidesBySlot[pending.Key] = side;
             }
         }
 
@@ -367,14 +414,25 @@ namespace Project.UI
                 _myBetSidesBySlot.Remove(slot);
             else
                 _myBetSidesBySlot[slot] = side;
-            _ = PlaceBetFireAndForget(slot, side);
+#if UNITY_EDITOR
+            if (EditorBetRequestOverride != null) { EditorBetRequestOverride(slot, side); return; }
+#endif
+            var version = ++_nextBetVersion;
+            _pendingBetVersions[slot] = version;
+            _betWriteTail = PlaceBetFireAndForget(_betWriteTail, slot, side, version, _betLifetime, _bettingRound, _betContextId, LocalAccountCacheScope.Current);
         }
 
-        private async Task PlaceBetFireAndForget(int slot, int side)
+        private async Task PlaceBetFireAndForget(Task previous, int slot, int side, int version, int lifetime, string requestedRound, string contextId, string requestedScope)
         {
-            if (!NakamaBootstrap.Instance.IsReady) return;
+            ArenaPlaceBetResponse response = null;
             try
             {
+                // Send rapid A -> B -> cancel in the same order the player chose.
+                // A late response must never overwrite a newer local intention.
+                await previous;
+                if (!CanApplyBetResult(lifetime, requestedRound, contextId, requestedScope)
+                    || !_pendingBetVersions.ContainsKey(slot)) return;
+                if (NakamaBootstrap.Instance == null || !NakamaBootstrap.Instance.IsReady) return;
                 string payload;
                 if (side < 0)
                 {
@@ -390,34 +448,51 @@ namespace Project.UI
 
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
                     NakamaBootstrap.Instance.Session, RpcArenaPlaceBet, payload);
-                var resp = JsonUtility.FromJson<ArenaPlaceBetResponse>(rpc?.Payload ?? "{}");
-                if (resp == null || !resp.ok)
-                {
-                    Debug.LogWarning("[Arena8] place_bet: " + (resp?.err ?? "failed"));
-                    return;
-                }
-
-                MainThreadDispatcher.Enqueue(() =>
-                {
-                    if (resp.my_bets != null)
-                    {
-                        _myBetSidesBySlot.Clear();
-                        foreach (var b in resp.my_bets)
-                        {
-                            if (b == null || b.slot <= 0) continue;
-                            var s = -1;
-                            if (string.Equals(b.side, "a", StringComparison.OrdinalIgnoreCase)) s = 0;
-                            else if (string.Equals(b.side, "b", StringComparison.OrdinalIgnoreCase)) s = 1;
-                            if (s >= 0) _myBetSidesBySlot[b.slot] = s;
-                        }
-                    }
-                    ApplyBettingUiToAllRows();
-                });
+                response = JsonUtility.FromJson<ArenaPlaceBetResponse>(rpc?.Payload ?? "{}");
+                if (response == null || !response.ok) Debug.LogWarning("[Arena8] place_bet: " + (response?.err ?? "failed"));
             }
             catch (Exception e)
             {
                 Debug.LogWarning("[Arena8] place_bet: " + e.Message);
             }
+            finally
+            {
+                var completedResponse = response;
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    if (!CanApplyBetResult(lifetime, requestedRound, contextId, requestedScope)) return;
+                    CompleteBetRequest(slot, version, completedResponse);
+                });
+            }
+        }
+
+        private bool CanApplyBetResult(int lifetime, string round, string contextId, string scope)
+        {
+            return this != null && isActiveAndEnabled && lifetime == _betLifetime && string.Equals(round, _bettingRound, StringComparison.Ordinal)
+                && string.Equals(contextId, _betContextId, StringComparison.Ordinal) && LocalAccountCacheScope.IsCurrent(scope);
+        }
+
+        private void CompleteBetRequest(int slot, int version, ArenaPlaceBetResponse response, bool notify = true)
+        {
+            // This method is reached only through the lifetime/round/context/
+            // account guard in the transport completion. Keep every acknowledged
+            // snapshot, even if a newer local choice is still pending: if that
+            // newer write fails, its rollback must retain the accepted choice.
+            if (response != null && response.ok && response.my_bets != null
+                && _lastTournament != null && string.Equals(_lastTournament.id, _betContextId, StringComparison.Ordinal)
+                && string.Equals(_lastTournament.betting_round ?? "", _bettingRound, StringComparison.Ordinal))
+            {
+                _lastTournament.my_bets = response.my_bets;
+                // A poll issued before this accepted write may still carry the
+                // previous bets. Its queued main-thread apply is now obsolete.
+                _pollVersion++;
+            }
+            if (!_pendingBetVersions.TryGetValue(slot, out var current) || current != version) return;
+            _pendingBetVersions.Remove(slot);
+            MergeAuthoritativeBets(response != null && response.ok && response.my_bets != null ? response.my_bets : _lastTournament?.my_bets);
+            ApplyBettingUiToAllRows();
+            if (notify && (response == null || !response.ok))
+                ShowToast(response?.err == "bets_closed" ? "Прогнозы закрыты: раунд уже начался" : "Прогноз не принят. Проверьте соединение", 2.6f);
         }
 
         private static void OnAnyActiveSceneChanged(Scene prev, Scene next)
@@ -427,6 +502,7 @@ namespace Project.UI
 
         private void OnEnable()
         {
+            _activeBridge = this;
             if (_lastPrevSceneNameForArenaUi == duelMatch3SceneName)
                 _suppressFightReloadUntil = Time.realtimeSinceStartup + 8f;
 
@@ -434,6 +510,7 @@ namespace Project.UI
 
             if (Match3LaunchContext.ArenaMenuAwaitBracketOverlay)
             {
+                SetParticipationLocked(true);
                 EnsureArenaReturnBlocker();
                 if (_arenaReturnBlockerRoot != null)
                 {
@@ -456,6 +533,13 @@ namespace Project.UI
 
         private void OnDisable()
         {
+            _pollVersion++;
+            _betLifetime++;
+            _pendingBetVersions.Clear();
+            CloseBetModal();
+            HideBracket();
+            SetParticipationLocked(false);
+            if (_activeBridge == this) _activeBridge = null;
             if (_arenaReturnBlockerRoutine != null)
             {
                 StopCoroutine(_arenaReturnBlockerRoutine);
@@ -468,6 +552,36 @@ namespace Project.UI
             }
             if (_bettingToggle != null)
                 _bettingToggle.onValueChanged.RemoveListener(OnBettingToggleChanged);
+        }
+
+        private void OnDestroy()
+        {
+            SetParticipationLocked(false);
+            if (_participationBlocker != null) Destroy(_participationBlocker);
+        }
+
+        private void SetParticipationLocked(bool locked)
+        {
+            _participationLocked = locked;
+            if (locked && _participationBlocker == null)
+            {
+                var go = new GameObject("ArenaParticipationInputLock", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                SceneManager.MoveGameObjectToScene(go, gameObject.scene);
+                var canvas = go.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 290;
+                var scaler = go.GetComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                scaler.matchWidthOrHeight = .5f;
+                var blocker = ExpeditionUi.Fill(go.transform, "BlockAllUnderlyingInput", 0, 0, 1, 1, new Color(0, 0, 0, 1f / 255f));
+                blocker.raycastTarget = true;
+                blocker.canvasRenderer.cullTransparentMesh = false;
+                _participationBlocker = go;
+            }
+            if (_participationBlocker != null) _participationBlocker.SetActive(locked);
+            if (_activeBridge == null || _activeBridge == this)
+                ExpeditionPresentation.SetArenaParticipationLocked(locked);
         }
 
         private IEnumerator PollLoop()
@@ -484,7 +598,7 @@ namespace Project.UI
         {
             if (_arenaReturnBlockerRoot != null)
                 return;
-            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            var canvas = EnsureOverlayCanvas();
             if (canvas == null)
                 return;
             var go = new GameObject("ArenaReturnBracketBlocker", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
@@ -548,6 +662,8 @@ namespace Project.UI
         {
             if (!NakamaBootstrap.Instance.IsReady)
                 return;
+            var requestVersion = ++_pollVersion;
+            var requestedScope = LocalAccountCacheScope.Current;
             try
             {
                 var betPart = string.IsNullOrWhiteSpace(_previewBetTier)
@@ -561,7 +677,11 @@ namespace Project.UI
                 if (model == null || !model.ok)
                     return;
 
-                MainThreadDispatcher.Enqueue(() => ApplyPoll(model));
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    if (this != null && isActiveAndEnabled && IsCurrentPollVersion(requestVersion)
+                        && LocalAccountCacheScope.IsCurrent(requestedScope)) ApplyPoll(model);
+                });
             }
             catch (Exception e)
             {
@@ -569,13 +689,19 @@ namespace Project.UI
             }
         }
 
+        private bool IsCurrentPollVersion(int version) => version == _pollVersion;
+
         private void ApplyPoll(ArenaPollResponse m)
         {
+            if (this == null || !isActiveAndEnabled || m == null) return;
+            var tournamentActive = m.tournament != null && m.tournament.active && !m.tournament.eliminated;
+            SetParticipationLocked(_busyJoin || m.in_queue || tournamentActive);
             UpdateQueueUi(m);
 
             if (m.tournament != null && m.tournament.active && m.tournament.eliminated)
             {
                 _lastBracketSignature = string.Empty;
+                _lastTournament = null;
                 HideBracket();
                 return;
             }
@@ -594,11 +720,9 @@ namespace Project.UI
                 }
                 else
                 {
-                    // Не затираем локальный выбор каждым poll (гонка с place_bet).
-                    _betsOpen = m.tournament.bets_open;
-                    _bettingRound = m.tournament.betting_round ?? "";
-                    // Обновляем resolved win/loss и приз с сервера без сброса локальных пиков.
-                    // (bet_wins/losses меняются только после раунда — безопасно.)
+                    // Poll is authoritative for settled/failed writes. Only an
+                    // in-flight slot retains its optimistic local intention.
+                    SyncMyBetsFromTournament(m.tournament);
                     RefreshBracketInPlace(m.tournament);
                     ApplyBettingUiToAllRows();
                 }
@@ -612,6 +736,8 @@ namespace Project.UI
                 _lastTournament = null;
                 _betsOpen = false;
                 _bettingRound = "";
+                _betContextId = "";
+                _pendingBetVersions.Clear();
                 _myBetSidesBySlot.Clear();
                 HideBracket();
             }
@@ -621,7 +747,7 @@ namespace Project.UI
         {
             if (t == null) return string.Empty;
             // countdown_left меняется каждый poll — не включаем, иначе ряды пересобираются и сбрасываются ставки.
-            return $"{t.phase}|{t.next_round ?? ""}|{t.join_match_id ?? ""}|{RowsSignature(t.qf)}{RowsSignature(t.sf)}{RowsSignature(t.final_pairs)}";
+            return $"{t.id ?? ""}|{t.phase}|{t.next_round ?? ""}|{t.join_match_id ?? ""}|{RowsSignature(t.qf)}{RowsSignature(t.sf)}{RowsSignature(t.final_pairs)}";
         }
 
         private static string RowsSignature(ArenaPairRow[] rows)
@@ -632,7 +758,7 @@ namespace Project.UI
             {
                 if (r == null) continue;
                 // HP обновляются отдельно в RefreshBracketInPlace (каждый poll), чтобы полоски «дышали» без пересборки рядов.
-                s += $"{r.slot}:{r.status}:{r.match_id ?? ""}:{r.winner_uid ?? ""};";
+                s += $"{r.slot}:{r.uid_a ?? ""}:{r.uid_b ?? ""}:{r.status}:{r.match_id ?? ""}:{r.winner_uid ?? ""};";
             }
 
             return s;
@@ -646,7 +772,7 @@ namespace Project.UI
             if (cd != null)
             {
                 if (t.phase == "countdown")
-                    cd.text = Mathf.Max(0, t.countdown_left).ToString();
+                    cd.text = "До начала боя · " + Mathf.Max(0, t.countdown_left) + " сек";
                 else
                     cd.text = PhaseTitle(t.phase);
             }
@@ -654,7 +780,7 @@ namespace Project.UI
         }
 
         // Размеры блока приза/ставок (PrizeFooter). Править здесь — или в префабе ArenaBracketOverlay → PrizeFooter.
-        private const float PrizeFooterFontSize = 40f;
+        private const float PrizeFooterFontSize = 20f;
         private const float PrizeFooterPreferredHeight = 112f;
         private const float PrizeFooterMinHeight = 96f;
 
@@ -774,14 +900,17 @@ namespace Project.UI
 
             RefreshArenaCountdownOnly(t);
 
-            var rows = RowsForCurrentBracketPhase(t);
-            if (rows == null || rows.Length == 0)
-                return;
-
             var list = CollectBracketRows(_rowsRoot);
-            var n = Mathf.Min(list.Count, rows.Length);
-            for (var i = 0; i < n; i++)
-                BindPairRowData(list[i], rows[i]);
+            foreach (var row in list)
+            {
+                var tag = row.GetComponent<ExpeditionArenaPairTag>();
+                if (tag == null) continue;
+                var rows = tag.Round == "qf" ? t.qf : tag.Round == "sf" ? t.sf : t.final_pairs;
+                if (rows == null) continue;
+                foreach (var pair in rows)
+                    if (pair != null && pair.slot == tag.Slot) { BindPairRowData(row, pair); break; }
+            }
+            UpdateTournamentSummary(t);
         }
 
         private static List<Transform> CollectBracketRows(Transform rowsRoot)
@@ -789,12 +918,8 @@ namespace Project.UI
             var list = new List<Transform>();
             if (rowsRoot == null)
                 return list;
-            for (var i = 0; i < rowsRoot.childCount; i++)
-            {
-                var ch = rowsRoot.GetChild(i);
-                if (ch != null && ch.name == "BracketRow")
-                    list.Add(ch);
-            }
+            foreach (var ch in rowsRoot.GetComponentsInChildren<Transform>(true))
+                if (ch.name == "BracketRow" && ch.gameObject.activeInHierarchy) list.Add(ch);
 
             return list;
         }
@@ -836,7 +961,7 @@ namespace Project.UI
         }
 
         /// <summary>Привязать данные пары к уже созданному ряду (prefab или процедурный).</summary>
-        private static void BindPairRowData(Transform row, ArenaPairRow pr)
+        private void BindPairRowData(Transform row, ArenaPairRow pr)
         {
             if (row == null || pr == null)
                 return;
@@ -852,36 +977,45 @@ namespace Project.UI
 
             var hpA = ResolveHpFillImage(row, "HpA");
             if (hpA != null)
-                SetHp(hpA, pr.hp_a);
+                SetHp(hpA, pr.hp_a, pr.hp_max_a, pr.hp_known_a);
             else
             {
                 var legacyHp = FindDeep(row, "Hp")?.GetComponent<Image>();
                 if (legacyHp != null)
-                    SetHp(legacyHp, pr.hp_a);
+                    SetHp(legacyHp, pr.hp_a, pr.hp_max_a, pr.hp_known_a);
             }
 
             var hpB = ResolveHpFillImage(row, "HpB");
             if (hpB != null)
-                SetHp(hpB, pr.hp_b);
+                SetHp(hpB, pr.hp_b, pr.hp_max_b, pr.hp_known_b);
+
+            var hpTextA = FindDeep(row, "HpStatusA")?.GetComponent<TMP_Text>();
+            var hpTextB = FindDeep(row, "HpStatusB")?.GetComponent<TMP_Text>();
+            if (hpTextA != null) hpTextA.text = pr.hp_known_a && pr.hp_max_a > 0 ? $"{pr.hp_a:0}/{pr.hp_max_a:0}" : "HP —";
+            if (hpTextB != null) hpTextB.text = pr.hp_known_b && pr.hp_max_b > 0 ? $"{pr.hp_b:0}/{pr.hp_max_b:0}" : "HP —";
 
             var status = FindDeep(row, "Status")?.GetComponent<TMP_Text>();
             if (status != null)
                 status.text = FormatPairStatus(pr.status);
+            ExpeditionArenaOverlays.UpdatePair(row, pr.uid_a, pr.uid_b, pr.winner_uid, pr.status,
+                pr.uid_a == _myUserId || pr.uid_b == _myUserId);
         }
 
         private void UpdateQueueUi(ArenaPollResponse m)
         {
-            if (_queueTmp == null)
-                return;
-
             if (m != null && m.in_queue && !string.IsNullOrWhiteSpace(m.queue_kind))
                 _selectedArenaKind = m.queue_kind.Trim().ToLowerInvariant();
             if (m != null && m.in_queue && !string.IsNullOrWhiteSpace(m.queue_bet_tier))
                 _previewBetTier = m.queue_bet_tier.Trim().ToLowerInvariant();
 
             var show = m.in_queue || (m.queue_count > 0);
-            _queueTmp.gameObject.SetActive(show);
-            if (show)
+            if (m.in_queue && _queueTmp != null)
+            {
+                _queueTmp.transform.SetParent(EnsureOverlayCanvas().transform, false);
+                ExpeditionUi.SetRect(_queueTmp.rectTransform, .08f, .19f, .92f, .25f);
+            }
+            if (_queueTmp != null) _queueTmp.gameObject.SetActive(show);
+            if (show && _queueTmp != null)
                 _queueTmp.text = $"{Mathf.Clamp(m.queue_count, 0, m.queue_max > 0 ? m.queue_max : 8)}/{(m.queue_max > 0 ? m.queue_max : 8)}";
 
             ApplyQueueLockState(m.in_queue);
@@ -1001,11 +1135,14 @@ namespace Project.UI
 
         private void OpenBetModal(string kind)
         {
-            if (_busyJoin || _modalRoot == null)
+            if (_busyJoin || _participationLocked)
                 return;
+            EnsureBetModalBuilt();
+            if (_modalRoot == null) return;
             _selectedArenaKind = string.IsNullOrWhiteSpace(kind) ? ArenaKindSmith : kind.Trim().ToLowerInvariant();
             RebuildBetModalRowsForKind(_selectedArenaKind);
             _modalRoot.SetActive(true);
+            _modalRoot.transform.SetAsLastSibling();
         }
 
         public void CloseBetModal()
@@ -1037,10 +1174,22 @@ namespace Project.UI
 
         private async Task QueueJoinAsync(string tier)
         {
-            if (_busyJoin || !NakamaBootstrap.Instance.IsReady)
+            if (_busyJoin || _participationLocked || !NakamaBootstrap.Instance.IsReady)
                 return;
             _busyJoin = true;
+            _pollVersion++;
+            SetParticipationLocked(true);
+            CloseBetModal();
+            if (_leaveQueueButton != null) _leaveQueueButton.gameObject.SetActive(false);
+            if (_queueTmp != null)
+            {
+                _queueTmp.transform.SetParent(EnsureOverlayCanvas().transform, false);
+                ExpeditionUi.SetRect(_queueTmp.rectTransform, .08f, .19f, .92f, .25f);
+                _queueTmp.text = "Вход в турнир…";
+                _queueTmp.gameObject.SetActive(true);
+            }
             _previewBetTier = string.IsNullOrWhiteSpace(tier) ? "" : tier.Trim().ToLowerInvariant();
+            var requestedScope = LocalAccountCacheScope.Current;
             try
             {
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(default);
@@ -1051,10 +1200,14 @@ namespace Project.UI
                     arena_kind = _selectedArenaKind ?? ArenaKindSmith,
                 });
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(NakamaBootstrap.Instance.Session, RpcArenaJoin, payload);
+                if (this == null || !isActiveAndEnabled || !LocalAccountCacheScope.IsCurrent(requestedScope)) return;
                 var raw = rpc?.Payload ?? "{}";
                 var resp = JsonUtility.FromJson<ArenaJoinResponse>(raw);
                 if (resp != null && resp.ok)
                 {
+                    _pollVersion++; // A pre-join idle snapshot cannot unlock a paid entry.
+                    SetParticipationLocked(true);
+                    ApplyQueueLockState(!resp.in_tournament);
                     CloseBetModal();
                     if (_queueTmp != null)
                     {
@@ -1066,7 +1219,6 @@ namespace Project.UI
                                 $"{Mathf.Clamp(resp.queue_count, 0, qMax)}/{qMax}";
                     }
 
-                    _ = PollOnceFireAndForget();
                 }
                 else
                 {
@@ -1089,6 +1241,7 @@ namespace Project.UI
             finally
             {
                 _busyJoin = false;
+                if (this != null && isActiveAndEnabled && _participationLocked) _ = PollOnceFireAndForget();
             }
         }
 
@@ -1106,11 +1259,14 @@ namespace Project.UI
                 var resp = JsonUtility.FromJson<ArenaLeaveResponse>(raw);
                 if (resp != null && resp.ok)
                 {
+                    _pollVersion++; // Ignore polls issued before this confirmed refund.
                     MainThreadDispatcher.Enqueue(() =>
                     {
+                        if (this == null || !isActiveAndEnabled) return;
                         if (_queueTmp != null)
                             _queueTmp.gameObject.SetActive(false);
                         ApplyQueueLockState(false);
+                        SetParticipationLocked(false);
                     });
                     _ = PollOnceFireAndForget();
                 }
@@ -1132,7 +1288,7 @@ namespace Project.UI
             if (_leaveQueueButton != null || _queueTmp == null)
                 return;
 
-            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            var canvas = EnsureOverlayCanvas();
             if (canvas == null)
                 return;
 
@@ -1169,6 +1325,7 @@ namespace Project.UI
             trt.offsetMax = Vector2.zero;
 
             _leaveQueueButton = btn;
+            ExpeditionArenaOverlays.ApplyQueue(_queueTmp, _leaveQueueButton);
             _leaveQueueButton.gameObject.SetActive(false);
         }
 
@@ -1192,7 +1349,7 @@ namespace Project.UI
             if (_modalRoot != null)
                 return;
 
-            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            var canvas = EnsureOverlayCanvas();
             if (canvas == null)
                 return;
 
@@ -1263,6 +1420,22 @@ namespace Project.UI
             RebuildBetModalRowsForKind(_selectedArenaKind);
         }
 
+        private Canvas EnsureOverlayCanvas()
+        {
+            if (_overlayCanvas != null) return _overlayCanvas;
+            // Never attach scene UI to the first arbitrary (possibly hidden or persistent) canvas.
+            var go = new GameObject("ArenaSceneOverlays", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            SceneManager.MoveGameObjectToScene(go, gameObject.scene);
+            _overlayCanvas = go.GetComponent<Canvas>();
+            _overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _overlayCanvas.sortingOrder = 300;
+            var scaler = go.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.matchWidthOrHeight = .5f;
+            return _overlayCanvas;
+        }
+
         private void RebuildBetModalRowsForKind(string kind)
         {
             if (_modalPanel == null)
@@ -1302,6 +1475,7 @@ namespace Project.UI
                 MakeBetRow(_modalPanel, rowIndex++, "blue", "х 50", "600 · 600", iconBlueIngot);
                 MakeBetRow(_modalPanel, rowIndex++, "purple", "х 50", "1200 · 1200", iconPurpleIngot);
             }
+            ExpeditionArenaOverlays.ApplyStakeChooser(_modalRoot.transform, _modalTitle, _modalCloseButtonTr);
         }
 
         private Sprite GetBetRowBgSprite(int rowIndexZeroBased)
@@ -1407,7 +1581,7 @@ namespace Project.UI
         {
             if (_toastRoot != null)
                 return;
-            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            var canvas = EnsureOverlayCanvas();
             if (canvas == null)
                 return;
 
@@ -1443,6 +1617,7 @@ namespace Project.UI
             trt.offsetMax = new Vector2(-14f, -8f);
 
             _toastText = txt;
+            ExpeditionArenaOverlays.ApplyToast(_toastRoot.transform, _toastText);
             _toastRoot.SetActive(false);
         }
 
@@ -1612,7 +1787,7 @@ namespace Project.UI
             if (_bracketRoot != null)
                 return;
 
-            var canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            var canvas = EnsureOverlayCanvas();
             if (canvas == null)
                 return;
 
@@ -1650,6 +1825,7 @@ namespace Project.UI
             }
 
             EnsurePrizeFooter();
+            ExpeditionArenaOverlays.ApplyBracket(_bracketRoot.transform);
             _bracketRoot.SetActive(false);
         }
 
@@ -1729,7 +1905,7 @@ namespace Project.UI
             if (_cdText != null)
             {
                 if (t.phase == "countdown")
-                    _cdText.text = Mathf.Max(0, t.countdown_left).ToString();
+                    _cdText.text = "До начала боя · " + Mathf.Max(0, t.countdown_left) + " сек";
                 else
                     _cdText.text = PhaseTitle(t.phase);
             }
@@ -1741,23 +1917,44 @@ namespace Project.UI
 
             ClearRowsKeepingTemplates(_rowsRoot);
 
-            // Show only current/upcoming round (no history).
-            if (t.phase == "qf")
-                LayoutBracketRoundFromTemplate(_rowsRoot, "1/4", t.qf);
-            else if (t.phase == "sf")
-                LayoutBracketRoundFromTemplate(_rowsRoot, "1/2", t.sf);
-            else if (t.phase == "final")
-                LayoutBracketRoundFromTemplate(_rowsRoot, "Финал", t.final_pairs);
-            else if (t.phase == "countdown")
+            var current = t.phase == "countdown" ? (string.IsNullOrEmpty(t.next_round) ? "qf" : t.next_round) : t.phase;
+            BuildBracketColumn("qf", "1/4 ФИНАЛА", t.qf, 4, 0, .39f, current);
+            BuildBracketColumn("sf", "1/2 ФИНАЛА", t.sf, 2, .46f, .71f, current);
+            BuildBracketColumn("final", "ФИНАЛ", t.final_pairs, 1, .78f, 1, current);
+            ExpeditionArenaOverlays.BuildBracketConnections(_rowsRoot);
+            UpdateTournamentSummary(t);
+            ExpeditionArenaOverlays.ApplyBracket(_bracketRoot.transform);
+        }
+
+        private void BuildBracketColumn(string round, string title, ArenaPairRow[] pairs, int count, float x0, float x1, string current)
+        {
+            var column = ExpeditionUi.Rect(_rowsRoot, "Round_" + round, x0, 0, x1, 1);
+            ExpeditionUi.Text(_rowsRoot, "RoundLabel_" + round, title, round == "qf" ? 22 : 19, x0, 1.01f, x1, 1.07f, TextAlignmentOptions.Center).color = ExpeditionTheme.Muted;
+            for (var i = 0; i < count; i++)
             {
-                // During countdown show the upcoming bracket (already prepared on server).
-                if (t.next_round == "sf")
-                    LayoutBracketRoundFromTemplate(_rowsRoot, "1/2", t.sf);
-                else if (t.next_round == "final")
-                    LayoutBracketRoundFromTemplate(_rowsRoot, "Финал", t.final_pairs);
-                else
-                    LayoutBracketRoundFromTemplate(_rowsRoot, "1/4", t.qf);
+                var actual = pairs != null && i < pairs.Length ? pairs[i] : null;
+                var pair = actual ?? new ArenaPairRow { slot = i + 1, display_a = "Ожидание", display_b = "Ожидание", status = "pending" };
+                var row = CreatePairRowFromTemplate(column, pair, round, current == round && actual != null);
+                var center = count == 4 ? .875f - i * .25f : count == 2 ? .75f - i * .5f : .5f;
+                ExpeditionUi.SetRect(row as RectTransform, 0, center - .105f, 1, center + .105f);
             }
+        }
+
+        private void UpdateTournamentSummary(ArenaTournamentState tournament)
+        {
+            var summary = _bracketRoot.transform.Find("ExpeditionTournamentSummary")?.GetComponent<TMP_Text>();
+            if (summary == null) return;
+            ArenaPairRow own = null;
+            foreach (var pair in RowsForCurrentBracketPhase(tournament) ?? Array.Empty<ArenaPairRow>())
+                if (pair != null && (pair.uid_a == _myUserId || pair.uid_b == _myUserId)) { own = pair; break; }
+            var opponent = own == null ? "Ожидаем следующую пару" : "Ваш соперник: " + (own.uid_a == _myUserId ? own.display_b : own.display_a);
+            var status = own != null && own.status == "done" ? "Бой завершён · ожидаем остальных" : tournament.phase == "countdown" ? "Ожидаем начала боя" : "Турнир продолжается";
+            var currency = tournament.kind == ArenaKindGold ? " зол." : tournament.kind == ArenaKindOre ? " руды" : "";
+            var bettingHint = !_bettingUiEnabled ? "Прогнозы выключены"
+                : tournament.bets_open ? "Прогноз: выберите игрока в чужой паре"
+                : tournament.phase == "final" || (tournament.phase == "countdown" && tournament.next_round == "final") ? "В финале прогнозов нет"
+                : "Прогнозы доступны до начала раунда";
+            summary.text = opponent + "\n" + status + " · взнос " + (tournament.bet_tier ?? "—") + currency + "\n" + bettingHint;
         }
 
         private void ClearRowsKeepingTemplates(Transform rowsRoot)
@@ -1769,6 +1966,7 @@ namespace Project.UI
                 if (ch == null) continue;
                 if (ch.name == "RoundHeaderTemplate" || ch.name == "PairRowTemplate")
                     continue;
+                ch.gameObject.SetActive(false);
                 Destroy(ch.gameObject);
             }
 
@@ -1797,14 +1995,15 @@ namespace Project.UI
                 var headerGo = CreateTmp(parent, title, 22, FontStyles.Bold);
                 header = headerGo.GetComponent<TMP_Text>();
             }
+            header.gameObject.name = "RoundHeader";
 
             foreach (var pr in rows)
                 CreatePairRowFromTemplate(parent, pr);
         }
 
-        private void CreatePairRowFromTemplate(Transform parent, ArenaPairRow pr)
+        private Transform CreatePairRowFromTemplate(Transform parent, ArenaPairRow pr, string round = "", bool current = false)
         {
-            if (parent == null || pr == null) return;
+            if (parent == null || pr == null) return null;
 
             var rowT = _pairRowTemplate != null ? _pairRowTemplate : parent.Find("PairRowTemplate");
             Transform row;
@@ -1837,6 +2036,9 @@ namespace Project.UI
                 hl.childForceExpandWidth = false;
             }
 
+            ExpeditionArenaOverlays.ApplyPairCard(row);
+            var tag = ExpeditionUi.Ensure<ExpeditionArenaPairTag>(row.gameObject);
+            tag.Round = round; tag.Slot = pr.slot; tag.Current = current;
             BindPairRowData(row, pr);
 
             var select = row.GetComponent<PairRowBetSelect>();
@@ -1844,6 +2046,7 @@ namespace Project.UI
                 select = row.gameObject.AddComponent<PairRowBetSelect>();
             select.Configure(pr.slot > 0 ? pr.slot : row.GetSiblingIndex(), pr.uid_a, pr.uid_b, OnPairBetSideChanged);
             ApplyBettingUiToRow(row);
+            return row;
         }
 
         private static string PhaseTitle(string phase)
@@ -1958,7 +2161,10 @@ namespace Project.UI
         {
             if (img == null)
                 return;
-            img.sprite ??= ArenaBracketHpWhiteSprite();
+            // A framed plate was retained by ??= on generated bars, making the
+            // thin red fill almost transparent. HP always uses a solid sprite.
+            img.sprite = ArenaBracketHpWhiteSprite();
+            img.overrideSprite = null;
             img.type = Image.Type.Filled;
             img.fillMethod = Image.FillMethod.Horizontal;
             img.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -2002,20 +2208,16 @@ namespace Project.UI
             return fillImg;
         }
 
-        private static void SetHp(Image img, float hp)
+        private static void SetHp(Image img, float hp, float maxHp = 0, bool known = false)
         {
             if (img == null)
                 return;
             EnsureHpFillRenderable(img);
 
-            float t;
-            // Server может слать hp как 0..150 или нормализовано 0..1.
-            if (hp <= 1.01f)
-                t = Mathf.Clamp01(hp);
-            else
-                t = Mathf.Clamp01(hp / 150f);
-
-            img.fillAmount = t;
+            img.fillAmount = known && maxHp > 0 ? Mathf.Clamp01(hp / maxHp) : 0;
+            img.enabled = known && maxHp > 0;
+            img.rectTransform.offsetMin = new Vector2(1.5f, .5f);
+            img.rectTransform.offsetMax = new Vector2(-1.5f, -.5f);
         }
 
         private void HideBracket()

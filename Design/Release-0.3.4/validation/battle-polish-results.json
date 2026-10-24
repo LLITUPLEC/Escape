@@ -1,0 +1,55 @@
+{
+  "result": "passed",
+  "scope": "UI-only state fixture on actual local board; no real ability use or profile mutation",
+  "modes": [
+    "normal",
+    "race0",
+    "race24",
+    "race50"
+  ],
+  "checks": [
+    "actual timer60; turn caption above timer, timer above board",
+    "shield and stats popover do not overlap",
+    "cooldown2 contains no КД",
+    "Server petard mana-drain prediction −N at0/24/50; not petard quantity or mana-bar maximum",
+    "authored Fury/Shield OGG serialized references"
+  ],
+  "replies": [
+    {
+      "id": "7da5ec174cbd4264aacfc946e7c9ed08",
+      "message": "PASS normal: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank-1 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "ee8b96008f284a82a78665b524ee9dc4",
+      "message": "PASS race0: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank0 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "13f11e9ceb46432fab1722dca133d696",
+      "message": "PASS race0: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank0 and authored OGG references"
+    },
+    {
+      "id": "8d8936c2d17549c1864caa0342ea249b",
+      "message": "PASS race24: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank24 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "b95866ef7905453288144a0f409b3b50",
+      "message": "PASS race50: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank50 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "9dca72dd9a0048658919231bc1f36355",
+      "message": "UI-only battle fixture restored; no RPC, match, ability use or profile mutation"
+    },
+    {
+      "id": "caa2162cfe9145d48dfa837eb425bf28",
+      "message": "PASS normal: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank-1 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "db724ea7bac6457881bcc5e1bfd3105d",
+      "message": "PASS race50: actual timer60/turn-above/board gap, shield-popover separation, cooldown2, Race bank50 and authored OGG references; retained for capture; call restore"
+    },
+    {
+      "id": "a76cbe9cd89b4dfd9b4ddd38684a4862",
+      "message": "UI-only battle fixture restored; no RPC, match, ability use or profile mutation"
+    }
+  ]
+}

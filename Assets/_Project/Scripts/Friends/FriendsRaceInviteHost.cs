@@ -4,6 +4,7 @@ using System.Threading;
 using Project.Achievements;
 using Project.Match3;
 using Project.Nakama;
+using Project.UI;
 using Project.Utils;
 using TMPro;
 using UnityEngine;
@@ -184,6 +185,7 @@ namespace Project.Friends
 
         private void ShowIncomingInvite(RaceInviteNotif msg)
         {
+            RefreshInviteCardBounds();
             _pendingInviteId = msg.invite_id;
             _pendingFromUsername = string.IsNullOrWhiteSpace(msg.from_username) ? "Друг" : msg.from_username.Trim();
             // long: float unix теряет точность (~128с) и мог мгновенно «протухать» TTL.
@@ -232,6 +234,7 @@ namespace Project.Friends
 
         private void ShowBriefStatus(string title, string body)
         {
+            RefreshInviteCardBounds();
             if (IsInMatchScene(SceneManager.GetActiveScene().name)) return;
             if (_inviteTitle != null) _inviteTitle.text = title;
             if (_inviteBody != null) _inviteBody.text = body;
@@ -342,7 +345,7 @@ namespace Project.Friends
             gameObject.AddComponent<GraphicRaycaster>();
             var scaler = gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
             scaler.matchWidthOrHeight = 0.5f;
 
             _invitePanel = BuildCornerCard(
@@ -374,22 +377,18 @@ namespace Project.Friends
             var card = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             card.transform.SetParent(transform, false);
             var rt = card.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-28f, 28f);
-            rt.sizeDelta = new Vector2(460f, 0f);
+            ApplyInviteCardBounds(rt);
 
             var img = card.GetComponent<Image>();
-            img.color = new Color(0.10f, 0.12f, 0.16f, 0.96f);
+            ExpeditionUi.StylePanel(img, ExpeditionTheme.Panel);
 
             var outline = card.AddComponent<Outline>();
-            outline.effectColor = new Color(0.35f, 0.55f, 0.85f, 0.55f);
+            outline.effectColor = ExpeditionTheme.Teal;
             outline.effectDistance = new Vector2(2f, -2f);
 
             var vl = card.GetComponent<VerticalLayoutGroup>();
-            vl.padding = new RectOffset(22, 22, 18, 18);
-            vl.spacing = 10f;
+            vl.padding = new RectOffset(26, 26, 24, 24);
+            vl.spacing = 16f;
             vl.childAlignment = TextAnchor.UpperLeft;
             vl.childControlWidth = true;
             vl.childControlHeight = true;
@@ -397,27 +396,26 @@ namespace Project.Friends
             vl.childForceExpandHeight = false;
             card.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            title = MakeTmp(card.transform, "Title", "Спуск", 32f, FontStyles.Bold);
-            title.color = new Color(0.78f, 0.88f, 1f, 1f);
+            title = MakeTmp(card.transform, "Title", "Спуск", 38f, FontStyles.Bold);
+            title.color = ExpeditionTheme.Ivory;
 
-            body = MakeTmp(card.transform, "Body", "", 26f, FontStyles.Normal);
-            body.color = Color.white;
+            body = MakeTmp(card.transform, "Body", "", 32f, FontStyles.Normal);
+            body.color = ExpeditionTheme.Muted;
             body.textWrappingMode = TextWrappingModes.Normal;
             var bodyLe = body.gameObject.AddComponent<LayoutElement>();
-            bodyLe.minHeight = 40f;
-            bodyLe.preferredHeight = 56f;
+            bodyLe.minHeight = bodyLe.preferredHeight = 90f;
 
             timer = MakeTmp(card.transform, "Timer", "", 40f, FontStyles.Bold);
             timer.alignment = TextAlignmentOptions.Center;
-            timer.color = new Color(0.95f, 0.82f, 0.35f, 1f);
+            timer.color = ExpeditionTheme.Amber;
             var timerLe = timer.gameObject.AddComponent<LayoutElement>();
-            timerLe.preferredHeight = 28f;
+            timerLe.minHeight = timerLe.preferredHeight = 54f;
 
             if (withButtons)
             {
                 var row = new GameObject("Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
                 row.transform.SetParent(card.transform, false);
-                row.GetComponent<LayoutElement>().preferredHeight = 56f;
+                row.GetComponent<LayoutElement>().preferredHeight = 84f;
                 var hl = row.GetComponent<HorizontalLayoutGroup>();
                 hl.spacing = 12f;
                 hl.childForceExpandWidth = true;
@@ -431,11 +429,30 @@ namespace Project.Friends
             return card;
         }
 
+        private void RefreshInviteCardBounds()
+        {
+            if (_invitePanel != null) ApplyInviteCardBounds(_invitePanel.transform as RectTransform);
+        }
+
+        private static void ApplyInviteCardBounds(RectTransform rect)
+        {
+            if (rect == null) return;
+            var safe = Screen.safeArea;
+            var width = Mathf.Max(1, Screen.width);
+            var height = Mathf.Max(1, Screen.height);
+            var bottom = (safe.yMin + safe.height * .12f) / height;
+            rect.anchorMin = new Vector2((safe.xMin + safe.width * .035f) / width, bottom);
+            rect.anchorMax = new Vector2((safe.xMax - safe.width * .035f) / width, bottom);
+            rect.pivot = new Vector2(.5f, 0);
+            rect.sizeDelta = Vector2.zero;
+            rect.anchoredPosition = Vector2.zero;
+        }
+
         private static Button MakeBtn(Transform parent, string name, string label, Color color)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
-            go.GetComponent<LayoutElement>().preferredHeight = 56f;
+            go.GetComponent<LayoutElement>().preferredHeight = 84f;
             var img = go.GetComponent<Image>();
             img.color = color;
             var btn = go.GetComponent<Button>();
@@ -443,6 +460,8 @@ namespace Project.Friends
             var tmp = MakeTmp(go.transform, "Label", label, 26f, FontStyles.Bold);
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.raycastTarget = false;
+            ExpeditionUi.SetRect(tmp.rectTransform, .025f, .04f, .975f, .96f);
+            ExpeditionUi.StyleButton(btn, name == "Accept", 34);
             return btn;
         }
 
@@ -454,9 +473,11 @@ namespace Project.Friends
             tmp.text = text;
             tmp.fontSize = size;
             tmp.fontStyle = style;
-            tmp.color = Color.white;
-            tmp.enableAutoSizing = false;
-            tmp.overflowMode = TextOverflowModes.Overflow;
+            tmp.color = ExpeditionTheme.Ivory;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = size * .8f;
+            tmp.fontSizeMax = size;
+            tmp.overflowMode = TextOverflowModes.Ellipsis;
             var font = AchievementUiFontLoader.Resolve(null);
             if (font != null) tmp.font = font;
             return tmp;

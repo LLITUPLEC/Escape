@@ -1,0 +1,24 @@
+{
+  "production_source": "Assets/_Project/Scripts/Character/UI/WorkshopSceneController.cs",
+  "source_sha256": "37E3E66C503C9B5F1009C83C8E3469B6EDE122935D2E07D082F08F50B02AACFE",
+  "extraction": "Five complete production async method declarations and bodies are inserted verbatim; no body rewriting.",
+  "methods": [
+    "OnCreateClicked",
+    "OnClaimClicked",
+    "OnRushClicked",
+    "ClaimAtSlot",
+    "RunCraftRequestAsync"
+  ],
+  "scope": "Managed fake service/profile/button test. No Unity engine, RPC, account resources or live state. Unity destroyed-object semantics and rendering are not simulated.",
+  "passed": [
+    "double-create-mixed-actions-captured-slot-output-and-retry",
+    "double-rush-captured-slot-server-error-and-retry",
+    "double-claim-captured-slot",
+    "transport-exception-clears-busy-and-restores-ui",
+    "null-response-clears-busy-and-restores-ui",
+    "cancellation-clears-busy-without-profile-application",
+    "invalid-local-selection-and-idle-rush-send-zero-requests"
+  ],
+  "failed": [],
+  "production_source_unchanged": true
+}

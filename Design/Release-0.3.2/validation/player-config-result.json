@@ -1,0 +1,22 @@
+{
+  "input": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\validation-release032\\Assembly-CSharp.rsp",
+  "response": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\validation-release032\\Assembly-CSharp-PlayerConfig.rsp",
+  "log": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\validation-release032\\Assembly-CSharp-PlayerConfig-compile.log",
+  "exit_code": 0,
+  "removed_defines": [
+    "-define:UNITY_INCLUDE_TESTS",
+    "-define:UNITY_EDITOR",
+    "-define:UNITY_EDITOR_64",
+    "-define:UNITY_EDITOR_WIN"
+  ],
+  "removed_editor_reference_count": 57,
+  "retained_android_defines": [
+    "-define:PLATFORM_ANDROID",
+    "-define:UNITY_ANDROID",
+    "-define:UNITY_ANDROID_API",
+    "-define:UNITY_ANDROID_SUPPORTS_SHADOWFILES",
+    "-define:ENABLE_ANDROID_ADVERTISING_IDS",
+    "-define:ENABLE_ANDROID_APP_SET_ID"
+  ],
+  "description": "C# conditional-compilation check with player symbols. This is not an APK or IL2CPP build."
+}

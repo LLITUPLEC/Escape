@@ -1,0 +1,18 @@
+{
+  "state": "passed",
+  "version": "0.3.2",
+  "checked_at_utc": "2026-10-23T18:13:49.0163608Z",
+  "url": "https://prokrust-play.ru/escape/#release",
+  "browser": "ChatGPT in-app browser",
+  "checks": [
+    "Reload shows version0.3.2 and95.6MiB; both APK links point to validated release",
+    "Gallery uses versioned image URLs; actual new character image opened and closed",
+    "What is new section shows0.3.2 and current changes"
+  ],
+  "screenshots": [
+    "screenshots/public-release.png",
+    "screenshots/public-character.png"
+  ],
+  "device_viewport": "1265x712 natural browser viewport",
+  "mobile_responsive_retested": false
+}

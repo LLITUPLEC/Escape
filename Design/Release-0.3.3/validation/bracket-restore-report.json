@@ -1,0 +1,6 @@
+{
+    "target": "restore",
+    "ok": true,
+    "message": "Original UI/data restored. Normal bridge polling resumes if originally enabled.",
+    "utc": "2026-10-23T20:23:34.3711933Z"
+}

@@ -325,8 +325,12 @@ local function arena_pair_row_from_slots(a, b)
     display_b = b.display,
     bot_a = a.bot == true,
     bot_b = b.bot == true,
-    hp_a = 150,
-    hp_b = 150,
+    hp_a = 0,
+    hp_b = 0,
+    hp_max_a = 0,
+    hp_max_b = 0,
+    hp_known_a = false,
+    hp_known_b = false,
     status = "pending",
     match_id = "",
     winner_uid = "",
@@ -475,8 +479,9 @@ local function advance(T, rk, writes)
     arena_shuffle_inplace(slots)
     local next_round = rk == "qf" and "sf" or "final"
     T[next_round] = arena_build_round_from_slots(slots)
-    T.qf = {}
-    if rk == "sf" then T.sf = {} end
+    -- The client renders the complete bracket. Keep the actual completed rows,
+    -- including both display names, final HP/maxima and winner identities.
+    -- Old rounds are immutable: pair_for_state only accepts T.phase == rk.
     T.phase, T.next_round = "countdown", next_round
     T.countdown_until, T.next_slots = os.time() + ARENA_COUNTDOWN_SEC, nil
     return
@@ -525,6 +530,8 @@ local function mirror_commit(state)
     local b = type(state.stats) == "table" and state.stats[pr.uid_b]
     if a and b then
       pr.hp_a, pr.hp_b = math.max(0, tonumber(a.hp) or 0), math.max(0, tonumber(b.hp) or 0)
+      pr.hp_max_a, pr.hp_max_b = math.max(0, tonumber(a.max_hp) or 0), math.max(0, tonumber(b.max_hp) or 0)
+      pr.hp_known_a, pr.hp_known_b = tonumber(a.hp) ~= nil and pr.hp_max_a > 0, tonumber(b.hp) ~= nil and pr.hp_max_b > 0
       changed = true
     end
     if pr.status == "spawning" and state.match_id and state.match_id ~= "" then
@@ -570,8 +577,11 @@ local function on_match_finished(state, winner_uid)
     for _, side in ipairs({ "a", "b" }) do
       local uid = pr["uid_" .. side]
       local st = type(state.stats) == "table" and state.stats[uid] or nil
-      if st then pr["hp_" .. side] = math.max(0, tonumber(st.hp) or 0) end
-      if uid == loser then pr["hp_" .. side] = 0 end
+      if st then
+        pr["hp_" .. side] = math.max(0, tonumber(st.hp) or 0)
+        pr["hp_max_" .. side] = math.max(0, tonumber(st.max_hp) or 0)
+        pr["hp_known_" .. side] = tonumber(st.hp) ~= nil and pr["hp_max_" .. side] > 0
+      end
     end
     T.eliminated = type(T.eliminated) == "table" and T.eliminated or {}
     if not uid_is_bot(T, loser) then T.eliminated[loser] = true end
@@ -903,6 +913,7 @@ local function tournament_json(uid, T)
       end
       out[#out + 1] = { slot = i, match_id = pr.match_id or "", uid_a = pr.uid_a, uid_b = pr.uid_b,
         display_a = pr.display_a, display_b = pr.display_b, hp_a = pr.hp_a, hp_b = pr.hp_b,
+        hp_max_a = pr.hp_max_a, hp_max_b = pr.hp_max_b, hp_known_a = pr.hp_known_a == true, hp_known_b = pr.hp_known_b == true,
         status = pr.status, winner_uid = pr.winner_uid }
     end
     return out

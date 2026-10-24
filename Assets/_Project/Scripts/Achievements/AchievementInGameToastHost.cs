@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -24,7 +25,7 @@ namespace Project.Achievements
 
         private const float ShowSeconds = 4.35f;
         private const float SlidePixels = 110f;
-        private const float ToastFontPx = 25f;
+        private const float ToastFontPx = 30f;
 
         public static AchievementInGameToastHost Ensure()
         {
@@ -98,6 +99,7 @@ namespace Project.Achievements
                     _panelRt = pan.GetComponent<RectTransform>();
                     _titleTmp = pan.Find("ToastTitle")?.GetComponent<TMP_Text>();
                     _rewardTmp = pan.Find("ToastRewardLine")?.GetComponent<TMP_Text>();
+                    ApplyExpeditionStyle();
                 }
                 else
                 {
@@ -131,6 +133,7 @@ namespace Project.Achievements
             _rewardTmp = reward;
             _titleTmp.richText = true;
             _rewardTmp.richText = true;
+            ApplyExpeditionStyle();
             return true;
         }
 
@@ -283,14 +286,8 @@ namespace Project.Achievements
                         0.95f,
                         0.92f);
 
-                img.sprite =
-                    sprites
-                    ??
-                    Sprite.Create(
-                        Texture2D.whiteTexture,
-                        new Rect(0, 0, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
-                        new Vector2(0.5f, 0.5f),
-                        120f);
+                // A null UI Image already renders a white quad; avoid a native Sprite allocation per spark.
+                img.sprite = sprites;
 
                 StartCoroutine(FlySpark(sr));
             }
@@ -344,7 +341,7 @@ namespace Project.Achievements
 
                 var scaler = gameObject.AddComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920f, 1080f);
+                scaler.referenceResolution = new Vector2(1080f, 1920f);
                 scaler.matchWidthOrHeight = 0.5f;
 
                 _internalRaycaster = gameObject.AddComponent<GraphicRaycaster>();
@@ -357,6 +354,7 @@ namespace Project.Achievements
                 _panelRt = existing.GetComponent<RectTransform>();
                 _titleTmp = existing.Find("ToastTitle")?.GetComponent<TMP_Text>();
                 _rewardTmp = existing.Find("ToastRewardLine")?.GetComponent<TMP_Text>();
+                ApplyExpeditionStyle();
                 if (_panelGroup != null)
                     _panelGroup.alpha = 0f;
                 return;
@@ -374,7 +372,7 @@ namespace Project.Achievements
             img.color = new Color(0.06f, 0.085f, 0.12f, 0.93f);
 
             _panelRt.anchorMin = _panelRt.anchorMax = _panelRt.pivot = new Vector2(0.5f, 1f);
-            _panelRt.sizeDelta = new Vector2(680f, 156f);
+            _panelRt.sizeDelta = new Vector2(820f, 188f);
             _panelRt.anchoredPosition = new Vector2(0f, -44f);
 
             // TF2CSecondary SDF — см. Assets/_Project/Fonts/TF2CSecondary SDF.asset
@@ -433,6 +431,28 @@ namespace Project.Achievements
                 _panelRt.anchoredPosition -= new Vector2(0f, SlidePixels);
 
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, fo);
+            ApplyExpeditionStyle();
+        }
+
+        private void ApplyExpeditionStyle()
+        {
+            if (_panelRt != null)
+            {
+                var image = _panelRt.GetComponent<Image>();
+                if (image != null) { ExpeditionUi.StylePanel(image, ExpeditionTheme.Teal); image.raycastTarget = false; }
+            }
+            foreach (var text in new[] { _titleTmp, _rewardTmp })
+            {
+                if (text == null) continue;
+                text.font = ExpeditionTheme.Font;
+                text.color = text == _titleTmp ? ExpeditionTheme.Ivory : ExpeditionTheme.Amber;
+                text.fontSize = text.fontSizeMax = text == _titleTmp ? 30 : 28;
+                text.fontSizeMin = text == _titleTmp ? 23 : 21;
+                text.enableAutoSizing = true;
+                text.richText = true;
+                text.raycastTarget = false;
+                text.overflowMode = TextOverflowModes.Ellipsis;
+            }
         }
     }
 }

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Локальное прослушивание и выбор звуков Escape: 20 эффектов в двух направлениях A/B.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src 'self' file: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Escape — выбор звуков A/B</title>
+  <style>
+    :root{color-scheme:dark;--bg:#091b21;--panel:#10282e;--inner:#0c2228;--line:#355057;--text:#e8e6d9;--muted:#a9b9b7;--gold:#e2b66a;--teal:#9dd3cb;--dark:#16282b;--radius:9px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1.5rem}body{margin:0;background:radial-gradient(ellipse at 10% 0,#173b40 0,transparent 40%),var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:180px}button,input,textarea{font:inherit}button,a,input,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible+span{outline:3px solid var(--teal);outline-offset:3px}button{min-height:46px;border:1px solid #5b6b64;border-radius:6px;background:#1d3d42;color:var(--text);padding:.62rem 1rem;font-weight:600;transition:background .12s,border-color .12s}button:hover{background:#2b4b4f;border-color:#9bb5b1}button:active{background:#345a5e}button.is-playing{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}a{color:var(--gold);text-underline-offset:4px}.shell{width:min(1120px,calc(100% - 40px));margin:auto}.masthead{padding:28px 0 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px}.wordmark{letter-spacing:.24em;font-size:14px;color:var(--gold);font-weight:750}.version{font-size:13px;color:var(--muted);letter-spacing:.04em}.intro{padding:42px 0 26px;max-width:850px}.eyebrow{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);margin:0 0 10px}h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:500;line-height:1.17}h1{font-size:clamp(32px,5vw,52px);margin:0 0 18px}h2{font-size:30px;margin:0}h3{font-size:22px;margin:0}.intro p{color:var(--muted);margin:0 0 10px;max-width:760px}.directions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}.direction{border:1px solid var(--line);background:var(--inner);padding:18px 20px;border-radius:var(--radius)}.direction h2{font-size:23px;display:flex;align-items:center;gap:12px}.letter{font-family:system-ui,sans-serif;color:var(--gold);font-size:13px;border:1px solid #746244;width:30px;height:30px;display:inline-grid;place-items:center;border-radius:50%;flex:none}.direction p{margin:10px 0 0;color:var(--muted);font-size:14px}.preview-box{padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:#0e252b}.preview-copy{flex:1;min-width:220px}.preview-copy strong{display:block;font-weight:600}.preview-copy small{display:block;color:var(--muted);max-width:400px}.preview-actions{display:flex;gap:8px;flex-wrap:wrap}.quiet{background:transparent;color:var(--muted)}.shortcut{margin-top:14px;display:flex;gap:10px 22px;flex-wrap:wrap;font-size:14px}.shortcut a{color:var(--text)}.section-head{margin:40px 0 18px;display:flex;align-items:baseline;gap:12px}.section-head p{margin:0;color:var(--muted);font-size:14px}.cards{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:16px}.effect{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:19px;box-shadow:0 9px 22px #00000016}.card-heading{display:flex;align-items:flex-start;gap:10px;min-height:52px}.number{font-variant-numeric:tabular-nums;color:var(--gold);font-size:12px;line-height:27px}.card-heading h3{flex:1}.duration{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);white-space:nowrap;line-height:27px}.sound-description{color:var(--muted);font-size:13px;min-height:42px;margin:10px 0 15px}.sound-description b{color:var(--teal);font-size:12px;padding-right:5px}.play-row{display:grid;grid-template-columns:1fr 1fr .82fr;gap:8px}.play-row button{font-size:14px;padding:.6rem .4rem}.compare{background:transparent;color:var(--gold);border-color:#796748}fieldset{padding:0;margin:15px 0 0;border:0;min-width:0}.choices{display:grid;grid-template-columns:1fr 1fr .77fr;gap:6px;border-top:1px solid #28434a;padding-top:13px}.choice{position:relative;cursor:pointer;display:block}.choice input{position:absolute;opacity:0;width:1px;height:1px}.choice span{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid transparent;border-radius:5px;font-size:13px;color:var(--muted)}.choice input:checked+span{background:#d8ae67;color:#17272a;border-color:#ecd09b;font-weight:700}.choice:hover span{border-color:#6f857f}.selection{margin:40px 0 0;padding:24px;background:var(--inner);border:1px solid #7c6947;border-radius:var(--radius)}.selection-head{display:flex;justify-content:space-between;align-items:baseline;gap:14px}.selection h2{font-size:28px}.counter{color:var(--gold);font-size:14px;white-space:nowrap}.selection p{font-size:14px;color:var(--muted);margin:12px 0 18px}.toolbar{display:flex;gap:9px;flex-wrap:wrap}.toolbar .primary{background:var(--gold);color:var(--dark);border-color:#ead0a0}.export-box{margin-top:18px}textarea{width:100%;min-height:260px;resize:vertical;color:var(--text);background:#07191e;border:1px solid var(--line);border-radius:5px;padding:14px;font:13px/1.65 ui-monospace,Consolas,monospace}#exportStatus{min-height:24px;color:var(--teal);margin:8px 0 0}.fineprint{font-size:13px;color:var(--muted);margin:24px 0 36px;max-width:900px}.fineprint summary{cursor:pointer;color:var(--text);min-height:44px;display:list-item;padding-top:8px}.fineprint p{margin:8px 0}.player-dock{position:fixed;bottom:0;left:0;right:0;background:#07191ef5;border-top:1px solid #776547;z-index:10;padding:12px max(20px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));box-shadow:0 -8px 24px #0003}.player-inner{max-width:1120px;margin:auto;display:grid;grid-template-columns:minmax(200px,1fr) minmax(270px,1fr) auto;align-items:center;gap:16px}.now-caption{font-size:13px;color:var(--muted)}#nowPlaying{display:block;color:var(--text);font-size:14px;margin-top:2px}audio{width:100%;height:40px;max-width:100%}.stop{background:transparent;color:var(--muted);font-size:13px;min-height:44px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}[hidden]{display:none!important}.skip-link{position:fixed;top:10px;left:10px;z-index:30;background:var(--gold);color:var(--dark);padding:10px;transform:translateY(-160%)}.skip-link:focus{transform:none}
+    .choice input[value=""]:checked+span{background:#17343a;color:var(--muted);border-color:var(--line);font-weight:400}
+    @media(max-width:760px){.cards{grid-template-columns:1fr}.shell{width:calc(100% - 28px)}.masthead{padding-top:20px}.intro{padding:28px 0 20px}.directions{gap:10px}.direction{padding:15px}.direction h2{font-size:21px;display:block}.letter{margin-bottom:7px}.preview-actions{width:100%}.preview-actions button{flex:1}.player-inner{grid-template-columns:1fr auto;gap:7px 12px}.now-caption{grid-column:1}.player-inner audio{grid-row:2;grid-column:1/-1}.stop{grid-column:2;grid-row:1}.effect{padding:17px}.section-head{margin-top:32px}.section-head h2{font-size:27px}.selection{padding:19px}.selection-head{display:block}.counter{display:block;margin-top:8px}.toolbar button{flex:1;min-width:140px}}
+    @media(max-width:380px){.directions{grid-template-columns:1fr}.direction h2{display:flex}.letter{margin-bottom:0}.card-heading h3{font-size:20px}.card-heading{gap:7px}.duration{font-size:11px}.choices{gap:3px}.choice span{font-size:12px}.play-row{gap:6px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button{transition:none}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#battle">Перейти к звукам</a>
+  <div class="shell">
+    <header class="masthead"><span class="wordmark">ESCAPE</span><span class="version">Звуковая палитра · 0.3.5</span></header>
+    <main>
+      <div class="intro"><p class="eyebrow">Экспедиция в разлом</p><h1>Как будет звучать игра</h1><p>20 эффектов, два направления. Слушайте отдельные звуки, сравнивайте A → B и отмечайте понравившийся вариант. Можно собрать свой набор.</p><p>Это прослушивание: выбранные варианты ещё не меняют звуки в игре.</p></div>
+      <div class="directions"><section class="direction" aria-labelledby="style-a"><h2 id="style-a"><span class="letter">A</span> Минерал и металл</h2><p>Каменные сколы, ткань, сухие защёлки и латунь. Сдержанный, осязаемый звук.</p></section><section class="direction" aria-labelledby="style-b"><h2 id="style-b"><span class="letter">B</span> Резонанс и пар</h2><p>Пневматика, воздушные выбросы и звенящие пластины. Больше пространства и энергии.</p></section></div>
+      <section class="preview-box" aria-label="Короткое знакомство с направлениями"><div class="preview-copy"><strong>Сначала — короткий пример</strong><small>Шесть звуков за 10 секунд: нажатие, каскад, крест, петарда, крафт, победа.</small></div><div class="preview-actions"><button type="button" class="listen " data-audio="showcases/showcase-A.wav" data-caption="Короткий пример · A">10 секунд · A</button><button type="button" class="listen " data-audio="showcases/showcase-B.wav" data-caption="Короткий пример · B">10 секунд · B</button></div></section>
+      <nav class="shortcut" aria-label="Разделы прослушивания"><a href="#battle">Бой · 10</a><a href="#world">Интерфейс и мир · 10</a><a href="#selection">Мой выбор</a></nav>
+      <section id="battle" aria-labelledby="battle-title"><div class="section-head"><h2 id="battle-title">Бой</h2><p>10 эффектов</p></div><ol class="cards"><li class="effect" data-id="line_clear" data-title="Ряд камней">
+      <article aria-labelledby="title-line_clear">
+        <div class="card-heading"><span class="number">01</span><h3 id="title-line_clear">Ряд камней</h3><span class="duration">0,31 с</span></div>
+        <p class="sound-description"><b>A</b> Три хрупких каменных скола<br><b>B</b> воздушная кристаллическая россыпь</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Ряд камней"><button type="button" class="listen " data-audio="A/line_clear.wav" data-caption="Ряд камней · A">Слушать A</button><button type="button" class="listen " data-audio="B/line_clear.wav" data-caption="Ряд камней · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/line_clear_A-gap-B.wav" data-caption="Ряд камней · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Ряд камней»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-line_clear" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-line_clear" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-line_clear" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="cascade_fall" data-title="Каскад: падение камней">
+      <article aria-labelledby="title-cascade_fall">
+        <div class="card-heading"><span class="number">02</span><h3 id="title-cascade_fall">Каскад: падение камней</h3><span class="duration">0,43 с</span></div>
+        <p class="sound-description"><b>A</b> Мелкая падающая галька<br><b>B</b> полые минеральные касания</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Каскад: падение камней"><button type="button" class="listen " data-audio="A/cascade_fall.wav" data-caption="Каскад: падение камней · A">Слушать A</button><button type="button" class="listen " data-audio="B/cascade_fall.wav" data-caption="Каскад: падение камней · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/cascade_fall_A-gap-B.wav" data-caption="Каскад: падение камней · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Каскад: падение камней»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-cascade_fall" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-cascade_fall" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-cascade_fall" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="ability_square" data-title="Способность: квадрат">
+      <article aria-labelledby="title-ability_square">
+        <div class="card-heading"><span class="number">03</span><h3 id="title-ability_square">Способность: квадрат</h3><span class="duration">0,61 с</span></div>
+        <p class="sound-description"><b>A</b> Четыре плотных скола<br><b>B</b> сжатие резонансной плиты</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Способность: квадрат"><button type="button" class="listen " data-audio="A/ability_square.wav" data-caption="Способность: квадрат · A">Слушать A</button><button type="button" class="listen " data-audio="B/ability_square.wav" data-caption="Способность: квадрат · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ability_square_A-gap-B.wav" data-caption="Способность: квадрат · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Способность: квадрат»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ability_square" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ability_square" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ability_square" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="ability_cross" data-title="Способность: крест">
+      <article aria-labelledby="title-ability_cross">
+        <div class="card-heading"><span class="number">04</span><h3 id="title-ability_cross">Способность: крест</h3><span class="duration">0,57 с</span></div>
+        <p class="sound-description"><b>A</b> Пересекающиеся металлические срезы<br><b>B</b> два паровых выброса</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Способность: крест"><button type="button" class="listen " data-audio="A/ability_cross.wav" data-caption="Способность: крест · A">Слушать A</button><button type="button" class="listen " data-audio="B/ability_cross.wav" data-caption="Способность: крест · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ability_cross_A-gap-B.wav" data-caption="Способность: крест · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Способность: крест»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ability_cross" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ability_cross" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ability_cross" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="ability_petard" data-title="Способность: петарда">
+      <article aria-labelledby="title-ability_petard">
+        <div class="card-heading"><span class="number">05</span><h3 id="title-ability_petard">Способность: петарда</h3><span class="duration">0,88 с</span></div>
+        <p class="sound-description"><b>A</b> Компактный пороховой удар с осколками<br><b>B</b> разряд накопленного давления</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Способность: петарда"><button type="button" class="listen " data-audio="A/ability_petard.wav" data-caption="Способность: петарда · A">Слушать A</button><button type="button" class="listen " data-audio="B/ability_petard.wav" data-caption="Способность: петарда · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ability_petard_A-gap-B.wav" data-caption="Способность: петарда · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Способность: петарда»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ability_petard" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ability_petard" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ability_petard" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="damage_hit" data-title="Обычное попадание">
+      <article aria-labelledby="title-damage_hit">
+        <div class="card-heading"><span class="number">06</span><h3 id="title-damage_hit">Обычное попадание</h3><span class="duration">0,34 с</span></div>
+        <p class="sound-description"><b>A</b> Глухой удар по ткани и пластине<br><b>B</b> короткий силовой импульс</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Обычное попадание"><button type="button" class="listen " data-audio="A/damage_hit.wav" data-caption="Обычное попадание · A">Слушать A</button><button type="button" class="listen " data-audio="B/damage_hit.wav" data-caption="Обычное попадание · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/damage_hit_A-gap-B.wav" data-caption="Обычное попадание · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Обычное попадание»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-damage_hit" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-damage_hit" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-damage_hit" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="extra_turn" data-title="Дополнительный ход">
+      <article aria-labelledby="title-extra_turn">
+        <div class="card-heading"><span class="number">07</span><h3 id="title-extra_turn">Дополнительный ход</h3><span class="duration">0,66 с</span></div>
+        <p class="sound-description"><b>A</b> Защёлка с минеральным отблеском<br><b>B</b> отпирающийся паровой клапан</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Дополнительный ход"><button type="button" class="listen " data-audio="A/extra_turn.wav" data-caption="Дополнительный ход · A">Слушать A</button><button type="button" class="listen " data-audio="B/extra_turn.wav" data-caption="Дополнительный ход · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/extra_turn_A-gap-B.wav" data-caption="Дополнительный ход · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Дополнительный ход»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-extra_turn" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-extra_turn" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-extra_turn" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="timer_end" data-title="Время хода истекло">
+      <article aria-labelledby="title-timer_end">
+        <div class="card-heading"><span class="number">08</span><h3 id="title-timer_end">Время хода истекло</h3><span class="duration">0,42 с</span></div>
+        <p class="sound-description"><b>A</b> Два механических стопора<br><b>B</b> остановка пневматического затвора</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Время хода истекло"><button type="button" class="listen " data-audio="A/timer_end.wav" data-caption="Время хода истекло · A">Слушать A</button><button type="button" class="listen " data-audio="B/timer_end.wav" data-caption="Время хода истекло · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/timer_end_A-gap-B.wav" data-caption="Время хода истекло · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Время хода истекло»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-timer_end" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-timer_end" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-timer_end" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="victory" data-title="Победа">
+      <article aria-labelledby="title-victory">
+        <div class="card-heading"><span class="number">09</span><h3 id="title-victory">Победа</h3><span class="duration">1,42 с</span></div>
+        <p class="sound-description"><b>A</b> Открытие тяжёлого замка и тёплый металл<br><b>B</b> высвобождение яркого резонанса</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Победа"><button type="button" class="listen " data-audio="A/victory.wav" data-caption="Победа · A">Слушать A</button><button type="button" class="listen " data-audio="B/victory.wav" data-caption="Победа · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/victory_A-gap-B.wav" data-caption="Победа · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Победа»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-victory" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-victory" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-victory" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="defeat" data-title="Поражение">
+      <article aria-labelledby="title-defeat">
+        <div class="card-heading"><span class="number">10</span><h3 id="title-defeat">Поражение</h3><span class="duration">1,22 с</span></div>
+        <p class="sound-description"><b>A</b> Оседающий затвор и пыль<br><b>B</b> затухание давления и гул пластины</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Поражение"><button type="button" class="listen " data-audio="A/defeat.wav" data-caption="Поражение · A">Слушать A</button><button type="button" class="listen " data-audio="B/defeat.wav" data-caption="Поражение · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/defeat_A-gap-B.wav" data-caption="Поражение · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Поражение»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-defeat" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-defeat" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-defeat" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li></ol></section>
+      <section id="world" aria-labelledby="world-title"><div class="section-head"><h2 id="world-title">Интерфейс и мир</h2><p>10 эффектов</p></div><ol class="cards" start="11"><li class="effect" data-id="ui_click" data-title="Нажатие / выбор">
+      <article aria-labelledby="title-ui_click">
+        <div class="card-heading"><span class="number">11</span><h3 id="title-ui_click">Нажатие / выбор</h3><span class="duration">0,15 с</span></div>
+        <p class="sound-description"><b>A</b> Маленькая латунная защёлка<br><b>B</b> керамический переключатель с воздухом</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Нажатие / выбор"><button type="button" class="listen " data-audio="A/ui_click.wav" data-caption="Нажатие / выбор · A">Слушать A</button><button type="button" class="listen " data-audio="B/ui_click.wav" data-caption="Нажатие / выбор · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ui_click_A-gap-B.wav" data-caption="Нажатие / выбор · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Нажатие / выбор»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ui_click" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ui_click" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ui_click" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="ui_back" data-title="Назад / отмена">
+      <article aria-labelledby="title-ui_back">
+        <div class="card-heading"><span class="number">12</span><h3 id="title-ui_back">Назад / отмена</h3><span class="duration">0,21 с</span></div>
+        <p class="sound-description"><b>A</b> Мягкий обратный ход механизма<br><b>B</b> короткий обратный клапан</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Назад / отмена"><button type="button" class="listen " data-audio="A/ui_back.wav" data-caption="Назад / отмена · A">Слушать A</button><button type="button" class="listen " data-audio="B/ui_back.wav" data-caption="Назад / отмена · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ui_back_A-gap-B.wav" data-caption="Назад / отмена · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Назад / отмена»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ui_back" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ui_back" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ui_back" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="ui_blocked" data-title="Действие недоступно / ошибка">
+      <article aria-labelledby="title-ui_blocked">
+        <div class="card-heading"><span class="number">13</span><h3 id="title-ui_blocked">Действие недоступно / ошибка</h3><span class="duration">0,34 с</span></div>
+        <p class="sound-description"><b>A</b> Двойной упор защёлки<br><b>B</b> глухой сброс заблокированного клапана</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Действие недоступно / ошибка"><button type="button" class="listen " data-audio="A/ui_blocked.wav" data-caption="Действие недоступно / ошибка · A">Слушать A</button><button type="button" class="listen " data-audio="B/ui_blocked.wav" data-caption="Действие недоступно / ошибка · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/ui_blocked_A-gap-B.wav" data-caption="Действие недоступно / ошибка · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Действие недоступно / ошибка»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-ui_blocked" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-ui_blocked" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-ui_blocked" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="queue_enter" data-title="Встать в очередь">
+      <article aria-labelledby="title-queue_enter">
+        <div class="card-heading"><span class="number">14</span><h3 id="title-queue_enter">Встать в очередь</h3><span class="duration">0,63 с</span></div>
+        <p class="sound-description"><b>A</b> Завод пружины и фиксация<br><b>B</b> набор давления и поворот ротора</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Встать в очередь"><button type="button" class="listen " data-audio="A/queue_enter.wav" data-caption="Встать в очередь · A">Слушать A</button><button type="button" class="listen " data-audio="B/queue_enter.wav" data-caption="Встать в очередь · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/queue_enter_A-gap-B.wav" data-caption="Встать в очередь · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Встать в очередь»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-queue_enter" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-queue_enter" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-queue_enter" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="match_ready" data-title="Матч подтверждён">
+      <article aria-labelledby="title-match_ready">
+        <div class="card-heading"><span class="number">15</span><h3 id="title-match_ready">Матч подтверждён</h3><span class="duration">0,81 с</span></div>
+        <p class="sound-description"><b>A</b> Сходятся два металлических замка<br><b>B</b> две резонансные створки</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Матч подтверждён"><button type="button" class="listen " data-audio="A/match_ready.wav" data-caption="Матч подтверждён · A">Слушать A</button><button type="button" class="listen " data-audio="B/match_ready.wav" data-caption="Матч подтверждён · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/match_ready_A-gap-B.wav" data-caption="Матч подтверждён · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Матч подтверждён»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-match_ready" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-match_ready" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-match_ready" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="craft_start" data-title="Крафт начат / ускорен">
+      <article aria-labelledby="title-craft_start">
+        <div class="card-heading"><span class="number">16</span><h3 id="title-craft_start">Крафт начат / ускорен</h3><span class="duration">0,78 с</span></div>
+        <p class="sound-description"><b>A</b> Два удара кузнечного молотка<br><b>B</b> ковка с паровым выбросом</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Крафт начат / ускорен"><button type="button" class="listen " data-audio="A/craft_start.wav" data-caption="Крафт начат / ускорен · A">Слушать A</button><button type="button" class="listen " data-audio="B/craft_start.wav" data-caption="Крафт начат / ускорен · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/craft_start_A-gap-B.wav" data-caption="Крафт начат / ускорен · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Крафт начат / ускорен»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-craft_start" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-craft_start" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-craft_start" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="craft_ready" data-title="Предмет готов">
+      <article aria-labelledby="title-craft_ready">
+        <div class="card-heading"><span class="number">17</span><h3 id="title-craft_ready">Предмет готов</h3><span class="duration">0,8 с</span></div>
+        <p class="sound-description"><b>A</b> Остывающая деталь и лёгкий звон<br><b>B</b> кристаллизация и выпуск пара</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Предмет готов"><button type="button" class="listen " data-audio="A/craft_ready.wav" data-caption="Предмет готов · A">Слушать A</button><button type="button" class="listen " data-audio="B/craft_ready.wav" data-caption="Предмет готов · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/craft_ready_A-gap-B.wav" data-caption="Предмет готов · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Предмет готов»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-craft_ready" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-craft_ready" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-craft_ready" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="reward_claim" data-title="Забрать предмет / награду">
+      <article aria-labelledby="title-reward_claim">
+        <div class="card-heading"><span class="number">18</span><h3 id="title-reward_claim">Забрать предмет / награду</h3><span class="duration">0,68 с</span></div>
+        <p class="sound-description"><b>A</b> Фурнитура, несколько монет и ткань<br><b>B</b> резонанс артефакта и мягкий щелчок</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Забрать предмет / награду"><button type="button" class="listen " data-audio="A/reward_claim.wav" data-caption="Забрать предмет / награду · A">Слушать A</button><button type="button" class="listen " data-audio="B/reward_claim.wav" data-caption="Забрать предмет / награду · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/reward_claim_A-gap-B.wav" data-caption="Забрать предмет / награду · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Забрать предмет / награду»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-reward_claim" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-reward_claim" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-reward_claim" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="mine_elevator" data-title="Поездка лифта">
+      <article aria-labelledby="title-mine_elevator">
+        <div class="card-heading"><span class="number">19</span><h3 id="title-mine_elevator">Поездка лифта</h3><span class="duration">1,48 с</span></div>
+        <p class="sound-description"><b>A</b> Трос, редуктор и тормоз<br><b>B</b> гидравлика, шестерни и запор</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Поездка лифта"><button type="button" class="listen " data-audio="A/mine_elevator.wav" data-caption="Поездка лифта · A">Слушать A</button><button type="button" class="listen " data-audio="B/mine_elevator.wav" data-caption="Поездка лифта · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/mine_elevator_A-gap-B.wav" data-caption="Поездка лифта · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Поездка лифта»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-mine_elevator" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-mine_elevator" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-mine_elevator" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li>
+<li class="effect" data-id="barrier_unlock" data-title="Открытие барьера / подтверждение призыва">
+      <article aria-labelledby="title-barrier_unlock">
+        <div class="card-heading"><span class="number">20</span><h3 id="title-barrier_unlock">Открытие барьера / подтверждение призыва</h3><span class="duration">1,22 с</span></div>
+        <p class="sound-description"><b>A</b> Размыкание цепей и каменная осыпь<br><b>B</b> цепь, пар и угасающие искры</p>
+        <div class="play-row" role="group" aria-label="Прослушать: Открытие барьера / подтверждение призыва"><button type="button" class="listen " data-audio="A/barrier_unlock.wav" data-caption="Открытие барьера / подтверждение призыва · A">Слушать A</button><button type="button" class="listen " data-audio="B/barrier_unlock.wav" data-caption="Открытие барьера / подтверждение призыва · B">Слушать B</button><button type="button" class="listen compare" data-audio="pairs/barrier_unlock_A-gap-B.wav" data-caption="Открытие барьера / подтверждение призыва · сравнение A → пауза → B">A → B</button></div>
+        <fieldset><legend class="sr-only">Выбор для эффекта «Открытие барьера / подтверждение призыва»</legend><div class="choices"><label class="choice"><input type="radio" name="choice-barrier_unlock" value="A"><span>Выбрать A</span></label><label class="choice"><input type="radio" name="choice-barrier_unlock" value="B"><span>Выбрать B</span></label><label class="choice"><input type="radio" name="choice-barrier_unlock" value=""><span>Позже</span></label></div></fieldset>
+      </article>
+    </li></ol></section>
+      <section id="selection" class="selection" aria-labelledby="selection-title"><div class="selection-head"><h2 id="selection-title">Мой выбор</h2><span class="counter" id="choiceCount" aria-live="polite">Выбрано 0 из 20</span></div><p id="storageNote">Выбор сохраняется только в этом браузере. Экспортируйте список, чтобы передать его или сохранить отдельно.</p><div class="toolbar"><button type="button" class="primary" id="exportButton">Показать список</button><button type="button" id="downloadButton">Скачать .txt</button><button type="button" class="quiet" id="resetButton">Сбросить выбор</button></div><div id="exportBox" class="export-box" hidden><label class="sr-only" for="exportText">Текст выбранных вариантов</label><textarea id="exportText" readonly spellcheck="false"></textarea><button type="button" id="copyButton">Копировать текст</button></div><p id="exportStatus" role="status" aria-live="polite"></p></section>
+      <section class="preview-box" style="margin-top:24px" aria-label="Полные монтажи"><div class="preview-copy"><strong>Послушать направление целиком</strong><small>Все 20 эффектов с паузами, в порядке карточек.</small></div><div class="preview-actions"><button type="button" class="listen quiet" data-audio="montages/style-A.wav" data-caption="Полный монтаж · A">Все эффекты · A</button><button type="button" class="listen quiet" data-audio="montages/style-B.wav" data-caption="Полный монтаж · B">Все эффекты · B</button></div></section>
+      <details class="fineprint"><summary>Об этих звуках и выборе</summary><p>Это оригинальные синтетические эффекты: шумовые слои, резонансы, огибающие и короткие отражения. Записей реальных предметов, скачанных сэмплов, речи и музыки нет.</p><p>Ярость / Bloodlust, щит / Heroism и критический удар остаются без изменений и не входят в эти 20 пар. Для ничьей в игре сейчас используется звук победы.</p><p>WAV: 48 кГц, mono, 16 bit. У пар согласован активный RMS; эффекты интерфейса тише боевых. Прослушивание на динамике телефона ещё потребуется. Одновременно играет только один файл; звук запускается вашим нажатием.</p><p>Страница работает без сети и ничего не отправляет. При очистке данных браузера сохранённый выбор может исчезнуть — текстовый экспорт остаётся у вас.</p></details>
+      <noscript><p>Для воспроизведения с общей панели и сохранения выбора нужен JavaScript. Отдельные WAV доступны в папках A, B и pairs рядом со страницей.</p></noscript>
+    </main>
+  </div>
+  <aside class="player-dock" aria-label="Общий проигрыватель"><div class="player-inner"><div class="now-caption">Сейчас звучит<span id="nowPlaying" role="status" aria-live="polite">Выберите звук выше</span></div><audio id="auditionPlayer" controls preload="none" aria-label="Проигрыватель выбранного эффекта"></audio><button type="button" class="stop" id="stopButton">Остановить</button></div></aside>
+  <script>
+    (() => {
+      'use strict';
+      const player = document.getElementById('auditionPlayer');
+      const now = document.getElementById('nowPlaying');
+      const counter = document.getElementById('choiceCount');
+      const cards = [...document.querySelectorAll('.effect')];
+      const status = document.getElementById('exportStatus');
+      const storageKey = 'escape-audition-0.3.5-choices';
+      let choices = {};
+      let playingButton = null;
+      let playVersion = 0;
+      let storageAvailable = true;
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+          for (const card of cards) if (saved[card.dataset.id] === 'A' || saved[card.dataset.id] === 'B') choices[card.dataset.id] = saved[card.dataset.id];
+        }
+      } catch (_) { storageAvailable = false; }
+      if (!storageAvailable) document.getElementById('storageNote').textContent = 'Браузер не дал сохранить выбор на диске. Он останется здесь до закрытия страницы; экспортируйте список текстом.';
+      function updateChoices() {
+        let count = 0;
+        for (const card of cards) {
+          const value = choices[card.dataset.id] || '';
+          if (value) count++;
+          for (const input of card.querySelectorAll('input[type="radio"]')) input.checked = input.value === value;
+        }
+        counter.textContent = 'Выбрано ' + count + ' из ' + cards.length;
+        if (storageAvailable) {
+          try { localStorage.setItem(storageKey, JSON.stringify(choices)); }
+          catch (_) { storageAvailable = false; document.getElementById('storageNote').textContent = 'Автосохранение недоступно. Экспортируйте выбор перед закрытием страницы.'; }
+        }
+      }
+      function exportText() {
+        return ['Escape · звуки A/B · 0.3.5', 'A — Минерал и металл', 'B — Резонанс и пар', '', ...cards.map((card, i) => String(i + 1).padStart(2, '0') + '. ' + card.dataset.title + ': ' + (choices[card.dataset.id] || 'не выбран') + ' [' + card.dataset.id + ']'), '', 'Без изменений: Fury/Bloodlust, Shield/Heroism, критический удар.', 'Этот список — выбор для обсуждения, не автоматическая интеграция.'].join('\n');
+      }
+      function showExport() {
+        document.getElementById('exportBox').hidden = false;
+        document.getElementById('exportText').value = exportText();
+      }
+      document.addEventListener('change', event => {
+        const input = event.target;
+        if (!input.matches('input[type="radio"]')) return;
+        const card = input.closest('.effect');
+        if (!card) return;
+        if (input.value === 'A' || input.value === 'B') choices[card.dataset.id] = input.value;
+        else delete choices[card.dataset.id];
+        updateChoices();
+        if (!document.getElementById('exportBox').hidden) showExport();
+        status.textContent = '';
+      });
+      function clearPlaying() {
+        if (playingButton) playingButton.classList.remove('is-playing');
+        playingButton = null;
+      }
+      document.addEventListener('click', event => {
+        const button = event.target.closest('button[data-audio]');
+        if (!button) return;
+        const version = ++playVersion;
+        player.pause();
+        clearPlaying();
+        playingButton = button;
+        button.classList.add('is-playing');
+        player.src = button.dataset.audio;
+        now.textContent = button.dataset.caption;
+        // Only a direct user gesture reaches play(): no autoplay, timers, or fake progress.
+        const started = player.play();
+        if (started && typeof started.catch === 'function') started.catch(() => { if (version !== playVersion) return; clearPlaying(); now.textContent = 'Нажмите воспроизведение на плеере или проверьте папку WAV.'; });
+      });
+      player.addEventListener('ended', () => { clearPlaying(); now.textContent = 'Прослушано · выберите следующий звук'; });
+      player.addEventListener('error', () => { clearPlaying(); now.textContent = 'Файл не открылся. Сохраните HTML вместе с папками WAV.'; });
+      document.getElementById('stopButton').addEventListener('click', () => { playVersion++; player.pause(); player.removeAttribute('src'); player.load(); clearPlaying(); now.textContent = 'Остановлено'; });
+      document.getElementById('exportButton').addEventListener('click', () => { showExport(); status.textContent = 'Список готов — можно скопировать или скачать.'; });
+      document.getElementById('downloadButton').addEventListener('click', () => {
+        const blob = new Blob(['\ufeff' + exportText()], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = 'Escape-audio-choices-0.3.5.txt';
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status.textContent = 'Текстовый файл подготовлен для сохранения.';
+      });
+      document.getElementById('copyButton').addEventListener('click', async () => {
+        showExport();
+        try { if (!navigator.clipboard) throw new Error('clipboard unavailable'); await navigator.clipboard.writeText(exportText()); status.textContent = 'Выбор скопирован.'; }
+        catch (_) { const text = document.getElementById('exportText'); text.focus(); text.select(); status.textContent = 'Текст выделен. Скопируйте его обычной командой браузера.'; }
+      });
+      document.getElementById('resetButton').addEventListener('click', () => { choices = {}; updateChoices(); if (!document.getElementById('exportBox').hidden) showExport(); status.textContent = 'Выбор сброшен. Можно отметить варианты заново.'; });
+      updateChoices();
+    })();
+  </script>
+</body>
+</html>

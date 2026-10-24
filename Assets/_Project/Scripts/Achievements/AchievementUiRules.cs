@@ -4,6 +4,19 @@ namespace Project.Achievements
 {
     public static class AchievementUiRules
     {
+        /// <summary>The additional work for this step. Eligibility still uses CumulativeRequired.</summary>
+        public static int StepTarget(AchievementChainDefinition chain, int stepIndex)
+        {
+            return chain?.Thresholds != null && stepIndex >= 0 && stepIndex < chain.Thresholds.Length
+                ? Mathf.Max(0, chain.Thresholds[stepIndex]) : 0;
+        }
+
+        public static int StepProgress(AchievementChainDefinition chain, int stepIndex, int statTotal)
+        {
+            var previous = stepIndex > 0 ? CumulativeRequired(chain, stepIndex - 1) : 0;
+            return Mathf.Clamp(statTotal - previous, 0, StepTarget(chain, stepIndex));
+        }
+
         public static int CumulativeRequired(AchievementChainDefinition chain, int stepIndex)
         {
             if (chain == null || chain.Thresholds == null || stepIndex < 0)
@@ -31,9 +44,8 @@ namespace Project.Achievements
         {
             if (chain == null || stepIndex < 0 || stepIndex >= chain.Thresholds.Length)
                 return 0f;
-            var prev = stepIndex > 0 ? CumulativeRequired(chain, stepIndex - 1) : 0;
-            var t = Mathf.Max(1, chain.Thresholds[stepIndex]);
-            var numerator = Mathf.Clamp(statTotal - prev, 0, t);
+            var t = Mathf.Max(1, StepTarget(chain, stepIndex));
+            var numerator = StepProgress(chain, stepIndex, statTotal);
             return numerator / (float)t;
         }
     }

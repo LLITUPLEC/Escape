@@ -31,14 +31,18 @@ namespace Project.Character.UI
             var go = new GameObject("StackLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(tr, false);
-            rt.anchorMin = new Vector2(0.5f, 0f);
-            rt.anchorMax = new Vector2(1f, 0.4f);
-            rt.offsetMin = new Vector2(2f, 2f);
-            rt.offsetMax = new Vector2(-2f, -2f);
+            rt.anchorMin = new Vector2(0.5f, 0.10f);
+            rt.anchorMax = new Vector2(0.88f, 0.30f);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
             var tmp = go.GetComponent<TextMeshProUGUI>();
             tmp.alignment = TextAlignmentOptions.BottomRight;
-            tmp.fontSize = 18;
-            tmp.color = Color.white;
+            tmp.font = Project.UI.ExpeditionTheme.Font;
+            tmp.fontSize = tmp.fontSizeMax = 27;
+            tmp.fontSizeMin = 21.6f;
+            tmp.enableAutoSizing = true;
+            tmp.margin = Vector4.zero;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            tmp.color = Project.UI.ExpeditionTheme.Ivory;
             tmp.raycastTarget = false;
             stackLabel = tmp;
         }
@@ -47,6 +51,7 @@ namespace Project.Character.UI
         {
             if (icon == null) return;
             icon.sprite = sprite;
+            icon.color = Color.white;
             icon.enabled = sprite != null;
         }
 

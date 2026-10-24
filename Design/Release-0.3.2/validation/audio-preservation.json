@@ -1,0 +1,10 @@
+{
+  "checked_at_utc": "2026-10-23T18:12:57.014058+00:00",
+  "source": "Current source file SHA-256 compared against Release-0.3.1/validation/audio-assets.json; production SFX reference separately passed in ui-qa.json.",
+  "file": "Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav",
+  "critical_audio_sha256": "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341",
+  "critical_meta_sha256": "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c",
+  "critical_audio_unchanged": true,
+  "critical_meta_unchanged": true,
+  "physical_audio_playback_tested": false
+}

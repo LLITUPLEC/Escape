@@ -1,0 +1,130 @@
+{
+  "sample_rate": 44100,
+  "channels": 1,
+  "origin": "Original deterministic foley/modal synthesis; no external recordings",
+  "critical_audio_sha256": "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341",
+  "critical_meta_sha256": "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c",
+  "critical_unchanged": true,
+  "clips": [
+    {
+      "file": "m3_cascade_fall.wav",
+      "description": "Dry stone landing cluster with small debris; short enough for cascades",
+      "seconds": 0.34,
+      "peak_dbfs": -7.13,
+      "rms_dbfs": -22.16,
+      "clipped_samples": 0,
+      "old_sha256": "27e7c092608360311df07c53f97ba0b6482620ace62fadc01d4427556aa44f16",
+      "sha256": "f32aee8d1bd261d55faf1ba471143fa7db103a42c7b6f21948416b9ad4fa3043"
+    },
+    {
+      "file": "m3_line_clear.wav",
+      "description": "Crisp mineral breaks and restrained metal glints",
+      "seconds": 0.235,
+      "peak_dbfs": -8.18,
+      "rms_dbfs": -21.03,
+      "clipped_samples": 0,
+      "old_sha256": "1dda9016587b6262923565673193ee0e77ab7c6d9f91852f4c7cf5769d7a9f03",
+      "sha256": "ff4a88be26f1ff79d201d60c91cbc662a7c5e224f0a16c61a7f7b5d9ea898902"
+    },
+    {
+      "file": "m3_damage_hit.wav",
+      "description": "Low body impact with cloth/grit transient, distinct from the preserved critical hit",
+      "seconds": 0.24,
+      "peak_dbfs": -4.44,
+      "rms_dbfs": -20.77,
+      "clipped_samples": 0,
+      "old_sha256": "c26917a7456be4337b81f1702def6b81f170473bc49449a3ffae7737779553ef",
+      "sha256": "82c53e86b69d22faf9f10caab65318c6207b84ad705856bbc873867c95bcdfbf"
+    },
+    {
+      "file": "m3_ability_cross.wav",
+      "description": "Four directional cutting strikes and a short airy sweep",
+      "seconds": 0.49,
+      "peak_dbfs": -4.58,
+      "rms_dbfs": -20.95,
+      "clipped_samples": 0,
+      "old_sha256": "b380b4da233288a08869d4b1e0a7a231b27ae30093555c740081b7df65e51c94",
+      "sha256": "342ed7fb9cd0b35ea1e085496ab760291fc8d5f03a56d3f2a7a8a41a1990bffb"
+    },
+    {
+      "file": "m3_ability_square.wav",
+      "description": "Compact area fracture: four close stone impacts, no electronic beep",
+      "seconds": 0.49,
+      "peak_dbfs": -3.74,
+      "rms_dbfs": -20.1,
+      "clipped_samples": 0,
+      "old_sha256": "b380b4da233288a08869d4b1e0a7a231b27ae30093555c740081b7df65e51c94",
+      "sha256": "e6c6d13a3fe3517b4daef3858099cd6383d5b38eec839c01891ba88aae107098"
+    },
+    {
+      "file": "m3_ability_petard.wav",
+      "description": "Contained explosive blast, bass body and falling fragments",
+      "seconds": 0.67,
+      "peak_dbfs": -3.1,
+      "rms_dbfs": -21.6,
+      "clipped_samples": 0,
+      "old_sha256": null,
+      "sha256": "d2ae465566ef61c2d7ac9bd7dfed6a47d3dea3333ae113871292aba65a9c1696"
+    },
+    {
+      "file": "m3_ability_shield.wav",
+      "description": "Forged shield: metal contact, ringing plate and protective low resonance",
+      "seconds": 0.73,
+      "peak_dbfs": -5.35,
+      "rms_dbfs": -21.58,
+      "clipped_samples": 0,
+      "old_sha256": null,
+      "sha256": "86419c39b7da12ce2dcbf059a4cac4575aaaefc623ee621b5a54d9a56e65b872"
+    },
+    {
+      "file": "Bloodlust.wav",
+      "description": "Fury: rising gritty breath of pressure into a heavy resonant strike",
+      "seconds": 0.77,
+      "peak_dbfs": -4.58,
+      "rms_dbfs": -23.33,
+      "clipped_samples": 0,
+      "old_sha256": "e9d71d7b89e4512d14a68547800fd9322e6e805087e1a4c7e95bdc3fef3705bb",
+      "sha256": "a6b93edaf53553db0bf7ca063b711118d002c76153c0fe02cbd5d5366775c804"
+    },
+    {
+      "file": "m3_extra_turn.wav",
+      "description": "Two ascending mineral/steel chimes for an earned extra turn",
+      "seconds": 0.43,
+      "peak_dbfs": -7.13,
+      "rms_dbfs": -21.47,
+      "clipped_samples": 0,
+      "old_sha256": "a01c8964c243c4c2d97df7cfca522f47807ca1158d5990764f952e0cb1eb3c1f",
+      "sha256": "e7cb0789ebb9ef31a3fc89c8897a75d7df8d5c435202f33ac92c25704f182f69"
+    },
+    {
+      "file": "m3_timer_end.wav",
+      "description": "Two dry mechanical stop clicks; readable without an alarm loop",
+      "seconds": 0.36,
+      "peak_dbfs": -7.33,
+      "rms_dbfs": -24.58,
+      "clipped_samples": 0,
+      "old_sha256": "df83c106506893d3a92024523ac115699b2bb64e80ba1ee3030ac177611fc31e",
+      "sha256": "198a27f181e84134aaf28de6a5908b6e13e71c204133ac77b738c563e103a145"
+    },
+    {
+      "file": "m3_victory.wav",
+      "description": "Warm short forged-bell resolution for victory",
+      "seconds": 1.36,
+      "peak_dbfs": -5.68,
+      "rms_dbfs": -19.5,
+      "clipped_samples": 0,
+      "old_sha256": "11bd228f43c2003aba91b1397c7d16a2c76936b8d6cfbc742010ea7e5b2abe3b",
+      "sha256": "f414f00937231639f0b0209ba9c1d221acac049eb9e7eede91a3aa4ee7dc4d30"
+    },
+    {
+      "file": "m3_defeat.wav",
+      "description": "Muted descending metal resonance for defeat",
+      "seconds": 1.14,
+      "peak_dbfs": -6.94,
+      "rms_dbfs": -20.04,
+      "clipped_samples": 0,
+      "old_sha256": "0020964e618baca02c3ef8269fba82acc9d3a22ec890223c8a4340c19fca946c",
+      "sha256": "a2e84e5d12541ebd55eece64338e154eb9201488500ee5a0c0ac44b9d98d805b"
+    }
+  ]
+}

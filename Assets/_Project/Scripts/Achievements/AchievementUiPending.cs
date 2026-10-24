@@ -39,6 +39,23 @@ namespace Project.Achievements
             return hs;
         }
 
+        /// <summary>Criterion completion is independent of the order in which rewards are claimed.</summary>
+        public static HashSet<string> CaptureReachedUnclaimedStepTokens()
+        {
+            AchievementProgressStorage.EnsureLoaded();
+            var tokens = new HashSet<string>(TokenComparer);
+            foreach (var chain in AchievementCatalog.Chains)
+            {
+                if (chain?.Thresholds == null) continue;
+                var total = AchievementProgressStorage.GetStat(chain.StatKey);
+                for (var i = 0; i < chain.Thresholds.Length; i++)
+                    if (total >= AchievementUiRules.CumulativeRequired(chain, i)
+                        && !AchievementProgressStorage.IsStepClaimed(chain.ChainId, i))
+                        tokens.Add($"{chain.ChainId}|{i}");
+            }
+            return tokens;
+        }
+
         public static int CountEligibleClaimSteps()
         {
             AchievementProgressStorage.EnsureLoaded();
@@ -80,25 +97,25 @@ namespace Project.Achievements
             return total;
         }
 
-        /// <summary>После merge с авторитетными данными: шаг впервые стал доступен для получения награды.</summary>
+        /// <summary>After an existing counter/snapshot event, announce newly completed criteria. No network requests.</summary>
         /// <returns>Сколько новых событий ушло в <see cref="AchievementLifecycle.NotifyAwaitingClaim"/>.</returns>
-        public static int RaiseNewEligibleSince(HashSet<string> eligibleBeforeMerge)
+        public static int RaiseNewCompletedSince(HashSet<string> eligibleBeforeMerge)
         {
             if (eligibleBeforeMerge == null)
                 eligibleBeforeMerge = new HashSet<string>(TokenComparer);
             AchievementProgressStorage.EnsureLoaded();
-
-            AchievementInGameToastHost.Ensure();
 
             var raised = 0;
             foreach (var chain in AchievementCatalog.Chains)
             {
                 if (chain?.Descriptions == null || chain.Thresholds == null)
                     continue;
+                var total = AchievementProgressStorage.GetStat(chain.StatKey);
                 var n = chain.Thresholds.Length;
                 for (var i = 0; i < n; i++)
                 {
-                    if (!AchievementRewardClaim.CanClaimStep(chain, i))
+                    if (AchievementProgressStorage.IsStepClaimed(chain.ChainId, i)
+                        || total < AchievementUiRules.CumulativeRequired(chain, i))
                         continue;
                     var token = $"{chain.ChainId}|{i}";
                     if (eligibleBeforeMerge.Contains(token))
@@ -115,6 +132,7 @@ namespace Project.Achievements
                         RewardLine = chain.RewardTexts != null && i < chain.RewardTexts.Length ? chain.RewardTexts[i] : "",
                     };
 
+                    AchievementInGameToastHost.Ensure();
                     AchievementLifecycle.NotifyAwaitingClaim(info);
                     raised++;
                 }

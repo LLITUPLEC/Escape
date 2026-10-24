@@ -1,0 +1,396 @@
+{
+  "passed": true,
+  "checked_at_utc": "2026-10-24T13:24:38.091840+00:00",
+  "page_url": "https://prokrust-play.ru/escape/audio-035/",
+  "page_sha256": "9ab491eb1fe7760998117b456fd3342698059a978a43d19e9448ee112d7e6088",
+  "wav_files": 64,
+  "bytes": 14817536,
+  "files": [
+    {
+      "file": "A/ability_cross.wav",
+      "bytes": 54764,
+      "sha256": "95028eacbf3e9f189c7adf3c2b6a537e91894e1be6f07b1d067b2f56f136f23f",
+      "verified": true
+    },
+    {
+      "file": "A/ability_petard.wav",
+      "bytes": 84524,
+      "sha256": "4c5671a955af9a0a326f63dd062cda8b4a1660c45d7c6ba21ee00217673c704b",
+      "verified": true
+    },
+    {
+      "file": "A/ability_square.wav",
+      "bytes": 58604,
+      "sha256": "97f56614dab00355d96e5ea9ac9240cdec1ec2c50f2b00adc99ff465dad2bcef",
+      "verified": true
+    },
+    {
+      "file": "A/barrier_unlock.wav",
+      "bytes": 117164,
+      "sha256": "369fb86b11a9202810bc6ab430bbb7a6877c065b7f07ea1afc2e2f4eb9ef7929",
+      "verified": true
+    },
+    {
+      "file": "A/cascade_fall.wav",
+      "bytes": 41324,
+      "sha256": "817a7c2e1362808558ed9ae2f4f67bc16d5c5febde4e200177a21b0536e01d34",
+      "verified": true
+    },
+    {
+      "file": "A/craft_ready.wav",
+      "bytes": 76844,
+      "sha256": "b040fbb5c1d9d94b29a881762a7a9730b9222da494a3ecb7822452a209af07c1",
+      "verified": true
+    },
+    {
+      "file": "A/craft_start.wav",
+      "bytes": 74924,
+      "sha256": "2fe35e19011001444b1a7ef977bf0ef5db0cfcb66dd7db2ebe835bc2c423bd6f",
+      "verified": true
+    },
+    {
+      "file": "A/damage_hit.wav",
+      "bytes": 32684,
+      "sha256": "04bc89461152d49d305e395945f1b8d678c3427a2a39a86645a1ba91efa80035",
+      "verified": true
+    },
+    {
+      "file": "A/defeat.wav",
+      "bytes": 117164,
+      "sha256": "60e396963abf041cdcf86df4de207a7f5c8e730fea66ac9cd127564304217891",
+      "verified": true
+    },
+    {
+      "file": "A/extra_turn.wav",
+      "bytes": 63404,
+      "sha256": "e2e64b0d05162cabf6fd5f97037a9465993e23b3ca33e00c1bb0fa370f9fa27a",
+      "verified": true
+    },
+    {
+      "file": "A/line_clear.wav",
+      "bytes": 29804,
+      "sha256": "2bad1e5c7710bacc98df3b7260ccd671895d0d3af4a9bd2a940bb2cd4fba10bc",
+      "verified": true
+    },
+    {
+      "file": "A/match_ready.wav",
+      "bytes": 77804,
+      "sha256": "fc5061623da7fc14c8c0940118d24f3c7ab848117c8d8148a9dc3143400d46a5",
+      "verified": true
+    },
+    {
+      "file": "A/mine_elevator.wav",
+      "bytes": 142124,
+      "sha256": "dedb9426487f11ba4ade736dca061afba5f5dcfe68c6659d190f2d7174471eb0",
+      "verified": true
+    },
+    {
+      "file": "A/queue_enter.wav",
+      "bytes": 60524,
+      "sha256": "6d368ddf2c15dbf162fae0003b40e8e4c1de2014dc6da0f1cbab331aae370d7d",
+      "verified": true
+    },
+    {
+      "file": "A/reward_claim.wav",
+      "bytes": 65324,
+      "sha256": "ea2ac572ee0b1f1151c22e2b259016ab6a1605ddbb7a29f33b195c7b71d428de",
+      "verified": true
+    },
+    {
+      "file": "A/timer_end.wav",
+      "bytes": 40364,
+      "sha256": "87c7486894f4d23cd46aa3a54e06fd587f0d8cd7760a7355e6c1dde592124881",
+      "verified": true
+    },
+    {
+      "file": "A/ui_back.wav",
+      "bytes": 20204,
+      "sha256": "28387485419eb2a9c3e74f2e114aef1896b788d36db8f8bf7b13bc810adec13b",
+      "verified": true
+    },
+    {
+      "file": "A/ui_blocked.wav",
+      "bytes": 32684,
+      "sha256": "dd2c9e82f044c5755f68278b20d995f861aef2e810713559a825635dc53158a6",
+      "verified": true
+    },
+    {
+      "file": "A/ui_click.wav",
+      "bytes": 14444,
+      "sha256": "9c49bd7f03b8be99d73dd710984cad335a97cfc26c10f3d58447122efd088922",
+      "verified": true
+    },
+    {
+      "file": "A/victory.wav",
+      "bytes": 136364,
+      "sha256": "f1a2401aa46826de507c837df06b73f2a78f6157030973c113cf0419be75f6d6",
+      "verified": true
+    },
+    {
+      "file": "B/ability_cross.wav",
+      "bytes": 54764,
+      "sha256": "c8517edc685f9e3f6181560cfdbc9cc64cc375aa02728ab30a6c90d1c3a128d5",
+      "verified": true
+    },
+    {
+      "file": "B/ability_petard.wav",
+      "bytes": 84524,
+      "sha256": "ea515fe4bfa7e67ec25fc3418c77add2ebd14d52879e300cf1c81f04d33ca73c",
+      "verified": true
+    },
+    {
+      "file": "B/ability_square.wav",
+      "bytes": 58604,
+      "sha256": "928730a4ee4764f61ddda1fd3b9698423eb21882e38f6920fc81b9a7d20ecfb9",
+      "verified": true
+    },
+    {
+      "file": "B/barrier_unlock.wav",
+      "bytes": 117164,
+      "sha256": "3a9c4280ea2c8049b0ec2629767b1d0c65dbfe92cc8442551d811e7159e6ed94",
+      "verified": true
+    },
+    {
+      "file": "B/cascade_fall.wav",
+      "bytes": 41324,
+      "sha256": "c35605f26b4aa3462434e6dcacd487e838e7b0b8492c4b0c02e9ab514c44e1bc",
+      "verified": true
+    },
+    {
+      "file": "B/craft_ready.wav",
+      "bytes": 76844,
+      "sha256": "476770375724159282d40cd8da890f31089684a836f3fc75c5b724293aadf5d3",
+      "verified": true
+    },
+    {
+      "file": "B/craft_start.wav",
+      "bytes": 74924,
+      "sha256": "cfb1b02d6e036519b52fc7b17404d1c13c6f354aa77fc3de1cae46a982313b4d",
+      "verified": true
+    },
+    {
+      "file": "B/damage_hit.wav",
+      "bytes": 32684,
+      "sha256": "8c622fe392d332e00c9028a835fa7f0322f127e2dc2888041c602edcb35becef",
+      "verified": true
+    },
+    {
+      "file": "B/defeat.wav",
+      "bytes": 117164,
+      "sha256": "968c9dc4a689c424ad4eb771e1dc5a714e35ba4f08167e7160b0235d0bef55c8",
+      "verified": true
+    },
+    {
+      "file": "B/extra_turn.wav",
+      "bytes": 63404,
+      "sha256": "b48de1240cc5086865403398c693338e06b4535d8bf6809a94d16ca7cbb2c3ac",
+      "verified": true
+    },
+    {
+      "file": "B/line_clear.wav",
+      "bytes": 29804,
+      "sha256": "cf6d530ac252462a54c9ac16b4791f82c00c6f69ab2a88f02b8390683c970a60",
+      "verified": true
+    },
+    {
+      "file": "B/match_ready.wav",
+      "bytes": 77804,
+      "sha256": "cfa3379a6e345c84f40af7a51a6c3985a5a37d7e0750aad445c074b62aeed397",
+      "verified": true
+    },
+    {
+      "file": "B/mine_elevator.wav",
+      "bytes": 142124,
+      "sha256": "9f10e381c0a47d037d4232638046efb80fd3eefb31267f5f22d7289ab8326bdf",
+      "verified": true
+    },
+    {
+      "file": "B/queue_enter.wav",
+      "bytes": 60524,
+      "sha256": "ddc9a1cb51152010f1c51dce6d8cc7f71ba21a8f70637b6ab830df644d51ec89",
+      "verified": true
+    },
+    {
+      "file": "B/reward_claim.wav",
+      "bytes": 65324,
+      "sha256": "319ee75355202a343c60ecb81b35b3fb222bdbcf4c61ae25d0b5af6c8b6953da",
+      "verified": true
+    },
+    {
+      "file": "B/timer_end.wav",
+      "bytes": 40364,
+      "sha256": "ab6476bff9e8749ed7a87d9c615d35d3bfd4a02b3e55639e5ad75b0f484fb78f",
+      "verified": true
+    },
+    {
+      "file": "B/ui_back.wav",
+      "bytes": 20204,
+      "sha256": "0b0da23b327f57f6793f755c7506e8a6adfa8fe64614cb643ddfbbbbd51a3789",
+      "verified": true
+    },
+    {
+      "file": "B/ui_blocked.wav",
+      "bytes": 32684,
+      "sha256": "5f2bb7bdb33018ddb3efc960ca1c15efa7080f779bd0a4009114c6e328313f8c",
+      "verified": true
+    },
+    {
+      "file": "B/ui_click.wav",
+      "bytes": 14444,
+      "sha256": "d5d761f947d6d5e69b98eb2a3139169bb7da4219066baf4c214bb5f28838c0c9",
+      "verified": true
+    },
+    {
+      "file": "B/victory.wav",
+      "bytes": 136364,
+      "sha256": "8932a603d29bbc7714d456483ede2f4c1abe86e52bd596c7cf57d9c49a651709",
+      "verified": true
+    },
+    {
+      "file": "pairs/ability_cross_A-gap-B.wav",
+      "bytes": 219884,
+      "sha256": "7706ea147312311b67621b3f251c780c2102ffa0a3c355130def186a1eb2bae0",
+      "verified": true
+    },
+    {
+      "file": "pairs/ability_petard_A-gap-B.wav",
+      "bytes": 279404,
+      "sha256": "30755fd0fc50dc80122dadd4011791c1a3ccab5fb16f5d8cb223e1792bfcf97e",
+      "verified": true
+    },
+    {
+      "file": "pairs/ability_square_A-gap-B.wav",
+      "bytes": 227564,
+      "sha256": "15a83f651c56303f3c6fe726bb5fd621711548a4a1d891ea521f4d471871041e",
+      "verified": true
+    },
+    {
+      "file": "pairs/barrier_unlock_A-gap-B.wav",
+      "bytes": 344684,
+      "sha256": "20b4940fceacef9784f7a3dff4f812ec2cbab52108d475c52acfc0043e30b889",
+      "verified": true
+    },
+    {
+      "file": "pairs/cascade_fall_A-gap-B.wav",
+      "bytes": 193004,
+      "sha256": "b3301660385b0df99db6e3a4141e15c0e43d4d3372dfedd5567aee4759f443ac",
+      "verified": true
+    },
+    {
+      "file": "pairs/craft_ready_A-gap-B.wav",
+      "bytes": 264044,
+      "sha256": "b784dc9244cc4123862a918ab825f32fbdff758989afcb2cbaac9a8bf8282d4a",
+      "verified": true
+    },
+    {
+      "file": "pairs/craft_start_A-gap-B.wav",
+      "bytes": 260204,
+      "sha256": "04d9f19579380bb58e5fcaeb6ddd1e10b620a2b41991f9fca0cd05b802cbe02a",
+      "verified": true
+    },
+    {
+      "file": "pairs/damage_hit_A-gap-B.wav",
+      "bytes": 175724,
+      "sha256": "2937f96d19e8725f80f4da0631b2e73d2d60924f5c5fa6c21c557ce9379a9198",
+      "verified": true
+    },
+    {
+      "file": "pairs/defeat_A-gap-B.wav",
+      "bytes": 344684,
+      "sha256": "492e06047beb93c54f8f2873b40f6875eddafe9f73fa96cb8390257c8d07dbc5",
+      "verified": true
+    },
+    {
+      "file": "pairs/extra_turn_A-gap-B.wav",
+      "bytes": 237164,
+      "sha256": "4065aa793a42cfc0611f6a538c05c02862e9a4ff12d5cb98cc58b689e08c3331",
+      "verified": true
+    },
+    {
+      "file": "pairs/line_clear_A-gap-B.wav",
+      "bytes": 169964,
+      "sha256": "78a312ab76042916235b24561083778e38fc1215885f1c89f158d3f388503457",
+      "verified": true
+    },
+    {
+      "file": "pairs/match_ready_A-gap-B.wav",
+      "bytes": 265964,
+      "sha256": "a25f5cc0b66dd77b2c30e3cbb1ce4210667f1757e05701f042ebc98720152e99",
+      "verified": true
+    },
+    {
+      "file": "pairs/mine_elevator_A-gap-B.wav",
+      "bytes": 394604,
+      "sha256": "57b817149114c08c89ff0bdbd4e93d87e4dc03a9fdc711786436cc40111aab0f",
+      "verified": true
+    },
+    {
+      "file": "pairs/queue_enter_A-gap-B.wav",
+      "bytes": 231404,
+      "sha256": "ca2b43785f990eb3e2da9833939a64f766879884de11b543188980e939ac7095",
+      "verified": true
+    },
+    {
+      "file": "pairs/reward_claim_A-gap-B.wav",
+      "bytes": 241004,
+      "sha256": "4de35faa7096a9fcadf88fbe65b10083b1d25bfb57288f3c099edc2602c10deb",
+      "verified": true
+    },
+    {
+      "file": "pairs/timer_end_A-gap-B.wav",
+      "bytes": 191084,
+      "sha256": "24c4fb75d2284df1e0c92889355c557e9e52e45e0d6b3ca1942fdbcabd7c4b1a",
+      "verified": true
+    },
+    {
+      "file": "pairs/ui_back_A-gap-B.wav",
+      "bytes": 150764,
+      "sha256": "6d549655c1cb437050f55eaa774673f97d0ee3ffe4e4a4ddd31ac678e438a1ba",
+      "verified": true
+    },
+    {
+      "file": "pairs/ui_blocked_A-gap-B.wav",
+      "bytes": 175724,
+      "sha256": "c887631bf404b287c9c7443f0c78faed6339d6d803406d032aaba5df8329802e",
+      "verified": true
+    },
+    {
+      "file": "pairs/ui_click_A-gap-B.wav",
+      "bytes": 139244,
+      "sha256": "cee16d35c66d4b8fef494646a243bfb19207b0464c649bd0fa3151cf550fb2a4",
+      "verified": true
+    },
+    {
+      "file": "pairs/victory_A-gap-B.wav",
+      "bytes": 383084,
+      "sha256": "206705fb78cbfa25dc3ba39b889f1650d1af4840cb4cc23a102d16f3db1d3861",
+      "verified": true
+    },
+    {
+      "file": "montages/style-A.wav",
+      "bytes": 2612204,
+      "sha256": "f0900bdf6e2c5f7a6de71f274dca6e6899d35b7632b98e875a64fa1531063b0b",
+      "verified": true
+    },
+    {
+      "file": "montages/style-B.wav",
+      "bytes": 2612204,
+      "sha256": "a5ff85d0d954a83c30cc8ce092d5580eb0f3e56b9a48b80a7b86a8b6a322f62a",
+      "verified": true
+    },
+    {
+      "file": "showcases/showcase-A.wav",
+      "bytes": 1010924,
+      "sha256": "b8a1e6b79acf8a0a33db1cdc732136eb138c3346a0934252dc7e57ccf5ace07c",
+      "verified": true
+    },
+    {
+      "file": "showcases/showcase-B.wav",
+      "bytes": 1010924,
+      "sha256": "57e240cfc23ddc92f5ffafdc2bbb6ac216cb795272342ea1ae87ccab7a0163af",
+      "verified": true
+    }
+  ],
+  "human_listening_performed": false,
+  "physical_device_tested": false
+}

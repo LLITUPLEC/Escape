@@ -64,6 +64,21 @@ namespace Project.Achievements
         private Image _glowImg;
 
         private Coroutine _sliderLayoutRefreshCo;
+        private bool _expeditionPresentation;
+
+        public void SetExpeditionPresentation()
+        {
+            _expeditionPresentation = true;
+            showUnclaimedHint = false;
+            showUnclaimedGlow = false;
+            SetClaimHintActive(false);
+            SetGlowActive(false);
+            if (_sliderLayoutRefreshCo != null) { StopCoroutine(_sliderLayoutRefreshCo); _sliderLayoutRefreshCo = null; }
+            if (progressSlider != null) progressSlider.gameObject.SetActive(false);
+            if (rewardTmp != null) rewardTmp.gameObject.SetActive(false);
+            if (lockOverlay != null) lockOverlay.SetActive(false);
+            if (iconImage != null) { iconImage.enabled = false; iconImage.gameObject.SetActive(false); }
+        }
 
         private void Awake()
         {
@@ -103,7 +118,7 @@ namespace Project.Achievements
             if (progressTmp != null)
                 progressTmp.text = denominator > 0 ? numerator + "/" + denominator : string.Empty;
 
-            if (progressSlider != null)
+            if (progressSlider != null && !_expeditionPresentation)
             {
                 var numClamped = Mathf.Clamp(numerator, 0, denominator);
                 var denClamped = Mathf.Max(1, denominator);
@@ -169,7 +184,12 @@ namespace Project.Achievements
             {
                 if (chainIcon != null)
                     iconImage.sprite = chainIcon;
-                iconImage.enabled = iconImage.sprite != null;
+                // Expedition steps deliberately contain only their target/state/check, never mini artwork.
+                iconImage.enabled = !_expeditionPresentation && iconImage.sprite != null;
+                if (_expeditionPresentation) iconImage.gameObject.SetActive(false);
+                iconImage.type = Image.Type.Simple;
+                iconImage.preserveAspect = true;
+                iconImage.overrideSprite = null;
                 iconImage.color = grayLocked ? new Color(0.35f, 0.35f, 0.38f, 1f) : Color.white;
                 iconImage.raycastTarget = false;
             }
@@ -178,7 +198,7 @@ namespace Project.Achievements
                 rewardTmp.raycastTarget = false;
             if (progressTmp != null)
                 progressTmp.raycastTarget = false;
-            if (progressSlider != null)
+            if (progressSlider != null && !_expeditionPresentation)
             {
                 foreach (var g in progressSlider.GetComponentsInChildren<Graphic>(true))
                     g.raycastTarget = false;
@@ -186,7 +206,7 @@ namespace Project.Achievements
 
             if (lockOverlay != null)
             {
-                var showOverlay = grayLocked || (showClaimedOverlay && rewardClaimed);
+                var showOverlay = !_expeditionPresentation && (grayLocked || (showClaimedOverlay && rewardClaimed));
                 lockOverlay.SetActive(showOverlay);
                 var lockImg = lockOverlay.GetComponent<Image>();
                 if (lockImg != null)

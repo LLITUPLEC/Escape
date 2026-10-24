@@ -1,0 +1,8 @@
+{
+  "server_file": "/var/www/escape/downloads/Escape-0.3.4-45ee39a11284.apk",
+  "checked_at_utc": "2026-10-24T09:27:40.7564367Z",
+  "sha256": "45ee39a11284774b74e76a29873be0136f3c66f0cd0570cabe58e0df580b4a0a",
+  "scope": "Complete deployed file SHA-256 compared with verified local APK",
+  "version": "0.3.4",
+  "result": "passed"
+}

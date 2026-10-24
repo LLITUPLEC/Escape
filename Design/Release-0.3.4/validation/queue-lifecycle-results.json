@@ -1,0 +1,28 @@
+{
+  "result": "passed",
+  "scope": "UI-only state + actual rendered raycasts; exit callback replaced locally; no leave/refund RPC",
+  "final_sequence": "create -> render -> verify -> restore",
+  "blocked_underlying_points": 3,
+  "only_exit_reachable": true,
+  "bridge_remained_active": true,
+  "initial_probe": {
+    "id": "e4ebe66cde92447eaf61d118deb2beaa",
+    "source_line_1_based": 740,
+    "result": "failed_before_first_mesh_depth",
+    "followup": "Probe split across a rendered frame; queue blocker strengthened; final three-point raycast verify passed. Original failure retained in raw log; no remaining failure claimed."
+  },
+  "replies": [
+    {
+      "id": "4ca25d3c3c824842b24a1b0b1e1ea9c2",
+      "message": "Queue fixture created; run queue-verify after one rendered frame to assert actual raycasts. Exit callback replaced locally; no RPC invoked."
+    },
+    {
+      "id": "7b58f187f9524396b7d855ef49a00571",
+      "message": "Only the real queue exit is reachable; 3 underlying HUD/nav points blocked, bridge remains active. Exit callback temporarily replaced; no leave/refund RPC invoked."
+    },
+    {
+      "id": "0ad47d45a8944e84b686fda508799cfb",
+      "message": "Original UI/data restored. Normal bridge polling resumes if originally enabled."
+    }
+  ]
+}

@@ -29,6 +29,113 @@ def tree(path):
     return result
 
 
+def storage_value(console, row, collection, system_user_id, expected_key=None):
+    """Console LIST returns metadata only; verify identity before reading detail."""
+    def verify(item):
+        if not isinstance(item, dict) or item.get('collection') != collection:
+            raise RuntimeError('Unexpected Console storage collection/row shape')
+        key = item.get('key')
+        owners = [item[name] for name in ('user_id', 'userId') if name in item]
+        if not isinstance(key, str) or not key or (expected_key is not None and key != expected_key):
+            raise RuntimeError('Missing or mismatched Console storage key')
+        if not owners or any(owner != system_user_id for owner in owners):
+            raise RuntimeError('Console storage object is not explicitly system-owned')
+        return key
+
+    key = verify(row)
+    if row.get('value') is None:
+        detail = console.read(collection, key)
+        if detail is None:
+            raise RuntimeError('Listed storage object disappeared; idle state is unproven')
+        expected_key = key
+        verify(detail)
+        row = detail
+    value = row.get('value')
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            raise RuntimeError('Invalid Console storage JSON; idle state is unproven') from None
+    if not isinstance(value, dict):
+        raise RuntimeError('Console storage value must be an object')
+    return value
+
+
+def check_idle(console, system_user_id):
+    matches = console.call('GET', '/v2/console/match?limit=1')
+    status = console.call('GET', '/v2/console/status')
+    if not isinstance(matches, dict) or not isinstance(matches.get('matches'), list):
+        raise RuntimeError('Unrecognized Console match list; idle state is unproven')
+    if not isinstance(status, dict) or not isinstance(status.get('nodes'), list) or not status['nodes']:
+        raise RuntimeError('Missing Console node status; idle state is unproven')
+    sessions = 0
+    for node in status['nodes']:
+        count = node.get('session_count') if isinstance(node, dict) else None
+        if type(count) is not int or count < 0:
+            raise RuntimeError('Missing/invalid connected session count; idle state is unproven')
+        sessions += count
+    active, cursor, seen_cursors, seen_keys = 0, '', set(), set()
+    while True:
+        query = {'collection': 'arena_tournament', 'user_id': system_user_id, 'limit': 100}
+        if cursor:
+            query['cursor'] = cursor
+        page = console.call('GET', '/v2/console/storage?' + urlencode(query))
+        if not isinstance(page, dict) or not isinstance(page.get('objects'), list):
+            raise RuntimeError('Unrecognized Console storage page; idle state is unproven')
+        if 'next_cursor' not in page and 'nextCursor' not in page:
+            raise RuntimeError('Storage pagination cursor missing; idle state is unproven')
+        next_cursor = page.get('next_cursor', page.get('nextCursor'))
+        if not isinstance(next_cursor, str) or ('next_cursor' in page and 'nextCursor' in page and page['next_cursor'] != page['nextCursor']):
+            raise RuntimeError('Invalid Console storage pagination cursor')
+        if 'total_count' in page:
+            total = page['total_count']
+            if type(total) is not int or total < 0:
+                raise RuntimeError('Invalid Console storage total count')
+            # Console total_count is unfiltered (32 versus one system-owned
+            # tournament in the live API). Only next_cursor terminates this scan.
+        for row in page['objects']:
+            value = storage_value(console, row, 'arena_tournament', system_user_id)
+            if row['key'] in seen_keys:
+                raise RuntimeError('Duplicate tournament page entry; idle state is unproven')
+            seen_keys.add(row['key'])
+            phase = value.get('phase')
+            if not isinstance(phase, str) or not phase:
+                raise RuntimeError('Missing tournament phase; idle state is unproven')
+            active += phase != 'done'
+        if not next_cursor:
+            break
+        if next_cursor in seen_cursors:
+            raise RuntimeError('Repeated storage cursor; idle state is unproven')
+        seen_cursors.add(next_cursor)
+        if len(seen_cursors) >= 10000:
+            raise RuntimeError('Storage pagination limit reached; idle state is unproven')
+        cursor = next_cursor
+    registry = console.read('arena_queue', 'state')
+    queued = 0
+    if registry is not None:
+        value = storage_value(console, registry, 'arena_queue', system_user_id, 'state')
+        if not isinstance(value.get('queues'), dict):
+            raise RuntimeError('Queue registry shape is unrecognized; idle state is unproven')
+        for queue in value['queues'].values():
+            entries = queue.get('entries') if isinstance(queue, dict) else None
+            # Nakama serializes an empty Lua array/table as {}. Only the empty
+            # object is equivalent to []; a nonempty object remains malformed.
+            if type(entries) is dict and not entries:
+                entries = []
+            if not isinstance(entries, list):
+                raise RuntimeError('Queue entries shape is unrecognized; idle state is unproven')
+            for player in entries:
+                if not isinstance(player, dict) or type(player.get('bot', False)) is not bool:
+                    raise RuntimeError('Queue participant shape is unrecognized; idle state is unproven')
+                queued += not player.get('bot', False)
+    print('Idle check: matches=' + str(len(matches['matches'])) + ', tournaments=' + str(active)
+          + ', queued=' + str(queued) + ', connected_sessions=' + str(sessions), flush=True)
+    if matches['matches'] or active or queued:
+        raise RuntimeError('Escape is busy; no update made')
+    if registry is None and sessions:
+        raise RuntimeError('Legacy queue migration waits for connected clients to leave')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
@@ -59,40 +166,9 @@ def main():
     config = json.loads((ROOT / 'secrets/server.yml').read_text())
     console = admin.Console('http://127.0.0.1:27351')
 
-    def idle():
-        matches = console.call('GET', '/v2/console/match?limit=1')
-        status = console.call('GET', '/v2/console/status')
-        sessions = sum(int(node.get('session_count', 0)) for node in status.get('nodes', []))
-        active = 0
-        cursor = ''
-        while True:
-            query = {'collection': 'arena_tournament', 'user_id': admin.SYSTEM_USER_ID}
-            if cursor:
-                query['cursor'] = cursor
-            page = console.call('GET', '/v2/console/storage?' + urlencode(query))
-            for row in page.get('objects', []):
-                value = json.loads(row['value']) if isinstance(row['value'], str) else row['value']
-                active += value.get('phase') != 'done'
-            cursor = page.get('next_cursor', '')
-            if not cursor:
-                break
-        registry = console.read('arena_queue', 'state')
-        queued = 0
-        if registry:
-            for queue in registry['value'].get('queues', {}).values():
-                queued += sum(not player.get('bot', False) for player in queue.get('entries', []))
-        print('Idle check: matches=' + str(len(matches.get('matches', []))) + ', tournaments=' + str(active)
-              + ', queued=' + str(queued) + ', connected_sessions=' + str(sessions), flush=True)
-        if matches.get('matches') or active or queued:
-            raise RuntimeError('Escape is busy; no update made')
-        # The previous queue was VM-local. Initial migration needs disconnected
-        # clients as well, to avoid dropping an in-memory paid queue entry.
-        if not registry and sessions:
-            raise RuntimeError('Legacy queue migration waits for connected clients to leave')
-
     try:
         console.login(config['console']['username'], config['console']['password'])
-        idle()
+        check_idle(console, admin.SYSTEM_USER_ID)
         if not args.apply:
             print('PASS preflight only; production files unchanged', flush=True)
             return
@@ -109,7 +185,7 @@ def main():
                             'pg_restore', '--list'], stdin=source, stdout=subprocess.DEVNULL, check=True)
         if tree(runtime) != before:
             raise RuntimeError('Production runtime changed during preparation')
-        idle()  # Last check immediately before the explicitly authorized restart.
+        check_idle(console, admin.SYSTEM_USER_ID)  # Last check immediately before the explicitly authorized restart.
         try:
             for name, source in updates.items():
                 pending = runtime / ('.' + name + '.incoming')

@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "checks": 96,
+  "formulas_extracted_from_actual_source": true,
+  "preview_matches_applied_source": true,
+  "floors": 12,
+  "viewport_heights": [
+    330,
+    600,
+    800,
+    1100,
+    1400,
+    1700,
+    2200
+  ],
+  "selected_floor_fully_visible": true,
+  "top_floor": 1,
+  "bottom_floor": 12,
+  "examples": [
+    {
+      "side_bottom_anchor": 0.89800006,
+      "landing_top_offset": 0.0,
+      "floor": 1
+    },
+    {
+      "side_bottom_anchor": 0.66400003,
+      "landing_top_offset": -696.0,
+      "floor": 4
+    },
+    {
+      "side_bottom_anchor": 0.352,
+      "landing_top_offset": -1624.0,
+      "floor": 8
+    },
+    {
+      "side_bottom_anchor": 0.04,
+      "landing_top_offset": -2552.0,
+      "floor": 12
+    }
+  ],
+  "gameplay_changed": false,
+  "asset_files_changed": [
+    "Assets/_Project/Scripts/UI/ExpeditionMinePresentation.cs"
+  ],
+  "unity_started": false,
+  "server_or_publish_called": false
+}

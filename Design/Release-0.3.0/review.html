@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Escape 0.3.0 — финальные кадры</title>
+  <style>
+    @font-face{font-family:PTSerif;src:url('../../Assets/_Project/Fonts/PTSerif/PT_Serif-Web-Regular.ttf') format('truetype');font-display:swap}
+    :root{color-scheme:dark;font-family:PTSerif,Georgia,serif;background:#09191e;color:#ece1c9}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1560px;margin:auto;padding:38px 24px 60px}
+    header{display:flex;justify-content:space-between;align-items:end;gap:24px;border-bottom:1px solid #365653;padding-bottom:26px;margin-bottom:30px}
+    h1{font-size:clamp(28px,4vw,46px);line-height:1.15;font-weight:400;margin:0 0 12px}p{margin:0;color:#adc0b9;line-height:1.6}
+    .eyebrow{color:#edaa53;font:600 12px/1.5 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+    a{color:#edaa53;text-underline-offset:4px}a:focus-visible{outline:3px solid #edaa53;outline-offset:5px}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px 20px}
+    figure{margin:0;min-width:0}figure a{display:block;border:1px solid #587069;background:#102a30;padding:5px;box-shadow:0 8px 25px #0004}
+    img{display:block;width:100%;height:auto;background:#071216}figcaption{padding:13px 2px 0;font-size:20px;line-height:1.35}
+    figcaption span{display:block;color:#adc0b9;font:12px/1.5 system-ui,sans-serif;margin-top:5px}
+    footer{margin-top:38px;border-top:1px solid #365653;padding-top:22px;font:13px/1.6 system-ui,sans-serif;color:#adc0b9}
+    @media(max-width:600px){main{padding:24px 16px 40px}header{display:block}header>a{display:inline-block;margin-top:18px}.gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}figcaption{font-size:17px}figcaption span{font-size:11px}}
+    @media(max-width:350px){.gallery{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">Экспедиция в разлом</p><h1>Escape 0.3.0 — финальные кадры</h1><p>Настоящие кадры из игры. Нажмите изображение, чтобы открыть оригинал.</p></div><a href="./README.md">Описание релиза</a></header>
+    <div class="gallery">
+      <figure><a href="./screens/hub.png" aria-label="Открыть оригинал: убежище"><img src="./screens/hub.png" alt="Убежище Escape и общая навигация" loading="lazy" decoding="async"></a><figcaption>Убежище<span>hub.png</span></figcaption></figure>
+      <figure><a href="./screens/character.png" aria-label="Открыть оригинал: персонаж"><img src="./screens/character.png" alt="Персонаж, экипировка в раскладке 3+3+2 и инвентарь" loading="lazy" decoding="async"></a><figcaption>Персонаж<span>character.png</span></figcaption></figure>
+      <figure><a href="./screens/mine.png" aria-label="Открыть оригинал: шахта"><img src="./screens/mine.png" alt="Разрез шахты с площадками и выбранным этажом" loading="lazy" decoding="async"></a><figcaption>Шахта<span>mine.png</span></figcaption></figure>
+      <figure><a href="./screens/workshop.png" aria-label="Открыть оригинал: мастерская"><img src="./screens/workshop.png" alt="Кузница, восемь очередей и выбранный предмет" loading="lazy" decoding="async"></a><figcaption>Мастерская<span>workshop.png</span></figcaption></figure>
+      <figure><a href="./screens/recipes.png" aria-label="Открыть оригинал: рецепты"><img src="./screens/recipes.png" alt="Окно выбора изученных рецептов мастерской" loading="lazy" decoding="async"></a><figcaption>Рецепты<span>recipes.png</span></figcaption></figure>
+      <figure><a href="./screens/dossier.png" aria-label="Открыть оригинал: досье монстра"><img src="./screens/dossier.png" alt="Встреча в шахте и досье монстра с характеристиками, аффиксом и наградами" loading="lazy" decoding="async"></a><figcaption>Досье монстра<span>dossier.png</span></figcaption></figure>
+      <figure><a href="./screens/arena.png" aria-label="Открыть оригинал: арена"><img src="./screens/arena.png" alt="Раздел арены и выбор режима боя" loading="lazy" decoding="async"></a><figcaption>Арена<span>arena.png</span></figcaption></figure>
+      <figure><a href="./screens/achievements.png" aria-label="Открыть оригинал: достижения"><img src="./screens/achievements.png" alt="Страница достижений с категориями" loading="lazy" decoding="async"></a><figcaption>Достижения<span>achievements.png</span></figcaption></figure>
+      <figure><a href="./screens/rating.png" aria-label="Открыть оригинал: рейтинг"><img src="./screens/rating.png" alt="Страница игрового рейтинга" loading="lazy" decoding="async"></a><figcaption>Рейтинг<span>rating.png</span></figcaption></figure>
+      <figure><a href="./screens/friends.png" aria-label="Открыть оригинал: друзья"><img src="./screens/friends.png" alt="Страница списка друзей" loading="lazy" decoding="async"></a><figcaption>Друзья<span>friends.png</span></figcaption></figure>
+    </div>
+    <footer>Кадры из Unity Game View. Результаты проверки готового APK сохраняются отдельно в <code>validation</code>; проверка на физическом Android-устройстве не выполнялась.</footer>
+  </main>
+</body>
+</html>

@@ -126,6 +126,7 @@ namespace Project.UI
 
             btn.onClick.RemoveListener(onClick);
             btn.onClick.AddListener(onClick);
+            ExpeditionCloseButton.Apply(btn);
             return btn;
         }
 

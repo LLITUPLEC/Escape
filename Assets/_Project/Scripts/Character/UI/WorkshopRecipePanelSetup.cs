@@ -33,6 +33,7 @@ namespace Project.Character.UI
         public static void NormalizeRecipePanelLayout(RectTransform workshopBackground)
         {
             if (workshopBackground == null) return;
+            if (ExpeditionWorkshopLayout.TryApplyRecipePanel(workshopBackground)) return;
             var panel = workshopBackground.Find("WorkshopRecipePanel") as RectTransform;
             if (panel == null) return;
 
@@ -162,12 +163,15 @@ namespace Project.Character.UI
         {
             refs = default;
             if (workshopBackground == null) return false;
-            var panel = workshopBackground.Find("WorkshopRecipePanel");
+            var panel = FindPanel(workshopBackground);
             if (panel == null) return false;
-            var rh = panel.Find("RecipeHeader")?.GetComponent<Text>();
+            var view = workshopBackground.GetComponent<ExpeditionWorkshopLayout>();
+            var rh = panel.Find("RecipeHeader")?.GetComponent<Text>() ?? (view != null ? view.RecipeHeader : null);
             var st = panel.Find("ItemStatsText")?.GetComponent<Text>();
             var dt = panel.Find("DetailText")?.GetComponent<Text>();
             var content = panel.Find("RecipeScroll/Viewport/Content") as RectTransform;
+            if (content == null && view != null && view.RecipeScroll != null)
+                content = view.RecipeScroll.Find("Viewport/Content") as RectTransform;
             var buttons = panel.Find("Buttons");
             if (content == null || buttons == null) return false;
             var create = buttons.Find("CreateButton")?.GetComponent<Button>();
@@ -181,7 +185,7 @@ namespace Project.Character.UI
         public static Button EnsureRushButton(RectTransform workshopBackground)
         {
             if (workshopBackground == null) return null;
-            var panel = workshopBackground.Find("WorkshopRecipePanel");
+            var panel = FindPanel(workshopBackground);
             if (panel == null) return null;
             var buttons = panel.Find("Buttons") as RectTransform;
             if (buttons == null) return null;
@@ -222,7 +226,7 @@ namespace Project.Character.UI
         public static Refs Build(RectTransform workshopBackground)
         {
             if (workshopBackground == null) throw new ArgumentNullException(nameof(workshopBackground));
-            if (workshopBackground.Find("WorkshopRecipePanel") != null)
+            if (FindPanel(workshopBackground) != null)
             {
                 if (TryBindExisting(workshopBackground, out var r)) return r;
             }
@@ -324,10 +328,25 @@ namespace Project.Character.UI
             return t.rectTransform;
         }
 
+        private static Transform FindPanel(RectTransform background)
+        {
+            if (background == null) return null;
+            var direct = background.Find("WorkshopRecipePanel");
+            if (direct != null) return direct;
+            var expedition = background.GetComponent<ExpeditionWorkshopLayout>();
+            return expedition != null ? expedition.RecipePanel : null;
+        }
+
         /// <summary>Якорь top-stretch: растяжение по ширине, полоса под заголовком рецепта.</summary>
         public static void ApplyItemStatsTextLayout(RectTransform stats)
         {
             if (stats == null) return;
+            var expedition = stats.GetComponentInParent<ExpeditionWorkshopLayout>();
+            if (expedition != null)
+            {
+                expedition.ApplyItemStatsLayout(stats);
+                return;
+            }
             stats.anchorMin = new Vector2(0f, 1f);
             stats.anchorMax = new Vector2(1f, 1f);
             stats.pivot = new Vector2(0.5f, 1f);

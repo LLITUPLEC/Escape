@@ -1,0 +1,22 @@
+fileFormatVersion: 2
+guid: 6443996cca964de0b2fd98d6b5a3f9b1
+AudioImporter:
+  serializedVersion: 7
+  defaultSettings:
+    serializedVersion: 2
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 2
+    quality: 1
+    conversionMode: 0
+  platformSettingOverrides: {}
+  forceToMono: 1
+  normalize: 0
+  preloadAudioData: 1
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 0
+  userData: Original Expedition foley; Tools/Audio/generate_expedition_sfx.py
+  assetBundleName:
+  assetBundleVariant:

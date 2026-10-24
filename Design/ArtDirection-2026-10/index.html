@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Escape — два художественных направления</title>
+<style>
+:root{--paper:#f1efe8;--sheet:#fbfaf5;--ink:#182b2d;--muted:#536466;--line:#ced4cc;--a:#94592a;--b:#25676a;--radius:18px;scroll-behavior:smooth}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 "Segoe UI",Arial,sans-serif}a{color:inherit;text-underline-offset:4px}button,select{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #bc6a2b;outline-offset:4px}h1,h2,h3,h4,p{margin:0}h1,h2,h3,h4{line-height:1.15;letter-spacing:-.035em}h1{font-size:clamp(40px,6.8vw,84px);font-weight:600;max-width:1100px}h2{font-size:clamp(30px,4vw,48px);font-weight:600}h3{font-size:25px;font-weight:600}h4{font-size:19px;font-weight:600}p+p{margin-top:14px}ul,ol{padding-left:21px;margin:14px 0 0}li+li{margin-top:8px}strong{font-weight:600}img{max-width:100%}section{scroll-margin-top:90px}main{max-width:1320px;margin:auto;padding:0 36px}.topbar{position:fixed;top:0;left:0;right:0;z-index:20;height:64px;background:rgba(241,239,232,.97);border-bottom:1px solid var(--line)}.top-inner{height:100%;max-width:1392px;margin:auto;padding:0 36px;display:flex;align-items:center;justify-content:space-between;gap:20px}.wordmark{font-size:19px;font-weight:700;letter-spacing:.18em;text-decoration:none}.topnav{display:flex;gap:24px}.topnav a{font-size:13px;text-decoration:none}.topnav a:hover{text-decoration:underline}.skip{position:fixed;left:12px;top:-70px;background:var(--ink);color:var(--sheet);padding:10px 16px;z-index:100}.skip:focus{top:8px}.hero{padding:138px 0 62px;border-bottom:1px solid var(--line)}.eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;display:block;margin-bottom:22px}.hero .lede{max-width:800px;font-size:20px;line-height:1.6;margin-top:27px}.hero-meta{display:flex;gap:25px;flex-wrap:wrap;margin-top:28px;color:var(--muted);font-size:13px}.section-head{display:flex;justify-content:space-between;align-items:end;gap:28px;margin-bottom:30px}.section-head p{max-width:540px;color:var(--muted)}.block{padding:62px 0;border-bottom:1px solid var(--line)}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}.direction{background:var(--sheet);border:1px solid var(--line);border-radius:var(--radius);padding:30px}.direction-a{border-top:4px solid var(--a)}.direction-b{border-top:4px solid var(--b)}.direction-name{display:flex;gap:14px;align-items:start;margin-bottom:20px}.letter{display:flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--sheet);font-size:15px;font-weight:600}.direction-a .letter{background:var(--a)}.direction-b .letter{background:var(--b)}.direction h3{margin-bottom:9px}.direction .tagline{font-size:14px;color:var(--muted)}.direction .idea{margin-bottom:24px}.palette{display:flex;gap:7px;margin-bottom:25px}.swatch{height:40px;border-radius:7px;flex:1;border:1px solid rgba(24,43,45,.12)}.rules{display:grid;gap:20px}.rules dt{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;margin-bottom:5px}.rules dd{margin:0;font-size:14px;line-height:1.65;color:var(--muted)}.recommendation{margin-top:24px;display:grid;grid-template-columns:190px 1fr;gap:26px;padding:27px 0 0}.recommendation .kicker{font-size:13px;font-weight:600;line-height:1.5}.recommendation p{font-size:17px;max-width:900px}.small-note{font-size:13px;line-height:1.6;color:var(--muted);max-width:960px}.section-picker{margin:27px 0 30px;display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:transparent;color:var(--ink);padding:8px 13px;border-radius:30px;font-size:13px;line-height:1.35;min-height:38px}.chip:hover{background:#e3e6df}.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--sheet)}.gallery-header{display:grid;grid-template-columns:1fr auto;gap:20px;margin-bottom:20px;align-items:start}.gallery-heading .kind{font-size:12px;color:var(--muted);margin-bottom:10px;display:block}.gallery-heading h3{font-size:32px;margin-bottom:14px}.gallery-heading p{max-width:850px}.stepper{display:flex;gap:8px}.plain-button{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:9px;min-height:40px;padding:8px 13px;font-size:13px}.plain-button:hover{background:#e6e9e1}.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}.concept{margin:0;min-width:0}.concept-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin:0 0 12px}.concept-head .name{display:flex;gap:9px;align-items:center;font-weight:600;font-size:14px}.concept-head .letter{width:27px;height:27px;font-size:12px}.concept-a .letter{background:var(--a)}.concept-b .letter{background:var(--b)}.image-button{display:block;background:#d9ded7;border:0;border-radius:14px;padding:0;overflow:hidden;width:100%;position:relative;text-align:left}.image-button img{display:block;width:100%;height:auto;max-height:1000px;object-fit:contain}.image-button:hover::after{content:"Увеличить";position:absolute;bottom:14px;right:14px;border-radius:7px;background:rgba(16,30,33,.9);color:#fff;padding:6px 12px;font-size:13px}.image-button img.is-missing{min-height:100px;padding:20px;font-size:15px;color:var(--ink)}.concept figcaption{margin-top:14px;font-size:14px;color:var(--muted);line-height:1.65}.section-details{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:30px;padding-top:26px;border-top:1px solid var(--line)}.section-details h4{font-size:18px;margin-bottom:10px}.section-details p,.section-details li{font-size:14px;color:var(--muted)}.section-details ul{margin-top:0}.source-details{margin-top:22px;color:var(--muted);font-size:13px}.source-details summary{cursor:pointer;width:fit-content}.source-details ul{list-style:none;padding:0}.source-details a{overflow-wrap:anywhere;font-family:Consolas,monospace;font-size:12px}.gallery-footer{margin-top:30px;padding-top:20px;border-top:1px solid var(--line);display:flex;gap:20px;justify-content:space-between;align-items:start}.gallery-footer .small-note{max-width:850px}.coverage{display:flex;flex-wrap:wrap;gap:10px 25px;font-size:13px;margin-top:25px;color:var(--muted)}.coverage strong{color:var(--ink)}.audit-intro{max-width:920px;margin-bottom:33px}.audit-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 44px}.audit-item{padding-top:23px;border-top:1px solid var(--line)}.audit-item .num{font-size:12px;letter-spacing:.1em;display:block;margin-bottom:12px;color:var(--muted)}.audit-item h3{font-size:22px;margin-bottom:13px}.audit-item p{font-size:15px;color:var(--muted)}.audit-item .action{margin-top:14px;color:var(--ink)}.audit-item .evidence-tag{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-top:15px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--muted)}.principles{margin-top:38px;display:grid;grid-template-columns:repeat(3,1fr);gap:26px;padding-top:28px;border-top:1px solid var(--line)}.principles h4{margin-bottom:13px}.principles p{font-size:14px;color:var(--muted)}.roadmap{margin-top:24px}.stage{display:grid;grid-template-columns:58px 240px 1fr;gap:22px;border-top:1px solid var(--line);padding:27px 0}.stage .stage-num{font-size:32px;line-height:1;letter-spacing:-.07em;color:var(--muted)}.stage h3{font-size:21px;margin-bottom:10px}.stage .priority{font-size:12px;color:var(--muted)}.stage .stage-body{font-size:15px}.stage .done{margin-top:12px;font-size:13px;color:var(--muted)}.workflow{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px}.workflow h3{font-size:22px;margin-bottom:14px}.workflow p{font-size:14px;color:var(--muted)}.facts{display:grid;grid-template-columns:1fr 1fr;gap:34px}.facts ul{font-size:14px;color:var(--muted)}.facts h3{font-size:22px}.facts p{font-size:14px;color:var(--muted);margin-top:14px}.evidence-list{margin-top:30px}.evidence-list details{border-top:1px solid var(--line);padding:18px 0}.evidence-list summary{font-weight:600;cursor:pointer}.evidence-list ol{font-size:14px;color:var(--muted)}.evidence-list li{padding:6px 0}.evidence-list code{font-family:Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.evidence-list a{display:block;width:fit-content;max-width:100%;margin-bottom:3px}.footer{padding:28px 0 40px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer a{font-size:12px}dialog{background:#111d21;color:#f2ece0;border:1px solid #506064;border-radius:16px;width:min(98vw,1600px);max-width:none;max-height:97vh;padding:0}dialog::backdrop{background:rgba(6,14,17,.86)}.zoom-bar{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:1px solid #3c4c50}.zoom-bar h3{font-size:17px;letter-spacing:0;line-height:1.4}.zoom-close{border:1px solid #6e7d7c;border-radius:7px;color:#f2ece0;background:transparent;padding:7px 14px;font-size:13px}.zoom-image{display:block;max-width:100%;width:auto;height:auto;max-height:83vh;margin:0 auto;object-fit:contain}.zoom-caption{font-size:12px;color:#bdc9c5;padding:10px 18px 14px;line-height:1.5}.noscript{padding:20px;background:var(--sheet)}
+dialog{overflow:auto;overscroll-behavior:contain}.zoom-bar{position:sticky;top:0;z-index:1;background:#111d21}.zoom-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:none}.zoom-action{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border:1px solid #6e7d7c;border-radius:7px;color:#f2ece0;background:transparent;padding:7px 12px;font-size:13px;line-height:1.4;text-decoration:none}.zoom-action[aria-pressed=true]{background:#e1c69a;color:#172a2d;border-color:#e1c69a}dialog.is-detail .zoom-image{width:min(100%,941px);max-width:100%;max-height:none;height:auto}.zoom-bar h3{min-width:0}.zoom-close{line-height:1.4}
+@media(max-width:680px){.zoom-bar{display:block}.zoom-actions{justify-content:flex-start;margin-top:10px}.zoom-action,.zoom-close{min-height:40px;font-size:12px;padding:8px 10px}}
+@media(min-width:1650px){main{max-width:1480px}.image-button img{max-height:1150px}}
+@media(max-width:900px){main{padding:0 24px}.top-inner{padding:0 24px}.topnav{gap:15px}.section-head{display:block}.section-head p{margin-top:17px}.hero{padding-top:118px}.direction{padding:24px}.recommendation{grid-template-columns:145px 1fr}.stage{grid-template-columns:38px 180px 1fr;gap:16px}.principles{grid-template-columns:1fr}.principles h4{margin-bottom:8px}.principles p{max-width:700px}}
+@media(max-width:680px){body{font-size:15px}.topbar{height:57px}.top-inner{padding:0 18px;gap:14px}.wordmark{font-size:15px}.topnav{gap:13px}.topnav a{font-size:12px}.topnav a:last-child{display:none}main{padding:0 18px}.hero{padding-top:100px;padding-bottom:37px}.hero .lede{font-size:18px}.hero-meta{gap:8px 20px}.block{padding:40px 0}.two-col,.compare-grid,.audit-grid,.section-details,.facts,.workflow{grid-template-columns:1fr}.direction{padding:23px}.two-col{gap:18px}.recommendation{grid-template-columns:1fr;gap:10px;padding-top:22px}.recommendation p{font-size:16px}.section-picker{gap:7px;margin:24px 0}.chip{font-size:12px;padding:8px 11px;min-height:38px}.gallery-header{grid-template-columns:1fr;gap:15px}.gallery-heading h3{font-size:28px}.stepper{justify-content:flex-start}.compare-grid{gap:30px}.image-button img{max-height:none}.section-details{gap:25px}.gallery-footer{display:block}.gallery-footer a{display:inline-block;margin-top:14px}.coverage{gap:8px 20px}.stage{grid-template-columns:32px 1fr;gap:13px}.stage .stage-body{grid-column:2}.stage h3{font-size:21px}.audit-grid{gap:25px}.audit-item{padding-top:20px}.facts{gap:26px}.zoom-bar{padding:12px}.zoom-bar h3{font-size:14px}.zoom-close{padding:8px 12px;min-height:40px}.zoom-image{max-height:78vh}.footer{padding-bottom:30px}}
+@media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+@media(max-width:470px){.topnav a:nth-child(n+3){display:none}.topnav{gap:15px}}
+@media(pointer:coarse){.chip,.plain-button{min-height:44px}}
+@media print{.topbar,.section-picker,.stepper,.plain-button,.zoom-close,.gallery-footer a{display:none}main{max-width:none;padding:0}.hero{padding-top:0}.block{break-inside:avoid}body{background:#fff}.direction{background:#fff}dialog{display:none}.image-button{background:transparent}.compare-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<a class="skip" href="#gallery">Перейти к сравнению</a>
+<header class="topbar"><div class="top-inner"><a class="wordmark" href="#top" aria-label="Escape, начало досье">ESCAPE</a><nav class="topnav" aria-label="По досье"><a href="#directions">Направления</a><a href="#gallery">16 экранов</a><a href="#audit">Что улучшить</a><a href="#roadmap">Порядок работ</a><a href="#evidence">Основания</a></nav></div></header>
+<main id="escape-dossier">
+<section class="hero" id="top">
+<span class="eyebrow">Художественное направление · октябрь 2026</span>
+<h1>Мир, в который<br>хочется вернуться.</h1>
+<p class="lede">Два цельных варианта для Escape: окружение, персонаж, поле боя и весь интерфейс. Сравнивать стоит не отдельную красивую картинку, а то, как один язык работает в шестнадцати разделах игры.</p>
+<div class="hero-meta"><span>2 направления × 16 концептов</span><span>6 сцен + 10 разделов</span><span>Портретный формат 9:16</span><span>Выбор направления, до внедрения</span></div>
+</section>
+<section class="block" id="directions">
+<div class="section-head"><h2>Один мир.<br>Разная пластика.</h2><p>Оба варианта сохраняют промышленную шахту, разлом и героя-шахтёра в капюшоне и респираторе. Отличаются детализация, свет и язык форм. Навигация на концептах — альтернативные предложения: для реализации нужно выбрать одну схему и применять её во всех разделах.</p></div>
+<div class="two-col" id="direction-cards"></div>
+<div class="recommendation"><span class="kicker">Рекомендация<br>для самостоятельной разработки</span><p id="recommendation"></p></div>
+</section>
+<section class="block" id="gallery">
+<div class="section-head"><h2>Сравнить в контексте.</h2><p>Начать с хаба, боя и мастерской. Затем проверить, нравится ли тот же стиль в инвентаре, рейтинге и служебных окнах. Нажатие на изображение открывает его целиком.</p></div>
+<p class="small-note">Изображения задают художественное направление; сгенерированные подписи, числа и мелкие детали не являются спецификацией механик/баланса. Для реализации использовать описание раздела. В шахте остаются 12 этажей и 3 существующие сложности. Засечки, встречающиеся в отдельных изображениях B, не заменяют предложенную систему гротесков: точный шрифт и микротипографика уточняются в макетах.</p>
+<div class="section-picker" id="section-picker" role="group" aria-label="Разделы игры"></div>
+<div class="gallery-header"><div class="gallery-heading" aria-live="polite" aria-atomic="true"><span class="kind" id="gallery-kind"></span><h3 id="gallery-title"></h3><p id="gallery-goal"></p></div><div class="stepper"><button class="plain-button" type="button" id="previous-section" aria-label="Предыдущий раздел">← Предыдущий</button><button class="plain-button" type="button" id="next-section" aria-label="Следующий раздел">Следующий →</button></div></div>
+<div id="gallery-content">
+<div class="compare-grid">
+<figure class="concept concept-a"><div class="concept-head"><div class="name"><span class="letter">A</span><span id="concept-name-a"></span></div><button class="plain-button" type="button" id="zoom-a">Увеличить A</button></div><button class="image-button" type="button" id="image-button-a" aria-label="Увеличить концепт A"><img id="image-a" alt="" decoding="async"></button><figcaption id="caption-a"></figcaption></figure>
+<figure class="concept concept-b"><div class="concept-head"><div class="name"><span class="letter">B</span><span id="concept-name-b"></span></div><button class="plain-button" type="button" id="zoom-b">Увеличить B</button></div><button class="image-button" type="button" id="image-button-b" aria-label="Увеличить концепт B"><img id="image-b" alt="" decoding="async"></button><figcaption id="caption-b"></figcaption></figure>
+</div>
+<div class="section-details"><div><h4>Что важно сохранить и улучшить</h4><ul id="requirements"></ul></div><div><h4>Состояния в этом разделе</h4><p id="gallery-states"></p></div></div>
+<details class="source-details"><summary>Откуда взят состав раздела</summary><ul id="section-sources"></ul></details>
+</div>
+<div class="gallery-footer"><p class="small-note">Общие состояния сгруппированы: досье включает барьер и призыв; карточка предмета — экипировку, рецепт и разбор; до/после боя — поиск, подготовку и результаты; системный лист — аккаунт, энергию, аномалию и замену сессии.</p><a href="report-data.json" class="small-note">Данные досье</a></div>
+<div class="coverage"><span><strong>6 сцен:</strong> хаб, шахта 2D, шахта 3D, мастерская, арена, бой</span><span><strong>10 разделов:</strong> досье, персонаж, предмет, турнир, «Спуск», состояния боя, достижения, рейтинг, друзья, окна</span></div>
+<noscript><p class="noscript">Для переключения изображений нужен JavaScript. Все концепты также доступны напрямую в папках <a href="A-forpost/">A-forpost</a> и <a href="B-expedition/">B-expedition</a>.</p></noscript>
+</section>
+<section class="block" id="audit">
+<div class="section-head"><h2>Что создаст<br>ощущение игры.</h2><p>Главная задача — общая художественная дисциплина и обратная связь. Замена фона сама по себе не упорядочит HUD и не придаст действиям вес.</p></div>
+<div class="audit-intro"><p>В просмотренном Unity Simulator главное меню выглядит перегруженным: плотная шапка ресурсов, элементы разного размера и несколько конкурирующих акцентов. Это визуальное наблюдение в редакторе. Ниже выводы по исходникам отделены от предложений; запущенный игровой билд здесь не тестировался.</p></div>
+<div class="audit-grid">
+<article class="audit-item"><span class="num">01 / КОМПОЗИЦИЯ</span><h3>Вернуть экрану главный смысл</h3><p>Ресурсы, навигация, декоративные кнопки и карточки получают слишком похожий вес. Игроку сложно понять, куда смотреть первым.</p><p class="action"><strong>Изменение:</strong> на каждом экране один главный объект, один главный призыв к действию и 2–3 уровня контраста. Полный кошелёк раскрывать отдельно; в мастерской показывать нужные материалы, в бою — только боевые показатели.</p><span class="evidence-tag">Наблюдение меню + предложение</span></article>
+<article class="audit-item"><span class="num">02 / ЕДИНЫЙ МАСШТАБ</span><h3>Одна портретная сетка</h3><p>HUD меню использует 1080×1920, тогда как мир меню и оверлей персонажа имеют опору 1920×1080. Компоновка и размеры дополнительно меняются кодом.</p><p class="action"><strong>Изменение:</strong> выбрать общую портретную систему, разделить окружение и HUD, задать safe area и устойчивые зоны шапки, контента и навигации. Проверять 9:16 и более вытянутые телефоны в одном наборе правил.</p><span class="evidence-tag">Проверено по префабам</span></article>
+<article class="audit-item"><span class="num">03 / КОМПОНЕНТЫ</span><h3>Собрать небольшой UI kit</h3><p>Стили размазаны между сценами, префабами и runtime-кодом. У поиска есть отдельный SciFi-пресет, мастерская смешивает legacy Text и TMP; порядок слоёв решается несколькими способами.</p><p class="action"><strong>Изменение:</strong> единые кнопки, вкладки, панели, ресурсные строки, слоты, шкалы, подсказки и окна. Цвета/отступы/типографику хранить централизованно. Сначала заменить примитивы одним набором, затем украшать.</p><span class="evidence-tag">Проверено по исходникам</span></article>
+<article class="audit-item"><span class="num">04 / ОКРУЖЕНИЕ</span><h3>Поставить сцену, а не фон</h3><p>Шахта уже имеет слои, факелы и процедурную геометрию. Но капсулы монстров и интерфейсные маркеры слабо выражают характер места.</p><p class="action"><strong>Изменение:</strong> передний, средний и дальний план; направленный свет; силуэтная точка интереса; повторяемые материалы. Мастерской дать рабочую зону и источник жара, арене — пространство боя и путь входа. Небольшое живое движение достаточно.</p><span class="evidence-tag">Исходники + арт-предложение</span></article>
+<article class="audit-item"><span class="num">05 / КАМНИ И ИКОНКИ</span><h3>Различать до чтения</h3><p>Ценность предмета и доступность действия должны читаться на маленьком экране. Разная рисовка, тени и толщина контура быстро ломают единство даже при хорошем фоне.</p><p class="action"><strong>Изменение:</strong> единая камера и свет для иконок, общая масса силуэта и масштаб в слоте. Три цвета камней различать формой, череп и анх — символом. Редкость и состояния не кодировать одним цветом.</p><span class="evidence-tag">Правило будущего набора</span></article>
+<article class="audit-item"><span class="num">06 / ОТКЛИК</span><h3>Показать цепочку причин и результата</h3><p>В коде уже есть эффекты урона, лечения, маны, ярости, дополнительные ходы и уведомления. Их наличие не подтверждает качество ощущения в игре: это проверяется в отдельном игровом проходе.</p><p class="action"><strong>Изменение:</strong> выделение → обмен → сбор → поток ресурса/удар → изменение шкалы. Подкрепить 2–3 важных события звуком, короткой анимацией и умеренной отдачей. Уменьшить постоянные пульсации второстепенных кнопок.</p><span class="evidence-tag">Наличие в коде; качество не тестировалось</span></article>
+</div>
+<div class="principles">
+<div><h4>Сетка и размеры</h4><p>Стартовая опора — 1080×1920: safe area плюс наружное поле 48 px; интервалы 8/16/24/32 и кратные им. Зона нажатия от 132 px — около 48 логических px при ширине 390. Это ориентиры для макета, а не обязательный стандарт.</p></div>
+<div><h4>Три уровня текста</h4><p>На опоре 1080: основной текст 42–48 px, заголовок раздела около 56, экрана 64–72. Основной текст при ширине 390 получится примерно 15–17 логических px. Важные подписи переносить или раскрывать; не полагаться на слепой Auto Size и обрезку. Проверить кириллицу и TMP-атлас.</p></div><div><h4>Одна навигация</h4><p>Разные панели на сгенерированных изображениях — предложения для сравнения. После выбора зафиксировать один порядок разделов, подписи, иконки и правила возврата. У главной навигации сохранять место на всех метаэкранах; в бою оставить боевой HUD.</p></div><div><h4>Набор состояний</h4><p>Для кнопки: обычная, нажата, недоступна, выбрана, занята. Для слота: пустой, предмет, надет, выбран, перетаскивается, крафт, готов. Для окна: загрузка, данные, пусто, ошибка. Цвет дополнять знаком, текстом и формой.</p></div>
+<div><h4>Проверка на устройствах</h4><p>Проверять ширины 360/390/430 и пропорции от 16:9 до 20:9: чтение, нажатия, safe area, клавиатуру и длинный русский текст. Итоговые значения выбирать по реальному масштабу игры, а не только по большой картинке в редакторе.</p></div><div><h4>Посильный объём</h4><p>Один герой, 3–4 базовых материала, набор модулей окружения, общая система рамок и иконок. Не перерисовывать все экраны одновременно. Сначала доказать стиль на хабе, бою и мастерской; затем масштабировать тот же язык.</p></div>
+</div>
+</section>
+<section class="block" id="roadmap">
+<div class="section-head"><h2>Порядок переделки.</h2><p>Работы идут от читаемости и единой основы к эффектам. Каждый этап заканчивается конкретным проверяемым результатом, чтобы не повторять ручную компоновку заново.</p></div>
+<div class="roadmap">
+<article class="stage"><span class="stage-num">0</span><div><h3>Выбрать направление</h3><span class="priority">До изменения сцены</span></div><div class="stage-body">Сравнить хаб, бой и мастерскую. Выбрать A или B, затем записать одну страницу правил: палитра, материалы, свет, характер героя, иконки и допустимый декор. Если нужен гибрид, заимствовать только атмосферу или материал, сохраняя одну систему UI.<p class="done">Готово, когда: три ключевых экрана воспринимаются как одна игра, а ограничения стиля можно объяснить без новых референсов.</p></div></article>
+<article class="stage"><span class="stage-num">1</span><div><h3>Основа интерфейса</h3><span class="priority">P0 · наибольший эффект</span></div><div class="stage-body">Общая опорная сетка, safe area, шрифты с кириллицей, шкала размеров, централизованные стили, кнопки, вкладки, слоты и окна. Устранить двойное управление оформлением из сцены и runtime-кода; договориться об одном владельце раскладки.<p class="done">Готово, когда: набор компонентов выдерживает длинные названия, крупные суммы, пустое/ошибочное состояние, клавиатуру и несколько экранных пропорций.</p></div></article>
+<article class="stage"><span class="stage-num">2</span><div><h3>Играбельный образец</h3><span class="priority">P0 · хаб + бой + мастерская</span></div><div class="stage-body">Пересобрать композицию трёх экранов на новой основе. Для боя зафиксировать размер поля 6×6, портреты и пять умений. В мастерской — выбор очереди, рецепт, требования и одно главное действие. У меню — ясный центр сцены и компактный кошелёк.<p class="done">Готово, когда: в реальном игровом проходе новый игрок находит вход в бой, понимает свой ход и без подсказки запускает/забирает крафт.</p></div></article>
+<article class="stage"><span class="stage-num">3</span><div><h3>Мир и прогрессия</h3><span class="priority">P1 · шахта, герой, предметы</span></div><div class="stage-body">Собрать модули шахты и мастерской, заменить ключевые заглушки, унифицировать предметы/ресурсы/портреты. Перенести общую систему на персонажа, досье и карточки. Выбрать роль двух версий шахты, чтобы не удвоить стоимость арт-поддержки.<p class="done">Готово, когда: ресурсы совпадают по виду в дропе, кошельке и крафте; доступные действия и прогресс этажа читаются без открытия всех окон.</p></div></article>
+<article class="stage"><span class="stage-num">4</span><div><h3>События и метаразделы</h3><span class="priority">P1 · арена и общие панели</span></div><div class="stage-body">Оформить режимы, турнирную сетку, «Спуск», достижения, рейтинг и друзей теми же компонентами. Добавить короткие переходы, понятные статусы ожидания, единые награды и системные окна.<p class="done">Готово, когда: новый экран собирается из готового набора без собственной палитры, новых размеров шрифта и отдельной логики слоёв.</p></div></article>
+<article class="stage"><span class="stage-num">5</span><div><h3>Отполировать ощущения</h3><span class="priority">P2 · после читаемости</span></div><div class="stage-body">Настроить каскады, удары, приток маны, награды, звуки и умеренную вибрацию. Проверить производительность на целевых устройствах, контраст, долгий текст, слабую сеть и уменьшенные анимации. Количество эффектов подчинить реакции игрока, а не декоративности.<p class="done">Готово, когда: действие имеет ясный отклик, эффекты не прячут поле, а обычный игровой цикл остаётся понятен без звука и без сильной анимации.</p></div></article>
+</div>
+<div class="workflow"><div><h3>Что подготовить для Unity</h3><p>Концепт-арт превратить в отдельные ресурсы: слои окружения, иконки на прозрачном фоне, девятисегментные панели, портреты, шрифты/TMP и атласы. Затем собрать реальные адаптивные RectTransform-макеты. Изображение целиком нельзя использовать как готовый интерактивный экран.</p></div><div><h3>Как сохранить личный характер</h3><p>Необязательно выбрасывать ручную работу. Оставить удачные силуэты, монстров и предметы, затем привести их к одной палитре, свету и рамке. Смысл переделки — сделать авторский мир последовательным; количество уникальных ресурсов на первом этапе лучше уменьшить.</p></div></div>
+</section>
+<section class="block" id="evidence">
+<div class="section-head"><h2>На чём основано досье.</h2><p>Исходники определяют состав существующей игры. Концепты показывают предлагаемый визуальный язык, а не результаты тестирования или обещание новых функций.</p></div>
+<div class="facts"><div><h3>Подтверждено в проекте</h3><ul id="verified-facts"></ul></div><div><h3>Граница проверки</h3><p id="observation"></p><p>Читаемость на реальном телефоне, чувство удара, плавность каскадов и сетевые состояния требуют отдельного прохода после сборки. Точные схемы HUD и данные на изображениях необходимо сверить с механикой. Умеренная декоративность и устойчивый масштаб — проектные предложения этого досье.</p><p>Не предлагается начинать с полной замены всей графики. Первый проверяемый шаг — единый образец хаба, боя и мастерской в выбранном направлении.</p></div></div>
+<div class="evidence-list"><details><summary>Файлы проекта и причины выводов</summary><ol id="evidence-files"></ol></details><details><summary>Генерация, исходные промпты и локальные файлы</summary><p class="small-note" style="margin-top:14px">Режим генерации: встроенный image_gen. Изображения сгруппированы по двум направлениям; по 16 портретных концептов 9:16. Промпты/метаданные: <a href="A-forpost/prompts.json">A-forpost/prompts.json</a> и <a href="B-expedition/manifest.json">B-expedition/manifest.json</a>. Итоговые данные досье: <a href="report-data.json">report-data.json</a>. Внешние ресурсы, сетевые запросы и публикация для просмотра не требуются.</p></details></div>
+</section>
+<footer class="footer"><span>Escape · художественные концепты · 22 октября 2026</span><span>Локальное досье для выбора направления. Игровой код и сцены не изменены.</span><a href="#top">К началу ↑</a></footer>
+</main>
+<dialog id="zoom-dialog" aria-labelledby="zoom-title"><div class="zoom-bar"><h3 id="zoom-title"></h3><div class="zoom-actions"><button class="zoom-action" id="zoom-toggle" type="button" aria-pressed="false" aria-controls="zoom-image" aria-label="Показать изображение крупно">Крупно</button><a class="zoom-action" id="zoom-original" target="_blank" rel="noopener noreferrer">Открыть PNG ↗</a><button class="zoom-close" id="zoom-close" type="button">Закрыть · Esc</button></div></div><img class="zoom-image" id="zoom-image" alt=""><p class="zoom-caption" id="zoom-caption"></p></dialog>
+<script type="application/json" id="dossier-data">{
+  "title": "Escape — выбор художественного направления",
+  "date": "2026-10-22",
+  "language": "ru",
+  "scope": "Локальное дизайн-досье. Игровые сцены и код не изменены. Изображения — концептуальные иллюстрации для выбора направления, а не готовые макеты для внедрения.",
+  "generation": {
+    "mode": "built-in image_gen",
+    "prompts": [
+      "A-forpost/prompts.json",
+      "B-expedition/manifest.json"
+    ],
+    "notice": "Изображения задают художественное направление; сгенерированные подписи, числа и мелкие детали не являются спецификацией механик/баланса. Для реализации использовать описание раздела. Варианты навигации на концептах сравниваются как предложения: итоговую схему нужно выбрать одну и применить везде. Шрифт с засечками в отдельных B-изображениях не заменяет предложенную систему гротесков; микротипографика уточняется в макетах."
+  },
+  "directions": {
+    "A": {
+      "folder": "A-forpost",
+      "name": "Глубинный форпост",
+      "tagline": "Мрачная шахта, живой огонь, тяжёлый металл",
+      "idea": "Убежище у края разлома. Кинематографичный живописный мир в 2.5D: стальные приборы, медные акценты, тёплые лампы и холодное свечение глубины. Сохраняет атмосферу существующих факелов и промышленной шахты.",
+      "palette": [
+        {
+          "name": "Графит",
+          "hex": "#182025"
+        },
+        {
+          "name": "Сталь",
+          "hex": "#34474A"
+        },
+        {
+          "name": "Текст",
+          "hex": "#E7DED0"
+        },
+        {
+          "name": "Медь / янтарь",
+          "hex": "#CC8848"
+        },
+        {
+          "name": "Минеральный свет",
+          "hex": "#71B9B6"
+        }
+      ],
+      "materials": "Матовая сталь, потёртая медь, камень, ткань. Текстура остаётся на окружении; текст и небольшие кнопки получают спокойные встроенные подложки. Тяжёлые орнаментальные рамы не нужны.",
+      "type": "Заголовки: узкий промышленный гротеск с кириллицей, без засечек; короткие строки и умеренное уплотнение. Основной текст: высокочитаемый обычный гротеск, например PT Sans или Noto Sans. Числа — табличные. Перед внедрением проверить начертания, лицензию и TMP-атлас.",
+      "components": "Короткие встроенные стальные таблички со срезанными углами, один тонкий кант, крупные пиктограммы одинаковой массы. Янтарь — основное действие, холодный акцент — магия. Декор не пересекает текст и шкалы.",
+      "motion": "Пламя и пыль только в окружении. При выборе — короткий механический щелчок и изменение света; при ударе — локальный импульс. Постоянное свечение не охватывает все кнопки.",
+      "production": "Выше требования к свету, материалам и согласованию живописных ресурсов. Часть текущего окружения можно сохранить после приведения палитры, контраста и масштаба.",
+      "bestFor": "Если важнее сохранить нынешнюю атмосферу и часть арта, развивая промышленный подземный мир выживания."
+    },
+    "B": {
+      "folder": "B-expedition",
+      "name": "Экспедиция в разлом",
+      "tagline": "Выразительные формы, ясные действия, рукотворный мир",
+      "idea": "Тот же промышленный мир выживания, но как матовая рукотворная диорама в 2.5D. Крупные формы, ограниченная детализация, понятные силуэты и более светлое чтение делают даже небольшие сцены убедительными. Один модульный набор обслуживает хаб, мастерскую, шахту и арену.",
+      "palette": [
+        {
+          "name": "Глубина",
+          "hex": "#142E36"
+        },
+        {
+          "name": "Бирюзовая сталь",
+          "hex": "#285A60"
+        },
+        {
+          "name": "Тёплый песок",
+          "hex": "#D8C5A2"
+        },
+        {
+          "name": "Янтарь",
+          "hex": "#EDAA53"
+        },
+        {
+          "name": "Коралловый",
+          "hex": "#D56B51"
+        }
+      ],
+      "materials": "Упрощённые камень, дерево, окрашенный металл и бумага. На одном объекте — крупные цветовые плоскости и одна читаемая светотеневая грань; минимум мелких царапин.",
+      "type": "Основной интерфейс и заголовки: одна семья Noto Sans или PT Sans с кириллицей, обычное и полужирное начертания. Характер дают пропорции и композиция. Художественный логотип — отдельный ресурс.",
+      "components": "Мягкие углы, цельные цветовые пятна, ясные отступы, один размер обводки. Охра — основное действие, бирюза — выбранное состояние; красный — урон и ошибки. Иконка всегда имеет понятный силуэт без микродеталей.",
+      "motion": "Короткое живое движение предмета, лёгкая отдача и приятная реакция камней. Небольшое число сильных эффектов лучше постоянного движения всех элементов. Поддержать уменьшение анимации.",
+      "production": "Более устойчивый вариант для одного автора: повторяемые модули, простые материалы, небольшие сцены и единый набор иконок. Потребует переосмысления части существующих изображений.",
+      "bestFor": "Если важнее получить цельную игру с посильным объёмом дальнейшего производства."
+    }
+  },
+  "sections": [
+    {
+      "id": "hub",
+      "file": "01-hub.png",
+      "number": "01",
+      "title": "Главный хаб",
+      "short": "Хаб",
+      "kind": "Сцена · MainMenu",
+      "goal": "Сначала показать, где находится игрок и зачем ему возвращаться. Окружение задаёт настроение; интерфейс сообщает ближайшее полезное действие.",
+      "A": "Укреплённый форпост над шахтой: свет окон, вход в шахту и мастерская читаются в общей сцене. Металлические таблички поддерживают архитектуру.",
+      "B": "Компактная экспедиционная база: крупные узнаваемые здания и тёплые пятна света. Контур интерфейса сохраняет много воздуха вокруг сцены.",
+      "requirements": [
+        "Профиль и XP — единый компактный блок.",
+        "В шапке оставить 2–3 ресурса, нужных здесь; полный кошелёк раскрывать отдельно.",
+        "Один главный призыв к действию, второстепенная навигация — в устойчивых местах."
+      ],
+      "states": "Онлайн, обновление ресурсов, недоступный переход, уведомления разделов и активная аномалия. Новых зданий как игровых функций концепт не добавляет.",
+      "sources": [
+        "Assets/_Project/Scenes/MainMenu.unity",
+        "Assets/_Project/Scripts/UI/MainMenuController.cs",
+        "Assets/_Project/Prefabs/MainMenu/MainMenuHudOverlay.prefab"
+      ]
+    },
+    {
+      "id": "mine-2d",
+      "file": "02-mine-2d.png",
+      "number": "02",
+      "title": "Шахта · 2D",
+      "short": "Шахта 2D",
+      "kind": "Сцена · MineScene",
+      "goal": "Превратить список этажей в читаемое путешествие вниз. Сразу различать текущий этаж, следующий барьер, доступного монстра и босса.",
+      "A": "Вертикальный разрез тяжёлой шахты: ритм опор, лифт, локальные факелы и туман вдали. Боссовые этажи получают собственный силуэт.",
+      "B": "Ясная шахта-диорама: крупные уровни, ограниченная палитра, отличимые комнаты. Прогресс читается по форме и освещению, а не по россыпи значков.",
+      "requirements": [
+        "Сохранить 12 этажей и 3 сложности.",
+        "Показывать статус словом и знаком: доступно, ожидание, барьер.",
+        "Номер этажа и ближайшая цель заметнее подробностей добычи."
+      ],
+      "states": "Боссы этажей 4, 8 и 12; таймер респавна, закрытый этаж, барьер, смена сложности. Подробности вынесены в досье монстра.",
+      "sources": [
+        "Assets/_Project/Scenes/MineScene.unity",
+        "Assets/_Project/Scripts/UI/MineSceneController.cs"
+      ]
+    },
+    {
+      "id": "mine-3d",
+      "file": "03-mine-3d.png",
+      "number": "03",
+      "title": "Шахта · 3D",
+      "short": "Шахта 3D",
+      "kind": "Сцена · MineScene3D",
+      "goal": "Сохранить глубину и вращение ствола, но сделать взаимодействия однозначными. Трёхмерное окружение и интерфейс должны поддерживать одну систему фокуса.",
+      "A": "Объёмная промышленная шахта с холодной глубиной и тёплыми лампами. Предметы и существа обретают узнаваемый силуэт вместо капсул-заглушек.",
+      "B": "Стилизованный модульный разрез шахты: несколько крупных материалов и выразительные монстры. Освещение выделяет активную комнату.",
+      "requirements": [
+        "Виден выбранный этаж и направление движения.",
+        "Интерактивные зоны отделены от декора подсветкой и краткой подписью.",
+        "Сложности используют тот же язык, что в 2D-шахте."
+      ],
+      "states": "Вращение ствола, смена сложности, доступная и заблокированная комната, выбор монстра. Две шахты — существующие сцены; сохранять обе в финальном продукте необязательно.",
+      "sources": [
+        "Assets/_Project/Scenes/MineScene3D.unity",
+        "Assets/_Project/Scripts/Mine3D/Mine3DGeometryBuilder.cs",
+        "Assets/_Project/Scripts/Mine3D/Mine3DShaftController.cs"
+      ]
+    },
+    {
+      "id": "monster-dossier",
+      "file": "04-monster-dossier.png",
+      "number": "04",
+      "title": "Досье монстра",
+      "short": "Монстр",
+      "kind": "Раздел · общий для шахт",
+      "goal": "Помочь решить, начинать ли бой: кто противник, чем опасен, что можно получить и сколько стоит действие.",
+      "A": "Монстр в освещённой нише, строгая табличка с характеристиками и сдержанный блок добычи. У босса меняется силуэт рамки, а не весь интерфейс.",
+      "B": "Большой характерный портрет, короткие строки статов и понятная дорожка наград. Стоимость и кнопка боя объединены в одно решение.",
+      "requirements": [
+        "Аффикс — отдельная строка с расшифровкой.",
+        "Гарантированную награду и вероятный дроп обозначать по-разному.",
+        "Причина недоступности и способ её устранить расположены возле действия."
+      ],
+      "states": "Доступен бой; не возродился; призыв за энергию/золото; закрытый барьер и требования; нехватка ресурсов. Это состояния одной системы окон.",
+      "sources": [
+        "Assets/_Project/Resources/UI/MonsterModal.prefab",
+        "Assets/_Project/Scripts/UI/MonsterModalView.cs",
+        "Assets/_Project/Scripts/UI/MineSceneController.cs"
+      ]
+    },
+    {
+      "id": "workshop",
+      "file": "05-workshop.png",
+      "number": "05",
+      "title": "Мастерская",
+      "short": "Мастерская",
+      "kind": "Сцена · WorkshopScene",
+      "goal": "Показать производство как занятие внутри мира. Сначала выбрать работу, затем рецепт, увидеть требования и запустить крафт.",
+      "A": "Тёплая кузница с мастером света, наковальней и оборудованием. Восемь очередей выглядят как единая рабочая панель.",
+      "B": "Уютная модульная мастерская с крупными инструментами. Панель рецептов похожа на организованный стол, а не на таблицу поверх фона.",
+      "requirements": [
+        "Все 8 параллельных очередей сохраняются; выбранная очередь яснее остальных.",
+        "Требования оформлены компактными строками «есть / нужно».",
+        "В один момент приоритетно одно действие: создать, ускорить или забрать."
+      ],
+      "states": "Пустой слот, рецепт доступен/не изучен, не хватает ресурсов, изготовление с таймером, готово к получению, ускорение. Длинные названия не должны толкать кнопки.",
+      "sources": [
+        "Assets/_Project/Scenes/WorkshopScene.unity",
+        "Assets/_Project/Scripts/Character/UI/WorkshopSceneController.cs",
+        "Assets/_Project/Scripts/Character/UI/WorkshopRecipePanelSetup.cs"
+      ]
+    },
+    {
+      "id": "character",
+      "file": "06-character.png",
+      "number": "06",
+      "title": "Персонаж и инвентарь",
+      "short": "Персонаж",
+      "kind": "Раздел · экипировка",
+      "goal": "Сделать героя центром прогрессии, а инвентарь — понятной рабочей областью. Предметы обязаны различаться при небольшом размере.",
+      "A": "Тёмный гардероб форпоста: герой в направленном свете, металлические слоты и спокойный фон характеристик.",
+      "B": "Герой с крупным силуэтом и восемь ясно сгруппированных слотов. Тёплая поверхность инвентаря отделяет предметы от окружения.",
+      "requirements": [
+        "Сохранить 8 реальных слотов экипировки.",
+        "Уровень, имя и основные характеристики не соревнуются с предметами за внимание.",
+        "Редкость показывает цвет плюс форма/знак; выбранное и надетое — разные состояния."
+      ],
+      "states": "Пустые слоты, надетый предмет, выбор, перетаскивание, загрузка/ошибка профиля и изменение ника. Увеличение размера слотов не должно скрыть управление.",
+      "sources": [
+        "Assets/_Project/Prefabs/CharacterUI/CharacterHudOverlay.prefab",
+        "Assets/_Project/Scripts/Character/UI/CharacterScreenController.cs",
+        "Assets/_Project/Scripts/Character/UI/CharacterScreenView.cs"
+      ]
+    },
+    {
+      "id": "item-details",
+      "file": "07-item-details.png",
+      "number": "07",
+      "title": "Карточка предмета",
+      "short": "Предмет",
+      "kind": "Раздел · предметы и рецепты",
+      "goal": "За несколько секунд объяснить ценность предмета и безопасно выполнить действие. Для карточек нужен один шаблон с ограниченным числом вариантов.",
+      "A": "Предмет на тёмной спокойной подложке, латунный заголовок, сдержанная редкость и компактные параметры.",
+      "B": "Выразительная крупная иконка и лёгкая карточка с ясной иерархией. Разрушающие действия визуально отделены от экипировки.",
+      "requirements": [
+        "Название и тип предмета читаются без накладывания на иллюстрацию.",
+        "Статы показываются одинаковыми обозначениями во всех разделах.",
+        "Основное действие всегда в одном месте; опасное действие требует ясного подтверждения."
+      ],
+      "states": "Надеть/снять, изучить рецепт, продать, разобрать и подтверждение продажи. Сравнение с экипированным предметом — предложение для дальнейшей проработки, а не подтверждённая функция.",
+      "sources": [
+        "Assets/_Project/Scripts/Character/UI/CharacterItemInfoModalView.cs",
+        "Assets/_Project/Scripts/Character/UI/CharacterItemActionModalView.cs",
+        "Assets/_Project/Scripts/Character/UI/CharacterScreenController.cs"
+      ]
+    },
+    {
+      "id": "arena",
+      "file": "08-arena.png",
+      "number": "08",
+      "title": "Арена и режимы",
+      "short": "Арена",
+      "kind": "Сцена · ArenaMenu",
+      "goal": "Превратить одинаковые кнопки в понятный выбор правил. Сначала режим, затем условия входа; игрок должен понимать, где участвует экипировка.",
+      "A": "Вход на арену с живой глубиной трибун. Режимы оформлены как единая доска боёв, а турниры — как отдельная группа.",
+      "B": "Приключенческий зал состязаний: крупные знаки режимов и короткие объяснения. Один набор карточек обслуживает все варианты турниров.",
+      "requirements": [
+        "Классика, Pro и «Спуск» различаются подписью правил.",
+        "Турниры кузнеца, руды и золота сгруппированы отдельно от дуэлей.",
+        "Стоимость и награда появляются до входа, без перегруженной стартовой страницы."
+      ],
+      "states": "Выбор режима, подтверждение «Спуска», выбор ставки турнира, очередь и отмена. Концепт не добавляет новых видов боя.",
+      "sources": [
+        "Assets/_Project/Scenes/ArenaMenu.unity",
+        "Assets/_Project/Scripts/UI/ArenaMenuModePanelBinder.cs",
+        "Assets/_Project/Scripts/UI/ArenaMatch8Bridge.cs"
+      ]
+    },
+    {
+      "id": "tournament",
+      "file": "09-tournament.png",
+      "number": "09",
+      "title": "Турнирная сетка",
+      "short": "Турнир",
+      "kind": "Раздел · турнир на 8 участников",
+      "goal": "Показать положение игрока, следующий бой и исходы остальных пар. Турнир должен ощущаться событием, даже во время ожидания.",
+      "A": "Монументальная турнирная доска с металлическими связями, локальным светом на своей паре и отдельным блоком приза.",
+      "B": "Лаконичная схема с крупными аватарами, ясным маршрутом к финалу и небольшой панелью ожидания.",
+      "requirements": [
+        "Свой путь и текущая стадия заметны первым взглядом.",
+        "Ставки отделены от основной навигации по сетке.",
+        "Состояния «бой идёт», «победитель», «ожидание» различимы без цвета."
+      ],
+      "states": "Четвертьфинал, полуфинал, финал; обновление HP; ожидание; ставки на чужие пары; призы. На узком экране полная сетка может уступить место текущей стадии.",
+      "sources": [
+        "Assets/_Project/Resources/UI/ArenaBracketOverlay.prefab",
+        "Assets/_Project/Scripts/UI/ArenaMatch8Bridge.cs",
+        "Assets/_Project/Scripts/UI/PairRowBetSelect.cs"
+      ]
+    },
+    {
+      "id": "battle",
+      "file": "10-battle.png",
+      "number": "10",
+      "title": "Бой · Match-3",
+      "short": "Бой",
+      "kind": "Сцена · DuelMatch3",
+      "goal": "Сделать поле главным действующим лицом. Урон, мана и способности должны ощущаться причинно связанными с камнями и героями.",
+      "A": "Игровое поле как тяжёлый артефакт в пространстве арены. Рельефные камни, физичная энергия и крупные портреты по сторонам композиции.",
+      "B": "Контрастные камни с разными силуэтами на чистом поле. Ясный компактный HUD оставляет место крупным жестам и обратной связи.",
+      "requirements": [
+        "Ровно 6×6 клеток и 5 существующих типов камней.",
+        "Один фокус: чей ход и сколько осталось времени.",
+        "5 умений используют общую систему цены, доступности, выбора и перезарядки."
+      ],
+      "states": "Свой/чужой ход, выбранное умение, указание цели, мало маны, перезарядка, щит/ярость, крит, лечение, дополнительный ход и аффикс. Форму и символ использовать вместе с цветом камня.",
+      "sources": [
+        "Assets/_Project/Scenes/DuelMatch3.unity",
+        "Assets/_Project/Scripts/Match3/UI/Match3BoardView.cs",
+        "Assets/_Project/Scripts/Match3/UI/Match3GameHUD.cs",
+        "Assets/_Project/Scripts/Match3/UI/Match3AbilityPanel.cs"
+      ]
+    },
+    {
+      "id": "race",
+      "file": "11-race.png",
+      "number": "11",
+      "title": "«Спуск» · HUD режима",
+      "short": "Спуск",
+      "kind": "Раздел · вариант боевого HUD",
+      "goal": "Сразу объяснить другую цель боя: собирать ману до заданного порога. Не заставлять игрока читать обычные боевые шкалы как гонку.",
+      "A": "Приборы прогресса похожи на глубокомер и энергетический накопитель; цель и последний ход собраны возле центра внимания.",
+      "B": "Крупный наглядный прогресс двух участников к цели. Простые маркеры и короткие сообщения показывают изменения без табличного шума.",
+      "requirements": [
+        "Цель маны и прогресс обеих сторон читаются сразу.",
+        "Последний ход и бонус маны имеют собственные короткие состояния.",
+        "Сохранить узнаваемые камни и язык основного боя."
+      ],
+      "states": "Поиск/подготовка, прогресс к цели, бонус маны, последний ход, победа/поражение/ничья. Приглашение друга использует тот же режим, а не отдельную механику.",
+      "sources": [
+        "Assets/_Project/Scripts/Match3/Match3LaunchContext.cs",
+        "Assets/_Project/Scripts/Match3/UI/Match3GameHUD.cs",
+        "Assets/_Project/Scripts/Match3/UI/Match3PlayerPanel.cs"
+      ]
+    },
+    {
+      "id": "match-states",
+      "file": "12-match-states.png",
+      "number": "12",
+      "title": "Поиск и результат",
+      "short": "До / после боя",
+      "kind": "Раздел · два связанных состояния",
+      "goal": "Связать вход в бой и награду с одним миром. Ожидание даёт ясный статус, а победа показывает конкретный результат и следующий шаг.",
+      "A": "Подготовка у ворот арены и награда на тёплом освещённом металле. Декор не закрывает отмену и кнопку возврата.",
+      "B": "Простая выразительная встреча соперников и аккуратная выдача добычи. Эмоция сильнее лишних бликов и рамок.",
+      "requirements": [
+        "Разделить поиск, соединение и подготовку короткими статусами.",
+        "Награды показывать теми же иконками, что в кошельке и шахте.",
+        "У победы и поражения общая сетка с разным эмоциональным акцентом."
+      ],
+      "states": "Поиск и отмена, 5-секундная подготовка приглашения, победа, поражение, ничья, ошибки соединения и возврат. Турнирные переходы не обязаны каждый раз прерываться большим окном.",
+      "sources": [
+        "Assets/_Project/Scripts/Match3/UI/Match3SearchingPanel.cs",
+        "Assets/_Project/Scripts/Match3/UI/Match3GameOverPanel.cs",
+        "Assets/_Project/Scripts/Match3/DuelMatch3Manager.cs"
+      ]
+    },
+    {
+      "id": "achievements",
+      "file": "13-achievements.png",
+      "number": "13",
+      "title": "Достижения",
+      "short": "Достижения",
+      "kind": "Раздел · цепочки и награды",
+      "goal": "Показать достижимую ближайшую награду и долгий путь. Не превращать все степени и медали в одинаково яркую стену.",
+      "A": "Зал трофеев с металлическими знаками, спокойными неактивными ступенями и тёплой подсветкой готовой награды.",
+      "B": "Альбом экспедиции: крупные отличимые знаки, короткая цепочка шагов и ясная кнопка получения.",
+      "requirements": [
+        "Сохранить «Одержимость», «Бойня» и «ДНН».",
+        "Пройдено, текущая ступень, закрыто и можно забрать — четыре разных состояния.",
+        "Toast занимает немного места и не закрывает поле боя."
+      ],
+      "states": "Цепочки/ступени, условия, прогресс, получение, детальная модалка, badge и уведомление в бою. Полноту серверной выдачи наград нужно проверять отдельно от визуального этапа.",
+      "sources": [
+        "Assets/_Project/Scripts/Achievements/AchievementsPanelController.cs",
+        "Assets/_Project/Scripts/Achievements/AchievementStepDetailModal.cs",
+        "Assets/_Project/Scripts/Achievements/AchievementInGameToastHost.cs"
+      ]
+    },
+    {
+      "id": "leaderboard",
+      "file": "14-leaderboard.png",
+      "number": "14",
+      "title": "Рейтинг",
+      "short": "Рейтинг",
+      "kind": "Раздел · таблица лидеров",
+      "goal": "Помочь понять место игрока и условия сравнения. Триумфальная верхушка не должна мешать читать основную таблицу.",
+      "A": "Турнирная табличка форпоста с сдержанным подиумом, чёткими столбцами и выделенной строкой игрока.",
+      "B": "Чистый гильдейский список: три лидера с характером, остальные строки ровные и компактные. Фильтры вынесены над таблицей.",
+      "requirements": [
+        "День/неделя/месяц/всё время используют один компонент вкладок.",
+        "Тип и вид рейтинга явно подписаны.",
+        "Своя позиция остаётся доступной даже при прокрутке списка."
+      ],
+      "states": "Турнир/дуэль/шахта и подвиды, выбор фильтра, награды, пустой список, загрузка/ошибка и своя строка. Не смешивать результат боя и место в рейтинге.",
+      "sources": [
+        "Assets/_Project/Scripts/Leaderboard/LeaderboardPanelController.cs",
+        "Assets/_Project/Scripts/Leaderboard/LeaderboardFilterCatalog.cs",
+        "Assets/_Project/Scripts/Leaderboard/LeaderboardFilterPickerModal.cs"
+      ]
+    },
+    {
+      "id": "friends",
+      "file": "15-friends.png",
+      "number": "15",
+      "title": "Друзья и приглашения",
+      "short": "Друзья",
+      "kind": "Раздел · социальные действия",
+      "goal": "Дать простое ощущение живого мира через людей, не перегружая основной экран социальной службой.",
+      "A": "Список бойцов форпоста с аватарами и тихими индикаторами статуса. Приглашение выглядит как короткое сообщение гильдии.",
+      "B": "Понятный список спутников с мягкими карточками, ясными действиями и компактным входящим приглашением.",
+      "requirements": [
+        "Онлайн обозначается словом/знаком, а не только зелёной точкой.",
+        "Главное действие в контексте игрока — доступное приглашение в «Спуск».",
+        "Приглашение показывает инициатора, таймер и два ясных действия."
+      ],
+      "states": "Друзья/онлайн, добавить по имени, запрос ожидает ответа, контекстные действия, удалить, входящее приглашение и истёкшее приглашение. Декоративные или неготовые действия не выдавать за рабочие функции.",
+      "sources": [
+        "Assets/_Project/Scripts/Friends/FriendsPanelController.cs",
+        "Assets/_Project/Scripts/Friends/FriendsRaceInviteHost.cs",
+        "Assets/_Project/Scripts/Friends/FriendsPlayerRowView.cs"
+      ]
+    },
+    {
+      "id": "system-dialogs",
+      "file": "16-system-dialogs.png",
+      "number": "16",
+      "title": "Общая система окон",
+      "short": "Системные окна",
+      "kind": "Раздел · сгруппированные модальные состояния",
+      "goal": "Даже служебные окна должны принадлежать игре. Согласовать размер, заголовок, поля ввода, подтверждение и закрытие для всех разделов.",
+      "A": "Спокойные тёмные панели, один металлический край и ясные поля ввода. Аномалия использует особый знак внутри той же сетки.",
+      "B": "Светлые читаемые карточки в тёмном окружении, крупные подписи и общий ритм действий. Системные сообщения короткие и спокойные.",
+      "requirements": [
+        "Одна шкала размеров окон: короткое подтверждение, форма, подробности.",
+        "Основное/второстепенное/опасное действие оформлены одинаково везде.",
+        "Клавиатура, safe area и длинный русский текст учитываются до украшения."
+      ],
+      "states": "Настройки/аккаунт, первоначальный вход, привязка e-mail, покупка энергии с количеством и подтверждением, аномалия с бонусами, замена сессии, подтверждение выхода/удаления. На листе — примеры общей системы, не отдельная новая сцена.",
+      "sources": [
+        "Assets/_Project/Scripts/UI/MainMenuSettingsModalController.cs",
+        "Assets/_Project/Scripts/UI/AuthSetupGate.cs",
+        "Assets/_Project/Scripts/UI/EnergyHeaderPurchaseController.cs",
+        "Assets/_Project/Scripts/UI/SessionReplacedModal.cs",
+        "Assets/_Project/Scripts/UI/MainMenuController.cs"
+      ]
+    }
+  ],
+  "verified": [
+    "В EditorBuildSettings включены MainMenu, DuelMatch3, ArenaMenu, MineScene, WorkshopScene и MineScene3D.",
+    "Основные отдельные сцены используют портретную опору Canvas 1080×1920. При этом MainMenuWorld и CharacterHudOverlay имеют 1920×1080, а MainMenuHudOverlay — 1080×1920.",
+    "Внешний вид и размеры задаются одновременно в сценах/префабах и в runtime-коде. В мастерской используются и legacy Unity UI Text, и TMP.",
+    "WorkshopRecipePanelSetup нормализует раскладку, в том числе область подробностей и кнопок. Это свидетельство сложности ручной компоновки, а не доказательство текущего пересечения в запущенном билде.",
+    "В 3D-шахте геометрия монстров создаётся из капсул и сфер. Поиск противника имеет отдельный визуальный пресет SciFi.",
+    "Код содержит отдельные решения порядка слоёв HUD, персонажа, поиска и авторизации."
+  ],
+  "observation": "В просмотренном Unity Simulator главного меню видна плотная шапка с разнородными ресурсами и элементами разного масштаба. Игровой билд не запускался; поведение боёв, производительность, анимации и серверные операции здесь не тестировались.",
+  "recommendation": "Для самостоятельного развития рекомендовано направление B: его проще поддерживать модульными сценами, ограниченной палитрой и единым набором компонентов. A уместно, если хочется сохранить тёмную атмосферу и часть существующего арта. Окончательное решение — после сравнения хаба, боя и мастерской в одном направлении.",
+  "evidence": [
+    {
+      "path": "ProjectSettings/EditorBuildSettings.asset",
+      "why": "Фактический набор из шести сцен."
+    },
+    {
+      "path": "Assets/_Project/Prefabs/MainMenu/MainMenuHudOverlay.prefab",
+      "why": "Опорный размер HUD 1080×1920."
+    },
+    {
+      "path": "Assets/_Project/Prefabs/MainMenu/MainMenuWorld.prefab",
+      "why": "Отдельная опора мира 1920×1080."
+    },
+    {
+      "path": "Assets/_Project/Prefabs/CharacterUI/CharacterHudOverlay.prefab",
+      "why": "Опора персонажа 1920×1080; экипировка/инвентарь."
+    },
+    {
+      "path": "Assets/_Project/Scripts/Character/UI/WorkshopRecipePanelSetup.cs",
+      "why": "Ручная нормализация сетки, legacy Text и размеры."
+    },
+    {
+      "path": "Assets/_Project/Scripts/Mine3D/Mine3DGeometryBuilder.cs",
+      "why": "Процедурная шахта и монстры из примитивов."
+    },
+    {
+      "path": "Assets/_Project/Scripts/Match3/UI/Match3SearchingPanel.cs",
+      "why": "Отдельный SciFi-пресет ожидания."
+    },
+    {
+      "path": "Assets/_Project/Scripts/UI/MainMenuHudLayering.cs",
+      "why": "Порядок chrome-элементов и модальных панелей."
+    },
+    {
+      "path": "Assets/_Project/Scripts/UI/ArenaMenuModePanelBinder.cs",
+      "why": "Классика, Pro и «Спуск», подтверждение входа."
+    },
+    {
+      "path": "Assets/_Project/Scripts/UI/ArenaMatch8Bridge.cs",
+      "why": "Турниры, очередь, сетка и ставки."
+    },
+    {
+      "path": "Assets/_Project/Scripts/Match3/UI/Match3GameHUD.cs",
+      "why": "Таймер, аффикс и особые состояния «Спуска»."
+    },
+    {
+      "path": "escape.md",
+      "why": "Обзор игрового цикла; перечень сцен и режимов в нём неполный, проверялся по коду."
+    }
+  ],
+  "sizingProposal": {
+    "status": "Стартовые ориентиры для макетов, а не обязательный стандарт.",
+    "reference": "1080×1920; системная safe area плюс наружное поле 48 px опорного Canvas.",
+    "spacing": "Шкала интервалов 8/16/24/32 px и её кратные; не смешивать её со случайными размерами.",
+    "typography": "Основной текст 42–48 px, заголовок раздела около 56 px, заголовок экрана 64–72 px на опоре 1080. При ширине 390 это даёт примерно 15–17 логических px основного текста.",
+    "targets": "Зона нажатия от 132 px на опоре 1080 — примерно 48 логических px при ширине 390.",
+    "validation": "Проверить ширины 360/390/430 и пропорции от 16:9 до 20:9; важные подписи переносить или раскрывать, не прятать слепым Auto Size или обрезкой."
+  }
+}</script>
+<script>
+(function(){
+"use strict";
+var data=JSON.parse(document.getElementById("dossier-data").textContent);
+var sections=data.sections;
+var current=0;
+var lastZoomTrigger=null;
+var zoomDetail=false;
+var dialog=document.getElementById("zoom-dialog");
+function el(id){return document.getElementById(id);}
+function textNode(tag,text,className){var element=document.createElement(tag);element.textContent=text;if(className)element.className=className;return element;}
+function sourceLink(path){var a=document.createElement("a");a.href="../../"+path;a.textContent=path;return a;}
+Object.keys(data.directions).forEach(function(key){
+var d=data.directions[key];
+var card=document.createElement("article");card.className="direction direction-"+key.toLowerCase();
+var heading=document.createElement("div");heading.className="direction-name";heading.append(textNode("span",key,"letter"));
+var titles=document.createElement("div");titles.append(textNode("h3",d.name),textNode("p",d.tagline,"tagline"));heading.append(titles);card.append(heading,textNode("p",d.idea,"idea"));
+var palette=document.createElement("div");palette.className="palette";palette.setAttribute("role","img");palette.setAttribute("aria-label","Палитра: "+d.palette.map(function(c){return c.name+" "+c.hex;}).join(", "));
+d.palette.forEach(function(c){var s=document.createElement("span");s.className="swatch";s.style.backgroundColor=c.hex;s.title=c.name+" "+c.hex;palette.append(s);});card.append(palette);
+var dl=document.createElement("dl");dl.className="rules";
+[["Материалы",d.materials],["Шрифт и набор",d.type],["Компоненты",d.components],["Движение",d.motion],["Объём производства",d.production]].forEach(function(pair){dl.append(textNode("dt",pair[0]),textNode("dd",pair[1]));});card.append(dl);el("direction-cards").append(card);
+});
+el("recommendation").textContent=data.recommendation;
+el("concept-name-a").textContent=data.directions.A.name;
+el("concept-name-b").textContent=data.directions.B.name;
+sections.forEach(function(s,index){
+var b=document.createElement("button");b.type="button";b.className="chip";b.setAttribute("aria-pressed",index===0?"true":"false");b.setAttribute("aria-controls","gallery-content");b.textContent=s.number+" "+s.short;b.addEventListener("click",function(){showSection(index);});el("section-picker").append(b);
+});
+function showSection(index){
+current=(index+sections.length)%sections.length;
+var s=sections[current];
+el("gallery-kind").textContent=s.number+" / 16 · "+s.kind;
+el("gallery-title").textContent=s.title;
+el("gallery-goal").textContent=s.goal;
+el("gallery-states").textContent=s.states;
+el("requirements").replaceChildren();
+s.requirements.forEach(function(t){el("requirements").append(textNode("li",t));});
+el("section-sources").replaceChildren();
+s.sources.forEach(function(path){var li=document.createElement("li");li.append(sourceLink(path));el("section-sources").append(li);});
+Object.keys(data.directions).forEach(function(key){
+var suffix=key.toLowerCase(),d=data.directions[key],img=el("image-"+suffix);
+img.classList.remove("is-missing");
+img.alt=s.title+" — "+key+" «"+d.name+"». Художественный концепт.";
+img.src=d.folder+"/"+s.file;
+el("caption-"+suffix).textContent=s[key];
+el("image-button-"+suffix).setAttribute("aria-label","Увеличить: "+s.title+", вариант "+key+" «"+d.name+"»");
+});
+Array.from(el("section-picker").children).forEach(function(b,i){b.setAttribute("aria-pressed",i===current?"true":"false");});
+try{history.replaceState(null,"","#view-"+s.id);}catch(e){}
+}
+function setZoomDetail(enabled){
+zoomDetail=enabled;
+dialog.classList.toggle("is-detail",enabled);
+el("zoom-toggle").setAttribute("aria-pressed",enabled?"true":"false");
+el("zoom-toggle").setAttribute("aria-label",enabled?"Вписать изображение в окно":"Показать изображение крупно");
+el("zoom-toggle").textContent=enabled?"Вписать":"Крупно";
+dialog.scrollTop=0;
+}
+function openZoom(key,trigger){
+var s=sections[current],d=data.directions[key];lastZoomTrigger=trigger;
+setZoomDetail(false);
+el("zoom-title").textContent=s.title+" · "+key+" «"+d.name+"»";
+el("zoom-image").src=d.folder+"/"+s.file;
+el("zoom-original").href=d.folder+"/"+s.file;
+el("zoom-original").setAttribute("aria-label","Открыть оригинальный PNG в новой вкладке: "+s.title+", вариант "+key);
+el("zoom-image").alt=s.title+" — "+key+" «"+d.name+"». Художественный концепт.";
+el("zoom-caption").textContent=s[key]+" Концепт: надписи и точную компоновку необходимо проверить перед внедрением.";
+if(typeof dialog.showModal==="function"){dialog.showModal();el("zoom-close").focus();}else{window.open(d.folder+"/"+s.file,"_blank","noopener");}
+}
+["a","b"].forEach(function(suffix){var key=suffix.toUpperCase();["zoom-","image-button-"].forEach(function(prefix){el(prefix+suffix).addEventListener("click",function(e){openZoom(key,e.currentTarget);});});el("image-"+suffix).addEventListener("error",function(e){e.currentTarget.classList.add("is-missing");});});
+el("zoom-close").addEventListener("click",function(){dialog.close();});
+el("zoom-toggle").addEventListener("click",function(){setZoomDetail(!zoomDetail);});
+dialog.addEventListener("click",function(e){if(e.target===dialog){var r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
+dialog.addEventListener("close",function(){setZoomDetail(false);el("zoom-image").removeAttribute("src");el("zoom-original").removeAttribute("href");if(lastZoomTrigger)lastZoomTrigger.focus();});
+el("previous-section").addEventListener("click",function(){showSection(current-1);});
+el("next-section").addEventListener("click",function(){showSection(current+1);});
+data.verified.forEach(function(t){el("verified-facts").append(textNode("li",t));});
+el("observation").textContent=data.observation;
+data.evidence.forEach(function(item){var li=document.createElement("li"),a=sourceLink(item.path),code=document.createElement("code");code.textContent=item.path;a.replaceChildren(code);li.append(a,textNode("span",item.why));el("evidence-files").append(li);});
+var initial=0;
+if(location.hash.indexOf("#view-")===0){var found=sections.findIndex(function(s){return "#view-"+s.id===location.hash;});if(found>=0)initial=found;}
+showSection(initial);
+})();
+</script>
+</body>
+</html>

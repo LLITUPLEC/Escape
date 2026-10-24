@@ -1,0 +1,6 @@
+{
+    "target": "qf",
+    "ok": true,
+    "message": "UI-only qf bracket: 7 pairs, authoritative HP fixture, no entry/match/RPC invoked. Verified 7 pairs, 0 known HP and 14 unknown HP values, bets blocked, bounds inside screen; arena menu hidden and header/navigation visible.",
+    "utc": "2026-10-23T20:23:30.3452465Z"
+}

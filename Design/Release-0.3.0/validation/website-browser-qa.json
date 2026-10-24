@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-23T03:17:47.7628736+03:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "tested_viewport_widths": [
+    390,
+    666,
+    1280
+  ],
+  "horizontal_overflow": false,
+  "showcase_images_loaded": 4,
+  "gallery_character_lightbox_open_and_close": true,
+  "download_links": 2,
+  "download_links_match_release": true,
+  "browser_warning_error_logs": [],
+  "viewport_override_reset": true,
+  "screenshots": [
+    "website-mobile.png",
+    "website-desktop.png"
+  ]
+}

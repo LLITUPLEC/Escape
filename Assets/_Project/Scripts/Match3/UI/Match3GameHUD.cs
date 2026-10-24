@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,9 +34,42 @@ namespace Project.Match3
 
         private Coroutine _extraTurnRoutine;
         private Canvas _affixTooltipCanvas;
+        private TMP_Text _affixTooltipTitle;
 
         private float _timerFontSizeBase = 26f;
         private Color _timerNeutralColor = Color.white;
+        private bool _expeditionStyle;
+        private bool _moveResolving;
+        private TMP_Text _compactTurnSeparator;
+
+        public void UseExpeditionStyle()
+        {
+            _expeditionStyle = true;
+            _timerFontSizeBase = 60f;
+            _timerNeutralColor = Project.UI.ExpeditionTheme.Amber;
+            if (turnText != null) SetTurn(turnText.text);
+            if (timerText != null) timerText.text = CompactTimerText(timerText.text);
+            ApplyAffixTooltipChrome();
+            LayoutAffixTooltip();
+            ApplyCompactPhaseVisibility();
+        }
+
+        public void BindCompactTurnSeparator(TMP_Text separator)
+        {
+            _compactTurnSeparator = separator;
+            ApplyCompactPhaseVisibility();
+        }
+
+        private static string CompactTimerText(string text) => int.TryParse(text, out _) ? text + " сек" : text;
+
+        private void ApplyCompactPhaseVisibility()
+        {
+            if (!_expeditionStyle) return;
+            if (turnText != null) turnText.gameObject.SetActive(!_moveResolving);
+            if (timerText != null) timerText.gameObject.SetActive(!_moveResolving);
+            if (_compactTurnSeparator != null) _compactTurnSeparator.gameObject.SetActive(!_moveResolving);
+            if (timerPhaseText != null) timerPhaseText.gameObject.SetActive(_moveResolving);
+        }
 
         private static readonly Color TimerGreen = new Color(0.22f, 0.88f, 0.42f, 1f);
         private static readonly Color TimerOrange = new Color(1f, 0.52f, 0.12f, 1f);
@@ -147,7 +181,7 @@ namespace Project.Match3
                 raceManaBonusText.raycastTarget = false;
                 raceManaBonusText.enableAutoSizing = true;
                 raceManaBonusText.fontSizeMin = 18f;
-                raceManaBonusText.fontSizeMax = 72f;
+                raceManaBonusText.fontSizeMax = _expeditionStyle ? 25f : 72f;
                 raceManaBonusText.text = string.Empty;
                 go.SetActive(false);
             }
@@ -156,7 +190,7 @@ namespace Project.Match3
                 ApplyRaceManaBonusLayout(raceManaBonusText.rectTransform);
                 raceManaBonusText.enableAutoSizing = true;
                 raceManaBonusText.fontSizeMin = 18f;
-                raceManaBonusText.fontSizeMax = 72f;
+                raceManaBonusText.fontSizeMax = _expeditionStyle ? 25f : 72f;
                 raceManaBonusText.alignment = TextAlignmentOptions.Center;
             }
 
@@ -271,6 +305,11 @@ namespace Project.Match3
         private void ApplyRaceGoalTextLayout(TMP_Text label)
         {
             if (label == null) return;
+            if (_expeditionStyle)
+            {
+                ExpeditionBattleLayout.LayoutRaceBanner(label, false);
+                return;
+            }
             var rt = label.rectTransform;
             var canvasTr = ResolveMatchCanvasTransform();
             if (canvasTr == null) return;
@@ -297,6 +336,11 @@ namespace Project.Match3
         private static void ApplyRaceManaBonusLayout(RectTransform rt)
         {
             if (rt == null) return;
+            if (rt.GetComponentInParent<ExpeditionBattleLayout>() != null)
+            {
+                ExpeditionBattleLayout.LayoutRaceBonus(rt);
+                return;
+            }
             // middle-stretch, height 50, Pos Y 100, left 10
             rt.anchorMin = new Vector2(0f, 0.5f);
             rt.anchorMax = new Vector2(1f, 0.5f);
@@ -333,7 +377,7 @@ namespace Project.Match3
             ApplyRaceManaBonusLayout(raceManaBonusText.rectTransform);
             raceManaBonusText.enableAutoSizing = true;
             raceManaBonusText.fontSizeMin = 18f;
-            raceManaBonusText.fontSizeMax = 72f;
+            raceManaBonusText.fontSizeMax = _expeditionStyle ? 25f : 72f;
             raceManaBonusText.text = text;
             raceManaBonusText.gameObject.SetActive(true);
         }
@@ -520,13 +564,19 @@ namespace Project.Match3
             var parent = affixTooltipRoot.parent as RectTransform;
             if (parent == null) return;
 
+            if (_expeditionStyle)
+            {
+                LayoutExpeditionAffixTooltip(parent);
+                return;
+            }
+
             Canvas.ForceUpdateCanvases();
 
             const float padL = 10f;
             const float padR = 10f;
             const float padTop = 6f;
             const float padBottom = 10f;
-            const float closeReserve = 40f;
+            var closeReserve = _expeditionStyle ? 54f : 40f;
             const float panelLeft = 16f;
             const float panelRight = 16f;
             const float panelTop = 0f;
@@ -535,7 +585,7 @@ namespace Project.Match3
             float panelW = Mathf.Max(40f, parentW - panelLeft - panelRight);
             float maxTextW = Mathf.Max(40f, panelW - padL - padR);
 
-            affixTooltipText.fontSize = 30;
+            affixTooltipText.fontSize = _expeditionStyle ? 28 : 30;
             var pref = affixTooltipText.GetPreferredValues(affixTooltipText.text, maxTextW, 0f);
             float textH = Mathf.Max(pref.y, 30f);
             float totalH = padTop + closeReserve + textH + padBottom;
@@ -555,15 +605,76 @@ namespace Project.Match3
                 closeRt.anchorMin = new Vector2(1f, 1f);
                 closeRt.anchorMax = new Vector2(1f, 1f);
                 closeRt.pivot = new Vector2(1f, 1f);
-                closeRt.sizeDelta = new Vector2(36f, 32f);
+                closeRt.sizeDelta = _expeditionStyle ? new Vector2(52f, 48f) : new Vector2(36f, 32f);
                 closeRt.anchoredPosition = new Vector2(-6f, -6f);
                 affixTooltipCloseButton.transform.SetAsLastSibling();
+                if (_expeditionStyle) Project.UI.ExpeditionCloseButton.Apply(affixTooltipCloseButton);
+            }
+        }
+
+        private void LayoutExpeditionAffixTooltip(RectTransform parent)
+        {
+            const float inset = 28f;
+            const float padding = 26f;
+            const float titleHeight = 52f;
+            const float gap = 12f;
+            var width = Mathf.Max(120, parent.rect.width - inset * 2);
+            var textWidth = Mathf.Max(80, width - padding * 2);
+            affixTooltipText.fontSize = 28;
+            var bodyHeight = Mathf.Max(38, affixTooltipText.GetPreferredValues(affixTooltipText.text, textWidth, 0).y);
+            var height = padding * 2 + titleHeight + gap + bodyHeight;
+            ApplyAffixTooltipTopStretch(affixTooltipRoot, height, inset, inset, parent.rect.height * .145f);
+            var body = affixTooltipText.rectTransform;
+            body.anchorMin = Vector2.zero;
+            body.anchorMax = Vector2.one;
+            body.offsetMin = new Vector2(padding, padding);
+            body.offsetMax = new Vector2(-padding, -(padding + titleHeight + gap));
+            affixTooltipText.alignment = TextAlignmentOptions.TopLeft;
+            affixTooltipText.margin = Vector4.zero;
+            if (_affixTooltipTitle != null)
+            {
+                var title = _affixTooltipTitle.rectTransform;
+                title.anchorMin = new Vector2(0, 1);
+                title.anchorMax = Vector2.one;
+                title.pivot = new Vector2(.5f, 1);
+                title.offsetMin = new Vector2(padding, -(padding + titleHeight));
+                title.offsetMax = new Vector2(-(padding + 64), -padding);
+            }
+            if (affixTooltipCloseButton != null)
+            {
+                var close = (RectTransform)affixTooltipCloseButton.transform;
+                close.anchorMin = close.anchorMax = close.pivot = Vector2.one;
+                close.sizeDelta = new Vector2(48, 48);
+                close.anchoredPosition = new Vector2(-padding, -padding);
+                close.SetAsLastSibling();
             }
         }
 
         private void ApplyAffixTooltipChrome()
         {
             if (affixTooltipRoot == null) return;
+
+            if (_expeditionStyle)
+            {
+                var battle = GetComponentInParent<ExpeditionBattleLayout>();
+                var safe = battle != null ? battle.transform.Find("ExpeditionBattleSafeArea") : null;
+                if (safe != null && affixTooltipRoot.parent != safe) affixTooltipRoot.SetParent(safe, false);
+                if (_affixTooltipTitle == null)
+                {
+                    var existing = affixTooltipRoot.Find("ExpeditionAffixTitle");
+                    _affixTooltipTitle = existing != null ? existing.GetComponent<TMP_Text>() : null;
+                    if (_affixTooltipTitle == null)
+                        _affixTooltipTitle = ExpeditionUi.Text(affixTooltipRoot, "ExpeditionAffixTitle", "Аффикс", 32, 0, 0, 1, 1);
+                    _affixTooltipTitle.font = ExpeditionTheme.Font;
+                    _affixTooltipTitle.color = ExpeditionTheme.Amber;
+                    _affixTooltipTitle.alignment = TextAlignmentOptions.MidlineLeft;
+                    _affixTooltipTitle.textWrappingMode = TextWrappingModes.NoWrap;
+                    _affixTooltipTitle.enableAutoSizing = true;
+                    _affixTooltipTitle.fontSizeMin = 24;
+                    _affixTooltipTitle.fontSizeMax = 32;
+                    _affixTooltipTitle.margin = Vector4.zero;
+                }
+            }
 
             if (affixTooltipCloseButton == null)
             {
@@ -580,13 +691,19 @@ namespace Project.Match3
             var bg = affixTooltipRoot.GetComponent<Image>();
             if (bg != null)
             {
-                bg.color = new Color(0x3e / 255f, 0x73 / 255f, 0xdd / 255f, 0.96f);
+                if (_expeditionStyle) Project.UI.ExpeditionUi.StylePanel(bg, Project.UI.ExpeditionTheme.Panel);
+                else bg.color = new Color(0x3e / 255f, 0x73 / 255f, 0xdd / 255f, 0.96f);
                 bg.raycastTarget = true;
             }
 
             if (affixTooltipText != null)
             {
-                affixTooltipText.fontSize = 30;
+                affixTooltipText.fontSize = _expeditionStyle ? 28 : 30;
+                if (_expeditionStyle)
+                {
+                    affixTooltipText.font = Project.UI.ExpeditionTheme.Font;
+                    affixTooltipText.color = Project.UI.ExpeditionTheme.Ivory;
+                }
                 affixTooltipText.raycastTarget = false;
                 affixTooltipText.textWrappingMode = TextWrappingModes.Normal;
                 affixTooltipText.overflowMode = TextOverflowModes.Overflow;
@@ -594,6 +711,7 @@ namespace Project.Match3
 
             if (affixTooltipCloseButton != null)
             {
+                if (_expeditionStyle) Project.UI.ExpeditionUi.StyleButton(affixTooltipCloseButton, false, 25);
                 affixTooltipCloseButton.interactable = true;
                 var closeImg = affixTooltipCloseButton.GetComponent<Image>();
                 if (closeImg != null)
@@ -613,7 +731,7 @@ namespace Project.Match3
 
         public void SetTurn(string text)
         {
-            if (turnText != null) turnText.text = text;
+            if (turnText != null) turnText.text = _expeditionStyle && text != null ? text.TrimEnd('!', '…', '.') : text;
         }
 
         /// <param name="remainingSeconds">
@@ -622,7 +740,7 @@ namespace Project.Match3
         public void SetTimer(string text, float remainingSeconds = -1f)
         {
             if (timerText == null) return;
-            timerText.text = text;
+            timerText.text = _expeditionStyle ? CompactTimerText(text) : text;
             ApplyTimerCountdownStyle(text, remainingSeconds);
         }
 
@@ -662,7 +780,7 @@ namespace Project.Match3
 
             if (t < 10f)
             {
-                var sizeMul = Mathf.Lerp(TimerStressScaleMax, 1f, t / 10f);
+                var sizeMul = Mathf.Lerp(_expeditionStyle ? 1.08f : TimerStressScaleMax, 1f, t / 10f);
                 timerText.fontSize = _timerFontSizeBase * sizeMul;
             }
             else
@@ -672,8 +790,10 @@ namespace Project.Match3
         /// <param name="isMoveResolving">true — идёт откат чужого/своего хода (каскады); false — идёт отсчёт времени на решение.</param>
         public void SetTimerPhase(bool isMoveResolving)
         {
+            _moveResolving = isMoveResolving;
             if (timerPhaseText == null) return;
             timerPhaseText.text = isMoveResolving ? "Анимация хода" : "Время на решение";
+            ApplyCompactPhaseVisibility();
         }
 
         public void ShowExtraTurnMessage(string message, Color color, float duration)
@@ -694,7 +814,16 @@ namespace Project.Match3
             if (!has) return;
 
             if (affixTooltipText != null)
-                affixTooltipText.text = effectText;
+            {
+                if (_expeditionStyle)
+                {
+                    ApplyAffixTooltipChrome();
+                    var separator = effectText.IndexOf(':');
+                    if (_affixTooltipTitle != null) _affixTooltipTitle.text = separator > 0 ? effectText.Substring(0, separator).Trim() : "Аффикс";
+                    affixTooltipText.text = separator > 0 ? effectText.Substring(separator + 1).Trim() : effectText;
+                }
+                else affixTooltipText.text = effectText;
+            }
             EnsureAffixTooltipOnTop();
             LayoutAffixTooltip();
             WireAffixTooltipCloseButton();

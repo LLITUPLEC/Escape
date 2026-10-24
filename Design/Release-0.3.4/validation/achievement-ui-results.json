@@ -1,0 +1,21 @@
+{
+  "result": "passed",
+  "scope": "Actual catalog/cache production UI fixture, self-restored; no claim/RPC/PlayerPrefs writes by helper",
+  "checks": [
+    "total310, first two claim tokens -> third250/250 and eligible claim action",
+    "green visible ticks and Получено on claimed steps",
+    "ordered eligibility remains enforced for later completed step",
+    "actual CanvasRenderer main and chain mesh aspect matches original catalog sprite",
+    "all-claimed action hidden; cache/UI restored"
+  ],
+  "replies": [
+    {
+      "id": "0cb4d189c9b640b5a2d026b82f2923c7",
+      "message": "PASS: actual catalog 310 with first two claims renders green ticks/Получено, third250/250 and explicit claim action; ordered claims retained; actual CanvasRenderer art mesh aspect matches original main/chain sprites; all-claimed action hidden. In-memory cache/UI restored; no RPC/claim/PlayerPrefs writes."
+    },
+    {
+      "id": "cd8410cd274c4afaa151637a2a054ce7",
+      "message": "PASS: actual catalog 310 with first two claims renders green ticks/Получено, third250/250 and explicit claim action; ordered claims retained; actual CanvasRenderer art mesh aspect matches original main/chain sprites; all-claimed action hidden. In-memory cache/UI restored; no RPC/claim/PlayerPrefs writes."
+    }
+  ]
+}

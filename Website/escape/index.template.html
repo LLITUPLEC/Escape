@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c2025">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Escape — Экспедиция в разлом · Скачать для Android</title>
+  <meta name="description" content="Escape — онлайн-дуэли «три в ряд», шахта и создание снаряжения. Посмотрите кадры из игры и скачайте Android APK версии 0.3.5.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://prokrust-play.ru/escape/">
+  <link rel="icon" type="image/svg+xml" href="./assets/mark.svg">
+  <link rel="preload" href="./assets/PTSerif-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:title" content="Escape — Экспедиция в разлом">
+  <meta property="og:description" content="Шахта, снаряжение и тактические бои «три в ряд». Версия 0.3.5 для Android.">
+  <meta property="og:url" content="https://prokrust-play.ru/escape/">
+  <meta property="og:image" content="https://prokrust-play.ru/escape/assets/hub.png?v=0.3.5">
+  <meta property="og:image:alt" content="Убежище в игре Escape">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Escape — Экспедиция в разлом">
+  <meta name="twitter:description" content="Тактические дуэли «три в ряд». Скачать Escape 0.3.5 для Android.">
+  <meta name="twitter:image" content="https://prokrust-play.ru/escape/assets/hub.png?v=0.3.5">
+  <style>
+    @font-face{font-family:PTSerif;src:url('./assets/PTSerif-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+    :root{--bg:#09191e;--panel:#102a30;--ink:#ece1c9;--muted:#adc0b9;--amber:#edaa53;--line:#365653;--dark:#182c2b;--max:1180px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:6rem}body{margin:0;color:var(--ink);background:var(--bg);font:1.12rem/1.65 PTSerif,Georgia,serif;-webkit-font-smoothing:antialiased}
+    body::before{content:'';position:absolute;inset:0 0 auto;height:1050px;pointer-events:none;background:radial-gradient(ellipse at 80% 35%,#1d4444 0,transparent 51%),radial-gradient(ellipse at 8% 30%,#4b362426 0,transparent 55%);z-index:-1}
+    a{color:inherit}a,button{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--amber);outline-offset:6px}button{font:inherit}img{display:block;max-width:100%}h1,h2,h3,p,figure{margin:0}h1,h2,h3{font-weight:400}h2{font-size:clamp(2.1rem,4.4vw,3.55rem);line-height:1.15}h3{line-height:1.25}p+p{margin-top:1rem}.wrap{width:min(var(--max),calc(100% - 3rem));margin-inline:auto}.micro{font:600 .7rem/1.5 system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase}.eyebrow{color:var(--amber);margin-bottom:1.2rem}.muted{color:var(--muted)}.skip{position:fixed;top:-6rem;left:1rem;z-index:20;background:var(--amber);color:var(--bg);padding:.7rem 1rem}.skip:focus{top:1rem}
+    .topbar{display:flex;align-items:center;justify-content:space-between;min-height:94px;border-bottom:1px solid var(--line);gap:1rem}.brand{display:flex;align-items:center;gap:.75rem;text-decoration:none;font-size:1.75rem;letter-spacing:.06em}.brand svg{width:32px;height:36px;color:var(--amber)}.topbar nav{display:flex;align-items:center;gap:2rem;font:500 .84rem/1.3 system-ui,sans-serif}.topbar nav a{text-decoration:none;color:var(--muted)}.topbar nav a:hover{color:var(--ink)}.topbar .nav-download{color:var(--ink);border:1px solid #7d7759;padding:.75rem 1rem}
+    .hero{display:grid;grid-template-columns:1.14fr .86fr;align-items:center;gap:4rem;padding-block:4.5rem 5.4rem;min-height:810px}.hero h1{font-size:clamp(3.65rem,7.2vw,6.25rem);letter-spacing:-.04em;line-height:1.01;max-width:690px}.hero h1 em{font-style:normal;color:var(--amber)}.hero .lead{font-size:1.25rem;line-height:1.6;color:var(--muted);margin:1.7rem 0 2.1rem;max-width:29rem}.release-tag{display:flex;align-items:center;gap:.65rem;color:#bacec4;margin-top:1rem;font:.78rem/1.5 system-ui,sans-serif}.release-tag::before{content:'';width:5px;height:5px;background:var(--amber);border-radius:50%}
+    .cta{display:inline-flex;align-items:center;justify-content:center;gap:.9rem;padding:1.08rem 1.6rem;background:linear-gradient(115deg,#f6be68,#df9741);color:#172622;text-decoration:none;border:1px solid #f6cd8c;box-shadow:inset 0 0 0 3px #ad70265c,0 9px 25px #0004;font-weight:bold;line-height:1.3;transition:filter .2s,transform .2s;clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px),0 10px)}.cta:hover{filter:brightness(1.09);transform:translateY(-2px)}.cta:focus-visible{outline:none;box-shadow:inset 0 0 0 4px #172622,inset 0 0 0 7px #fff2d4,0 9px 25px #0004}.cta svg{width:23px;height:23px;flex:0 0 auto}.hero-visual{position:relative;max-width:358px;margin-inline:auto;width:100%}.hero-visual::before{content:'';position:absolute;inset:6% -12% -3%;background:radial-gradient(ellipse,#58a1972b 0,transparent 67%);z-index:-1}.screen-frame{padding:7px;background:linear-gradient(140deg,#78948b,#233e3d 12%,#101d20 56%,#5f7267);box-shadow:0 24px 60px #0008;border:1px solid #5f7970}.screen-frame img{width:100%;height:auto;aspect-ratio:1440/3088;object-fit:contain;background:#071216}.hero-visual figcaption{font:.68rem/1.5 system-ui,sans-serif;color:var(--muted);text-align:center;margin-top:.9rem;letter-spacing:.08em}.screen-corner{position:absolute;width:38px;height:38px;border-color:var(--amber);border-style:solid;pointer-events:none}.screen-corner.a{left:-7px;top:-7px;border-width:2px 0 0 2px}.screen-corner.b{right:-7px;bottom:29px;border-width:0 2px 2px 0}
+    .game-intro{display:grid;grid-template-columns:1fr 1fr;gap:5rem;border-top:1px solid var(--line);padding-block:3rem 4.2rem}.game-intro h2{font-size:2.45rem}.game-intro p{max-width:35rem;color:var(--muted)}.section-heading{display:flex;align-items:end;justify-content:space-between;gap:3rem;margin-bottom:2.5rem}.section-heading p{max-width:25rem;color:var(--muted)}.gallery-section{padding-block:3.7rem 5.6rem;background:#0d2329;border-block:1px solid #294747}.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2rem}.gallery a{display:block;padding:5px;border:1px solid #587069;background:#193437;text-decoration:none;box-shadow:0 10px 30px #0003;transition:transform .25s,border-color .25s}.gallery a:hover{transform:translateY(-5px);border-color:var(--amber)}.gallery img{width:100%;aspect-ratio:1440/3088;object-fit:contain;background:#071216}.gallery figcaption{padding:1.3rem .15rem 0}.gallery h3{font-size:1.65rem;margin-bottom:.55rem}.gallery p{font-size:1rem;line-height:1.6;color:var(--muted)}.gallery .ordinal{font:.65rem/1.5 system-ui,sans-serif;letter-spacing:.16em;color:var(--amber);display:block;margin-bottom:.55rem}
+    .release{display:grid;grid-template-columns:.76fr 1.24fr;gap:6rem;padding-block:5.5rem}.release-heading{position:sticky;top:3rem;align-self:start}.release-heading .date{display:block;color:var(--muted);font:.8rem/1.5 system-ui,sans-serif;margin-top:1rem}.change-list{list-style:none;margin:0;padding:0}.change-list li{padding:1.5rem 0;border-bottom:1px solid var(--line)}.change-list li:first-child{padding-top:0}.change-list h3{font-size:1.65rem;margin-bottom:.65rem}.change-list p{color:var(--muted);font-size:1.04rem}.preserved{display:flex;gap:.9rem;align-items:start;padding:1.4rem 0 0;color:#d2d4ba;font-size:.96rem}.preserved svg{width:23px;height:23px;flex-shrink:0;color:var(--amber);margin-top:.25rem}.previous{border-left:2px solid #7f8767;padding:.1rem 0 .1rem 1.5rem;margin-top:2.6rem}.previous .version{color:var(--amber);font:.72rem/1.5 system-ui,sans-serif;letter-spacing:.1em}.previous h3{font-size:1.45rem;margin-top:.4rem}.previous p{font-size:1rem;color:var(--muted);margin-top:.6rem}
+    .audio-preview{margin-top:1.7rem;font-size:1rem}.audio-preview a{color:var(--amber);text-underline-offset:4px}.previous summary{cursor:pointer;font-size:1rem}.previous .change-list{margin-top:1.2rem}.previous .change-list li{padding-block:1rem}.previous .change-list h3{font-size:1.25rem}.previous .previous{margin-top:1.6rem}
+    .download-section{padding-block:4.7rem 4rem;background:linear-gradient(110deg,#17383b,#10262d);border-block:1px solid #4d6256}.download-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:5rem;align-items:start}.download-section .intro{margin-top:1.3rem;color:var(--muted);max-width:34rem}.download-action{padding-top:.2rem}.download-action .cta{width:100%;font-size:1.23rem}.download-info{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.4rem 1rem;margin-top:1rem;font:.8rem/1.6 system-ui,sans-serif;color:var(--muted)}.filename{margin-top:1.1rem;word-break:break-all;font:.73rem/1.7 ui-monospace,Consolas,monospace;color:#b9cbc0}.install{font-size:.95rem;color:var(--muted);margin-top:1.9rem;max-width:31rem}.checksum{margin-top:1.6rem;border-top:1px solid var(--line);padding-top:1rem}.checksum summary{cursor:pointer;color:var(--ink);font:.83rem/1.5 system-ui,sans-serif;min-height:30px}.checksum p{font:.78rem/1.5 system-ui,sans-serif;color:var(--muted);margin-top:.8rem}.checksum code{display:block;word-break:break-all;margin-top:.6rem;color:#d2dccc;font:.75rem/1.7 ui-monospace,Consolas,monospace;user-select:all}.footer{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding-block:2rem;font:.75rem/1.6 system-ui,sans-serif;color:var(--muted)}.footer a{text-underline-offset:4px}.footer .footer-brand{font:1.35rem/1.2 PTSerif,Georgia,serif;color:var(--ink);letter-spacing:.04em}
+    dialog{padding:0;background:#08181e;color:var(--ink);border:1px solid #627b70;max-width:min(94vw,650px);max-height:95dvh;box-shadow:0 25px 80px #0009}dialog::backdrop{background:#030e12ed}.lightbox-inner{position:relative;padding:3.5rem .8rem .9rem}.lightbox-inner img{max-height:calc(92dvh - 5rem);width:auto;margin:auto;object-fit:contain}.lightbox-close{position:absolute;top:.6rem;right:.6rem;border:1px solid #7e9588;background:#19353b;color:var(--ink);font:500 .85rem system-ui,sans-serif;min-height:36px;padding:.45rem .8rem;cursor:pointer}.lightbox-title{position:absolute;top:.9rem;left:1rem;color:var(--muted);font:.8rem system-ui,sans-serif}
+    @media(max-width:900px){.hero{gap:2rem;min-height:720px}.hero h1{font-size:4.5rem}.hero-visual{max-width:305px}.game-intro,.release,.download-grid{gap:3rem}.gallery{gap:1.25rem}.release{grid-template-columns:.8fr 1.2fr}.topbar nav{gap:1.2rem}}
+    @media(max-width:640px){html{scroll-padding-top:1.2rem}.wrap{width:calc(100% - 2rem)}.topbar{min-height:76px}.brand{font-size:1.4rem}.brand svg{width:26px;height:29px}.topbar nav{gap:.8rem;font-size:.74rem}.topbar nav a:not(.nav-download){display:none}.topbar .nav-download{padding:.65rem .8rem}.hero{grid-template-columns:1fr;min-height:0;padding-block:3.1rem 3.2rem;gap:2.7rem}.hero h1{font-size:clamp(3.65rem,15vw,5.7rem);max-width:550px}.hero .lead{font-size:1.12rem;max-width:30rem;margin-block:1.4rem 1.7rem}.hero .cta{width:100%;max-width:24rem}.hero-visual{width:72%;max-width:306px}.hero-visual::before{inset:4% -20%}.game-intro{grid-template-columns:1fr;gap:1.2rem;padding-block:2.5rem 3rem}.game-intro h2{font-size:2.1rem}.section-heading{display:block;margin-bottom:1.9rem}.section-heading p{margin-top:1rem;max-width:100%}.gallery-section{padding-block:3rem}.gallery{gap:.7rem}.gallery a{padding:3px}.gallery figcaption{padding-top:.8rem}.gallery h3{font-size:1.05rem}.gallery p{font-size:.82rem;line-height:1.5}.gallery .ordinal{font-size:.55rem;letter-spacing:.07em}.release{grid-template-columns:1fr;gap:2rem;padding-block:3.6rem}.release-heading{position:static}.change-list h3{font-size:1.45rem}.download-grid{grid-template-columns:1fr;gap:2rem}.download-section{padding-block:3.4rem}.download-action .cta{font-size:1.1rem}.footer{gap:1rem;align-items:start;flex-wrap:wrap}.screen-corner.b{bottom:29px}.micro{font-size:.65rem}.eyebrow{margin-bottom:1rem}}
+    @media(max-width:370px){.gallery{grid-template-columns:1fr;gap:2rem}.gallery figure{display:grid;grid-template-columns:42% 1fr;align-items:center;gap:1rem}.gallery figcaption{padding:0}.gallery h3{font-size:1.4rem}.gallery p{font-size:.95rem}.hero h1{font-size:3.5rem}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+  </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Escape","description":"Онлайн-дуэли «три в ряд», шахта и создание снаряжения.","operatingSystem":"Android","applicationCategory":"GameApplication","softwareVersion":"0.3.5","datePublished":"{{RELEASE_DATE}}","url":"https://prokrust-play.ru/escape/","downloadUrl":"https://prokrust-play.ru/escape/downloads/{{APK_FILENAME}}","image":"https://prokrust-play.ru/escape/assets/hub.png?v=0.3.5","inLanguage":"ru"}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Перейти к содержимому</a>
+  <header class="wrap topbar">
+    <a class="brand" href="#main" aria-label="Escape — начало страницы"><svg aria-hidden="true" viewBox="0 0 32 36" fill="none"><path d="M16 2 29 10v16l-13 8L3 26V10L16 2Z" stroke="currentColor"/><path d="m20 8-9 11h7l-6 10 12-14h-8l4-7Z" fill="currentColor"/></svg>ESCAPE</a>
+    <nav aria-label="Навигация по странице"><a href="#gallery">Кадры из игры</a><a href="#release">Что нового</a><a href="./audio-035/">Звуки A/B</a><a class="nav-download" href="#download">Скачать APK <span aria-hidden="true">↓</span></a></nav>
+  </header>
+  <main id="main">
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div>
+        <p class="micro eyebrow">Экспедиция в разлом</p>
+        <h1 id="hero-title">Спуск начинается<br>с одного <em>хода.</em></h1>
+        <p class="lead">Дуэли «три в ряд» в глубине шахты. Подберите снаряжение, соберите камни в линию и проложите путь к следующему этажу.</p>
+        <a class="cta" href="./downloads/{{APK_FILENAME}}" download="{{APK_FILENAME}}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Скачать для Android</a>
+        <p class="release-tag">Версия 0.3.5 <span aria-hidden="true">·</span> {{APK_MIB}} МиБ <span aria-hidden="true">·</span> APK</p>
+      </div>
+      <figure class="hero-visual">
+        <div class="screen-frame"><img src="./assets/hub.png?v=0.3.5" width="1440" height="3088" alt="Убежище Escape: шахтёрское окружение и переходы к разделам игры" fetchpriority="high" decoding="async"></div>
+        <span class="screen-corner a" aria-hidden="true"></span><span class="screen-corner b" aria-hidden="true"></span>
+        <figcaption>НАСТОЯЩИЙ КАДР ИЗ ИГРЫ · УБЕЖИЩЕ</figcaption>
+      </figure>
+    </section>
+    <section class="wrap game-intro" aria-labelledby="game-title">
+      <h2 id="game-title">Снарядиться.<br>Спуститься. Победить.</h2>
+      <p>Выбирайте этаж шахты, изучайте противника и вступайте в бой. Добыча пригодится в мастерской: находите рецепты, создавайте экипировку и готовьте героя к следующему выходу.</p>
+    </section>
+    <section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
+      <div class="wrap">
+        <div class="section-heading"><div><p class="micro eyebrow">Мир Escape</p><h2 id="gallery-title">Загляните в экспедицию</h2></div><p>Убежище, снаряжение героя и шахта — три кадра из текущей версии. Нажмите на изображение, чтобы рассмотреть его.</p></div>
+        <div class="gallery">
+          <figure><a href="./assets/hub.png?v=0.3.5" data-lightbox="Убежище" aria-label="Увеличить скриншот убежища"><img src="./assets/hub.png?v=0.3.5" width="1440" height="3088" alt="Экран убежища в игре Escape" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">01 / УБЕЖИЩЕ</span><h3>Перед спуском</h3><p>Точка возвращения между боями и подготовкой снаряжения.</p></figcaption></figure>
+          <figure><a href="./assets/character.png?v=0.3.5" data-lightbox="Персонаж" aria-label="Увеличить скриншот персонажа"><img src="./assets/character.png?v=0.3.5" width="1440" height="3088" alt="Полноэкранный персонаж: по три слота экипировки с каждой стороны и два слота оружия снизу" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">02 / ПЕРСОНАЖ</span><h3>Всё при герое</h3><p>Экипировка, характеристики и инвентарь на одной странице.</p></figcaption></figure>
+          <figure><a href="./assets/mine.png?v=0.3.5" data-lightbox="Шахта" aria-label="Увеличить скриншот шахты"><img src="./assets/mine.png?v=0.3.5" width="1440" height="3088" alt="Разрез шахты Escape с площадками этажей, монстрами и карточкой выбранного этажа" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">03 / ШАХТА</span><h3>Дальше в глубину</h3><p>Площадки, барьеры и противники складываются в единый маршрут.</p></figcaption></figure>
+        </div>
+      </div>
+    </section>
+    <section class="wrap release" id="release" aria-labelledby="release-title">
+      <div class="release-heading"><p class="micro eyebrow">Что нового</p><h2 id="release-title">Версия 0.3.5</h2><time class="date" datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div>
+      <div>
+        <ul class="change-list">
+          <li><h3>Ступени достижений без тесноты</h3><p>В цепочках остались числа и состояния наград, а стрелки показывают переход к следующей ступени. Миниатюры убраны; основной арт карточки сохранён.</p></li>
+          <li><h3>Единый красный крестик</h3><p>Окна закрываются заметным красным X без тяжёлой рамки. Кнопка аффикса в бою тоже стала легче.</p></li>
+          <li><h3>Подписи внутри слотов мастерской</h3><p>Название предмета и «Пусто» помещаются в своих зонах, с отступами от края и без наложения на иконку.</p></li>
+          <li><h3>Компактная шапка героя</h3><p>Полоса опыта укладывается в рамку, ник и уровень разделены отступами.</p></li>
+          <li><h3>Понятный выбор прогноза</h3><p>Доступные пары получили явные чекбоксы. Выбор, смена стороны и отмена работают через существующие ставки; отказ сервера снимает ложную локальную отметку.</p></li>
+          <li><h3>Тонкий переключатель ставок</h3><p>Вместо массивной рамки — спокойная полоса и ясные состояния «ВКЛ.» и «ВЫКЛ.».</p></li>
+          <li><h3>Активная аура снова заметна</h3><p>Серверная аура показывает анимацию и оставшееся время, открывает своё настоящее окно и скрывается, когда усиление не действует.</p></li>
+          <li><h3>Характеристики боя крупнее</h3><p>Всплывающая панель характеристик стала выше примерно на четверть, а текст — крупнее и свободнее.</p></li>
+          <li><h3>Крупный отсчёт раунда</h3><p>Текст и таймер турнира увеличены вдвое и лежат на тёмной плашке, которая отделяет их от фона арены.</p></li>
+          <li><h3>Чистые связи турнирной сетки</h3><p>История четвертьфиналов группируется по настоящим участникам полуфинала. Линии сходятся аккуратно, а серверные слоты и прогнозы сохраняют свои номера.</p></li>
+        </ul>
+        <p class="preserved"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 12 5 5L20 6"/></svg>Камни игрового поля и знакомые иконки способностей сохранены.</p>
+        <p class="audio-preview"><a href="./audio-035/">Послушать 20 пар эффектов A/B <span aria-hidden="true">→</span></a><br><span class="muted">Это демоверсии для выбора: они ещё не подключены к игре. Звуки ярости, щита и критического попадания сохранены.</span></p>
+        <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.4</span> — посмотреть изменения</summary>
+<ul class="change-list">
+          <li><h3>Новая озвучка ярости и щита</h3><p>Для применения ярости и щита добавлены отдельные звуковые эффекты. Привычный звук критического попадания сохранён.</p></li>
+          <li><h3>От поиска до результата</h3><p>Поиск соперника и итог боя оформлены в стиле экспедиции: крупные портреты, ясное состояние ожидания и отдельный список реальных наград.</p></li>
+          <li><h3>Очередь турнира без случайных переходов</h3><p>Во время набора участников скрыты остальные режимы, шапка и навигация; доступен выход из очереди. Когда сетка готова, переход в другой режим не уводит из активного турнира.</p></li>
+          <li><h3>Сетка показывает ход турнира</h3><p>Здоровье читается на цельных полосах рядом с именами. Связи между раундами и имена четвертьфиналистов сохраняют историю пути; победители выделены, проигравшие приглушены.</p></li>
+          <li><h3>Призовые места в отдельных рамках</h3><p>Подиум и фигуры в рейтинге убраны. Первые три места получили золотую, серебряную и бронзовую рамки с медалью, остальные участники — спокойные обычные строки.</p></li>
+          <li><h3>Полученные награды заметны</h3><p>Полученные ступени отмечены зелёной галочкой и словом «Получено», доступные — ярким действием «Получить». Изображения достижений и значки цепочки сохраняют исходные пропорции; три вкладки и порядок получения наград сохранены.</p></li>
+          <li><h3>Сколько маны снимет петарда</h3><p>На петарде в «Спуске» снова показано, сколько маны она снимет у соперника. Счётчик растёт от уничтожения капсул до 50 и показывает настоящее значение, присланное сервером.</p></li>
+          <li><h3>Чистое открытие убежища</h3><p>При первом открытии игры больше не появляется краткий кадр прежнего главного меню перед общей оболочкой экспедиции.</p></li>
+          <li><h3>Онлайн без лишней рамки</h3><p>Число игроков онлайн стало компактнее: светло-зелёный текст без отдельной тяжёлой рамки.</p></li>
+          <li><h3>Чей ход — видно сразу</h3><p>Надпись хода расположена над крупным таймером по центру прямо над полем. Статус щита увеличен и вынесен из-под окна характеристик; значок аффикса справа стал заметнее.</p></li>
+          <li><h3>Перезарядка одним числом</h3><p>На способностях остаётся только число ходов перезарядки, без повторяющейся подписи «КД».</p></li>
+        </ul>
+<div class="previous"><span class="version">ПРЕДЫДУЩАЯ · 0.3.3</span><h3>Единый мир и понятная прогрессия</h3><p>Общий фон объединил страницы героя и достижений. В шахте появились разные комнаты и физическая кабина подъёмника, цели достижений стали показывать дополнительные шаги, а сетка турнира связала все раунды. В «Спуске» закреплены взнос 2 материи, награда 4 против человека и возврат оплаченного взноса против бота.</p></div>
+        </details>
+      </div>
+    </section>
+    <section class="download-section" id="download" aria-labelledby="download-title">
+      <div class="wrap download-grid">
+        <div><p class="micro eyebrow">Готовы к спуску?</p><h2 id="download-title">Escape для Android</h2><p class="intro">Скачайте APK и откройте его на Android для установки. Для игры нужно подключение к интернету.</p></div>
+        <div class="download-action"><a class="cta" href="./downloads/{{APK_FILENAME}}" download="{{APK_FILENAME}}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Скачать для Android</a><div class="download-info"><span>Версия 0.3.5 · {{APK_MIB}} МиБ</span><time datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div><p class="filename">Файл: {{APK_FILENAME}}</p><details class="checksum"><summary>Проверить загруженный файл</summary><p>Контрольная сумма SHA-256:</p><code>{{APK_SHA256}}</code></details></div>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap footer"><span class="footer-brand">ESCAPE</span><span>Экспедиция в разлом · 0.3.5</span><a href="./assets/OFL.txt">Лицензия шрифта PT Serif</a></footer>
+  <dialog id="lightbox" aria-labelledby="lightbox-title"><div class="lightbox-inner"><p class="lightbox-title" id="lightbox-title"></p><button type="button" class="lightbox-close" autofocus>Закрыть <span aria-hidden="true">×</span></button><img alt="" id="lightbox-image"></div></dialog>
+  <script>
+    (()=>{
+      for(const time of document.querySelectorAll('[data-release-date]')){
+        const date=new Date(time.dateTime+'T12:00:00Z');
+        if(!Number.isNaN(date.getTime())) time.textContent=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(date);
+      }
+      const dialog=document.getElementById('lightbox');
+      if(typeof dialog.showModal!=='function') return;
+      const image=document.getElementById('lightbox-image');
+      let opener=null;
+      document.querySelectorAll('[data-lightbox]').forEach(link=>link.addEventListener('click',event=>{
+        event.preventDefault();opener=link;
+        document.getElementById('lightbox-title').textContent=link.dataset.lightbox;
+        image.src=link.href;image.alt=link.querySelector('img').alt;
+        dialog.showModal();
+      }));
+      dialog.querySelector('button').addEventListener('click',()=>dialog.close());
+      dialog.addEventListener('click',event=>{if(event.target===dialog) dialog.close()});
+      dialog.addEventListener('close',()=>{image.removeAttribute('src');if(opener)opener.focus()});
+    })();
+  </script>
+</body>
+</html>
+
+

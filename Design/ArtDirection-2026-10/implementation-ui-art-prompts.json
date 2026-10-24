@@ -1,0 +1,142 @@
+{
+  "direction": "B — Экспедиция в разлом",
+  "generated_on": "2026-10-23",
+  "mode": "built-in image_gen",
+  "purpose": "Imported, transparent sculpted interface art; sprite slicing changes metadata only",
+  "references": [
+    "Design/ArtDirection-2026-10/B-expedition/01-hub.png",
+    "Design/ArtDirection-2026-10/B-expedition/06-character.png",
+    "User attachment codex-clipboard-449f755f-4586-46a7-914c-3523388ca61a.png"
+  ],
+  "assets": [
+    {
+      "file": "ui-icons-atlas.png",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept\nAsset type: ONE production Unity UI SPRITE ATLAS texture containing 20 separate sculpted object icons in an EXACT regular five-column by four-row grid. Landscape 5:4 canvas. Transparent RGBA background, no visible cell lines.\nInput images 1,2,3 are STYLE REFERENCES. Copy their dimensional hand-painted sculpted UI icon language closely: practical adult subterranean mining industrial RPG, worn matte sculpted ivory steel, bronze, warm brown leather, soft clear top-left light and dark teal shadow in objects, chunky believable geometry and readable silhouettes. These must look like the physical little sculpted 3D miniatures shown in the reference bottom navigation, NOT flat glyphs, not line symbols, not emoji, not simple geometric primitives. All twenty icons have the same camera and material quality. Real deep bevels and broad worn highlights, subtle tool marks, economical details.\nLayout is CRITICAL for automatic Unity sprite slicing: 5 columns and 4 rows of EQUAL rectangular cells. Each icon centered exactly in its own cell. Keep at least 15 percent of each cell as fully transparent gutters on all sides. No icon can overlap another cell. All icons separate on genuine transparency, no scenery, UI cards, plates, pedestal, shadows outside silhouettes, labels, numbers, text or watermark.\nEXACT CONTENT AND ORDER, left to right, top to bottom:\nROW1: 1) little solid metal industrial shelter HOUSE with pitched roof and doorway; 2) miner PICKAXE with broad forged steel head and weathered wooden handle, diagonal; 3) compact blacksmith ANVIL with small square hammer resting on top; 4) two crossed practical ivory steel SWORDS; 5) sculpted hooded masked miner HEAD/BUST, ivory hood and dark respirator, like reference navigation hero.\nROW2: 6) dimensional golden ENERGY lightning bolt, broad bevel; 7) a small stack of textured GOLD COINS; 8) a chunky cluster of blue-gray mineral ORE; 9) practical worn tan mining BACKPACK with two straps; 10) sculpted ivory metal HEART badge.\nROW3: 11) simple practical ivory metal SHIELD, beveled; 12) miner HELMET with hood/respirator; 13) pair of metal SHOULDER GUARDS with leather; 14) practical metal CHEST armor vest; 15) pair of rugged leather GLOVES.\nROW4: 16) practical reinforced mining TROUSERS/LEGS; 17) pair of mining BOOTS; 18) diagonal mining PICKAXE for left hand equipment; 19) compact industrial mining PISTOL/tool for right hand equipment; 20) rolled parchment BLUEPRINT with simple gear drawing but NO letters or text.\nNo colored square backgrounds. Every silhouette is independently transparent. Icons should fill about 65–70 percent of their cell, consistent scale. No UI, no visible grid, no button frame.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-8a77846d-bce4-4ca7-b687-6429d605c472.png",
+      "path": "Assets/_Project/Resources/Expedition/UI/ui-icons-atlas.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true,
+        "genuine_alpha": true
+      }
+    },
+    {
+      "file": "panel-frame.png",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept\nAsset type: ONE production Unity NINE-SLICE UI PANEL sprite, landscape3:1. Input images 1 and3 are exact MATERIAL/FRAME style references. Reproduce the substantial dimensional industrial panel framing visible around the lower context card and bottom navigation in reference: aged painted petrol iron, thick angular beveled steel rim, subtly uneven worn broad edge highlights, a few tiny corner metal rivets, inset dark petrol panel. Physical hand-painted sculpted game material, sophisticated adult 2.5D mining RPG. NOT a flat vector rectangle or generic polygonframe.\nJust ONE blank rectangular dark metal UI surface without any words, icons, characters or inset mini scene. Interior solid very dark petrol #0D2228 to #142E36, quiet and near-uniform with extremely subtle worn matte metal/paperlike broad texture, so live ivory text reads clearly. Rim around20–32pixels design width with multi-step worn bevel, thin lit inner edge, chunky tiny corner cuts max32px. No complicated decorative corner flourishes. Long top/bottom strips must be straight, texture quiet and repeat/stretch-friendly, and left/right strips straight. Panel top/bottom/left/right touch canvas edges: NO transparent margin. Only small clipped corner triangles outside silhouette are transparent. Frame center is OPAQUE. Exact front-on orthographic, parallel horizontal/vertical opposite edges, no perspective. Landscape3:1, simple full-bleed rectangular shape compatible with Unity Sprite border48. No text, labels, number, buttons, UI screenshot, background, logo, shadows outside the silhouette or watermark. Actual transparent RGBA around small clipped corners only.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-89597e18-898f-4d74-98e4-cb4c46d949e2.png",
+      "path": "Assets/_Project/Resources/Expedition/UI/panel-frame.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true,
+        "genuine_alpha": true
+      }
+    },
+    {
+      "file": "primary-button.png",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept\nAsset type: ONE production Unity NINE-SLICE PRIMARY BUTTON sprite, landscape3:1. Input image3 is the exact button STYLE reference: reproduce the beautiful amber metal button reading 'В ШАХТУ' in that reference, but REMOVE all text and arrow, generate a completely BLANK button surface only. Thick sculpted hand-painted painted amber metal plate, rich warm ochre center #E6A244, matte worn paint with very subtle broad texture, restrained highlights upper/left edge and deeper burnt umber bevel on lower/right, a multi-step forged metal bevel, small 45degree clipped corners, tiny unobtrusive fasteners inside four corner bevels if visible in reference. Substantial physical little game object rather than a flat polygon shape. This is the shipped material for the reference B design.\nExact front-on orthographic blank wide rectangle. Upper/lower edges perfectly horizontal, left/right vertical, no perspective or slant. All four straight outer edges touch corresponding canvas edges with no empty padding; actual alpha ONLY in very small clipped corner triangles. Bevel strip20–32px, corners<=32px, middle85percent calm near-uniform rich amber for black live text. NINE-SLICE compatible: four simple corner pieces, straight stretch-friendly side strips, simple subtle center texture. No rendered words, letters, text, numbers, arrow, icons, emblem, glow, shadows outside, scene, UI screenshot, phone, other panels or watermark. Only one single opaque amber metal button surface, landscape3:1 with genuine transparency in cut corner triangles.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-86626bdd-9c7b-43cc-b295-cd8c00f213aa.png",
+      "path": "Assets/_Project/Resources/Expedition/UI/primary-button.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true,
+        "genuine_alpha": true
+      }
+    },
+    {
+      "file": "friends-backdrop.png",
+      "ref": "15-friends.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity game WIDE 3:1 PANORAMA BANNER environment for friends page, not a screenshot. Reference image 1 is precise scene/style reference; extract and recreate only the radio room environment visible behind its top friends section, remove EVERY interface. Adult masked hooded miner radio operator seated on the left behind a solid worn wood/steel desk, speaking into a hand radio microphone, analog industrial radio receiver with warm amber screen at center-left, lantern, map pinned to iron wall, cargo cases. Right third opens to deep turquoise rock chasm and suspended walkway/lamps, massive simplified sculpted stone. Same beautiful chunky hand-painted sculpted 2.5D style, matte petrol steel, ivory highlights, brown leather, amber lanterns, practical mining refuge, adult proportions. Landscape 3:1 framing, radio operator and desk clearly readable in left half, atmospheric cave bridge on right. Economical large shapes, sophisticated subtle texture, quiet detail. Full bleed. This is a backdrop banner only. NO UI, panels, frame, HUD, labels, letters, words, numbers, logos, buttons, currency, icons, watermark or board with legible writing. Objects naturally part of scene only. No photorealism, neon, toy-like plastic or medieval fantasy.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-91a797e1-d865-4862-977f-e1a477ebe4ec.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/friends-backdrop.png",
+      "transparent_background": false,
+      "reference": "Design/ArtDirection-2026-10/B-expedition/15-friends.png",
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true
+      },
+      "import": {
+        "max_texture_size": 1024,
+        "android": "ASTC_6x6",
+        "role": "3:1 page banner"
+      }
+    },
+    {
+      "file": "leaderboard-backdrop.png",
+      "ref": "14-leaderboard.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity game WIDE 3:1 PANORAMA BANNER environment for rankings page, not a screenshot. Reference image1 is exact scene/style reference: recreate only the industrial underground winners hall and its three podiums, remove EVERY interface and all text and numbers. Three chunky metal podiums arranged lower silver on left, highest warm gold in center, low copper on right, each EMPTY with flat top so dynamic game avatar/name can overlay; absolutely NO characters, digits, ranking symbols, laurels or writing baked onto podiums. Massive hand-painted rock cavern, forged iron walls, hanging muted rusty crimson fabric banners without symbols, practical railings and warm small lanterns behind platforms. Deep turquoise lit side passages, petrol shadows, warm amber stage lights. Same sophisticated adult chunky sculpted hand-painted 2.5D industrial mine RPG aesthetic as reference. Broad readable forms, matte worn bevels, economical scene props, quiet center. Landscape3:1 composition, clear left-middle-right podiums fill middle and lower half. Full bleed. NO UI, HUD, text, letters, digits, names, score, panels, borders, buttons, icons, labels or watermark. No people, neon, photorealism, toy-like materials or medieval fantasy.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-245ac7c3-9eb4-4d1a-9996-d1496efe4faa.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/leaderboard-backdrop.png",
+      "transparent_background": false,
+      "reference": "Design/ArtDirection-2026-10/B-expedition/14-leaderboard.png",
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true
+      },
+      "import": {
+        "max_texture_size": 1024,
+        "android": "ASTC_6x6",
+        "role": "3:1 page banner"
+      }
+    },
+    {
+      "file": "achievements-backdrop.png",
+      "ref": "13-achievements.png",
+      "prompt": "Use case: stylized-concept\nAsset type: production Unity WIDE 3:1 PANORAMA BANNER environment for achievements page, not screenshot. Input image1 is exact style/environment reference. Recreate only its rich underground expedition planning ledge scene above the achievements cards. Left half: substantial industrial expedition notice board and map/workbench with scattered worn parchment maps WITHOUT readable writing, a few cargo crates, iron uprights, small warm lanterns. Absolutely no text or lettering on the board, no achievements title, no UI or symbols. Right half: one full-body adult hooded masked miner explorer with practical sand coat, dark leather straps, boots and glowing warm chest lantern, standing at iron railing on stone ledge, looking towards left maps; no weapon drawn. Behind the explorer at far right, deep turquoise mineral chasm with suspended steel bridge, vertical cliff station and warm lanterns. Match reference's sophisticated chunky sculpted hand-painted 2.5D matte style: petrol iron shadows, ivory chipped highlights, brown leather, amber lanterns, muted rusty red fabric WITHOUT symbols. Adult proportions, practical industrial mine rather than medieval fantasy. Broad economical shapes, beautiful depth, readable banner at 350px height. Exact horizontal3:1 full bleed composition. NO HUD, frames, interface, card, buttons, badges, numbers, letters, text, title, logos, watermark or legible writing. Just atmospheric scene and one natural explorer character.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-224cb5c5-d860-4424-9131-4b6b5e348812.png",
+      "path": "Assets/_Project/Resources/Expedition/Art/achievements-backdrop.png",
+      "transparent_background": false,
+      "reference": "Design/ArtDirection-2026-10/B-expedition/13-achievements.png",
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true
+      },
+      "import": {
+        "max_texture_size": 1024,
+        "android": "ASTC_6x6",
+        "role": "3:1 page banner"
+      }
+    },
+    {
+      "file": "primary-button-v2.png",
+      "ref": "User attachment codex-clipboard-449f755f-4586-46a7-914c-3523388ca61a.png",
+      "prompt": "Use case: stylized-concept\nAsset type: ONE production Unity nine-slice PRIMARY BUTTON SPRITE, wide rectangular landscape3:1, transparent outside silhouette. Input image1 is an EXACT UI material/style reference. Recreate ONLY the blank orange button reading 'В ШАХТУ' at the right of the reference upper panel, but completely remove every text letter and arrow. The reference is the final target: an understated fairly flat matte warm amber plate #E2A347, quiet broad worn painted texture, a very THIN darker bronze/steel perimeter and a restrained single thin lit top/left edge. The button should look precisely like the reference, not redesigned into a chunky ornate metal plaque.\nGeometry: wide rectangular button with long straight top and bottom, short straight left and right, only FOUR TINY 45-degree corner clips (about2percent of width). No large hexagonal end caps, no pointed ends, no wide layered bevel, no octagonal shield shape. Keep over96percent of the rectangular surface as a simple flat amber paint field. Bevel narrow and restrained, at most1percent of canvas height per edge. Only TWO tiny flat copper pinhead rivets (not screws or bolts), at upper-left and lower-right just inside the perimeter, each at most0.5percent of width. Their contrast should be low. No additional rivets.\nFront-on orthographic without perspective. Button silhouette fills canvas left, right, top and bottom: no empty margins except tiny transparent triangles at the four clipped corners. Center opaque amber, virtually uniform calm matte paint, broad soft illumination, no dramatic lighting. At small UI size it should read as a calm warm rectangular click target with black live text, not a shiny thick gold ingot. No words, numbers, arrow, glyphs, embossed ornament, scene, icon, logo, watermark, floating shadow or outer glow. Avoid gigantic bolts, metal slabs, thick glossy bevels, plastic, photoreal scratches and extra detail. Genuine RGBA transparency only outside the clipped silhouette.",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a1655b-c2d1-7c82-ac74-d29bf058c701\\exec-1052e400-0029-4886-9b06-700d73fa4f98.png",
+      "path": "Assets/_Project/Resources/Expedition/UI/primary-button-v2.png",
+      "transparent_background": true,
+      "visual_qa": {
+        "inspected": true,
+        "no_baked_text": true,
+        "genuine_alpha": true,
+        "closer_to_requested_reference": true
+      },
+      "source_size": [
+        2172,
+        724
+      ],
+      "sprite_rect_png_coordinates": [
+        40,
+        58,
+        2134,
+        664
+      ],
+      "sprite_border_source": 96,
+      "purpose": "Calmer primary paint surface replacing broad shiny v1 bevel; panel v1 retained with narrower PPU presentation"
+    }
+  ],
+  "import": {
+    "atlas_max_texture_size": 2048,
+    "frame_max_texture_size": 1024,
+    "android_format": "ASTC_6x6",
+    "readable": false,
+    "mipmaps": false,
+    "sprite_coordinates_source": "Assets/_Project/Editor/ExpeditionUiArtImporter.cs",
+    "frame_source_border": 96,
+    "frame_tint": "white"
+  }
+}

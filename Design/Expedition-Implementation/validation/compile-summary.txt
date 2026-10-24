@@ -1,0 +1,2 @@
+Assembly=Assembly-CSharp Exit=0 Added=0
+Assembly=Assembly-CSharp-Editor Exit=0 Added=0

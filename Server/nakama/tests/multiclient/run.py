@@ -231,6 +231,7 @@ class Suite:
         self.checks = []
         self.failures = []
         self.errors = []
+        self.arena_ui_snapshots = []
         self.run_id = uuid.uuid4().hex[:12]
 
     def console(self, method, path, payload=None):
@@ -299,8 +300,10 @@ class Suite:
 
     def isolated_only(self, scenario):
         url = urlsplit(self.args.url)
-        if url.hostname not in ("127.0.0.1", "localhost") or url.port != 28350:
-            raise RuntimeError(scenario + " requires the isolated localhost test backend on port 28350")
+        console = urlsplit(self.args.console_url)
+        if (url.hostname not in ("127.0.0.1", "localhost") or url.port != 28350
+                or console.hostname not in ("127.0.0.1", "localhost") or console.port != 28351):
+            raise RuntimeError(scenario + " requires isolated localhost ports 28350 and 28351")
 
     def storage(self, collection, key, uid):
         status, row = self.console("GET", "/storage/" + quote(collection, safe="") + "/"
@@ -431,7 +434,13 @@ class Suite:
         self.finish(mid, wb, replacement, b, a)
 
     def race(self):
+        self.isolated_only("Race economy regression")
         a, b = self.player(), self.player()
+        info = self.rpc(a, "duel_match3_race_info")
+        self.check(info.get("ok") is True and resource_totals(info.get("entry")) == {"matter": 2}
+            and resource_totals(info.get("rewards")).get("matter") == 4
+            and info.get("bot_entry_refund") is True,
+            "public Race policy reports entry two, human prize four and bot stake refund")
         for p in (a, b):
             self.seed_money(p, gold=20000, ore=20000, matter=100)
             entry = self.rpc(p, "duel_match3_race_enter")
@@ -443,12 +452,26 @@ class Suite:
         cancellations = [self.rpc(p, "duel_match3_race_cancel") for p in (a, b)]
         self.check(all(v.get("ok") is False and v.get("err") == "race_entry_in_use" for v in cancellations),
             "a started human Race binds both entry receipts and rejects cancellation")
-        self.finish(mid, wa, wb, a, b)
+        result = self.finish(mid, wa, wb, a, b)
         balances = [self.rpc(p, "duel_player_resources_get") for p in (a, b)]
-        self.check(balances[0].get("matter") == 98 and balances[1].get("matter") == 108,
-            "paid human Race retains both fees and grants the winner exactly one ten-matter reward")
+        self.check(balances[0].get("matter") == 98 and balances[1].get("matter") == 102
+            and result.get("rewardMatter") == 4,
+            "paid human Race retains both two-matter fees and pays the winner four matter exactly once")
+        loser_receipt, winner_receipt = self.race_settlement(a), self.race_settlement(b)
+        self.check(loser_receipt.get("reward", {}).get("reward_matter") == 0
+            and winner_receipt.get("reward", {}).get("reward_matter") == 4
+            and loser_receipt.get("reward", {}).get("reward_xp") == 10
+            and winner_receipt.get("reward", {}).get("reward_xp") == 200,
+            "human Race receipts preserve the existing loss ten XP and win two hundred XP")
+        for p in (a, b):
+            self.rpc(p, "duel_match3_race_cancel")
+            self.rpc(p, "duel_match3_race_cancel")
+        repeated = [self.rpc(p, "duel_player_resources_get") for p in (a, b)]
+        self.check([v.get("matter") for v in repeated] == [98, 102],
+            "settled human receipts cannot be refunded by repeated cancellation")
 
     def natural(self):
+        self.isolated_only("Natural combat and Race regression")
         for rules in ("classic", "pro", "race"):
             a, b = self.player(), self.player()
             if rules == "race":
@@ -494,6 +517,11 @@ class Suite:
                 after = [self.stats(p) for p in (a, b)]
                 self.check(all(after[i].get("played", 0) == before[i].get("played", 0) + 1 for i in range(2)),
                     rules + ": natural finish records exactly one played match per client")
+                if rules == "race" and game_over.get("winnerUserId") in by_uid:
+                    balances = [self.rpc(p, "duel_player_resources_get") for p in (a, b)]
+                    self.check(all(value.get("matter") == (102 if p["uid"] == game_over["winnerUserId"] else 98)
+                        for p, value in zip((a, b), balances)) and game_over.get("rewardMatter") == 4,
+                        "natural human Race uses the same two-entry/four-prize policy")
                 print("EVIDENCE natural " + rules + " finished moves=" + str(step + 1)
                     + " rewardXp=" + str(game_over.get("rewardXp", 0))
                     + " rewardGold=" + str(game_over.get("rewardGold", 0))
@@ -560,14 +588,98 @@ class Suite:
             and resources.get("matter") == 98, "a claimed Race entry cannot be refunded while its match is active")
         self.check(rejected_reuse.get("ok") is False and not rejected_reuse.get("match_id"),
             "one paid entry cannot create a second active Race match")
+        before_stats = self.stats(p)
+        before_profile = self.storage("duel_match3_progress", "profile", p["uid"])
         ws.match_data(mid, 12)
         ws.match_data(mid, 12)
-        ws.event(mid, 11)
+        result = ws.event(mid, 11)
+        self.check(result.get("winnerUserId") == created.get("bot_user_id")
+            and result.get("entryRefund") is True and result.get("rewardMatter") == 2
+            and result.get("rewardXp") == 0,
+            "bot Race forfeit reports the human stake refund without an extra victory prize or loss XP")
+        refunded = self.rpc(p, "duel_player_resources_get")
+        receipt = self.race_settlement(p)
+        self.check(refunded.get("matter") == 100
+            and resource_totals(receipt.get("costs")) == {"matter": 2}
+            and receipt.get("reward", {}).get("reward_matter") == 2,
+            "bot Race loss returns its actual paid two matter exactly once")
+        for _ in range(3):
+            self.rpc(p, "duel_match3_race_cancel")
+        final_resources = self.rpc(p, "duel_player_resources_get")
+        final_stats = self.stats(p)
+        final_profile = self.storage("duel_match3_progress", "profile", p["uid"])
+        self.check(final_resources.get("matter") == 100
+            and final_stats.get("played", 0) == before_stats.get("played", 0) + 1
+            and final_stats.get("losses", 0) == before_stats.get("losses", 0) + 1
+            and final_profile.get("xp", 0) == before_profile.get("xp", 0),
+            "duplicate bot forfeit and repeated cancellation preserve one loss, unchanged XP and one refund")
         after = self.rpc(p, "duel_match3_race_create")
         self.check(after.get("ok") is False and not after.get("match_id"),
             "a settled Race entry cannot be reused after match completion")
 
+    def race_settlement(self, p):
+        active = self.storage("duel_race_entry", "active", p["uid"])
+        run_id = active.get("run_id")
+        self.check(active.get("status") == "settled" and bool(run_id),
+            "test-owned Race entry reaches durable settled state")
+        receipt = self.storage("duel_race_entry", "run:" + run_id, p["uid"]) if run_id else {}
+        self.check(receipt.get("status") == "settled" and receipt.get("receipt_id") == active.get("receipt_id"),
+            "per-run Race settlement uses the same immutable paid receipt")
+        return receipt
+
+    def race_legacy_refund(self):
+        self.isolated_only("Legacy paid Race refund regression")
+        p = self.player()
+        costs = [{"resource": "matter", "amount": 7}, {"resource": "gold", "amount": 11},
+            {"resource": "ore", "amount": 13}]
+        # Only this run's fresh account: model a receipt paid under an older price,
+        # with the wallet already debited, then exercise the real migration path.
+        self.seed_money(p, matter=93, gold=989, ore=987, race_entry_pending=True, race_entry_costs=costs)
+        entered = self.rpc(p, "duel_match3_race_enter")
+        self.check(entered.get("ok") is True and entered.get("spent") == 0
+            and entered.get("matter") == 93 and entered.get("gold") == 989 and entered.get("ore") == 987
+            and resource_totals(entered.get("entry")) == resource_totals(costs),
+            "legacy paid receipt migrates its actual multi-resource stake without charging today's entry")
+        created = self.rpc(p, "duel_match3_race_create")
+        if not self.check(created.get("ok") is True and bool(created.get("match_id")),
+                "migrated paid receipt starts a bot Race"):
+            return
+        mid = created["match_id"]
+        ws = self.connect(p)
+        if "match" not in ws.command("match_join", {"match_id": mid}):
+            raise RuntimeError("Legacy paid bot Race join failed")
+        ws.event(mid, 10)
+        before_stats = self.stats(p)
+        ws.match_data(mid, 12)
+        ws.match_data(mid, 12)
+        result = ws.event(mid, 11)
+        self.check(result.get("entryRefund") is True and result.get("rewardMatter") == 7
+            and result.get("rewardGold") == 11 and result.get("rewardOre") == 13
+            and result.get("rewardXp") == 0,
+            "bot loss refund payload uses actual receipt seven/eleven/thirteen without extra four matter")
+        receipt = self.race_settlement(p)
+        self.check(resource_totals(receipt.get("costs")) == resource_totals(costs)
+            and receipt.get("reward", {}).get("reward_matter") == 7
+            and receipt.get("reward", {}).get("reward_gold") == 11
+            and receipt.get("reward", {}).get("reward_ore") == 13,
+            "durable settled reward retains the actual paid multi-resource stake")
+        for _ in range(3):
+            self.rpc(p, "duel_match3_race_cancel")
+        resources = self.rpc(p, "duel_player_resources_get")
+        stats = self.stats(p)
+        self.check(resources.get("matter") == 100 and resources.get("gold") == 1000 and resources.get("ore") == 1000
+            and stats.get("played", 0) == before_stats.get("played", 0) + 1
+            and stats.get("losses", 0) == before_stats.get("losses", 0) + 1,
+            "legacy bot receipt refunds each resource once despite duplicate forfeit and repeated cancellation")
+
+    def race_policy(self):
+        self.isolated_only("Race 0.3.3 policy integration")
+        self.race()
+        self.race_receipts()
+        self.race_legacy_refund()
+
     def seed_money(self, p, **money):
+        self.isolated_only("Test-only profile seeding")
         path = "/storage/duel_match3_progress/profile/" + p["uid"]
         status, row = self.console("GET", path)
         value = json.loads(row["value"]) if status == 200 else {}
@@ -608,11 +720,18 @@ class Suite:
         tid = next(iter(tids))
         roster = set(p["uid"] for p in participants)
         tournament = polls[-1]["tournament"]
+        self.capture_arena_ui("qf-countdown", participants[-1], polls[-1])
         rows = tournament.get("qf", [])
         self.check(len(rows) == 4 and {r[side] for r in rows for side in ("uid_a", "uid_b")} == roster,
             "the tournament bracket contains exactly the eight temporary accounts")
         if not all(r[side] in roster for r in rows for side in ("uid_a", "uid_b")):
             raise RuntimeError("Unexpected participant found; stopping without modifying that match")
+        for row in rows:
+            for side in ("a", "b"):
+                known = row.get("hp_known_" + side)
+                self.check(known in (True, False) and (known is True
+                    or row.get("hp_" + side) == row.get("hp_max_" + side) == 0),
+                    "uninitialized arena HP is explicitly unknown with zero current/maximum")
         by_uid = {p["uid"]: p for p in participants}
         sockets = {uid: self.connect(p) for uid, p in by_uid.items()}
         after_entry = [self.rpc(p, "duel_player_resources_get") for p in participants]
@@ -639,6 +758,8 @@ class Suite:
             and self.achievement_count(bettor, bet_stat) == before_bets + 1,
             "own-pair, invalid-side and noninteger/out-of-range predictions are rejected without achievements")
         survivor = participants[0]
+        completed_rounds = {}
+        completed_boards = {}
         for round_name, field in (("qf", "qf"), ("sf", "sf"), ("final", "final_pairs")):
             deadline = time.monotonic() + 35
             while True:
@@ -652,6 +773,7 @@ class Suite:
             pairs = polled.get(field, [])
             self.check(bool(pairs), round_name + ": bracket provides fight matches")
             fights = []
+            fight_boards = {}
             for row in pairs:
                 uid_a, uid_b, mid = row["uid_a"], row["uid_b"], row["match_id"]
                 if uid_a not in roster or uid_b not in roster:
@@ -660,9 +782,20 @@ class Suite:
                     result = sockets[uid].command("match_join", {"match_id": mid})
                     if "match" not in result:
                         raise RuntimeError("Arena match join failed")
-                sockets[uid_a].event(mid, 10)
-                sockets[uid_b].event(mid, 10)
+                board_a = sockets[uid_a].event(mid, 10)
+                board_b = sockets[uid_b].event(mid, 10)
+                self.check(all(board_a.get(key) == board_b.get(key)
+                    for key in ("aHp", "bHp", "aMaxHp", "bMaxHp")),
+                    round_name + ": both arena clients receive identical authoritative health")
+                fight_boards[mid] = board_a
                 fights.append((mid, sockets[uid_a], sockets[uid_b], by_uid[uid_a], by_uid[uid_b]))
+            live = self.rpc(survivor, "duel_arena_queue_poll", tier).get("tournament", {})
+            self.capture_arena_ui(round_name + "-live", survivor, {"ok": True, "tournament": live, "in_queue": False})
+            live_rows = {row.get("match_id"): row for row in live.get(field, [])}
+            for row in pairs:
+                mirrored = live_rows.get(row["match_id"], {})
+                self.check_arena_hp(mirrored, fight_boards[row["match_id"]],
+                    round_name + ": live bracket")
             # All different pairs finish together, reaching separate authoritative callbacks/VMs.
             with ThreadPoolExecutor(max_workers=len(fights)) as pool:
                 list(pool.map(lambda fight: self.finish(*fight), fights))
@@ -672,11 +805,14 @@ class Suite:
             if status != 200:
                 raise RuntimeError("Completed test tournament state unavailable: HTTP " + str(status))
             saved = json.loads(stored["value"])
+            completed_rounds[field] = pairs
             if round_name == "final":
                 persisted = (saved.get("phase") == "done" and saved.get("reward_receipt", {}).get("user_id") == winners[0]["uid"]
                     and len(saved.get("final", [])) == 1 and saved["final"][0].get("status") == "done")
+                if saved.get("final"):
+                    self.check_arena_hp(saved["final"][0], fight_boards[fights[0][0]],
+                        "completed final forfeit preserves actual survivor and loser HP")
             else:
-                # Completed QF/SF rows are deliberately compacted after the next roster is committed.
                 next_round = "sf" if round_name == "qf" else "final"
                 next_pairs = saved.get(next_round, [])
                 next_roster = {row[side] for row in next_pairs for side in ("uid_a", "uid_b")}
@@ -686,6 +822,24 @@ class Suite:
                         or (saved.get("phase") == "countdown" and saved.get("next_round") == next_round)))
             self.check(persisted, round_name + ": simultaneous fight results preserve every winner in the committed next stage")
             survivor = winners[0]
+            if round_name != "final":
+                checkpoint = self.rpc(survivor, "duel_arena_queue_poll", tier)
+                history = checkpoint.get("tournament", {})
+                self.capture_arena_ui("after-" + round_name, survivor, checkpoint)
+                for past_field, prior_rows in completed_rounds.items():
+                    retained = {row.get("slot"): row for row in history.get(past_field, [])}
+                    self.check(len(retained) == len(prior_rows),
+                        round_name + ": production poll retains every completed " + past_field + " row")
+                    for prior in prior_rows:
+                        row = retained.get(prior.get("slot"), {})
+                        self.check(all(row.get(key) == prior.get(key) and bool(row.get(key))
+                            for key in ("uid_a", "uid_b", "display_a", "display_b"))
+                            and row.get("status") == "done" and row.get("winner_uid") == prior["uid_b"],
+                            round_name + ": historical names, participants and actual winner survive in the production DTO")
+                        self.check_arena_hp(row, fight_boards.get(prior.get("match_id"), {})
+                            if past_field == field else completed_boards[past_field][prior["match_id"]],
+                            round_name + ": historical " + past_field + " HP")
+                completed_boards[field] = fight_boards
         final_resources = self.rpc(survivor, "duel_player_resources_get")
         # No bets: gold 5000 - entry 2400 + final 12000 = 14600.
         self.check(final_resources.get("gold") == 14600, "gold tournament grants its final prize exactly once")
@@ -694,6 +848,26 @@ class Suite:
         repeated_resources = self.rpc(survivor, "duel_player_resources_get")
         self.check(repeated_resources.get("gold") == 14600,
             "repeated completed-tournament polls cannot repeat its final prize")
+
+    def check_arena_hp(self, row, board, label):
+        # Human matches publish a/b in sorted user-id order; bracket slots are
+        # independently shuffled. Compare with the real board, never a fixed 150.
+        ids = sorted((row.get("uid_a", ""), row.get("uid_b", "")))
+        if not all(ids):
+            self.check(False, label + ": pair identifiers are present")
+            return
+        for side in ("a", "b"):
+            prefix = "a" if row["uid_" + side] == ids[0] else "b"
+            current, maximum = board.get(prefix + "Hp"), board.get(prefix + "MaxHp")
+            self.check(isinstance(current, (int, float)) and isinstance(maximum, (int, float)) and maximum > 0
+                and row.get("hp_known_" + side) is True
+                and row.get("hp_" + side) == current and row.get("hp_max_" + side) == maximum,
+                label + ": side " + side + " current/max/known match authoritative BOARD_SYNC")
+
+    def capture_arena_ui(self, name, viewer, poll):
+        """Only a genuine disposable-player poll DTO; no tokens, credentials or invented fixtures."""
+        self.arena_ui_snapshots.append({"name": name, "viewer_uid": viewer["uid"],
+            "poll_json": json.dumps(poll, ensure_ascii=False, separators=(",", ":"))})
 
     def cleanup(self):
         for ws in self.sockets:
@@ -726,6 +900,16 @@ class Suite:
                 self.check(False, "temporary account cleanup completed")
         for tid in self.tournament_ids:
             self.console("DELETE", "/storage/arena_tournament/" + tid + "/00000000-0000-0000-0000-000000000000")
+
+
+def resource_totals(lines):
+    totals = {}
+    for line in lines or []:
+        resource, amount = line["resource"], line["amount"]
+        if not isinstance(resource, str) or not isinstance(amount, (int, float)) or isinstance(amount, bool):
+            raise ValueError("Invalid server resource line")
+        totals[resource] = totals.get(resource, 0) + amount
+    return totals
 
 
 def valid_swap(board, race=False):
@@ -766,13 +950,15 @@ def main():
     parser.add_argument("--url", default="https://prokrust-play.ru")
     parser.add_argument("--console-url", default="http://127.0.0.1:27351")
     parser.add_argument("--config", type=Path, default=Path("secrets/server.yml"))
-    parser.add_argument("--scenario", choices=("probe", "pvp", "double-disconnect", "overlap", "race", "arena", "natural", "race-unpaid", "race-receipts", "all"), default="pvp")
+    parser.add_argument("--scenario", choices=("probe", "pvp", "double-disconnect", "overlap", "race", "arena", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "all"), default="pvp")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     target = urlsplit(args.url)
-    if args.scenario in ("arena", "race-unpaid", "race-receipts", "all") and (
-            target.hostname not in ("127.0.0.1", "localhost") or target.port != 28350):
-        parser.error("This scenario requires the isolated localhost test backend on port 28350")
+    console_target = urlsplit(args.console_url)
+    if args.scenario in ("race", "arena", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "all") and (
+            target.hostname not in ("127.0.0.1", "localhost") or target.port != 28350
+            or console_target.hostname not in ("127.0.0.1", "localhost") or console_target.port != 28351):
+        parser.error("This scenario requires the isolated localhost test backend on ports 28350 and 28351")
     suite = Suite(args)
     try:
         if args.scenario == "probe":
@@ -782,7 +968,10 @@ def main():
         else:
             scenarios = {"pvp": suite.pvp, "double-disconnect": suite.double_disconnect,
                 "overlap": suite.overlap_reconnect, "race": suite.race, "arena": suite.arena, "natural": suite.natural,
-                "race-unpaid": suite.race_unpaid, "race-receipts": suite.race_receipts}
+                "race-unpaid": suite.race_unpaid, "race-receipts": suite.race_receipts,
+                "race-legacy-refund": suite.race_legacy_refund}
+            if args.scenario == "race-policy":
+                scenarios = {"race-policy": suite.race_policy}
             for name, fn in scenarios.items():
                 if args.scenario not in (name, "all"):
                     continue
@@ -799,7 +988,8 @@ def main():
         print("RESULT passed=" + str(sum(c["passed"] for c in suite.checks)) + " failed=" + str(len(suite.failures))
             + " errors=" + str(len(suite.errors)), flush=True)
         if args.report:
-            args.report.write_text(json.dumps({"checks": suite.checks, "errors": suite.errors}, indent=2), encoding="utf-8")
+            args.report.write_text(json.dumps({"checks": suite.checks, "errors": suite.errors,
+                "arena_ui_snapshots": suite.arena_ui_snapshots}, indent=2), encoding="utf-8")
     return 1 if suite.failures or suite.errors else 0
 
 

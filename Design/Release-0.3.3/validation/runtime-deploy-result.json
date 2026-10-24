@@ -1,0 +1,13 @@
+{
+  "version": "0.3.3",
+  "result": "passed",
+  "tested_runtime_sha256": "f42dd93998e33aa259a62039eeaa1715bcd069e2a191a6f515612a9677340e65",
+  "backup": "/opt/escape/backups/runtime-release-20261023T201226Z",
+  "deployment_log": "runtime-deploy.log",
+  "production_idle_preflight": true,
+  "security_checks_passed": 25,
+  "dashboard_checks_passed": 3,
+  "health_passed": true,
+  "rollback_required": false,
+  "existing_api_configuration_changed": false
+}

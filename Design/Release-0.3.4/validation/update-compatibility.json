@@ -1,0 +1,8 @@
+{
+  "same_certificate_as": "0.3.3",
+  "result": "passed",
+  "signer_certificate_sha256": "a813aa59b19a728fa65298fc9fe7c921f7eed37285edee0c912852f1b2fc26b0",
+  "physical_upgrade_tested": false,
+  "version_code_current": 6,
+  "version_code_previous": 5
+}

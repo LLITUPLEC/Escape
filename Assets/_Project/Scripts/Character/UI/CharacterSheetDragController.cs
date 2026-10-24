@@ -24,6 +24,16 @@ namespace Project.Character.UI
         public event System.Action<CharacterGetRpcResponse> ProfileUpdated;
         public event System.Action<CharacterDragSlotHandle> SlotClicked;
 
+        public void CancelActiveDrag()
+        {
+            if (_activeDragSource != null) _activeDragSource.CancelInteraction();
+            _activeDragSource = null;
+            _dropConsumed = false;
+            DestroyDragGhost();
+        }
+
+        private void OnDisable() { CancelActiveDrag(); }
+
         public void Initialize(CharacterScreenView view, ItemCatalog catalog, CancellationTokenSource cts)
         {
             _view = view;
@@ -137,6 +147,7 @@ namespace Project.Character.UI
 
             await RunOnMainThreadAsync(() =>
             {
+                if (this == null || ct.IsCancellationRequested || _view == null) return;
                 if (resp != null && resp.ok)
                 {
                     _view.ApplyCharacterResponse(resp, _catalog);
@@ -193,6 +204,7 @@ namespace Project.Character.UI
 
             await RunOnMainThreadAsync(() =>
             {
+                if (this == null || ct.IsCancellationRequested || _view == null) return;
                 if (resp != null && resp.ok)
                 {
                     _view.ApplyCharacterResponse(resp, _catalog);
@@ -210,6 +222,7 @@ namespace Project.Character.UI
 
             await RunOnMainThreadAsync(() =>
             {
+                if (this == null || ct.IsCancellationRequested || _view == null) return;
                 if (resp != null && resp.ok)
                 {
                     _view.ApplyCharacterResponse(resp, _catalog);

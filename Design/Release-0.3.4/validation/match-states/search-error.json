@@ -1,0 +1,24 @@
+{
+    "state": "passed",
+    "fixture": "search-error",
+    "error": "",
+    "screenshot": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.utmp\\expedition\\screenshots\\match-state-search-error.png",
+    "frame": 5204,
+    "cancelCallbacks": 3,
+    "backCallbacks": 0,
+    "completed": true,
+    "passed": true,
+    "rpcOrAccountActions": false,
+    "checks": [
+        "state uses a real root overlay canvas above battle and shell",
+        "content has safe-area container",
+        "actual full-screen environment sprite present",
+        "server-provided status is not replaced by a fabricated found-player state",
+        "opponent remains explicitly unknown",
+        "explicit real mode label survives repeated styling",
+        "fixture cancel has no external persistent callbacks",
+        "repeated theme application retains exactly one cancel callback",
+        "primary action remains inside physical safe area",
+        "search status fits its readable area"
+    ]
+}

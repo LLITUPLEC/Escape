@@ -181,6 +181,31 @@ local count = 0
 local function pass(name) count = count + 1 print("PASS " .. name) end
 
 reset("qf")
+local hp_api = instance()
+local hp_state = state("qf", 1)
+hp_state.stats = { ["user-1"] = { hp = 730, max_hp = 1000 }, ["user-2"] = { hp = 250, max_hp = 700 } }
+hp_api.mirror_commit(hp_state)
+local hp_pair = get("arena_tournament", "audit").qf[1]
+assert(hp_pair.hp_a == 730 and hp_pair.hp_max_a == 1000 and hp_pair.hp_known_a)
+assert(hp_pair.hp_b == 250 and hp_pair.hp_max_b == 700 and hp_pair.hp_known_b)
+hp_api.on_match_finished(hp_state, "user-1")
+local hp_poll = hp_api.duel_arena_queue_poll({ user_id = "user-1" }, { arena_kind = "gold", bet_tier = "600" })
+local finished = hp_poll.tournament.qf[1]
+assert(finished.status == "done" and finished.hp_a == 730 and finished.hp_max_a == 1000 and finished.hp_known_a)
+assert(finished.hp_b == 250 and finished.hp_max_b == 700 and finished.hp_known_b)
+pass("finished waiting bracket preserves authoritative HP and maximum, including a living forfeiter")
+
+reset("qf")
+hp_api = instance()
+hp_state = state("qf", 1)
+hp_state.stats = { ["user-1"] = { hp = 730 }, ["user-2"] = { hp = 0, max_hp = 700 } }
+hp_api.mirror_commit(hp_state)
+hp_pair = get("arena_tournament", "audit").qf[1]
+assert(hp_pair.hp_a == 730 and hp_pair.hp_max_a == 0 and hp_pair.hp_known_a == false)
+assert(hp_pair.hp_b == 0 and hp_pair.hp_max_b == 700 and hp_pair.hp_known_b == true)
+pass("missing HP maximum stays unknown while actual zero HP remains known")
+
+reset("qf")
 finish(instance(), "qf", 1) finish(instance(), "qf", 2)
 assert(completed() == 2) pass("sequential quarterfinal control")
 reset("final")
@@ -330,6 +355,11 @@ for i = 1, 8 do
 end
 local registry = get("arena_queue", "state")
 local tid = registry.users["player-1"].tid
+for _, pr in ipairs(get("arena_tournament", tid).qf) do
+  assert(pr.hp_a == 0 and pr.hp_b == 0 and pr.hp_max_a == 0 and pr.hp_max_b == 0)
+  assert(pr.hp_known_a == false and pr.hp_known_b == false)
+end
+pass("new bracket never invents full HP before authoritative fight stats exist")
 for i = 1, 8 do
   assert(registry.users["player-" .. i].tid == tid and gold("player-" .. i) == 4400)
   assert(get(cfg.STATS_COLLECTION, "summary", "player-" .. i).summary.arena_tournaments.gold.played == 1)
@@ -338,6 +368,7 @@ assert(#registry.queues["gold:600"].entries == 0)
 pass("eight concurrent VM joins form one shared bracket and charge every entrant once")
 api_for_creation = clients[1]
 local last_winner
+local expected_history = {}
 for _, rk in ipairs({ "qf", "sf", "final" }) do
   clock = clock + 21
   local waiting = get("arena_tournament", tid)
@@ -346,12 +377,42 @@ for _, rk in ipairs({ "qf", "sf", "final" }) do
   assert(p.ok)
   local current = get("arena_tournament", tid)
   assert(current.phase == rk)
-  local pairs = copy(current[rk])
-  for index, pr in ipairs(pairs) do
+  local round_pairs = copy(current[rk])
+  for index, pr in ipairs(round_pairs) do
     local s = { match_id = pr.match_id, arena_mirror = { tournament_id = tid, round = rk, slot_index = index, spawn_token = pr.spawn_token } }
+    s.stats = { [pr.uid_a] = { hp = 730 - index, max_hp = 1000 }, [pr.uid_b] = { hp = 250 - index, max_hp = 700 } }
+    clients[index].mirror_commit(s)
     last_winner = pr.uid_a
     clients[index].on_match_finished(s, last_winner)
     clients[index].on_match_finished(s, last_winner)
+    pr.status, pr.winner_uid = "done", last_winner
+    pr.hp_a, pr.hp_max_a, pr.hp_known_a = s.stats[pr.uid_a].hp, 1000, true
+    pr.hp_b, pr.hp_max_b, pr.hp_known_b = s.stats[pr.uid_b].hp, 700, true
+  end
+  local saved = get("arena_tournament", tid)
+  expected_history[rk] = copy(round_pairs)
+  for old_round, original in pairs(expected_history) do
+    assert(#saved[old_round] == #original)
+    for index, prior in ipairs(original) do
+      local row = saved[old_round][index]
+      assert(row.uid_a == prior.uid_a and row.uid_b == prior.uid_b and row.winner_uid == prior.winner_uid)
+      assert(row.display_a == prior.display_a and row.display_b == prior.display_b and row.display_a ~= "" and row.display_b ~= "")
+      assert(row.status == "done" and row.hp_known_a and row.hp_known_b)
+      assert(row.hp_a == 730 - index and row.hp_max_a == 1000 and row.hp_b == 250 - index and row.hp_max_b == 700)
+    end
+  end
+  if rk ~= "final" then
+    local polled = clients[1].duel_arena_queue_poll({ user_id = last_winner }, { arena_kind = "gold", bet_tier = "600" }).tournament
+    for old_round, original in pairs(expected_history) do
+      assert(#polled[old_round] == #original)
+      for index, prior in ipairs(original) do
+        local row = polled[old_round][index]
+        assert(row.uid_a == prior.uid_a and row.uid_b == prior.uid_b and row.winner_uid == prior.winner_uid)
+        assert(row.display_a == prior.display_a and row.display_b == prior.display_b)
+        assert(row.hp_known_a and row.hp_known_b and row.hp_a == prior.hp_a and row.hp_b == prior.hp_b)
+      end
+    end
+    pass(rk .. " history remains in the real poll DTO with names, winner/loser and final HP")
   end
 end
 local terminal = get("arena_tournament", tid)

@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "effect_cards": 20,
+  "radio_groups": 20,
+  "audio_players": 1,
+  "play_buttons": 64,
+  "all_relative_audio_links_exist": true,
+  "autoplay": false,
+  "external_dependencies": 0,
+  "inline_js_syntax": "passed",
+  "interaction_fixture": {
+    "passed": true,
+    "checks": {
+      "no_autoplay_on_initialization": true,
+      "per_effect_selection_and_exclusive_radios": true,
+      "local_persistence": true,
+      "export_contains_all_twenty_effects": true,
+      "text_download_prepared": true,
+      "clipboard_fallback_selects_text": true,
+      "single_player_retarget_pauses_previous_sound": true,
+      "stale_play_rejection_cannot_overwrite_current_caption": true,
+      "stop_clears_player": true,
+      "reset_clears_selection": true
+    }
+  },
+  "browser_visual_qa_performed": false,
+  "device_listening_performed": false
+}

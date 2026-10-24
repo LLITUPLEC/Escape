@@ -58,14 +58,15 @@ local function reset()
   db, before_write, fail_write, fail_read, sequence, batches = {}, nil, false, false, 0, {}
   seed("a"); seed("b")
 end
-local Pvp = require("duel_match3_pvp")({
-  nk = nk, CFG = { RACE_WIN_XP = 200, RACE_WIN_MATTER = 10, RACE_DRAW_XP = 200, PVE_MAX_LEVEL = 100 },
+local pvp_deps = {
+  nk = nk, CFG = { RACE_WIN_XP = 200, RACE_WIN_MATTER = 4, RACE_DRAW_XP = 200, PVE_MAX_LEVEL = 100 },
   clamp_int = function(x) return x end, read_pve_progress = progress,
   write_pve_progress = function(uid, value, version) return nk.storage_write({ build(uid, value, version) }) end,
   current_level_from_xp = function(xp) return math.floor(xp / 100) + 1 end,
   get_bot_profile = function() return {} end, normalize_mine_difficulty = function(x) return x end,
   get_race_entry = function() return Entry end,
-})
+}
+local Pvp = require("duel_match3_pvp")(pvp_deps)
 local function state(run, users) return { pvp_race = true, mode = "pvp", players_sorted = users or { "a", "b" }, stats_result_id = run } end
 local passed = 0
 local function test(name, fn)
@@ -171,15 +172,18 @@ end)
 test("race winner paid receipt is settled once including bot loss", function()
   assert(Entry.pay("a", COST)); assert(Entry.pay("b", COST)); assert(Entry.claim({ "a", "b" }, "run"))
   local match = state("run"); assert(Pvp.apply_game_over_rewards(match, "a", {})); assert(Pvp.apply_game_over_rewards(match, "a", {}))
-  assert(wallet("a").matter == 108 and wallet("a").xp == 200 and wallet("b").matter == 98 and wallet("b").xp == 10)
+  assert(wallet("a").matter == 102 and wallet("a").xp == 200 and wallet("b").matter == 98 and wallet("b").xp == 10)
   assert(active("b").status == "settled"); assert(Entry.pay("b", COST))
-  assert(not Pvp.apply_race_draw_rewards(match, {})); assert(wallet("a").matter == 108)
+  assert(not Pvp.apply_race_draw_rewards(match, {})); assert(wallet("a").matter == 102)
 end)
-test("bot victory consumes human receipt without inventing rewards", function()
+test("bot victory returns human stake without inventing winner rewards", function()
   assert(Entry.pay("a", COST)); assert(Entry.claim({ "a" }, "run"))
   local match = state("run", { "a", "zz-bot-race_bot" }); match.mode = "pve"
+  local payload = {}
+  assert(Pvp.apply_game_over_rewards(match, "zz-bot-race_bot", payload))
   assert(Pvp.apply_game_over_rewards(match, "zz-bot-race_bot", {}))
-  assert(wallet("a").matter == 98 and wallet("a").xp == 0 and active("a").status == "settled")
+  assert(wallet("a").matter == 100 and wallet("a").xp == 0 and active("a").status == "settled")
+  assert(payload.entryRefund and payload.rewardMatter == 2 and payload.rewardXp == 0)
 end)
 test("human PvP loss retains base 10 XP and replay cannot duplicate it", function()
   assert(Entry.pay("a", COST)); assert(Entry.pay("b", COST)); assert(Entry.claim({ "a", "b" }, "run"))
@@ -189,11 +193,57 @@ test("human PvP loss retains base 10 XP and replay cannot duplicate it", functio
   assert(wallet("a").xp == 10 and wallet("a").matter == 98 and wallet("b").xp == 200)
   assert(receipt("a", "run").reward.reward_xp == 10)
 end)
-test("bot Race human winner receives regular Race reward exactly once", function()
+test("bot Race human winner gets only stake back and preserves prior XP once", function()
   assert(Entry.pay("a", COST)); assert(Entry.claim({ "a" }, "run"))
   local match = state("run", { "a", "zz-bot-race_bot" }); match.mode = "pve"
   assert(Pvp.apply_game_over_rewards(match, "a", {})); assert(Pvp.apply_game_over_rewards(match, "a", {}))
-  assert(wallet("a").xp == 200 and wallet("a").matter == 108)
+  assert(wallet("a").xp == 200 and wallet("a").matter == 100)
+end)
+test("bot fallback in PvP returns the immutable legacy fee, not current price", function()
+  assert(Entry.pay("a", { { resource = "matter", amount = 3 } })); assert(Entry.claim({ "a" }, "run"))
+  local match = state("run", { "a", "zz-bot-fallback" })
+  match.race_reward_lines = { { resource = "matter", amount = 999 } }
+  local payload = {}
+  assert(Pvp.apply_game_over_rewards(match, "a", payload)); assert(Pvp.apply_game_over_rewards(match, "a", {}))
+  assert(wallet("a").matter == 100 and payload.rewardMatter == 3 and payload.entryRefund)
+end)
+test("bot draw refunds once rather than draw plus bot double refund", function()
+  assert(Entry.pay("a", COST)); assert(Entry.claim({ "a" }, "run"))
+  local match = state("run", { "a", "zz-bot-race_bot" }); match.mode = "pve"
+  before_write = function() assert(Pvp.apply_race_draw_rewards(state("run", match.players_sorted), {})) end
+  assert(Pvp.apply_race_draw_rewards(match, {}))
+  assert(wallet("a").matter == 100 and wallet("a").xp == 200)
+  assert(receipt("a", "run").reward.reward_matter == 2)
+end)
+test("bot refund failure is atomic and retry returns the stake once", function()
+  assert(Entry.pay("a", COST)); assert(Entry.claim({ "a" }, "run"))
+  local match = state("run", { "a", "zz-bot-race_bot" }); match.mode = "pve"
+  fail_write = true; assert(not Pvp.apply_game_over_rewards(match, "zz-bot-race_bot", {}))
+  assert(wallet("a").matter == 98 and receipt("a", "run").status == "bound")
+  fail_write = false; assert(Pvp.apply_game_over_rewards(match, "zz-bot-race_bot", {}))
+  assert(wallet("a").matter == 100 and receipt("a", "run").status == "settled")
+end)
+test("stored old entry and 10-matter prize cannot override public 2-to-4 policy", function()
+  local uid = "system"
+  put(uid, "config", { race = { goal_mana = 200, entry = { { resource = "matter", amount = 7 } },
+    rewards = { { resource = "xp", amount = 200 }, { resource = "matter", amount = 10 }, { resource = "matter", amount = 10 } } } }, "goals")
+  local goals = require("duel_match3_contest_goals")({ nk = nk,
+    CFG = { RACE_ENTRY_MATTER = 2, RACE_WIN_MATTER = 4, CONTEST_GOALS_COLLECTION = "goals", CONTEST_GOALS_KEY = "config", CONTEST_GOALS_STORAGE_USER_ID = uid },
+    decode_storage_value = function(row) return row.value end })
+  local public = goals.race_public_config()
+  assert(#public.entry == 1 and public.entry[1].resource == "matter" and public.entry[1].amount == 2)
+  assert(goals.flatten_reward_lines(public.rewards).matter == 4 and public.bot_entry_refund)
+end)
+test("actual reward flattener cannot restore an old frozen 10-matter prize", function()
+  local deps = copy(pvp_deps)
+  deps.ContestGoals = require("duel_match3_contest_goals")({ nk = nk, CFG = {}, decode_storage_value = function(row) return row.value end })
+  local pvp = require("duel_match3_pvp")(deps)
+  assert(Entry.pay("a", COST)); assert(Entry.pay("b", COST)); assert(Entry.claim({ "a", "b" }, "run"))
+  local match = state("run")
+  match.race_reward_lines = { { resource = "xp", amount = 200 }, { resource = "matter", amount = 10 } }
+  local payload = {}
+  assert(pvp.apply_game_over_rewards(match, "a", payload))
+  assert(payload.rewardMatter == 4 and wallet("a").matter == 102 and wallet("b").matter == 98)
 end)
 test("unpaid result cannot award winner or draw prizes", function()
   assert(not Pvp.apply_game_over_rewards(state("run"), "a", {}))
@@ -278,6 +328,33 @@ end)
 -- reimplementation of their guard. Any board/stat work before claim fails.
 local file = assert(io.open("Server/nakama/modules/duel_match3.lua", "r"))
 local source = file:read("*a"); file:close()
+-- Exercise the production shared leave/timeout finalizer, not a copied payout.
+local reward_start = assert(source:find("Runtime.apply_result_rewards = function", 1, true))
+local reward_stop = assert(source:find("Runtime.retry_pending_results = function", reward_start, true))
+local finish_start = assert(source:find("local function finalize_pvp_forfeit_win(", 1, true))
+local finish_stop = assert(source:find("local function match_leave(", finish_start, true))
+local final_runtime = { Pvp = Pvp, finish_arena_result = function() return true end,
+  StatsApi = { record_match_finish = function() end } }
+local final_env = setmetatable({ nk = nk, Runtime = final_runtime, CFG = { OP_GAME_OVER = 8 },
+  is_pvp_race = function(match) return match.pvp_race end,
+  augment_arena_game_over_payload = function() end,
+  Ach = { flush_match_finish = function() error("Race finalizer changed achievements behavior") end },
+}, { __index = _G })
+local final_chunk = assert(loadstring(source:sub(reward_start, reward_stop - 1) .. "\n" .. source:sub(finish_start, finish_stop - 1) .. "\nreturn finalize_pvp_forfeit_win"))
+setfenv(final_chunk, final_env)
+local finalize = final_chunk()
+for _, tag in ipairs({ "player_left", "reconnect_timeout" }) do
+  test("actual " .. tag .. " finalizer returns bot stake and duplicate finish cannot refund twice", function()
+    assert(Entry.pay("a", COST)); assert(Entry.claim({ "a" }, "run"))
+    local match = state("run", { "a", "zz-bot-race_bot" }); match.mode = "pve"
+    local sent
+    local dispatcher = { broadcast_message = function(_, payload) sent = payload end }
+    finalize(dispatcher, match, "zz-bot-race_bot", tag)
+    finalize(dispatcher, match, "zz-bot-race_bot", tag)
+    assert(wallet("a").matter == 100 and wallet("a").xp == 0)
+    assert(sent.entryRefund and sent.rewardMatter == 2 and not match._race_pending_result)
+  end)
+end
 local start = assert(source:find("local function match_join(context", 1, true))
 local stop = assert(source:find("local function augment_arena_game_over_payload", start, true))
 local env = setmetatable({

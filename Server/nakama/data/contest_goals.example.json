@@ -6,7 +6,7 @@
     ],
     "rewards": [
       { "resource": "xp", "amount": 200 },
-      { "resource": "matter", "amount": 10 }
+      { "resource": "matter", "amount": 4 }
     ]
   }
 }

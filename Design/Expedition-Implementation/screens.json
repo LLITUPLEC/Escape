@@ -1,0 +1,119 @@
+[
+  {
+    "title": "Убежище",
+    "group": "scene",
+    "width": 1440,
+    "source": "postbuild-hub-final",
+    "note": "Общий HUD, навигация и точки перехода в игровом пространстве.",
+    "file": "hub",
+    "height": 3088
+  },
+  {
+    "title": "Персонаж",
+    "group": "menu",
+    "width": 1440,
+    "source": "polish-character",
+    "note": "Три слота с каждой стороны, две руки снизу, рюкзак с прокруткой.",
+    "file": "character",
+    "height": 3088
+  },
+  {
+    "title": "Шахта разлома",
+    "group": "scene",
+    "width": 1440,
+    "source": "polish-mine",
+    "note": "Одна 2.5D шахта: маршрут из 12 этажей, сложности и хранители.",
+    "file": "mine",
+    "height": 3088
+  },
+  {
+    "title": "Мастерская",
+    "group": "scene",
+    "width": 1440,
+    "source": "postbuild-workshop",
+    "note": "Восемь очередей, действующие рецепты, материалы и характеристики.",
+    "file": "workshop",
+    "height": 3088
+  },
+  {
+    "title": "Арена",
+    "group": "scene",
+    "width": 1440,
+    "source": "release-arena",
+    "note": "Шесть исходных режимов и переключатель ставок.",
+    "file": "arena",
+    "height": 3088
+  },
+  {
+    "title": "Бой",
+    "group": "combat",
+    "width": 1440,
+    "source": "final-battle-active",
+    "note": "Запущенный серверный PvE-бой. Прежние камни и все пять иконок способностей.",
+    "file": "battle",
+    "height": 3088
+  },
+  {
+    "title": "Разведка противника",
+    "group": "combat",
+    "width": 1440,
+    "source": "final-battle-selector",
+    "note": "Портрет, реальные характеристики и награда до начала боя.",
+    "file": "opponent",
+    "height": 3088
+  },
+  {
+    "title": "Одержимость",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-achievements",
+    "note": "Действующая вкладка достижений с прогрессом и отдельными ступенями.",
+    "file": "achievements",
+    "height": 3088
+  },
+  {
+    "title": "Бойня",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-achievements-slaughter",
+    "note": "Вторая самостоятельная страница достижений.",
+    "file": "achievements-slaughter",
+    "height": 3088
+  },
+  {
+    "title": "ДНН",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-achievements-dnn",
+    "note": "Третья самостоятельная страница достижений.",
+    "file": "achievements-dnn",
+    "height": 3088
+  },
+  {
+    "title": "Рейтинг",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-rating",
+    "note": "Периоды, режимы, показатель и собственное место. На снимке выборка периода пуста.",
+    "file": "rating",
+    "height": 3088
+  },
+  {
+    "title": "Друзья",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-friends",
+    "note": "Список друзей и игроков онлайн. На снимке у аккаунта нет друзей.",
+    "file": "friends",
+    "height": 3088
+  },
+  {
+    "title": "Запасы",
+    "group": "menu",
+    "width": 1440,
+    "source": "release-supplies",
+    "note": "Полные значения ресурсов и оба вида ключей шахты.",
+    "file": "supplies",
+    "height": 3088
+  }
+]

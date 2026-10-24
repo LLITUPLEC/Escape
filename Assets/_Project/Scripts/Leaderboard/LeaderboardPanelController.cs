@@ -48,8 +48,11 @@ namespace Project.Leaderboard
         private LeaderboardPeriod _currentPeriod = LeaderboardPeriod.Week;
         private LeaderboardType _currentType = LeaderboardType.Tournament;
         private string _currentViewId;
-        private bool _refreshInFlight;
         private CancellationTokenSource _refreshCts;
+        private bool _visible;
+        private bool _shellAttached;
+        public bool IsVisible => _visible;
+        public event Action<bool> VisibilityChanged;
         private readonly List<LeaderboardRowView> _spawnedRows = new List<LeaderboardRowView>();
         private readonly Dictionary<Toggle, Sprite> _periodTabNormalSprites = new Dictionary<Toggle, Sprite>();
 
@@ -61,11 +64,12 @@ namespace Project.Leaderboard
                 return;
 
             ResolveRefsBestEffort();
+            if (ExpeditionTheme.Font != null) uiFont = ExpeditionTheme.Font;
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, uiFont);
 
             if (sheetRect != null)
             {
-                _sheetShownPos = sheetRect.anchoredPosition;
+                _sheetShownPos = Vector2.zero;
                 sheetRect.anchoredPosition = new Vector2(_sheetShownPos.x, hiddenAnchoredY);
             }
 
@@ -89,6 +93,8 @@ namespace Project.Leaderboard
             if (dimmerButton != null)
                 dimmerButton.onClick.AddListener(Hide);
 
+            ExpeditionMetaPanels.ApplyLeaderboard(transform);
+
             WirePeriodTabs();
             WireFilters();
             TryBindOpenButton();
@@ -98,7 +104,13 @@ namespace Project.Leaderboard
 
         private void OnEnable()
         {
+            ExpeditionMetaPanels.ApplyLeaderboard(transform);
             TryBindOpenButton();
+        }
+
+        private void OnDisable()
+        {
+            _refreshCts?.Cancel();
         }
 
         private void OnDestroy()
@@ -229,7 +241,7 @@ namespace Project.Leaderboard
         {
             if (typeFilterButton != null)
             {
-                typeFilterButton.SetHeader("TYPE");
+                typeFilterButton.SetHeader("РЕЖИМ");
                 typeFilterButton.ConfigurePickerHost(OpenFilterPicker);
                 typeFilterButton.OnSelectionChanged += OnTypeChanged;
                 typeFilterButton.ConfigureStaticOptions(
@@ -240,7 +252,7 @@ namespace Project.Leaderboard
 
             if (viewFilterButton != null)
             {
-                viewFilterButton.SetHeader("VIEW");
+                viewFilterButton.SetHeader("ПОКАЗАТЕЛЬ");
                 viewFilterButton.ConfigurePickerHost(OpenFilterPicker);
                 viewFilterButton.OnSelectionChanged += OnViewChanged;
                 viewFilterButton.SetTypeContext(_currentType, _currentViewId);
@@ -264,6 +276,14 @@ namespace Project.Leaderboard
         {
             MainMenuHudLayering.EnsurePanelSubModalsOnTop(transform);
             filterPicker?.Show(options, selectedId, onPick);
+            if (filterPicker != null)
+            {
+                var selectedLabel = string.Empty;
+                if (options != null)
+                    foreach (var option in options)
+                        if (option.Id == selectedId) selectedLabel = option.Label;
+                ExpeditionMetaPanels.StyleFilterPicker(filterPicker.transform, selectedLabel);
+            }
         }
 
         private void OnTypeChanged(string typeId)
@@ -298,6 +318,7 @@ namespace Project.Leaderboard
             ApplyToggleTabMuted(tabWeek, _currentPeriod != LeaderboardPeriod.Week);
             ApplyToggleTabMuted(tabMonth, _currentPeriod != LeaderboardPeriod.Month);
             ApplyToggleTabMuted(tabAllTime, _currentPeriod != LeaderboardPeriod.AllTime);
+            ExpeditionMetaPanels.UpdateTabs(transform);
         }
 
         private void ApplyToggleTabMuted(Toggle t, bool muted)
@@ -375,8 +396,7 @@ namespace Project.Leaderboard
 
         private void TogglePanel()
         {
-            var visible = rootCanvasGroup != null && rootCanvasGroup.alpha > 0.01f;
-            if (visible)
+            if (_visible)
                 Hide();
             else
                 Show();
@@ -384,6 +404,14 @@ namespace Project.Leaderboard
 
         private void Show()
         {
+            if (!_shellAttached)
+            {
+                var host = GameObject.Find("ExpeditionRatingPageHost");
+                if (host != null) AttachToShell(host.transform as RectTransform);
+            }
+            if (_visible) return;
+            _visible = true;
+            ExpeditionMetaPanels.ApplyLeaderboard(transform);
             filterPicker?.Hide();
             MainMenuHudLayering.BringPanelToFront(transform);
             if (rootCanvasGroup != null)
@@ -394,17 +422,32 @@ namespace Project.Leaderboard
 
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
+            if (sheetRect != null && (rootCanvasGroup == null || rootCanvasGroup.alpha <= .01f)) sheetRect.anchoredPosition = new Vector2(0, -12);
             _slideRoutine = StartCoroutine(AnimateSlide(show: true));
+            VisibilityChanged?.Invoke(true);
             _ = RefreshFromServerAsync();
+        }
+
+        public void Open() { Show(); }
+        public void Close() { Hide(); }
+        public void AttachToShell(RectTransform pageHost)
+        {
+            if (pageHost == null) return;
+            _shellAttached = true;
+            ExpeditionMetaPanels.AttachPage(transform, pageHost);
         }
 
         private void Hide()
         {
             filterPicker?.Hide();
             _refreshCts?.Cancel();
+            if (!_visible) return;
+            _visible = false;
+            if (rootCanvasGroup != null) { rootCanvasGroup.blocksRaycasts = false; rootCanvasGroup.interactable = false; }
             if (_slideRoutine != null)
                 StopCoroutine(_slideRoutine);
             _slideRoutine = StartCoroutine(AnimateSlide(show: false));
+            VisibilityChanged?.Invoke(false);
         }
 
         private IEnumerator AnimateSlide(bool show)
@@ -412,13 +455,14 @@ namespace Project.Leaderboard
             float fromA = rootCanvasGroup != null ? rootCanvasGroup.alpha : 0f;
             float toA = show ? 1f : 0f;
             Vector2 fromY = sheetRect != null ? sheetRect.anchoredPosition : Vector2.zero;
-            Vector2 toY = show ? _sheetShownPos : new Vector2(_sheetShownPos.x, hiddenAnchoredY);
+            Vector2 toY = show ? Vector2.zero : new Vector2(0, -12);
 
             float t = 0f;
-            while (t < slideDuration)
+            var pageDuration = Mathf.Clamp(slideDuration, .08f, .18f);
+            while (t < pageDuration)
             {
                 t += Time.unscaledDeltaTime;
-                var k = Mathf.Clamp01(t / slideDuration);
+                var k = Mathf.Clamp01(t / pageDuration);
                 var ease = k * k * (3f - 2f * k);
                 if (rootCanvasGroup != null)
                     rootCanvasGroup.alpha = Mathf.Lerp(fromA, toA, ease);
@@ -441,20 +485,18 @@ namespace Project.Leaderboard
 
         private async System.Threading.Tasks.Task RefreshFromServerAsync()
         {
-            if (_refreshInFlight)
-                return;
-            _refreshInFlight = true;
             _refreshCts?.Cancel();
             _refreshCts?.Dispose();
             _refreshCts = new CancellationTokenSource();
             var ct = _refreshCts.Token;
 
             SetStatus("Загрузка…");
+            ExpeditionMetaPanels.SetLeaderboardEmpty(transform, false);
 
             try
             {
                 var response = await LeaderboardService.GetAsync(_currentPeriod, _currentType, _currentViewId, ct);
-                if (ct.IsCancellationRequested)
+                if (ct.IsCancellationRequested || this == null)
                     return;
 
                 if (response == null || !response.ok)
@@ -465,20 +507,18 @@ namespace Project.Leaderboard
 
                 ApplyResponse(response);
                 SetStatus(string.Empty);
+                ExpeditionMetaPanels.SetLeaderboardEmpty(transform, response.entries == null || response.entries.Length == 0);
             }
             catch (OperationCanceledException)
             {
                 // ignored
-            }
-            finally
-            {
-                _refreshInFlight = false;
             }
         }
 
         private void ApplyResponse(LeaderboardGetRpcResponse response)
         {
             rewardsBar?.Bind(response.rewards);
+            if (rewardsBar != null) ExpeditionMetaPanels.ApplyLeaderboardRewards(rewardsBar.transform);
 
             ClearRows();
             if (scrollContent == null)
@@ -486,6 +526,7 @@ namespace Project.Leaderboard
 
             var currentUserId = Project.Nakama.NakamaBootstrap.Instance?.Session?.UserId ?? string.Empty;
             var entries = response.entries ?? Array.Empty<LeaderboardEntryDto>();
+            ExpeditionMetaPanels.BindLeaderboardPodium(transform, entries);
 
             for (var i = 0; i < entries.Length; i++)
             {
@@ -501,6 +542,7 @@ namespace Project.Leaderboard
                 row.gameObject.SetActive(true);
                 var entry = LeaderboardEntry.FromDto(dto, currentUserId);
                 row.Bind(entry);
+                ExpeditionMetaPanels.ApplyLeaderboardRow(row);
                 _spawnedRows.Add(row);
             }
 
@@ -514,6 +556,7 @@ namespace Project.Leaderboard
                 {
                     stickyPlayerRow.gameObject.SetActive(true);
                     stickyPlayerRow.Bind(LeaderboardEntry.FromDto(selfDto, currentUserId));
+                    ExpeditionMetaPanels.ApplyLeaderboardRow(stickyPlayerRow);
                 }
                 else
                 {

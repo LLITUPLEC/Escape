@@ -1,0 +1,12 @@
+PASS scope change detected
+PASS new profile applies
+PASS late old profile cannot overwrite new identity
+PASS late old nickname response rejected
+PASS global scope rejects response before local Sync
+PASS cache miss clears all old balances
+PASS destroyed header rejects pending profile
+PASS synchronously completed profile does not recurse
+PASS version guard rejects older same-scope request
+PASS cancellation rejects current request
+PASS unscoped late name event triggers fresh scoped read instead of applying event string
+TOTAL_PASS 11

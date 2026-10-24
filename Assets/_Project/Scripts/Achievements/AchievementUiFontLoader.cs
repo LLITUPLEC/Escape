@@ -1,4 +1,5 @@
 using TMPro;
+using Project.UI;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -17,6 +18,8 @@ namespace Project.Achievements
 
         internal static TMP_FontAsset Resolve(TMP_FontAsset serializedOverride)
         {
+            var expeditionFont = ExpeditionTheme.Font;
+            if (expeditionFont != null) return expeditionFont;
             if (serializedOverride != null)
                 return serializedOverride;
 
