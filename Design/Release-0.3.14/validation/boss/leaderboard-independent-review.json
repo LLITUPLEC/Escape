@@ -1,0 +1,27 @@
+{
+  "passed_static_review": true,
+  "checked_utc": "2026-10-27T05:06:46.538602+00:00",
+  "read_only": true,
+  "native_geometry_pending": true,
+  "resolved_findings": [
+    "rank0 self_entry for new/noncontributing user now accepted while entries requirepositive ranks",
+    "rank0 with positive damage during projectionrepair shows placepending",
+    "server self_entry uid validated against captured authenticatedsession",
+    "accountscope resets local cursor/event/fingerprint andrequests firstpage",
+    "pagination resets top onnewcursor; periodicpollpreserves scroll",
+    "nonblocking gate reservations preventqueued duplicate probes/RPC"
+  ],
+  "other_checks": [
+    "scope+SessionRef fence rejects late replies afteraccountswitch",
+    "eventmismatchpage hidden while eventrefreshcatchesup",
+    "username source matches NicknameService; playername richTextdisabled",
+    "remote avatar validates appearanceID without applyingcurrent accountgender",
+    "base10secondpoll withlocalclock; fingerprint preventsunnecessaryrowrebuilds",
+    "viewport clip androwbounds structurallyconsistent; finalnative text/44pxtouch checksroot-owned"
+  ],
+  "material_open_findings": [],
+  "source_hashes": {
+    "Assets/_Project/Scripts/UI/GlobalBossLeaderboardService.cs": "ca2e8024acc3769c5d804717a2868f90b223038825171a3576ad0d158a07a221",
+    "Assets/_Project/Scripts/UI/ExpeditionGlobalBossPanel.cs": "253869f164f4947db1bbf7b348fcd9841531dbbed809da80ffc3afb27ae785a0"
+  }
+}

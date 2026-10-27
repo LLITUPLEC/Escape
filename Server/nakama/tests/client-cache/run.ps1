@@ -1,7 +1,7 @@
 param([string]$UnityEditor = 'C:/Program Files/Unity/Hub/Editor/6000.3.9f1/Editor')
 $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '../../../..')).Path
-$buildDir = Join-Path $projectRoot '.utmp/client-cache-tests'
+$buildDir = Join-Path $projectRoot '.cache/qa/client-cache-tests'
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 $unityData = Join-Path $UnityEditor 'Data'
 $framework = Join-Path $unityData 'MonoBleedingEdge/lib/mono/4.5'

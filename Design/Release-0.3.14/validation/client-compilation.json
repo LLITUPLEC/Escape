@@ -1,0 +1,17 @@
+[
+  {
+    "label": "Runtime",
+    "exit": 0,
+    "errors": []
+  },
+  {
+    "label": "Android",
+    "exit": 0,
+    "errors": []
+  },
+  {
+    "label": "Editor",
+    "exit": 0,
+    "errors": []
+  }
+]

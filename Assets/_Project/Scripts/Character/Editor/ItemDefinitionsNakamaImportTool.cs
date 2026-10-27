@@ -11,7 +11,7 @@ namespace Project.Character.Editor
     public static class ItemDefinitionsNakamaImportTool
     {
         private const string MenuPath = "Tools/Character/Импортировать статы ItemDefinition из duel_match3_item_defs";
-        private const string DefaultJsonRelative = "Server/nakama/data/duel_match3_item_catalog.example.json";
+        private const string DefaultJsonRelative = "Server/nakama/data/duel_match3_item_defs.json";
         private const string ItemDefsRoot = "Assets/_Project/Data/Character/Items";
         private const string MainCatalogPath = ItemDefsRoot + "/MainItemCatalog.asset";
 
@@ -233,6 +233,7 @@ namespace Project.Character.Editor
                 case "material": return 1;
                 case "recipe": return 2;
                 case "tesseract": return 3;
+                case "consumable": return 4;
                 default: return 0;
             }
         }

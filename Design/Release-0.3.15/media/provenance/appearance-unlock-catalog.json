@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "authority": "duel_player_cosmetics get/select RPC; protected duel_player_cosmetics/appearance_v1; current server identity supplies gender",
+  "paired_avatar": true,
+  "all_requirements_required": true,
+  "retroactive": true,
+  "unlock_permanent": true,
+  "male_original_starter_preserved": true,
+  "female_default_theme": "dawnwarden",
+  "progress_sources_lifetime": [
+    "duel_match3_stats/summary: modes and achievement_stats/achievement_claimed",
+    "duel_match3_progress/profile: defeated and mine.floor_states",
+    "duel_match3_character/sheet: learned_recipes"
+  ],
+  "themes": [
+    {
+      "id": "dawnwarden",
+      "name": "Капитан рассвета",
+      "starter": true,
+      "requirements": []
+    },
+    {
+      "id": "voidranger",
+      "name": "Разведчик глубин",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "deep_scout",
+          "label": "Победить 50 монстров в шахте",
+          "required": 50
+        },
+        {
+          "id": "first_guardian",
+          "label": "Победить босса 4-го этажа: легко",
+          "required": 1
+        }
+      ]
+    },
+    {
+      "id": "stormforged",
+      "name": "Мастер грозы",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "absolute_ii",
+          "label": "Достижение «Абсолют»: ранг 2",
+          "required": 2,
+          "achievement_id": "obs.line6",
+          "rank": 2,
+          "counter_key": "matches.line6",
+          "current_catalog_counter_threshold": 30,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        },
+        {
+          "id": "generator_guard",
+          "label": "Победить босса 8-го этажа: легко",
+          "required": 1
+        }
+      ]
+    },
+    {
+      "id": "emberoracle",
+      "name": "Хранитель горна",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "pyrotechnic_iii",
+          "label": "Достижение «Пиротехник»: ранг 3",
+          "required": 3,
+          "achievement_id": "obs.firework_lover",
+          "rank": 3,
+          "counter_key": "slaughter.finish_petard_pvp",
+          "current_catalog_counter_threshold": 155,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        },
+        {
+          "id": "forge_champion",
+          "label": "Выиграть кузнечный турнир",
+          "required": 1
+        }
+      ]
+    },
+    {
+      "id": "frostwraith",
+      "name": "Полярный следопыт",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "ice_depths",
+          "label": "Победить 300 монстров в шахте",
+          "required": 300
+        },
+        {
+          "id": "frozen_guardian",
+          "label": "Победить босса 4-го этажа: сложно",
+          "required": 1
+        }
+      ]
+    },
+    {
+      "id": "phoenix",
+      "name": "Феникс",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "reborn",
+          "label": "Достижение «Феникс»: ранг 1",
+          "required": 1,
+          "achievement_id": "dnn.win_1hp",
+          "rank": 1,
+          "counter_key": "dnn.win_at_one_hp",
+          "current_catalog_counter_threshold": 1,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        },
+        {
+          "id": "survivor",
+          "label": "Одержать 25 побед в PvP",
+          "required": 25
+        }
+      ]
+    },
+    {
+      "id": "bookmaker",
+      "name": "Хозяин ставок",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "tote_genius",
+          "label": "Достижение «Гений Тотализатора»: ранг 1",
+          "required": 1,
+          "achievement_id": "dnn.perfect_bets",
+          "rank": 1,
+          "counter_key": "dnn.arena_perfect_bets_win",
+          "current_catalog_counter_threshold": 1,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        },
+        {
+          "id": "winning_eye",
+          "label": "Достижение «Шарлатан»: ранг 2",
+          "required": 2,
+          "achievement_id": "sl.bets_won",
+          "rank": 2,
+          "counter_key": "slaughter.arena_bets_won",
+          "current_catalog_counter_threshold": 48,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        }
+      ]
+    },
+    {
+      "id": "railwarden",
+      "name": "Страж магистрали",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "rail_races",
+          "label": "Одержать 20 побед в режиме «Спуск»",
+          "required": 20
+        },
+        {
+          "id": "shaft_end",
+          "label": "Победить босса 12-го этажа: легко",
+          "required": 1
+        }
+      ]
+    },
+    {
+      "id": "beastbreaker",
+      "name": "Укротитель глубин",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "monster_hunter",
+          "label": "Победить 500 монстров в шахте",
+          "required": 500
+        },
+        {
+          "id": "deepest_beast",
+          "label": "Победить босса 12-го этажа: сложно",
+          "required": 1
+        },
+        {
+          "id": "nailer_ii",
+          "label": "Достижение «Пригвоздить»: ранг 2",
+          "required": 2,
+          "achievement_id": "obs.nail_rusty",
+          "rank": 2,
+          "counter_key": "pve.kill.mine_2",
+          "current_catalog_counter_threshold": 125,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        }
+      ]
+    },
+    {
+      "id": "alchemist",
+      "name": "Алхимик шахты",
+      "starter": false,
+      "requirements": [
+        {
+          "id": "recipe_collection",
+          "label": "Изучить 16 разных рецептов",
+          "required": 16
+        },
+        {
+          "id": "shield_ii",
+          "label": "Достижение «Железный Занавес»: ранг 2",
+          "required": 2,
+          "achievement_id": "obs.shield",
+          "rank": 2,
+          "counter_key": "uses.shield",
+          "current_catalog_counter_threshold": 60,
+          "threshold_source": "Server achievement catalog; recalculated dynamically"
+        },
+        {
+          "id": "medium_depths",
+          "label": "Победить босса 12-го этажа: средне",
+          "required": 1
+        }
+      ]
+    }
+  ]
+}

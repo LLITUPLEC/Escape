@@ -1,0 +1,185 @@
+{
+  "root": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape",
+  "entries": [
+    {
+      "path": ".gitignore",
+      "bytes": 1039,
+      "files": 1
+    },
+    {
+      "path": ".idea",
+      "bytes": 121781,
+      "files": 7
+    },
+    {
+      "path": ".utmp",
+      "bytes": 2801699077,
+      "files": 17112
+    },
+    {
+      "path": ".vsconfig",
+      "bytes": 102,
+      "files": 1
+    },
+    {
+      "path": "ach.md",
+      "bytes": 4917,
+      "files": 1
+    },
+    {
+      "path": "arena_tour_log copy.txt",
+      "bytes": 1664,
+      "files": 1
+    },
+    {
+      "path": "arena_tour_log.txt",
+      "bytes": 2958,
+      "files": 1
+    },
+    {
+      "path": "Assets",
+      "bytes": 384283344,
+      "files": 1958
+    },
+    {
+      "path": "Builds",
+      "bytes": 22722353403,
+      "files": 15550
+    },
+    {
+      "path": "Design",
+      "bytes": 1640221088,
+      "files": 1640
+    },
+    {
+      "path": "eqip_stats.MD",
+      "bytes": 71855,
+      "files": 1
+    },
+    {
+      "path": "Escape-audio-choices-0.3.5.txt",
+      "bytes": 1447,
+      "files": 1
+    },
+    {
+      "path": "escape.md",
+      "bytes": 14623,
+      "files": 1
+    },
+    {
+      "path": "HZ_pravki.md",
+      "bytes": 2619,
+      "files": 1
+    },
+    {
+      "path": "key_meshy.txt",
+      "bytes": 40,
+      "files": 1
+    },
+    {
+      "path": "lb.md",
+      "bytes": 10303,
+      "files": 1
+    },
+    {
+      "path": "leaderboard_build.log",
+      "bytes": 1113,
+      "files": 1
+    },
+    {
+      "path": "leaderboard_dedupe.log",
+      "bytes": 1130,
+      "files": 1
+    },
+    {
+      "path": "Library",
+      "bytes": 17648085371,
+      "files": 48108
+    },
+    {
+      "path": "log8.txt",
+      "bytes": 1684,
+      "files": 1
+    },
+    {
+      "path": "Logs",
+      "bytes": 11524,
+      "files": 3
+    },
+    {
+      "path": "maket.png",
+      "bytes": 3929180,
+      "files": 1
+    },
+    {
+      "path": "Mine3D_create_log.txt",
+      "bytes": 1119,
+      "files": 1
+    },
+    {
+      "path": "monstr.txt",
+      "bytes": 6614,
+      "files": 1
+    },
+    {
+      "path": "Packages",
+      "bytes": 17306,
+      "files": 2
+    },
+    {
+      "path": "ProjectSettings",
+      "bytes": 58910,
+      "files": 25
+    },
+    {
+      "path": "Server",
+      "bytes": 2584594,
+      "files": 259
+    },
+    {
+      "path": "solo.md",
+      "bytes": 21745,
+      "files": 1
+    },
+    {
+      "path": "Tools",
+      "bytes": 338889,
+      "files": 31
+    },
+    {
+      "path": "unity_build_modal_log.txt",
+      "bytes": 4354,
+      "files": 1
+    },
+    {
+      "path": "unity_git_pull.ps1",
+      "bytes": 1055,
+      "files": 1
+    },
+    {
+      "path": "unity_git_push.ps1",
+      "bytes": 1789,
+      "files": 1
+    },
+    {
+      "path": "UpgradeLog.htm",
+      "bytes": 17467,
+      "files": 1
+    },
+    {
+      "path": "UserSettings",
+      "bytes": 56650,
+      "files": 4
+    },
+    {
+      "path": "Website",
+      "bytes": 132714610,
+      "files": 36
+    },
+    {
+      "path": "Новый текстовый документ.html",
+      "bytes": 26315,
+      "files": 1
+    }
+  ]
+}

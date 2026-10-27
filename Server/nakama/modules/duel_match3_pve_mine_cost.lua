@@ -55,7 +55,8 @@ return function(deps)
     elseif r == "matter" then
       return math.max(0, tonumber(progress.matter) or 0)
     elseif r == "ingots" then
-      return math.max(0, tonumber(progress.ingots) or 0)
+      -- Item stacks are authoritative. Never authorize a shadow scalar debit.
+      return 0
     elseif r == "miner_key" then
       progress.key_items = progress.key_items or empty_key_items()
       return math.max(0, tonumber(progress.key_items.miner_key) or 0)
@@ -80,7 +81,7 @@ return function(deps)
     elseif r == "matter" then
       progress.matter = math.max(0, (tonumber(progress.matter) or 0) - amount)
     elseif r == "ingots" then
-      progress.ingots = math.max(0, (tonumber(progress.ingots) or 0) - amount)
+      error("unsupported_item_cost: ingots")
     elseif r == "miner_key" then
       progress.key_items = progress.key_items or empty_key_items()
       progress.key_items.miner_key = math.max(0, (tonumber(progress.key_items.miner_key) or 0) - amount)
@@ -97,6 +98,7 @@ return function(deps)
         local res = string.lower(tostring(e.resource or ""))
         local need = clamp_int(tonumber(e.amount) or 0, 0, nil)
         if res ~= "" and need > 0 then
+          if res == "ingots" then return false, res, need, 0 end
           local have = P.amount(progress, user_id, res)
           if have < need then
             return false, res, need, have
@@ -109,6 +111,12 @@ return function(deps)
 
   function P.apply_list(progress, cost_list)
     if type(cost_list) ~= "table" then return end
+    -- Reject the entire preparation before changing even an earlier scalar line.
+    for _, e in ipairs(cost_list) do
+      if type(e) == "table" and string.lower(tostring(e.resource or "")) == "ingots" and (tonumber(e.amount) or 0) > 0 then
+        error("unsupported_item_cost: ingots")
+      end
+    end
     for _, e in ipairs(cost_list) do
       if type(e) == "table" then
         local res = string.lower(tostring(e.resource or ""))
@@ -137,7 +145,7 @@ return function(deps)
     elseif r == "matter" then
       return { err = "not_enough_matter", required = need, matter = have }
     elseif r == "ingots" then
-      return { err = "not_enough_ingots", required = need, ingots = have }
+      return { err = "unsupported_item_cost", resource = "ingots", required = need }
     elseif r == "miner_key" or r == "dark_key" then
       return { err = "not_enough_key_item", key_id = r, required = need, have = have }
     end

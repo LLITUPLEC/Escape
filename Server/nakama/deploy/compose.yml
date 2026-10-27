@@ -72,6 +72,7 @@ services:
       NGINX_ENTRYPOINT_QUIET_LOGS: "1"
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./admin/aura:/usr/share/nginx/html/escape-admin/aura:ro
     ports:
       - "127.0.0.1:27350:8080"
       - "127.0.0.1:27352:8081"

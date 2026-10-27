@@ -9,6 +9,7 @@ import re
 import socket
 import ssl
 import struct
+import subprocess
 import time
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit, quote
@@ -16,6 +17,7 @@ from urllib.request import Request, urlopen
 import uuid
 import select
 import sys
+import traceback
 class JsonWebSocket:
     """Small RFC 6455 client; one deadline bounds handshake and match traffic."""
     MAX_MESSAGE = 2 * 1024 * 1024
@@ -247,12 +249,13 @@ class Suite:
     def player(self):
         index = len(self.players)
         username = "multi_" + self.run_id + "_" + str(index)
+        device_id = "escape-multi-" + uuid.uuid4().hex
         status, session = http(self.args.url, "POST", "/v2/account/authenticate/device?create=true&username=" + username,
-            {"id": "escape-multi-" + uuid.uuid4().hex}, self.basic)
+            {"id": device_id}, self.basic)
         if status != 200:
             raise RuntimeError("Temporary account create failed: HTTP " + str(status))
         claims = json.loads(base64.urlsafe_b64decode(session["token"].split(".")[1] + "=="))
-        p = {"token": session["token"], "uid": claims["uid"], "epoch": 0, "username": username}
+        p = {"token": session["token"], "uid": claims["uid"], "epoch": 0, "username": username, "device_id": device_id}
         self.players.append(p)  # Always track before performing any further operation.
         claim = self.rpc(p, "duel_session_claim", {})
         p["epoch"] = claim["session_epoch"]
@@ -266,7 +269,10 @@ class Suite:
         status, result = http(self.args.url, "POST", "/v2/rpc/" + name, json.dumps(data), "Bearer " + p["token"])
         if status != 200:
             raise RuntimeError(name + " HTTP " + str(status))
-        return json.loads(result.get("payload", "{}"))
+        parsed = json.loads(result.get("payload", "{}"))
+        if name in ("duel_character_get", "duel_character_loot_deliver", "duel_consumables_use", "duel_consumables_get") and parsed.get("ok") is False:
+            print("EVIDENCE RPC " + name + " err=" + str(parsed.get("err")), flush=True)
+        return parsed
 
     def connect(self, p):
         ws = SocketClient(self.args.url, p["token"])
@@ -274,6 +280,19 @@ class Suite:
         return ws
 
     def pair(self, a, b, rules="classic"):
+        mid, wa, wb = self.pending_pair(a, b, rules)
+        for ws in (wa, wb):
+            result = ws.command("match_join", {"match_id": mid})
+            if "match" not in result:
+                raise RuntimeError("Joining private test match failed")
+        ba, bb = wa.event(mid, 10), wb.event(mid, 10)
+        self.check(ba["board"] == bb["board"] and ba["activeUserId"] == bb["activeUserId"],
+            rules + ": both clients receive identical initial authoritative board")
+        self.check(ba.get("roundNumber") == bb.get("roundNumber") == 1,
+            rules + ": fresh authoritative battle starts at round one for both clients")
+        return mid, wa, wb, ba
+
+    def pending_pair(self, a, b, rules="classic"):
         wa, wb = self.connect(a), self.connect(b)
         group = self.run_id + uuid.uuid4().hex[:8]
         query = "+properties.mode:match3 +properties.rules:" + rules + " +properties.test_group:" + group
@@ -286,14 +305,7 @@ class Suite:
         mb = wb.await_message(lambda m: "matchmaker_matched" in m, timeout=25)["matchmaker_matched"]
         mid = ma.get("match_id", "")
         self.check(bool(mid) and mid == mb.get("match_id"), rules + ": both clients matched to the same private match")
-        for ws in (wa, wb):
-            result = ws.command("match_join", {"match_id": mid})
-            if "match" not in result:
-                raise RuntimeError("Joining private test match failed")
-        ba, bb = wa.event(mid, 10), wb.event(mid, 10)
-        self.check(ba["board"] == bb["board"] and ba["activeUserId"] == bb["activeUserId"],
-            rules + ": both clients receive identical initial authoritative board")
-        return mid, wa, wb, ba
+        return mid, wa, wb
 
     def stats(self, p):
         return self.rpc(p, "duel_match3_stats_get")
@@ -327,11 +339,14 @@ class Suite:
         self.check(result.get("winnerUserId") == winner_p["uid"], "forfeit reports the remaining test participant as winner")
         time.sleep(0.3)
         after_l, after_w = self.stats(loser_p), self.stats(winner_p)
-        self.check(after_l.get("losses", 0) == before_l.get("losses", 0) + 1
+        counts_match = (after_l.get("losses", 0) == before_l.get("losses", 0) + 1
             and after_w.get("wins", 0) == before_w.get("wins", 0) + 1
             and after_l.get("played", 0) == before_l.get("played", 0) + 1
-            and after_w.get("played", 0) == before_w.get("played", 0) + 1,
-            "repeated forfeit records exactly one win/loss per participant")
+            and after_w.get("played", 0) == before_w.get("played", 0) + 1)
+        self.check(counts_match, "repeated forfeit records exactly one win/loss per participant")
+        if not counts_match:
+            print("EVIDENCE result counters " + json.dumps({name: {key: source.get(key, 0) for key in ("played", "wins", "losses")}
+                for name, source in (("before_loser", before_l), ("after_loser", after_l), ("before_winner", before_w), ("after_winner", after_w))}), flush=True)
         return result
 
     def pvp(self):
@@ -362,6 +377,8 @@ class Suite:
         current = actor_ws.event(mid, 10)
         self.check(restored_board["board"] == current["board"] and restored_board["activeUserId"] == current["activeUserId"],
             "rejoined client receives a full board with the current turn")
+        self.check(restored_board.get("roundNumber") == current.get("roundNumber") == moved_a.get("roundNumber"),
+            "snapshot and reconnect preserve the authoritative round counter")
         self.finish(mid, restored, actor_ws, peer_p, actor_p)
 
     def double_disconnect(self):
@@ -432,6 +449,185 @@ class Suite:
         self.check(moved_a["board"] == moved_b["board"] and moved_a.get("actionType") == 1,
             "replacement socket can make an authoritative combat move after the old socket leaves")
         self.finish(mid, wb, replacement, b, a)
+
+    def lifecycle(self):
+        self.isolated_only("Authoritative surrender and missing-admission regression")
+        a, b, outsider = self.player(), self.player(), self.player()
+        heartbeat_socket = self.connect(a)
+        began = time.monotonic()
+        heartbeat_wire = heartbeat_socket.command("rpc", {"id": "duel_online_ping_and_count", "payload": "{}"})
+        heartbeat = json.loads(heartbeat_wire.get("rpc", {}).get("payload", "{}"))
+        self.check(heartbeat.get("ok") is True and heartbeat.get("session_epoch") == a["epoch"]
+            and isinstance(heartbeat.get("count"), int) and time.monotonic() - began < 3,
+            "actual authenticated WebSocket RPC heartbeat accepts empty JSON payload and returns the account epoch within client timeout")
+        for p in (a, b):
+            self.seed_money(p, matter=100)
+            self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "lifecycle fixture pays one real Race entry")
+        mid, wa, wb, board = self.pair(a, b, "race")
+        before = [self.stats(p) for p in (a, b)]
+        rejected = self.rpc(outsider, "duel_match3_forfeit", {"match_id": mid})
+        self.check(rejected.get("err") == "not_participant", "outsider cannot surrender another two-client match")
+        stale = self.rpc(a, "duel_match3_forfeit", {"match_id": mid, "session_epoch": a["epoch"] - 1})
+        self.check(stale.get("err") == "session_stale", "surrender RPC rejects a stale session before signaling the match")
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            replies = list(pool.map(lambda _: self.rpc(a, "duel_match3_forfeit", {"match_id": mid}), range(4)))
+        self.check(all(r.get("ok") and r.get("accepted") and r.get("terminal") and r.get("winner_user_id") == b["uid"] for r in replies),
+            "four concurrent acknowledged Race surrenders freeze one winner after authoritative settlement")
+        over_a, over_b = wa.event(mid, 11), wb.event(mid, 11)
+        self.check(over_a == over_b and over_a.get("winnerUserId") == b["uid"],
+            "both Race clients receive the identical terminal packet without the opponent finishing manually")
+        self.check(all(self.race_settlement(p).get("status") == "settled" for p in (a, b)),
+            "both paid Race reservations are settled immediately after one surrender")
+        after = [self.stats(p) for p in (a, b)]
+        balances = [self.rpc(p, "duel_player_resources_get").get("matter") for p in (a, b)]
+        self.check(balances == [98, 102] and all(after[i].get("played", 0) == before[i].get("played", 0) + 1 for i in range(2)),
+            "concurrent surrender charges both stakes once and records exactly one win and loss")
+        time.sleep(.4)
+        replay = self.rpc(b, "duel_match3_forfeit", {"match_id": mid})
+        self.check(replay.get("terminal") and replay.get("winner_user_id") == b["uid"],
+            "lost-ack retry after authoritative match deletion reads the bounded own terminal receipt")
+        for p in (a, b):
+            self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "both former Race participants can pay and queue again immediately")
+        mid2, next_a, next_b, _ = self.pair(a, b, "race")
+        self.check(mid2 != mid and self.rpc(b, "duel_match3_forfeit", {"match_id": mid2}).get("terminal"),
+            "a second actual Race starts and ends without the old race_entry_in_use lock")
+        next_a.event(mid2, 11); next_b.event(mid2, 11)
+        for rules in ("classic", "pro"):
+            x, y = self.player(), self.player()
+            base = [self.stats(p) for p in (x, y)]
+            pending, wx, wy = self.pending_pair(x, y, rules)
+            wy.close()  # Matched in queue, then network lost before match_join.
+            self.check("match" in wx.command("match_join", {"match_id": pending}), rules + ": remaining client joins its reserved admission")
+            started = time.monotonic()
+            cancelled = wx.event(pending, 11, timeout=27)
+            elapsed = time.monotonic() - started
+            self.check(cancelled.get("matchCancelled") is True and cancelled.get("isDraw") is True
+                and not cancelled.get("winnerUserId") and cancelled.get("endReason") == "opponent_not_ready" and elapsed <= 26,
+                rules + ": absent second participant cancels within bounded admission and notifies the waiting client")
+            final = [self.stats(p) for p in (x, y)]
+            self.check(all(final[i].get("played", 0) == base[i].get("played", 0) for i in range(2)),
+                rules + ": failed admission grants neither a played result nor a free win")
+            retry, new_x, new_y, _ = self.pair(x, y, rules)
+            self.check(self.rpc(x, "duel_match3_forfeit", {"match_id": retry}).get("terminal"),
+                rules + ": cancelled admission leaves both players free to requeue into a real match")
+            new_x.event(retry, 11); new_y.event(retry, 11)
+        self.pve_never_join()
+        self.tournament_disconnect(never_join=False)
+        self.tournament_disconnect(never_join=True)
+
+    def pve_never_join(self):
+        self.isolated_only("Paid never-joined PvE lifecycle regression")
+        p = self.player(); self.seed_money(p, energy=100)
+        self.seed_sheet(p, ["elixir_assault"], [1])
+        self.check(self.rpc(p, "duel_consumables_use", self.consumable_use_request(p, 0, "elixir_assault",
+            "nojoin-" + self.run_id)).get("ok"), "never-joined PvE fixture arms one real owned elixir")
+        before = self.stats(p)
+        first = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_1"})
+        if not first.get("ok") or not first.get("match_id"): raise RuntimeError("Paid no-join mine launch failed")
+        entry = self.storage("duel_pve_entry", "active", p["uid"])
+        self.check(entry.get("status") == "bound" and self.storage("duel_match3_progress", "profile", p["uid"]).get("energy") == 85,
+            "a created but never joined mine match binds one exact fifteen-energy payment")
+        state_path = "/match/" + quote(first["match_id"], safe="") + "/state"
+        initial_status, initial_state = self.console("GET", state_path)
+        self.check(initial_status == 200 and json.loads(initial_state.get("state", "{}")).get("match_id") == first["match_id"],
+            "Console observes this specific fresh mine match before testing its admission expiry")
+        deadline = time.monotonic() + 27
+        status = 200
+        match_gone = False
+        while time.monotonic() < deadline:
+            status, state_response = self.console("GET", state_path)
+            # Nakama Console maps ErrMatchNotFound to InvalidArgument (HTTP400),
+            # unlike the player API. The successful initial observation above
+            # rules out accidentally treating a missing route/invalid ID as expiry.
+            match_gone = status == 404 or (status == 400 and state_response.get("code") == 3
+                and str(state_response.get("message", "")).startswith("Match not found"))
+            if match_gone: break
+            time.sleep(.5)
+        print("EVIDENCE never-joined mine terminal Console HTTP=" + str(status), flush=True)
+        self.check(match_gone, "never-joined paid mine match terminates within bounded admission")
+        after = self.stats(p)
+        energy = self.rpc(p, "duel_player_resources_get").get("energy")
+        armed = self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id")
+        self.check(after.get("played", 0) == before.get("played", 0) and after.get("losses", 0) == before.get("losses", 0)
+            and energy == 100 and armed == "elixir_assault",
+            "abandoned admission refunds original energy once, keeps armed elixir and records no phantom loss")
+        second = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_1"})
+        self.check(second.get("ok") and second.get("match_id") != first["match_id"]
+            and self.rpc(p, "duel_player_resources_get").get("energy") == 85,
+            "new mine entry recovers old reservation and charges once rather than twice")
+        ws = self.connect(p); mid = second["match_id"]
+        if "match" not in ws.command("match_join", {"match_id": mid}): raise RuntimeError("Recovered mine launch join failed")
+        board = ws.event(mid, 10)
+        self.check(board.get("aConsumableId") == "elixir_assault"
+            and self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "",
+            "only the subsequently joined mine battle consumes and applies the preserved elixir")
+        self.check(board.get("roundNumber") == 1, "fresh mine admission starts the authoritative first round")
+        self.check(self.rpc(p, "duel_match3_forfeit", {"match_id": mid}).get("terminal"),
+            "subsequently joined mine can surrender through the same confirmed terminal contract")
+        ws.event(mid, 11)
+
+    def tournament_disconnect(self, never_join):
+        self.isolated_only("Temporary gold bracket with a real human versus bot admission")
+        active, absent, quitter = self.player(), self.player(), self.player()
+        tier = {"arena_kind": "gold", "bet_tier": "600"}
+        for p in (active, absent, quitter):
+            self.seed_tournament_access(p, gold=5000)
+            if not self.rpc(p, "duel_arena_queue_join", tier).get("ok"):
+                raise RuntimeError("Isolated gold lifecycle entry rejected")
+        system = "00000000-0000-0000-0000-000000000000"
+        registry_path = "/storage/arena_queue/state/" + system
+        status, row = self.console("GET", registry_path)
+        registry = json.loads(row["value"])
+        queue = registry["queues"]["gold:600"]
+        while len(queue["entries"]) < 8:
+            index = len(queue["entries"])
+            queue["entries"].append({"uid": "zz-bot-lifecycle-" + uuid.uuid4().hex, "display": "Стенд " + str(index), "bot": True, "bet_tier": "600"})
+        status, _ = self.console("PUT", registry_path, {"value": json.dumps(registry), "version": row["version"], "permission_read": 0, "permission_write": 0})
+        if status != 200: raise RuntimeError("Isolated gold fixture CAS failed")
+        initial = self.rpc(active, "duel_arena_queue_poll", tier)["tournament"]
+        tid = initial["id"]; self.tournament_ids.add(tid)
+        path = "/storage/arena_tournament/" + tid + "/" + system
+        status, row = self.console("GET", path); tournament = json.loads(row["value"])
+        bots = [uid for uid, part in tournament["parts"].items() if part.get("bot")]
+        slots = [(active["uid"], quitter["uid"]), (absent["uid"], bots[0]), (bots[1], bots[2]), (bots[3], bots[4])]
+        tournament["qf"] = [{"uid_a": a, "uid_b": b, "display_a": tournament["parts"][a]["display"],
+            "display_b": tournament["parts"][b]["display"], "bot_a": tournament["parts"][a].get("bot", False),
+            "bot_b": tournament["parts"][b].get("bot", False), "status": "pending"} for a, b in slots]
+        tournament["countdown_until"] = int(time.time()) - 1
+        status, _ = self.console("PUT", path, {"value": json.dumps(tournament), "version": row["version"], "permission_read": 0, "permission_write": 0})
+        if status != 200: raise RuntimeError("Isolated bracket shape CAS failed")
+        polls = {p["uid"]: self.rpc(p, "duel_arena_queue_poll", tier) for p in (active, absent, quitter)}
+        qf = polls[active["uid"]]["tournament"].get("qf", [])
+        missing_pair = next(r for r in qf if absent["uid"] in (r["uid_a"], r["uid_b"]))
+        self.check(missing_pair.get("hp_known_a") is True and missing_pair.get("hp_known_b") is True
+            and missing_pair.get("hp_max_a") == missing_pair.get("hp_max_b") == 150,
+            "gold bot pair publishes known initial HP before the human has ever joined")
+        for p in (active, quitter):
+            ws = self.connect(p); mid = polls[p["uid"]]["tournament"]["join_match_id"]
+            if "match" not in ws.command("match_join", {"match_id": mid}): raise RuntimeError("Gold human pair admission failed")
+            p["lifecycle_socket"], p["lifecycle_match"] = ws, mid
+        active["lifecycle_socket"].event(active["lifecycle_match"], 10)
+        quitter["lifecycle_socket"].event(quitter["lifecycle_match"], 10)
+        self.check(self.rpc(quitter, "duel_match3_forfeit", {"match_id": quitter["lifecycle_match"]}).get("terminal"),
+            "one real two-human gold pair completes while the separate bot pair is missing")
+        active["lifecycle_socket"].event(active["lifecycle_match"], 11)
+        quitter["lifecycle_socket"].event(quitter["lifecycle_match"], 11)
+        if not never_join:
+            gone = self.connect(absent); mid = polls[absent["uid"]]["tournament"]["join_match_id"]
+            if "match" not in gone.command("match_join", {"match_id": mid}): raise RuntimeError("Gold bot pair admission failed")
+            gone.event(mid, 10); gone.close()
+        began = time.monotonic(); final = None
+        while time.monotonic() - began < 28:
+            final = self.rpc(active, "duel_arena_queue_poll", tier)["tournament"]
+            if final.get("phase") == "countdown" and final.get("next_round") == "sf": break
+            time.sleep(.5)
+        elapsed = time.monotonic() - began
+        finished = next(r for r in final.get("qf", []) if absent["uid"] in (r["uid_a"], r["uid_b"]))
+        self.check(final.get("phase") == "countdown" and final.get("next_round") == "sf" and finished.get("status") == "done"
+            and finished.get("winner_uid") == bots[0] and elapsed <= 27,
+            ("never-joined" if never_join else "disconnected") + " gold bot opponent resolves promptly and releases every waiting semifinalist")
+        self.check(finished.get("hp_known_a") and finished.get("hp_known_b") and finished.get("hp_max_a") == finished.get("hp_max_b") == 150,
+            "technical gold result retains authoritative HP and maxima in completed bracket history")
 
     def race(self):
         self.isolated_only("Race economy regression")
@@ -678,6 +874,635 @@ class Suite:
         self.race_receipts()
         self.race_legacy_refund()
 
+    def friends(self):
+        self.isolated_only("Friend invitation notification and match-kind regression")
+        a, b = self.player(), self.player()
+        for owner, peer in ((a, b), (b, a)):
+            status, _ = http(self.args.url, "POST", "/v2/friend?" + urlencode({"ids": peer["uid"]}), {}, "Bearer " + owner["token"])
+            if status != 200: raise RuntimeError("Test-owned friendship failed: HTTP " + str(status))
+            self.seed_money(owner, matter=100)
+        wa, wb = self.connect(a), self.connect(b)
+        def notification(ws, code, iid):
+            def find(message):
+                for item in message.get("notifications", {}).get("notifications", []):
+                    body = json.loads(item.get("content", "{}"))
+                    if item.get("code") == code and body.get("invite_id") == iid: return body
+                return None
+            return find(ws.await_message(lambda message: find(message) is not None))
+        invalid = self.rpc(a, "duel_friends_race_invite", {"target_user_id": b["uid"], "kind": "pro"})
+        self.check(invalid.get("err") == "invalid_invite_kind", "friend invite rejects unknown match kind before creating a proposal")
+        for kind in ("duel", "race"):
+            before = [self.rpc(p, "duel_player_resources_get").get("matter") for p in (a, b)]
+            proposal = self.rpc(a, "duel_friends_race_invite", {"target_user_id": b["uid"], "kind": kind})
+            if not proposal.get("ok"): raise RuntimeError("Friend " + kind + " invitation rejected: " + str(proposal.get("err")))
+            iid = proposal["invite_id"]
+            incoming = notification(wb, 10020, iid)
+            self.check(incoming.get("kind") == kind and incoming.get("from_user_id") == a["uid"], kind + ": recipient receives actual incoming invitation over its live socket")
+            rejected = self.rpc(a, "duel_friends_race_respond", {"invite_id": iid, "accept": True})
+            self.check(rejected.get("err") == "not_invitee", kind + ": sender cannot accept the recipient's proposal")
+            ready = self.rpc(b, "duel_friends_race_respond", {"invite_id": iid, "accept": True, "kind": "race" if kind == "duel" else "duel"})
+            if not ready.get("ok"): raise RuntimeError("Friend accept failed: " + str(ready.get("err")))
+            mid = ready["match_id"]
+            updates = [notification(ws, 10021, iid) for ws in (wa, wb)]
+            self.check(ready.get("kind") == kind and all(n.get("kind") == kind and n.get("match_id") == mid for n in updates), kind + ": both ready notifications preserve the stored server match kind despite forged response kind")
+            for ws in (wa, wb):
+                if "match" not in ws.command("match_join", {"match_id": mid}): raise RuntimeError("Friend match join rejected")
+            boards = [ws.event(mid, 10) for ws in (wa, wb)]
+            self.check(all(board.get("pvpRace") == (kind == "race") and board.get("roundNumber") == 1 for board in boards), kind + ": both friends join the correct real rules at round one")
+            after = [self.rpc(p, "duel_player_resources_get").get("matter") for p in (a, b)]
+            fee = 2 if kind == "race" else 0
+            self.check(after == [amount - fee for amount in before], kind + ": admission charges exactly the intended fee and never charges Race resources for duel")
+            self.finish(mid, wa, wb, a, b)
+            for ws in (wa, wb): ws.command("match_leave", {"match_id": mid})
+        proposal = self.rpc(a, "duel_friends_race_invite", {"target_user_id": b["uid"], "kind": "duel"})
+        iid = proposal["invite_id"]; notification(wb, 10020, iid)
+        self.rpc(b, "duel_friends_race_respond", {"invite_id": iid, "accept": False})
+        declined = notification(wa, 10021, iid)
+        self.check(declined.get("status") == "declined" and declined.get("kind") == "duel", "declining a duel sends the matching sender notification")
+
+    def cosmetics(self):
+        self.isolated_only("Account gender and cosmetics regression")
+        female, legacy = self.player(), self.player()
+
+        def raw_rpc(player, name, payload=None):
+            status, result = http(self.args.url, "POST", "/v2/rpc/" + name, json.dumps(payload or {}), "Bearer " + player["token"])
+            if status != 200:
+                raise RuntimeError(name + " HTTP " + str(status))
+            return json.loads(result.get("payload", "{}"))
+
+        fresh = raw_rpc(female, "duel_account_gender_get")
+        self.check(fresh.get("ok") and fresh.get("can_choose") is True, "real AuthenticateDevice after-hook opens only a new account's registration choice")
+        pending = raw_rpc(female, "duel_player_cosmetics_get")
+        self.check(pending.get("err") == "registration_incomplete", "pending registration cannot persist cosmetics")
+        chosen = raw_rpc(female, "duel_account_gender_register", {"gender": "female"})
+        self.check(chosen.get("ok") and chosen.get("gender") == "female" and chosen.get("can_choose"), "new account stages its female registration choice on the server")
+        password = uuid.uuid4().hex
+        status, _ = http(self.args.url, "POST", "/v2/account/link/email", {"email": "invalid", "password": password}, "Bearer " + female["token"])
+        retry = raw_rpc(female, "duel_account_gender_register", {"gender": "male"})
+        self.check(status != 200 and retry.get("ok") and retry.get("can_choose"), "invalid email registration does not permanently freeze its pending gender")
+        raw_rpc(female, "duel_account_gender_register", {"gender": "female"})
+        email = "multi-" + self.run_id + "@example.test"
+        status, _ = http(self.args.url, "POST", "/v2/account/link/email", {"email": email, "password": password}, "Bearer " + female["token"])
+        self.check(status == 200, "temporary account registers by linking email through the real API")
+        gender = raw_rpc(female, "duel_account_gender_get")
+        self.check(gender.get("gender") == "female" and gender.get("can_choose") is False, "successful LinkEmail after-hook permanently finalizes the staged female identity")
+        changed = raw_rpc(female, "duel_account_gender_register", {"gender": "male"})
+        self.check(changed.get("err") == "account_gender_immutable", "registered gender cannot be changed by an authenticated RPC")
+        first = raw_rpc(female, "duel_player_cosmetics_get")
+        themes = {theme["id"]: theme for theme in first.get("themes", [])}
+        self.check(first.get("ok") and len(themes) == 10 and themes.get("dawnwarden", {}).get("unlocked")
+                   and sum(bool(theme.get("unlocked")) for theme in themes.values()) == 1,
+                   "server returns ten themes and only the starter is initially unlocked")
+        locked = raw_rpc(female, "duel_player_cosmetics_select", {"theme_id": "phoenix"})
+        forged = raw_rpc(female, "duel_player_cosmetics_select", {"theme_id": "phoenix", "unlocked": True, "gender": "male"})
+        self.check(locked.get("err") == "appearance_locked" and forged.get("err") == "bad_payload", "client claims cannot unlock a locked appearance or supply gender/progress")
+        status, _ = http(self.args.url, "PUT", "/v2/storage", {"objects": [{"collection": "duel_player_cosmetics", "key": "appearance_v1",
+            "value": json.dumps({"schema_version": 1, "selected_theme": "phoenix", "unlocked": {"phoenix": True}}),
+            "permission_read": 1, "permission_write": 1}]}, "Bearer " + female["token"])
+        self.check(status != 200 and raw_rpc(female, "duel_player_cosmetics_get").get("selected_theme") == "default",
+                   "real storage request guard blocks direct cosmetic writes including a forged first create")
+        status, _ = http(self.args.url, "PUT", "/v2/storage", {"objects": [{"collection": "duel_account_identity", "key": "gender_v1",
+            "value": json.dumps({"version": 1, "gender": "male", "finalized": True}), "permission_read": 1, "permission_write": 1}]}, "Bearer " + female["token"])
+        self.check(status != 200 and raw_rpc(female, "duel_account_gender_get").get("gender") == "female", "real storage request guard blocks direct gender replacement")
+
+        path = "/storage/duel_match3_stats/summary/" + female["uid"]
+        status, row = self.console("GET", path)
+        if status not in (200, 404):
+            raise RuntimeError("Temporary cosmetic progress source read failed")
+        stats = json.loads(row["value"]) if status == 200 else {}
+        stats["achievement_claimed"] = list(set(stats.get("achievement_claimed", []) + ["dnn.win_1hp:0"]))
+        stats.setdefault("modes", {}).setdefault("duel", {})["wins"] = 25
+        status, _ = self.console("PUT", path, {"value": json.dumps(stats), "version": row.get("version", "*"), "permission_read": 1, "permission_write": 0})
+        if status != 200:
+            raise RuntimeError("Isolated cosmetic achievement fixture failed")
+        earned = raw_rpc(female, "duel_player_cosmetics_get")
+        earned_themes = {theme["id"]: theme for theme in earned.get("themes", [])}
+        self.check(earned_themes.get("phoenix", {}).get("unlocked") and all(rule.get("met") for rule in earned_themes.get("phoenix", {}).get("requirements", [])),
+                   "pre-existing durable achievement and PvP progress retroactively unlock Phoenix")
+        self.check(earned.get("unlock_reward_matter_granted") == 5 and earned.get("passive_hp_bonus_percent") == .5
+            and earned_themes.get("phoenix", {}).get("reward_granted") is True,
+            "first prestige unlock atomically grants five matter and permanent half-percent HP")
+        mail = self.rpc(female, "duel_mail_get")
+        notices = [m for m in mail.get("messages", []) if m.get("kind") == "appearance_unlock"]
+        self.check(len(notices) == 1 and notices[0].get("id") == "appearance_unlock:phoenix"
+            and notices[0].get("avatar_id") == "phoenix-female" and notices[0].get("action") == "hero" and not notices[0].get("attachments"),
+            "real first appearance unlock creates one named informational letter with its paired avatar and Hero action")
+        opened = self.rpc(female, "duel_mail_claim", {"message_id": "appearance_unlock:phoenix"})
+        opened_again = self.rpc(female, "duel_mail_claim", {"message_id": "appearance_unlock:phoenix"})
+        self.check(opened.get("ok") and opened.get("informational") and opened_again.get("already_claimed")
+            and self.rpc(female, "duel_player_resources_get").get("matter") == 5,
+            "reading or replaying appearance letter never issues a second unlock reward")
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            selections = list(pool.map(lambda theme: raw_rpc(female, "duel_player_cosmetics_select", {"theme_id": theme}), ["phoenix", "dawnwarden"]))
+        self.check(all(value.get("ok") for value in selections), "independent concurrent cosmetic selections commit through storage versions")
+        selected = raw_rpc(female, "duel_player_cosmetics_select", {"theme_id": "phoenix"})
+        self.check(selected.get("ok") and selected.get("selected_theme") == "phoenix" and selected.get("gender") == "female", "unlocked female appearance selection is saved authoritatively")
+        public = raw_rpc(legacy, "duel_public_appearance_get", {"user_id": female["uid"]})
+        self.check(public == {"ok": True, "user_id": female["uid"], "avatar_id": "phoenix-female", "body_id": "phoenix-female"},
+            "public opponent appearance RPC exposes exactly selected paired render IDs and no private metadata")
+        status, session = http(self.args.url, "POST", "/v2/account/authenticate/email?create=false", {"email": email, "password": password, "vars": {"gender": "male"}}, self.basic)
+        if status != 200:
+            raise RuntimeError("Temporary account email reauthentication failed")
+        female["token"] = session["token"]
+        restored = raw_rpc(female, "duel_player_cosmetics_get")
+        self.check(restored.get("selected_theme") == "phoenix" and restored.get("gender") == "female", "email reauthentication restores selection and cannot change gender through token vars")
+        self.check(self.rpc(female, "duel_player_resources_get").get("matter") == 5
+            and restored.get("unlock_reward_matter_granted") == 0,
+            "concurrent selection, refresh and reauthentication never repay the five-matter unlock")
+        notices = [m for m in self.rpc(female, "duel_mail_get").get("messages", []) if m.get("kind") == "appearance_unlock"]
+        self.check(len(notices) == 1 and notices[0].get("claimed") and self.rpc(female, "duel_mail_get").get("unread_count") == 0,
+            "appearance polling and email reconnect never duplicate or reopen a read unlock letter")
+
+        # Admin-only deletion represents an account that predates this feature.
+        status, _ = self.console("DELETE", "/storage/duel_account_identity/gender_v1/" + legacy["uid"])
+        if status not in (200, 404):
+            raise RuntimeError("Isolated legacy account fixture failed")
+        migrated = raw_rpc(legacy, "duel_account_gender_get")
+        legacy_choice = raw_rpc(legacy, "duel_account_gender_register", {"gender": "female"})
+        self.check(migrated.get("gender") == "male" and migrated.get("can_choose") is False and legacy_choice.get("err") == "account_gender_immutable",
+                   "pre-upgrade account without a gender row defaults permanently to male")
+        other = raw_rpc(legacy, "duel_player_cosmetics_get")
+        other_themes = {theme["id"]: theme for theme in other.get("themes", [])}
+        self.check(other.get("selected_theme") == "default" and not other_themes.get("phoenix", {}).get("unlocked"), "unlocks and selection never cross accounts")
+        baseline = self.rpc(legacy, "duel_character_get")
+        base_hp = baseline.get("stats", {}).get("hp", 0)
+        self.seed_money(legacy, matter=7)
+        path = "/storage/duel_player_cosmetics/appearance_v1/" + legacy["uid"]
+        status, record = self.console("GET", path)
+        value = json.loads(record["value"])
+        value["unlocked"] = {theme: True for theme in other_themes}
+        value.pop("unlock_reward_receipts", None)
+        status, _ = self.console("PUT", path, {"value": json.dumps(value), "version": record["version"], "permission_read": 0, "permission_write": 0})
+        if status != 200:
+            raise RuntimeError("Isolated pre-reward cosmetics fixture failed")
+        def reconcile(index):
+            return self.rpc(legacy, "duel_character_get") if index % 2 == 0 else raw_rpc(legacy, "duel_player_cosmetics_get")
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            reconciled = list(pool.map(reconcile, range(6)))
+        self.check(all(response.get("ok") for response in reconciled)
+            and all(response.get("stats", {}).get("hp") == int(base_hp * 1.045)
+                and response.get("progression", {}).get("matter") == 52 for response in reconciled[::2]),
+            "concurrent first character reads retroactively grant all nine rewards and return fresh wallet plus four-point-five-percent HP")
+        print("EVIDENCE cosmetic character snapshots " + json.dumps({"baseline_hp": base_hp,
+            "characters": [{"ok": r.get("ok"), "err": r.get("err"), "hp": r.get("stats", {}).get("hp"),
+                "matter": r.get("progression", {}).get("matter")} for r in reconciled[::2]]}), flush=True)
+        after_rewards = raw_rpc(legacy, "duel_player_cosmetics_get")
+        self.check(after_rewards.get("unlocked_prestige_count") == 9 and after_rewards.get("rewarded_matter_total") == 45
+            and after_rewards.get("passive_hp_bonus_percent") == 4.5 and self.rpc(legacy, "duel_player_resources_get").get("matter") == 52,
+            "nine old server unlocks award exactly forty-five matter once without losing the existing balance")
+        for theme in ("phoenix", "dawnwarden", "default", "phoenix"):
+            raw_rpc(legacy, "duel_player_cosmetics_select", {"theme_id": theme})
+        current = self.rpc(legacy, "duel_character_get")
+        self.check(current.get("stats", {}).get("hp") == int(base_hp * 1.045) and current.get("progression", {}).get("matter") == 52,
+            "equipping and restoring appearances neither farm matter nor remove the collection HP bonus")
+        forged = raw_rpc(legacy, "duel_player_cosmetics_get", {"rewarded_matter_total": 999, "passive_hp_bonus_percent": 100})
+        self.check(forged.get("err") == "bad_payload" and self.rpc(female, "duel_player_resources_get").get("matter") == 5,
+            "client reward/HP claims are rejected and retroactive receipts remain isolated to their account")
+        self.cosmetic_ui_snapshots = [{"name": "female-locked", "response": first}, {"name": "female-phoenix-earned", "response": restored},
+            {"name": "male-legacy", "response": other}, {"name": "male-all-rewards", "response": after_rewards}]
+
+    def daily(self):
+        self.isolated_only("Daily rewards regression")
+        p, other = self.player(), self.player()
+        def get(player, payload=None):
+            status, result = http(self.args.url, "POST", "/v2/rpc/duel_daily_get", json.dumps(payload or {}), "Bearer " + player["token"])
+            if status != 200:
+                raise RuntimeError("Daily snapshot HTTP " + str(status))
+            return json.loads(result.get("payload", "{}"))
+        first = get(p)
+        day = first.get("day")
+        self.check(first.get("ok") and first.get("login", {}).get("can_claim") and len(first.get("quests", [])) == 3
+            and first.get("reset_at", 0) > first.get("now", 0),
+            "daily snapshot publishes server Moscow day, reset and three authoritative quests")
+        sources = {item["def_id"] for reward in first.get("login", {}).get("rewards", []) for item in reward.get("items", [])}
+        self.check({"elixir_assault", "elixir_stone", "elixir_gambit", "scroll_pve_bounty"}.issubset(sources),
+            "all four consumables have reachable server-defined login-cycle sources without admin grants")
+        self.seed_money(p, gold=11, ore=13, matter=7)
+        forged = get(p, {"mine_wins": 999, "user_id": other["uid"]})
+        invalid = self.rpc(p, "duel_daily_claim", {"kind": "login", "day": day, "reward": {"matter": 999}})
+        stale = self.rpc(p, "duel_daily_claim", {"kind": "login", "day": day - 1})
+        incomplete = self.rpc(p, "duel_daily_claim", {"kind": "quest", "day": day, "quest_id": "mine"})
+        completion = self.rpc(p, "duel_daily_claim", {"kind": "completion", "day": day})
+        self.check(forged.get("err") == "bad_payload" and invalid.get("err") == "bad_payload"
+            and stale.get("err") == "day_changed" and incomplete.get("err") == "quest_incomplete"
+            and completion.get("err") == "quests_unclaimed",
+            "daily rejects client progress, reward/user claims, stale day and incomplete/unclaimed objectives")
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            replies = list(pool.map(lambda _: self.rpc(p, "duel_daily_claim", {"kind": "login", "day": day}), range(4)))
+        balance = self.rpc(p, "duel_player_resources_get")
+        self.check(all(r.get("ok") for r in replies) and balance.get("gold") == 161 and balance.get("ore") == 113
+            and get(p).get("login", {}).get("total_claimed") == 1,
+            "four concurrent daily logins commit only one 150-gold/100-ore wallet award")
+        login_response = next((r for r in replies if r.get("receipt")), None)
+        self.check(get(other).get("login", {}).get("can_claim") and self.rpc(other, "duel_player_resources_get").get("gold") == 0,
+            "daily login and reward receipts are isolated between temporary accounts")
+        path = "/storage/duel_match3_stats/summary/" + p["uid"]
+        status, row = self.console("GET", path)
+        summary = json.loads(row["value"]) if status == 200 else {}
+        summary["daily"] = {"day": day, "mine_wins": 999, "ability_uses": 999, "pvp_played": 999}
+        status, _ = self.console("PUT", path, {"value": json.dumps(summary), "version": row.get("version", "*") if status == 200 else "*",
+            "permission_read": 1, "permission_write": 0})
+        if status != 200:
+            raise RuntimeError("Isolated daily durable-stat fixture failed")
+        catalog = self.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")["items"]
+        filler = next(key for key, value in catalog.items()
+            if value.get("kind") not in ("recipe", "material", "tesseract", "consumable") and value.get("max_stack", 1) == 1)
+        self.seed_sheet(p, [filler] * 25, [1] * 25)
+        snapshot = get(p)
+        self.check(all(q.get("ready") for q in snapshot.get("quests", [])) and not snapshot.get("completion_ready"),
+            "trusted durable daily counters unlock three quests but completion still requires their claim receipts")
+        for quest in snapshot["quests"]:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                claims = list(pool.map(lambda _: self.rpc(p, "duel_daily_claim", {"kind": "quest", "day": day, "quest_id": quest["id"]}), range(2)))
+            self.check(all(r.get("ok") for r in claims), "daily concurrent " + quest["id"] + " claims reconcile one durable receipt")
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            claims = list(pool.map(lambda _: self.rpc(p, "duel_daily_claim", {"kind": "completion", "day": day}), range(2)))
+        completion_response = next((r for r in claims if r.get("receipt")), None)
+        sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+        pending = {r["def_id"]: r["amount"] for r in sheet.get("inventory_pending_loot", [])}
+        balance = self.rpc(p, "duel_player_resources_get")
+        self.check(all(r.get("ok") for r in claims) and pending == {"ingot_green": 2, "scroll_pve_bounty": 1}
+            and balance.get("gold") == 411 and balance.get("ore") == 238 and balance.get("matter") == 7,
+            "completed daily set awards exact currencies and retains one ingot/scroll delivery at full capacity")
+        final = get(p)
+        self.check(final.get("completion_claimed") and all(q.get("claimed") for q in final.get("quests", [])),
+            "daily final snapshot cannot be manually farmed through refresh or repeated claim")
+        item_player = self.player()
+        self.seed_sheet(item_player, [filler] * 25, [1] * 25)
+        path = "/storage/duel_daily/v1/" + item_player["uid"]
+        status, _ = self.console("PUT", path, {"value": json.dumps({"schema": 1, "total_claimed": 1, "last_login_day": day - 1,
+            "quest_day": -1, "quest_claimed": {}}), "version": "*", "permission_read": 0, "permission_write": 0})
+        if status != 200:
+            raise RuntimeError("Isolated prior-day daily login fixture failed")
+        item_response = self.rpc(item_player, "duel_daily_claim", {"kind": "login", "day": day})
+        self.check(item_response.get("ok") and item_response.get("receipt", {}).get("pending_items") == [{"def_id": "ingot_green", "amount": 3}],
+            "second login-cycle item award survives a full bag using actual pending receipt JSON")
+        self.check(isinstance(login_response, dict) and isinstance(completion_response, dict),
+            "actual currency and full-bag completion claim payloads are captured for native Unity JSON validation")
+        self.daily_ui_snapshots = [{"name": "daily-fresh", "response": first}, {"name": "daily-completed", "response": final},
+            {"name": "daily-login-currency", "response": login_response}, {"name": "daily-login-item-fullbag", "response": item_response},
+            {"name": "daily-completion-fullbag", "response": completion_response}]
+
+    def consumable_use_request(self, player, index, item_id, request_id, **extra):
+        # Quote once for a NEW intent. The caller keeps this exact dictionary
+        # for concurrent/ambiguous retries instead of silently advancing seq.
+        status = self.rpc(player, "duel_consumables_get").get("consumables", {})
+        return {"inv_index": index, "expected_def_id": item_id, "request_id": request_id,
+            "use_seq": status.get("next_use_seq", 0), **extra}
+
+    def consumables(self):
+        self.isolated_only("Consumable integration regression")
+        a, b = self.player(), self.player()
+        self.seed_sheet(a, ["elixir_assault", "elixir_stone", "scroll_pve_bounty"], [2, 1, 2])
+        use = self.consumable_use_request(a, 0, "elixir_assault", "assault-" + self.run_id,
+            damage_multiplier=999, armor_multiplier=999)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            activated = list(pool.map(lambda _: self.rpc(a, "duel_consumables_use", use), range(3)))
+        sheet = self.storage("duel_match3_character", "sheet", a["uid"])
+        self.check(all(r.get("ok") for r in activated) and sheet.get("inventory_counts", [0])[0] == 1
+            and activated[0].get("consumables", {}).get("armed_item_id") == "elixir_assault",
+            "concurrent and repeated consumable use spends exactly one owned elixir and arms its fixed server effect")
+        denied = self.rpc(a, "duel_consumables_use", self.consumable_use_request(a, 1, "elixir_stone", "overarm-" + self.run_id))
+        self.check(denied.get("err") == "consumable_already_armed"
+            and self.storage("duel_match3_character", "sheet", a["uid"])["inventory_counts"][1] == 1
+            and self.rpc(b, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "",
+            "second armed elixir is rejected without spending inventory and cannot affect another account")
+        mid, wa, wb, board = self.pair(a, b, "classic")
+        self.check(not board.get("aConsumableId") and not board.get("bConsumableId")
+            and self.rpc(a, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "elixir_assault",
+            "classic match neither applies nor consumes the elixir reserved for PvE or Pro")
+        self.finish(mid, wa, wb, a, b)
+        self.seed_sheet(b, ["elixir_stone", "elixir_gambit"], [1, 1])
+        self.check(self.rpc(b, "duel_consumables_use", self.consumable_use_request(b, 0, "elixir_stone", "stone-" + self.run_id)).get("ok"),
+            "second Pro participant independently arms its owned Stone elixir")
+        mid, wa, wb, board = self.pair(a, b, "pro")
+        sides = {uid: side for uid, side in zip(sorted((a["uid"], b["uid"])), ("a", "b"))}
+        for p, item, damage, armor in ((a, "elixir_assault", 1.2, .85), (b, "elixir_stone", .9, 1.2)):
+            side = sides[p["uid"]]
+            self.check(board.get(side + "ConsumableId") == item and abs(board.get(side + "DamageMultiplier", 0) - damage) < .0001
+                and abs(board.get(side + "ArmorMultiplier", 0) - armor) < .0001,
+                "real Pro BOARD_SYNC exposes fixed " + item + " multipliers rather than forged payload values")
+        self.check(all(self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "" for p in (a, b)),
+            "real Pro start atomically claims both armed elixirs into immutable match receipts")
+        wa.close()
+        replacement = self.connect(a)
+        replacement.command("match_join", {"match_id": mid})
+        restored = replacement.event(mid, 10)
+        self.check(restored.get(sides[a["uid"]] + "ConsumableId") == "elixir_assault"
+            and self.storage("duel_match3_character", "sheet", a["uid"])["inventory_counts"][0] == 1,
+            "Pro reconnect restores the frozen elixir without consuming another inventory item")
+        self.finish(mid, replacement, wb, a, b)
+        gambit = self.rpc(b, "duel_consumables_use", self.consumable_use_request(b, 1, "elixir_gambit", "gambit-" + self.run_id))
+        self.check(gambit.get("ok"), "new elixir can be armed after the previous eligible battle consumed its binding")
+        mid, wa, wb, board = self.pair(a, b, "pro")
+        side = sides[b["uid"]]
+        self.check(board.get(side + "ConsumableId") == "elixir_gambit"
+            and abs(board.get(side + "ConsumableCritAdd", 0) - .1) < .0001
+            and abs(board.get(side + "HealingMultiplier", 0) - .5) < .0001,
+            "real Gambit Pro binding adds ten crit percentage points and halves healing")
+        self.finish(mid, wa, wb, a, b)
+        scroll = self.consumable_use_request(a, 2, "scroll_pve_bounty", "bounty-" + self.run_id,
+            ends_at=99999999999, reward_multiplier=999)
+        bounty = self.rpc(a, "duel_consumables_use", scroll)
+        replay = self.rpc(a, "duel_consumables_use", scroll)
+        status = bounty.get("consumables", {})
+        blocked = self.rpc(a, "duel_consumables_use", self.consumable_use_request(a, 2, "scroll_pve_bounty", "bounty-again-" + self.run_id))
+        self.check(bounty.get("ok") and replay.get("ok") and status.get("bounty_active")
+            and status.get("bounty_ends_at", 0) - status.get("bounty_started_at", 0) == 3600
+            and blocked.get("err") == "bounty_already_active"
+            and self.storage("duel_match3_character", "sheet", a["uid"])["inventory_counts"][2] == 1,
+            "bounty activation uses one server hour, rejects extension/forged multiplier and spends only one scroll on replay")
+        self.seed_money(a, xp=486974, energy=100, gold=0, ore=0)
+        catalog = self.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")["items"]
+        weapon = max(((item_id, definition) for item_id, definition in catalog.items() if definition.get("slot") == "WeaponLeft"),
+            key=lambda pair: pair[1].get("damage", 0))[0]
+        path = "/storage/duel_match3_character/sheet/" + a["uid"]
+        code, row = self.console("GET", path)
+        value = json.loads(row["value"])
+        value["equipment"] = [""] * 8
+        value["equipment"][6] = weapon
+        code, _ = self.console("PUT", path, {"value": json.dumps(value), "version": row["version"], "permission_read": 1, "permission_write": 0})
+        if code != 200:
+            raise RuntimeError("Isolated canonical PvE gear fixture failed")
+        created = self.rpc(a, "duel_match3_pve_create", {"bot_id": "mine_1"})
+        mid = created.get("match_id")
+        if not created.get("ok") or not mid:
+            raise RuntimeError("Real bounty PvE fixture could not start: " + str(created.get("err")))
+        ws = self.connect(a)
+        ws.command("match_join", {"match_id": mid})
+        board = ws.event(mid, 10)
+        print("EVIDENCE bounty PvE initial " + json.dumps({key: board.get(key) for key in ("aHp", "bHp", "aBaseDamage", "bBaseArmor", "bountyEndsAt")}), flush=True)
+        self.check(board.get("bountyEndsAt") == status.get("bounty_ends_at"),
+            "actual mine battle binds the authoritative active bounty timer")
+        result = None
+        moves = acks = bot_frames = 0
+        deadline = time.monotonic() + 110
+        for _ in range(160):
+            if board.get("aHp", 1) <= 0 or board.get("bHp", 1) <= 0:
+                result = ws.event(mid, 11)
+                break
+            if time.monotonic() > deadline:
+                break
+            if board.get("turnEndsAtUnixMs", 0) == 0:
+                acks += 1
+                ws.match_data(mid, 17)
+                board = ws.event(mid, 10)
+                continue
+            if board.get("activeUserId") != a["uid"]:
+                bot_frames += 1
+                board = ws.event(mid, 10)
+                continue
+            ws.match_data(mid, 13, valid_swap(board["board"]))
+            moves += 1
+            board = ws.board_action(mid, a["uid"])
+        print("EVIDENCE bounty PvE progress " + json.dumps({"human_moves": moves, "acks": acks, "bot_frames": bot_frames,
+            "aHp": board.get("aHp"), "bHp": board.get("bHp"), "owner_active": board.get("activeUserId") == a["uid"]}), flush=True)
+        self.check(result is not None and result.get("winnerUserId") == a["uid"],
+            "real synchronized mine combat reaches a natural victory with the bounty active")
+        if result is not None and result.get("winnerUserId") == a["uid"]:
+            response, listing = self.console("GET", "/storage?collection=duel_match3_journal&user_id=" + a["uid"] + "&limit=100")
+            plans = []
+            if response == 200:
+                for row in listing.get("objects", []):
+                    saved = self.storage("duel_match3_journal", row["key"], a["uid"])
+                    if saved.get("kind") == "pve" and saved.get("status") == "complete":
+                        plans.append(saved)
+            self.check(len(plans) == 1 and plans[0].get("plan", {}).get("currency_gold_multiplier", 0) >= 1.5
+                and plans[0].get("plan", {}).get("currency_ore_multiplier", 0) >= 1.5,
+                "natural PvE award freezes bounty currency multipliers in its durable committed reward plan")
+            balance = self.rpc(a, "duel_player_resources_get")
+            self.check(balance.get("gold") == result.get("rewardGold") and balance.get("ore") == result.get("rewardOre"),
+                "actual bounty PvE currencies match the single committed game-over award")
+        self.consumable_ui_snapshots = [{"name": "elixir-armed", "response": activated[0]}, {"name": "bounty-active", "response": bounty}]
+
+    def shop(self):
+        self.isolated_only('Server priced shop concurrent RPC regression')
+        p=self.player();self.rpc(p,'duel_character_get');self.seed_money(p,matter=100,gold=100000,ore=0)
+        offer=self.rpc(p,'duel_shop_get')
+        self.check(offer.get('ok') and len(offer.get('offers',[]))==22 and offer.get('next_sequence')==1,
+            'shop returns22 server-priced offers and fresh monotonic purchase sequence')
+        payload={'offer_id':'resources_2500','request_id':'shop-same-'+self.run_id,'purchase_seq':offer['next_sequence'],'catalog_version':offer['catalog_version']}
+        before=self.rpc(p,'duel_player_resources_get')
+        with ThreadPoolExecutor(max_workers=4)as pool:replies=list(pool.map(lambda _:self.rpc(p,'duel_shop_buy',payload),range(4)))
+        after=self.rpc(p,'duel_player_resources_get')
+        self.check(all(r.get('ok') for r in replies) and after['matter']==before['matter']-10
+            and after['gold']==before['gold']+2500 and after['ore']==before['ore']+2500,
+            'four simultaneous identical shop purchases charge once and grant one exact bundle')
+        for n in range(5):
+            state=self.rpc(p,'duel_shop_get')
+            purchase=self.rpc(p,'duel_shop_buy',{'offer_id':'resources_2500','request_id':'shop-next-'+str(n)+'-'+self.run_id,
+                'purchase_seq':state['next_sequence'],'catalog_version':state['catalog_version']})
+            if not purchase.get('ok'):raise RuntimeError('Shop sequential purchase '+str(purchase.get('err')))
+        wallet=self.rpc(p,'duel_player_resources_get');old=self.rpc(p,'duel_shop_buy',payload)
+        self.check(old.get('err')=='request_compacted' and self.rpc(p,'duel_player_resources_get')['matter']==wallet['matter'],
+            'shop keeps only four receipts while compacted old purchase can never recharge or regrant')
+        state=self.rpc(p,'duel_shop_get')
+        rub=self.rpc(p,'duel_shop_buy',{'offer_id':'rub_resources_99','request_id':'shop-rub-'+self.run_id,
+            'purchase_seq':state['next_sequence'],'catalog_version':state['catalog_version']})
+        self.check(rub.get('err')=='payment_not_connected' and self.rpc(p,'duel_shop_get')['next_sequence']==state['next_sequence'],
+            'unconnected real-money payment cannot charge wallet or advance purchase sequence')
+        self.seed_sheet(p,['eq_t1_epic_helmet']*25,[1]*25)
+        token=self.rpc(p,'duel_shop_buy',{'offer_id':'boss_teleport','request_id':'shop-teleport-'+self.run_id,
+            'purchase_seq':state['next_sequence'],'catalog_version':state['catalog_version']})
+        after_token=self.rpc(p,'duel_player_resources_get')
+        self.check(token.get('ok') and after_token['gold']==wallet['gold']-30000
+            and any(i.get('def_id')=='global_boss_teleport' and i.get('amount')==1 for i in token.get('receipt',{}).get('pending_items',[])),
+            'teleport costs exactly30000gold and full inventory queues its paid delivery safely')
+        forged=self.rpc(p,'duel_shop_buy',{'offer_id':'boss_teleport','request_id':'shop-forged-'+self.run_id,
+            'purchase_seq':state['next_sequence']+1,'catalog_version':state['catalog_version'],'price':1})
+        self.check(forged.get('err')=='bad_payload','shop rejects client prices and grant amounts')
+
+    def global_boss(self):
+        self.isolated_only('Shared weekly boss, mail and shop regression')
+        system='00000000-0000-0000-0000-000000000000'
+        def put(collection,key,uid,value):
+            path='/storage/'+quote(collection,safe='')+'/'+quote(key,safe='')+'/'+uid
+            code,row=self.console('GET',path)
+            code,_=self.console('PUT',path,{'value':json.dumps(value),'version':row.get('version','*') if code==200 else '*','permission_read':0,'permission_write':0})
+            if code!=200:raise RuntimeError('Isolated boss fixture CAS failed')
+        def raw(p,name,payload=None):
+            status,result=http(self.args.url,'POST','/v2/rpc/'+name,json.dumps(payload or {}),'Bearer '+p['token'])
+            if status!=200:raise RuntimeError(name+' HTTP '+str(status))
+            return json.loads(result.get('payload','{}'))
+        def launch(p,request_id):
+            entered=self.rpc(p,'duel_global_boss_enter',{'request_id':request_id,'event_id':event})
+            if not entered.get('ok'):raise RuntimeError('Boss launch '+str(entered.get('err')))
+            ws=self.connect(p);joined=ws.command('match_join',{'match_id':entered['match_id']})
+            if 'match' not in joined:raise RuntimeError('Boss owned match join rejected')
+            return entered,ws,ws.event(entered['match_id'],10)
+        def move(p,entry,ws,board):
+            mid=entry['match_id']
+            chosen={'actionType':4} if board.get('aMana',0)>=30 and board.get('aPetardCd',0)==0 else valid_swap(board['board'])
+            sequence=board.get('bossActionSequence',0)
+            ws.match_data(mid,17)
+            if board.get('turnPaused'):
+                def running_clock(message):
+                    md=message.get('match_data',{})
+                    if md.get('match_id')!=mid or str(md.get('op_code'))!='10':return False
+                    value=json.loads(base64.b64decode(md.get('data','')))
+                    return value.get('bossActionSequence')==sequence and not value.get('turnPaused') and value.get('turnEndsAtUnixMs',0)>0 and not value.get('actionActorUserId')
+                ws.await_message(running_clock,timeout=8)
+            ws.match_data(mid,13,chosen)
+            def own(m):
+                md=m.get('match_data',{})
+                if md.get('match_id')!=mid or str(md.get('op_code')) not in ('10','11','14'):return False
+                value=json.loads(base64.b64decode(md.get('data','')))
+                return str(md['op_code']) in ('11','14') or(value.get('actionActorUserId')==p['uid'] and value.get('bossActionSequence',0)>sequence)
+            try:wire=ws.await_message(own,timeout=12)
+            except TimeoutError:
+                code,row=self.console('GET','/match/'+quote(mid,safe='')+'/state')
+                state=json.loads(row.get('state','{}')) if code==200 else {}
+                actor=state.get('stats',{}).get(p['uid'],{})
+                print('EVIDENCE boss timeout '+json.dumps({'match_exists':code==200,'started':state.get('started'),'ended':state.get('ended'),
+                    'active_is_owner':state.get('active_user_id')==p['uid'],'paused':state.get('turn_deadline_paused'),'own_hp':actor.get('hp'),
+                    'own_damage':actor.get('base_damage'),'sequence':state.get('_boss_sequence'),'global':state.get('global_boss'),
+                    'pending':bool(state.get('_boss_pending'))}),flush=True)
+                raise
+            value=json.loads(base64.b64decode(wire['match_data']['data']))
+            if str(wire['match_data']['op_code'])=='14':raise RuntimeError('Boss action rejected '+str(value.get('reason')))
+            return value
+        a,b,c=self.player(),self.player(),self.player()
+        catalog=self.storage('duel_match3_item_defs','catalog',system)['items']
+        for p in (a,b,c):
+            self.rpc(p,'duel_character_get');self.seed_sheet(p,['global_boss_teleport'],[5])
+            sheet=self.storage('duel_match3_character','sheet',p['uid'])
+            sheet['equipment']=[]
+            for slot in ('Helmet','Shoulders','Chest','Gloves','Legs','Feet','WeaponLeft','WeaponRight'):
+                candidates=[(d.get('tier',1),i) for i,d in catalog.items() if d.get('kind','equipment')=='equipment' and d.get('slot')==slot and d.get('quality')=='epic']
+                sheet['equipment'].append(sorted(candidates)[-1][1] if candidates else '')
+            put('duel_match3_character','sheet',p['uid'],sheet)
+        info=self.rpc(a,'duel_global_boss_get');event=info['event_id']
+        self.check(info.get('hp')==550000 and info.get('attempts_total')==3 and info.get('token_count')==5,
+            'boss defaults use calibrated550000HP and exactly three weekly attacks, accessible to levelone')
+        self.check(info.get('base_damage')==3500 and info.get('base_armor')==1000 and info.get('base_crit')==.05
+            and info.get('base_heal')==0 and info.get('no_healing') and info.get('max_turns')==30,
+            'boss section receives frozen event damage armor crit no-healing and turn-limit stats')
+        bad=self.rpc(a,'duel_global_boss_enter',{'event_id':event,'request_id':'invalid-'+self.run_id,'damage':10000000})
+        self.check(bad.get('err')=='bad_payload','boss RPC rejects client supplied damage')
+        base_stats=self.stats(a);ea,wa,ba=launch(a,'boss-a-'+self.run_id)
+        self.check(ba.get('globalBoss') and ba.get('bHp')==info['hp'] and ba.get('bossPlayerTurnsLeft')==30,
+            'boss board exposes shared HP and bounded attempt turns')
+        self.check(ba.get('roundNumber')==1,'fresh global boss snapshot starts authoritative round one')
+        self.check(ba.get('aBaseDamage',0)>1000 and ba.get('aHp',0)>10000,
+            'isolated boss fixture equips actual eight-slot epic gear before admission')
+        replay=self.rpc(a,'duel_global_boss_enter',{'event_id':event,'request_id':'boss-a-'+self.run_id})
+        self.check(replay.get('match_id')==ea['match_id'] and self.rpc(a,'duel_global_boss_get').get('token_count')==4,
+            'retry of current boss launch reuses same attempt without second teleport charge')
+        outsider=self.connect(b);intrusion=outsider.command('match_join',{'match_id':ea['match_id']})
+        self.check('error' in intrusion,'another account cannot join a private boss attempt')
+        self.check(ba.get('turnPaused') and ba.get('turnEndsAtUnixMs')==0 and not ba.get('bossAdaptationTriggered')
+            and not ba.get('bossScreamTriggered'),'initial boss snapshot is paused and does not replay an old passive or scream')
+        wa.match_data(ea['match_id'],17);running=wa.event(ea['match_id'],10)
+        self.check(not running.get('turnPaused') and 29000<=running.get('turnEndsAtUnixMs',0)-running.get('serverNowUnixMs',0)<=30000,
+            'realOP17 immediately returns a visible thirty-second wall-clock deadline')
+        wa.match_data(ea['match_id'],16);clock_again=wa.event(ea['match_id'],10)
+        self.check(clock_again.get('turnEndsAtUnixMs')==running.get('turnEndsAtUnixMs'),
+            'snapshot refresh does not move the authoritative boss turn deadline')
+        after=move(a,ea,wa,clock_again)
+        self.check(after.get('globalBoss') and after.get('bossMyDamage',after.get('globalBossMyDamage',0))>=0,
+            'real board action is accepted by global boss engine')
+        settled=self.rpc(a,'duel_match3_forfeit',{'match_id':ea['match_id']});over=wa.event(ea['match_id'],11)
+        self.check(settled.get('terminal') and over.get('globalBoss') and over.get('bossAttemptFinished'),
+            'HTTP surrender settles a boss attempt and sends the boss terminal packet')
+        final_stats=self.stats(a)
+        self.check(all(final_stats.get(k,0)==base_stats.get(k,0) for k in ('played','wins','losses','pve_wins','pve_losses')),
+            'boss attempt does not award ordinary mine or PvP result counters')
+        for n in (2,3):
+            en,wn,_=launch(a,'boss-a-'+str(n)+'-'+self.run_id)
+            if n==2:
+                wn.match_data(en['match_id'],17);decision=wn.event(en['match_id'],10)
+                sequence=decision.get('bossActionSequence',0)
+                def expired_turn(message):
+                    md=message.get('match_data',{})
+                    if md.get('match_id')!=en['match_id']or str(md.get('op_code'))!='10':return False
+                    value=json.loads(base64.b64decode(md.get('data','')))
+                    return value.get('bossActionSequence',0)>sequence and value.get('activeUserId')==en['bot_user_id']and value.get('turnPaused')
+                wire=wn.await_message(expired_turn,timeout=35)
+                passed=json.loads(base64.b64decode(wire['match_data']['data']))
+                self.check(passed.get('bossPlayerTurnsLeft')==29 and passed.get('bossActionSequence')==sequence+1,
+                    'actual thirty-second player deadline settles exactly one authoritative boss timeout')
+                wn.match_data(en['match_id'],13,{'actionType':4})
+                wn.match_data(en['match_id'],16)
+                refreshed=wn.event(en['match_id'],10)
+                self.check(refreshed.get('bossActionSequence')==passed.get('bossActionSequence')
+                    and refreshed.get('aMana')==passed.get('aMana')and refreshed.get('activeUserId')==en['bot_user_id'],
+                    'late boss ability after real expiry cannot spend mana or recover the expired player turn')
+            self.check(self.rpc(a,'duel_match3_forfeit',{'match_id':en['match_id']}).get('terminal'),
+                'boss weekly attempt'+str(n)+' can finish without stale admission')
+            wn.event(en['match_id'],11)
+        exhausted=self.rpc(a,'duel_global_boss_enter',{'event_id':event,'request_id':'boss-a-four-'+self.run_id})
+        self.check(exhausted.get('err')=='weekly_attempts_exhausted' and self.rpc(a,'duel_global_boss_get').get('token_count')==2,
+            'fourth weekly boss attack is rejected without charging a fourth teleport')
+        # Only this disposable event is reduced to a deterministic finishing
+        # fixture. Calibrated production defaults were checked above.
+        shared=self.storage('duel_global_boss',event,system);shared['hp']=1
+        shared['config']['base_damage']=500;shared['config']['base_armor']=0
+        put('duel_global_boss',event,system,shared)
+        eb,wb,bb=launch(b,'boss-b-'+self.run_id)
+        self.check(bb.get('globalBoss'),'second account launches its own arena against same global boss')
+        ec,wc,bc=launch(c,'boss-c-'+self.run_id)
+        self.check(bc.get('globalBoss'),'third account reserves a late attempt before global death')
+        # Force only the disposable global HP to1; damage still comes from the
+        # real player's validated ordinary board move, never a damage RPC.
+        for turn in range(12):
+            out=move(b,eb,wb,bb)
+            if out.get('bossAttemptFinished') or self.rpc(b,'duel_global_boss_get').get('status')=='dead':break
+            bb=out
+            while bb.get('activeUserId')!=b['uid'] and bb.get('aHp',0)>0 and bb.get('bHp',0)>0:
+                sequence=bb.get('bossActionSequence',0);wb.match_data(eb['match_id'],17)
+                def next_boss_action(message):
+                    md=message.get('match_data',{})
+                    if md.get('match_id')!=eb['match_id']or str(md.get('op_code'))!='10':return False
+                    value=json.loads(base64.b64decode(md.get('data','')))
+                    return value.get('actionActorUserId')==eb['bot_user_id']and value.get('bossActionSequence',0)>sequence
+                wire=wb.await_message(next_boss_action,timeout=12)
+                bb=json.loads(base64.b64decode(wire['match_data']['data']))
+            if bb.get('aHp',0)<=0 or bb.get('bHp',0)<=0:break
+        dead=self.rpc(b,'duel_global_boss_get')
+        self.check(dead.get('status')=='dead' and dead.get('hp')==0 and dead.get('qualified'),
+            'validated player damage kills the one shared boss and marks contributor eligible')
+        late=wc.event(ec['match_id'],11,timeout=8)
+        self.check(late.get('bossAttemptRefunded') and self.rpc(c,'duel_global_boss_get').get('token_count')==5
+            and self.rpc(c,'duel_global_boss_get').get('attempts_used')==0,
+            'global death before first action refunds both weekly attack and teleport')
+        ranking=self.rpc(b,'duel_global_boss_leaderboard_get',{'event_id':event,'limit':1})
+        entries=ranking.get('entries')or[];own=ranking.get('self_entry')or{}
+        self.check(ranking.get('ok') and len(entries)<=1 and own.get('user_id')==b['uid'] and own.get('damage')==dead.get('my_damage')
+            and own.get('attempts_used')==1 and own.get('rank',0)>0,
+            'actual native boss ranking contains one weekly total per owner and own position outside a bounded page')
+        allowed={'rank','user_id','display_name','avatar_id','damage','attempts_used','is_self'}
+        self.check(all(set(row)<=allowed for row in entries+[own]) and own.get('display_name')==b['username'],
+            'ranking exposes current display names and avatars without private receipt or reward IDs')
+        self.check(self.rpc(b,'duel_global_boss_leaderboard_get',{'event_id':event,'limit':5000}).get('err')=='bad_payload'
+            and self.rpc(b,'duel_global_boss_leaderboard_get',{'event_id':'week-old','limit':1}).get('err')=='event_changed',
+            'ranking rejects oversized pages and a different weekly event')
+        self.boss_ui_snapshots=[{'name':'boss-state','response':info},{'name':'boss-running-clock','response':running},{'name':'boss-ranking','response':ranking}]
+        wb.close() # Offline reward delivery is independent of a live socket.
+        deadline=time.monotonic()+12;mail={}
+        while time.monotonic()<deadline:
+            mail=raw(b,'duel_mail_get')
+            if mail.get('unread_count')==1:break
+            time.sleep(.4)
+        self.check(mail.get('ok') and mail.get('unread_count')==1,'defeated global boss delivers one durable chest to offline contributor mailbox')
+        if mail.get('unread_count')!=1:
+            stored=self.storage('duel_global_boss',event,system);proof=self.storage('duel_global_boss_player',event,b['uid'])
+            print('EVIDENCE mail '+json.dumps({'rpc':mail,'mail_done':stored.get('mail_done'),'cursor':bool(stored.get('mail_cursor')),
+                'worker':bool(stored.get('worker_match_id')),'worker_lease':stored.get('worker_until'),'proof_qualified':proof.get('qualified'),
+                'proof_created':proof.get('reward_mail_created')}),flush=True)
+        if mail.get('messages'):
+            message=mail['messages'][0];attachments=message.get('attachments',[])
+            self.check(len(attachments)==7 and sum(i.get('def_id','').startswith('recipe_drop_t1_gold_') for i in attachments)==1
+                and any(i.get('def_id')=='tesseract' for i in attachments),'boss chest contains one random legendary recipe, tesseract and supplies')
+            before=self.rpc(b,'duel_player_resources_get')
+            with ThreadPoolExecutor(max_workers=3)as pool:claims=list(pool.map(lambda _:self.rpc(b,'duel_mail_claim',{'message_id':message['id']}),range(3)))
+            after=self.rpc(b,'duel_player_resources_get')
+            self.check(all(r.get('ok') and r.get('claimed') for r in claims) and after.get('gold')==before.get('gold')+1500,
+                'three concurrent mailbox claims grant one exact resource and inventory reward')
+            self.check(not self.rpc(c,'duel_mail_claim',{'message_id':message['id']}).get('ok'),
+                'non-contributor cannot claim another account boss chest')
+        self.check(not self.rpc(a,'duel_global_boss_enter',{'event_id':event,'request_id':'dead-'+self.run_id}).get('ok'),
+            'globally defeated event rejects new attempts')
+
     def seed_money(self, p, **money):
         self.isolated_only("Test-only profile seeding")
         path = "/storage/duel_match3_progress/profile/" + p["uid"]
@@ -690,19 +1515,176 @@ class Suite:
         if status != 200:
             raise RuntimeError("Test-only resource seed failed: HTTP " + str(status))
 
-    def arena(self):
+    def seed_sheet(self, p, inventory, counts, learned=None):
+        self.isolated_only("Inventory fixture")
+        path = "/storage/duel_match3_character/sheet/" + p["uid"]
+        status, row = self.console("GET", path)
+        value = json.loads(row["value"]) if status == 200 else {}
+        value.update(inventory=inventory, inventory_counts=counts, inventory_extra_slots=0,
+                     inventory_pending_loot=[], learned_recipes=learned or [])
+        status, _ = self.console("PUT", path, {"value": json.dumps(value),
+            "version": row.get("version", "*") if status == 200 else "*", "permission_read": 1, "permission_write": 0})
+        if status != 200:
+            raise RuntimeError("Isolated smith sheet fixture failed")
+
+    def seed_tournament_access(self, p, **money):
+        self.isolated_only("Server-owned ten-win tournament fixture")
+        self.seed_money(p, **money, mine={"unlocked": {"easy": 1, "medium": 0, "hard": 0},
+            "floor_states": {"easy:1": {"wins": 10}}})
+
+    def guidance(self):
+        self.isolated_only("Guidance auth and paid-gate fixtures")
+        def raw(p, name, payload=None):
+            status, response = http(self.args.url, "POST", "/v2/rpc/" + name,
+                json.dumps(payload or {}), "Bearer " + p["token"])
+            if status != 200:
+                raise RuntimeError(name + " HTTP " + str(status))
+            return json.loads(response.get("payload", "{}"))
+        def read(p):
+            return raw(p, "duel_player_guidance_get")
+        def update_record(collection, key, p, mutate):
+            path = "/storage/" + collection + "/" + key + "/" + p["uid"]
+            status, row = self.console("GET", path)
+            value = json.loads(row["value"]) if status == 200 else {}
+            mutate(value)
+            status, _ = self.console("PUT", path, {"value": json.dumps(value),
+                "version": row.get("version", "*") if status == 200 else "*", "permission_read": 1, "permission_write": 0})
+            if status != 200:
+                raise RuntimeError("Isolated guidance source fixture failed")
+        p, other = self.player(), self.player()
+        first = read(p)
+        self.check(first.get("ok") and first.get("tutorial_status") == "pending" and first.get("mine_wins") == 0
+            and first.get("workshop_unlocked") is False and first.get("tournaments_unlocked") is False,
+            "real newly created device atomically receives pending tutorial with both progressive gates locked")
+        for forged in ({"user_id": other["uid"]}, {"mine_wins": 10}, {"workshop_unlocked": True}):
+            self.check(raw(p, "duel_player_guidance_get", forged).get("err") == "bad_payload",
+                "guidance rejects forged target, progress and first-recipe fields")
+        self.check(self.rpc(p, "duel_player_guidance_set", {"result": "completed", "session_epoch": p["epoch"] - 1}).get("err") == "session_stale",
+            "tutorial mutation rejects an actual stale session epoch")
+        completed = self.rpc(p, "duel_player_guidance_set", {"result": "completed"})
+        self.check(completed.get("tutorial_status") == "completed" and not completed.get("workshop_unlocked") and not completed.get("tournaments_unlocked"),
+            "tutorial completion cannot manufacture recipe ownership or ten monster wins")
+        self.seed_money(p, gold=5000, ore=5000)
+        self.seed_sheet(p, ["ingot_green"], [100])
+        for wins in (0, 9):
+            self.seed_money(p, mine={"floor_states": {"easy:1": {"wins": wins}}}, defeated={"mine_1": wins})
+            update_record("duel_match3_stats", "summary", p, lambda value: value.setdefault("modes", {}).setdefault("mine", {}).update(wins=wins))
+            status = read(p)
+            self.check(status.get("mine_wins") == wins and status.get("tournaments_unlocked") is False,
+                "three trusted legacy counter views use max at " + str(wins) + " wins rather than adding to bypass ten")
+            for kind, tier in (("gold", "600"), ("smith", "green")):
+                denied = self.rpc(p, "duel_arena_queue_join", {"arena_kind": kind, "bet_tier": tier,
+                    "mine_wins": 999, "tournaments_unlocked": True})
+                money = self.rpc(p, "duel_player_resources_get")
+                sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+                self.check(denied.get("err") == "tournaments_locked" and money.get("gold") == 5000
+                    and sheet.get("inventory_counts", [0])[0] == 100,
+                    kind + " gate rejects forged eligibility before charging currencies or ingots at " + str(wins) + " wins")
+        self.seed_tournament_access(p)
+        ten = read(p)
+        self.check(ten.get("mine_wins") == 10 and ten.get("tournaments_unlocked") is True,
+            "exactly ten durable wins unlock real tournament RPC")
+        entered = self.rpc(p, "duel_arena_queue_join", {"arena_kind": "gold", "bet_tier": "600"})
+        self.check(entered.get("ok") and self.rpc(p, "duel_player_resources_get").get("gold") == 4400,
+            "newly unlocked account pays exactly one authoritative tournament fee")
+        self.check(self.rpc(p, "duel_arena_queue_leave", {"arena_kind": "gold"}).get("ok")
+            and self.rpc(p, "duel_player_resources_get").get("gold") == 5000,
+            "newly unlocked queue cancellation returns the exact paid fee")
+        catalog = self.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")["items"]
+        output = next(key for key, value in catalog.items() if value.get("kind") == "equipment"
+            and value.get("quality") == "normal" and value.get("slot") == "Helmet")
+        recipe = catalog[output]["craft_recipe_id"]
+        craft = self.rpc(p, "duel_workshop_craft_start", {"slot_index": 0, "output_def_id": output, "first_recipe_received": True})
+        self.check(craft.get("err") == "workshop_locked" and self.rpc(p, "duel_player_resources_get").get("gold") == 5000,
+            "real craft start ignores forged first-recipe marker and preserves wallet")
+        self.seed_sheet(p, [recipe], [1])
+        recipe_state = read(p)
+        self.check(recipe_state.get("workshop_unlocked") is True
+            and self.rpc(p, "duel_workshop_craft_start", {"slot_index": 0, "output_def_id": output}).get("err") == "recipe_not_learned",
+            "first recipe unlocks workshop presentation but still requires learning the exact craft recipe")
+        sold = self.rpc(p, "duel_character_item_sell", {"source": "inventory", "inv_index": 0,
+            "expected_def_id": recipe, "request_id": uuid.uuid4().hex})
+        saved = self.storage("duel_match3_character", "sheet", p["uid"])
+        self.check(sold.get("ok") and saved.get("first_recipe_received") is True,
+            "actual sale observes and persists first-recipe history before consuming the scroll")
+        update_record("duel_match3_character", "sheet", p, lambda value: value.update(inventory=[], inventory_counts=[],
+            inventory_pending_loot=[], inventory_sale_receipts=[], learned_recipes=[]))
+        self.check(read(p).get("workshop_unlocked") is True,
+            "durable first-recipe flag survives sold item, receipt rollover and empty inventory")
+        filler = next(key for key, value in catalog.items() if value.get("kind") == "equipment")
+        self.seed_sheet(other, [filler] * 25, [1] * 25)
+        update_record("duel_match3_character", "sheet", other,
+            lambda value: value.update(first_recipe_received=False, inventory_pending_loot=[{"def_id": recipe, "amount": 1}]))
+        pending = read(other)
+        self.check(pending.get("workshop_unlocked") is True and pending.get("mine_wins") == 0 and not pending.get("tournaments_unlocked"),
+            "full-bag pending first recipe opens only its owner's workshop without granting tournament wins")
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            replies = list(pool.map(lambda result: self.rpc(other, "duel_player_guidance_set", {"result": result}),
+                ("completed", "skipped", "completed", "skipped", "completed", "skipped")))
+        self.check(all(value.get("ok") for value in replies) and read(other).get("tutorial_status") == "completed",
+            "six concurrent complete/skip requests converge monotonically to completed")
+        path = "/storage/duel_player_guidance/v1/" + other["uid"]
+        _, before = self.console("GET", path)
+        replay = self.rpc(other, "duel_player_guidance_set", {"result": "skipped"})
+        _, after = self.console("GET", path)
+        self.check(replay.get("tutorial_status") == "completed" and before.get("version") == after.get("version"),
+            "completed tutorial replay neither rewrites nor resets its server receipt")
+        status, _ = http(self.args.url, "PUT", "/v2/storage", {"objects": [{"collection": "duel_player_guidance",
+            "key": "v1", "value": json.dumps({"schema": 1, "tutorial": "pending"}), "permission_write": 1}]}, "Bearer " + p["token"])
+        self.check(status != 200 and read(p).get("tutorial_status") == "completed",
+            "real storage request guard rejects tutorial replacement and cannot reset another account")
+        status, _ = self.console("DELETE", path)
+        if status not in (200, 404):
+            raise RuntimeError("Isolated legacy tutorial fixture failed")
+        status, session = http(self.args.url, "POST", "/v2/account/authenticate/device?create=true", {"id": other["device_id"]}, self.basic)
+        legacy = read(other)
+        self.check(status == 200 and session.get("created") is not True and legacy.get("tutorial_status") == "legacy",
+            "existing device reauthentication never opts a markerless legacy account into automatic tutorial")
+        self.guidance_ui_snapshots = [{"name": "new-locked", "response": first}, {"name": "ten-wins", "response": ten},
+            {"name": "recipe-received", "response": recipe_state}, {"name": "full-bag-pending", "response": pending}, {"name": "legacy", "response": legacy}]
+
+    def smith(self):
+        self.isolated_only("Smith full-inventory cancellation")
+        catalog = self.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")["items"]
+        filler = next(key for key, value in catalog.items()
+            if value.get("kind") not in ("recipe", "material", "tesseract") and value.get("max_stack", 1) == 1)
+        p = self.player()
+        self.seed_tournament_access(p)
+        self.seed_sheet(p, ["ingot_green"], [100])
+        tier = {"arena_kind": "smith", "bet_tier": "green", "entry_amount": 1, "rules_version": 1}
+        joined = self.rpc(p, "duel_arena_queue_join", tier)
+        sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+        self.check(joined.get("ok") and sheet.get("inventory_counts", [0])[0] == 90
+            and joined.get("entry_cost", {}).get("amount") == 10,
+            "smith server ignores forged client cost/version and charges authoritative ten-ingot price")
+        self.seed_sheet(p, [filler] * 25, [1] * 25)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            cancelled = list(pool.map(lambda _: self.rpc(p, "duel_arena_queue_leave", tier), range(2)))
+        sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+        pending = sheet.get("inventory_pending_loot", [])
+        self.check(sum(r.get("ok") is True for r in cancelled) == 1 and pending == [{"def_id": "ingot_green", "amount": 10}],
+            "concurrent full-inventory smith cancellations persist exactly one complete ten-ingot refund")
+        replay = self.rpc(p, "duel_arena_queue_leave", tier)
+        self.check(replay.get("ok") is False and self.storage("duel_match3_character", "sheet", p["uid"]).get("inventory_pending_loot") == pending,
+            "replayed cancellation cannot grant participation loot or duplicate pending refund")
+        self.arena(smith=True)
+        return self.arena(smith=True, smith_recipe_owned=True)
+
+    def arena(self, smith=False, smith_recipe_owned=False):
         self.isolated_only("Arena regression")
         participants = [self.player() for _ in range(8)]
-        tier = {"arena_kind": "gold", "bet_tier": "2400"}
+        tier = {"arena_kind": "smith", "bet_tier": "green"} if smith else {"arena_kind": "gold", "bet_tier": "2400"}
         initial = self.rpc(participants[0], "duel_arena_queue_poll", tier)
         if initial.get("queue_count", 0) > 0:
             raise RuntimeError("Selected public arena queue is occupied; refusing to mix test and real players")
         for p in participants:
-            self.seed_money(p, gold=5000)
+            self.seed_tournament_access(p, gold=5000)
+            if smith:
+                self.seed_sheet(p, ["ingot_green"], [100])
         with ThreadPoolExecutor(max_workers=8) as pool:
             joined_results = list(pool.map(lambda p: self.rpc(p, "duel_arena_queue_join", tier), participants))
         for joined in joined_results:
-            self.check(joined.get("ok") is True, "one temporary participant enters gold-2400 arena")
+            self.check(joined.get("ok") is True, "one temporary participant enters " + ("smith-green-v2" if smith else "gold-2400") + " arena")
         polls = [self.rpc(p, "duel_arena_queue_poll", tier) for p in participants]
         tids = {v.get("tournament", {}).get("id") for v in polls if v.get("tournament", {}).get("active")}
         tids.discard("")
@@ -724,6 +1706,8 @@ class Suite:
         rows = tournament.get("qf", [])
         self.check(len(rows) == 4 and {r[side] for r in rows for side in ("uid_a", "uid_b")} == roster,
             "the tournament bracket contains exactly the eight temporary accounts")
+        self.check(all(isinstance(r.get("avatar_a"), str) and isinstance(r.get("avatar_b"), str) for r in rows),
+            "authoritative tournament DTO includes paired avatar IDs for every formed participant")
         if not all(r[side] in roster for r in rows for side in ("uid_a", "uid_b")):
             raise RuntimeError("Unexpected participant found; stopping without modifying that match")
         for row in rows:
@@ -735,8 +1719,21 @@ class Suite:
         by_uid = {p["uid"]: p for p in participants}
         sockets = {uid: self.connect(p) for uid, p in by_uid.items()}
         after_entry = [self.rpc(p, "duel_player_resources_get") for p in participants]
-        self.check(all(value.get("gold") == 2600 for value in after_entry),
+        self.check(all(value.get("ingots") == 90 if smith else value.get("gold") == 2600 for value in after_entry),
             "eight simultaneous arena joins charge every participant exactly one entry fee")
+        if smith:
+            status, catalog = self.console("GET", "/storage/duel_match3_item_defs/catalog/00000000-0000-0000-0000-000000000000")
+            if status != 200:
+                raise RuntimeError("Smith regression requires canonical isolated item catalog")
+            definitions = json.loads(catalog["value"])["items"]
+            filler = next(key for key, value in definitions.items()
+                if value.get("kind") not in ("recipe", "material", "tesseract") and value.get("max_stack", 1) == 1)
+            for p in participants:
+                self.seed_sheet(p, [filler] * 25, [1] * 25, ["recipe_drop_t1_green_Helmet"] if smith_recipe_owned else [])
+            self.check(all(v.get("entry_cost", {}).get("amount") == 10 and v.get("rules_version") == 2
+                and v.get("prize_ingots") == 20 and v.get("consolation_ingots") == 2
+                for v in (poll["tournament"] for poll in polls)),
+                "smith production DTO quotes versioned ten-ingot stake, twenty champion and two consolation ingots")
         # This participant will lose its quarterfinal; the eventual champion places no bets.
         bettor = by_uid[rows[0]["uid_a"]]
         bet_stat = "slaughter.arena_bets_placed"
@@ -798,7 +1795,22 @@ class Suite:
                     round_name + ": live bracket")
             # All different pairs finish together, reaching separate authoritative callbacks/VMs.
             with ThreadPoolExecutor(max_workers=len(fights)) as pool:
-                list(pool.map(lambda fight: self.finish(*fight), fights))
+                results = list(pool.map(lambda fight: self.finish(*fight), fights))
+            if smith:
+                for fight, result in zip(fights, results):
+                    own = next((row for row in result.get("arenaCraftRewards", []) if row.get("userId") == fight[3]["uid"]), {})
+                    loser_result = fight[1].event(fight[0], 11)
+                    loser_own = next((row for row in loser_result.get("arenaCraftRewards", []) if row.get("userId") == fight[3]["uid"]), {})
+                    self.check(own.get("outcome") == "participation" and own.get("ingots") == 2
+                        and own.get("pendingCount") == 2 and loser_own == own,
+                        "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast")
+                    if round_name == "final":
+                        champion = next((row for row in result.get("arenaCraftRewards", []) if row.get("userId") == fight[4]["uid"]), {})
+                        self.check(champion.get("outcome") == "champion"
+                            and champion.get("ingots") == (30 if smith_recipe_owned else 20)
+                            and champion.get("recipeItemId", "") == ("" if smith_recipe_owned else "recipe_drop_t1_green_Helmet")
+                            and champion.get("pendingCount") == (30 if smith_recipe_owned else 21),
+                            "smith champion receives exact defeated-floor Helmet recipe or thirty-ingot owned-pool fallback, including full-inventory pending")
             winners = [fight[4] for fight in fights]
             status, stored = self.console("GET", "/storage/arena_tournament/" + tid
                 + "/00000000-0000-0000-0000-000000000000")
@@ -842,12 +1854,36 @@ class Suite:
                 completed_boards[field] = fight_boards
         final_resources = self.rpc(survivor, "duel_player_resources_get")
         # No bets: gold 5000 - entry 2400 + final 12000 = 14600.
-        self.check(final_resources.get("gold") == 14600, "gold tournament grants its final prize exactly once")
+        self.check(final_resources.get("gold") == (5300 if smith else 14600), "tournament grants its final currency prize exactly once")
         for _ in range(3):
             self.rpc(survivor, "duel_arena_queue_poll", tier)
         repeated_resources = self.rpc(survivor, "duel_player_resources_get")
-        self.check(repeated_resources.get("gold") == 14600,
+        self.check(repeated_resources.get("gold") == (5300 if smith else 14600),
             "repeated completed-tournament polls cannot repeat its final prize")
+        if smith:
+            saved = self.storage("arena_tournament", tid, "00000000-0000-0000-0000-000000000000")
+            receipts = saved.get("craft_receipts", {})
+            self.check(len(receipts) == 8 and sum(r.get("outcome") == "champion" for r in receipts.values()) == 1
+                and all(part.get("entry_cost", {}).get("amount") == 10 for part in saved.get("parts", {}).values()),
+                "smith durable terminal state records exact paid costs and one reward receipt per human")
+            for p in participants:
+                sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+                pending = sum(row["amount"] for row in sheet.get("inventory_pending_loot", []))
+                self.check(pending == ((30 if smith_recipe_owned else 21) if p["uid"] == survivor["uid"] else 2),
+                    "completed smith polls and repeated match result cannot duplicate held craft rewards")
+            path = "/storage/duel_match3_character/sheet/" + survivor["uid"]
+            status, row = self.console("GET", path)
+            sheet = json.loads(row["value"])
+            sheet["inventory"][0:2], sheet["inventory_counts"][0:2] = ["", ""], [0, 0]
+            status, _ = self.console("PUT", path, {"value": json.dumps(sheet), "version": row["version"], "permission_read": 1, "permission_write": 0})
+            if status != 200:
+                raise RuntimeError("Isolated smith free-slot fixture failed")
+            delivered = self.rpc(survivor, "duel_character_loot_deliver")
+            sheet = self.storage("duel_match3_character", "sheet", survivor["uid"])
+            self.check(delivered.get("ok") is True and not sheet.get("inventory_pending_loot")
+                and "ingot_green" in sheet.get("inventory", [])
+                and (smith_recipe_owned or "recipe_drop_t1_green_Helmet" in sheet.get("inventory", [])),
+                "real inventory delivery drains guaranteed champion items after space is freed without loss or duplication")
 
     def check_arena_hp(self, row, board, label):
         # Human matches publish a/b in sorted user-id order; bracket slots are
@@ -950,26 +1986,76 @@ def main():
     parser.add_argument("--url", default="https://prokrust-play.ru")
     parser.add_argument("--console-url", default="http://127.0.0.1:27351")
     parser.add_argument("--config", type=Path, default=Path("secrets/server.yml"))
-    parser.add_argument("--scenario", choices=("probe", "pvp", "double-disconnect", "overlap", "race", "arena", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "all"), default="pvp")
+    parser.add_argument("--scenario", choices=("probe", "friends", "lifecycle", "pvp", "double-disconnect", "overlap", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "shop", "all"), default="pvp")
+    parser.add_argument("--item-catalog", type=Path)
+    parser.add_argument("--catalog-migration-helper", type=Path)
+    parser.add_argument("--consumable-manifest", type=Path)
+    parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     target = urlsplit(args.url)
     console_target = urlsplit(args.console_url)
-    if args.scenario in ("race", "arena", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "all") and (
+    if args.scenario in ("friends", "lifecycle", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "shop", "all") and (
             target.hostname not in ("127.0.0.1", "localhost") or target.port != 28350
             or console_target.hostname not in ("127.0.0.1", "localhost") or console_target.port != 28351):
         parser.error("This scenario requires the isolated localhost test backend on ports 28350 and 28351")
     suite = Suite(args)
     try:
+        if args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "shop"):
+            suite.isolated_only("Canonical smith catalog fixture")
+            if not args.item_catalog:
+                raise RuntimeError("This scenario requires --item-catalog from the disposable runner")
+            catalog = json.loads(args.item_catalog.read_text(encoding="utf-8-sig"))
+            if not isinstance(catalog.get("items"), dict) or not catalog["items"]:
+                raise RuntimeError("Invalid smith canonical catalog fixture")
+            path = "/storage/duel_match3_item_defs/catalog/00000000-0000-0000-0000-000000000000"
+            status, _ = suite.console("GET", path)
+            if status != 404:
+                raise RuntimeError("Refusing to replace an existing isolated item catalog")
+            seed = json.loads(json.dumps(catalog))
+            if args.catalog_migration_helper:
+                if not args.consumable_manifest:
+                    raise RuntimeError("Catalog migration fixture requires its fixed manifest")
+                manifest = json.loads(args.consumable_manifest.read_text())
+                if len(manifest.get("items", {})) != 4:
+                    raise RuntimeError("Expected exactly four fixed consumable definitions")
+                for item_id in manifest["items"]:
+                    del seed["items"][item_id]
+                seed["version"] = 3
+            status, _ = suite.console("PUT", path, {"value": json.dumps(seed), "version": "*", "permission_read": 1, "permission_write": 0})
+            if status != 200:
+                raise RuntimeError("Canonical smith catalog creation failed")
+            if args.catalog_migration_helper:
+                base = [sys.executable, str(args.catalog_migration_helper), "--url", args.console_url,
+                    "--config", str(args.config), "--manifest", str(args.consumable_manifest)]
+                def migrate(extra):
+                    command = subprocess.run(base + extra, capture_output=True, text=True, timeout=30)
+                    if command.returncode:
+                        raise RuntimeError("Isolated consumable catalog migration helper failed")
+                    return json.loads(command.stdout)
+                planned = migrate([])
+                backup = args.config.parent.parent / "catalog-before-consumables.json"
+                applied = migrate(["--apply", "--backup", str(backup)])
+                replay = migrate([])
+                actual = suite.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")
+                suite.check(planned.get("mode") == "planned" and len(planned.get("added_ids", [])) == 4
+                    and planned.get("existing_definitions_preserved") == len(catalog['items'])-4,
+                    "actual isolated migration dry-run plans exactly four additions while preserving every existing definition including boss teleport")
+                suite.check(applied.get("mode") == "applied" and actual.get('items') == catalog.get('items')
+                    and actual.get('version') == 4 and backup.is_file(),
+                    "actual consumable migration creates a backup and preserves all canonical item definitions at its versionfour boundary")
+                suite.check(replay.get("mode") == "unchanged" and not replay.get("added_ids"),
+                    "repeating the catalog migration after success is an idempotent no-op")
         if args.scenario == "probe":
             status, tournaments = suite.console("GET", "/storage?collection=arena_tournament")
             suite.check(status == 200, "arena storage can be inspected without reading player identities")
             print("Arena persisted object count=" + str(tournaments.get("total_count", 0)), flush=True)
         else:
-            scenarios = {"pvp": suite.pvp, "double-disconnect": suite.double_disconnect,
+            scenarios = {"friends": suite.friends, "lifecycle": suite.lifecycle, "guidance": suite.guidance, "cosmetics": suite.cosmetics, "daily": suite.daily, "consumables": suite.consumables, "smith": suite.smith,
+                "pvp": suite.pvp, "double-disconnect": suite.double_disconnect,
                 "overlap": suite.overlap_reconnect, "race": suite.race, "arena": suite.arena, "natural": suite.natural,
                 "race-unpaid": suite.race_unpaid, "race-receipts": suite.race_receipts,
-                "race-legacy-refund": suite.race_legacy_refund}
+                "race-legacy-refund": suite.race_legacy_refund,"global-boss":suite.global_boss,"shop":suite.shop}
             if args.scenario == "race-policy":
                 scenarios = {"race-policy": suite.race_policy}
             for name, fn in scenarios.items():
@@ -983,13 +2069,26 @@ def main():
                     detail = name + ": " + type(error).__name__ + ": " + str(error)
                     suite.errors.append(detail)
                     print("ERROR " + detail, flush=True)
+                    if args.report:
+                        trace = args.report.with_name(args.report.stem + "-traceback.log")
+                        with trace.open("a", encoding="utf-8") as output:
+                            output.write("SCENARIO " + name + "\n" + traceback.format_exc() + "\n")
+                if args.fail_fast and (suite.failures or suite.errors):
+                    break
     finally:
-        suite.cleanup()
+        try:
+            suite.cleanup()
+        except Exception as error:
+            suite.errors.append("cleanup: " + type(error).__name__ + ": " + str(error))
+            print("ERROR cleanup: " + type(error).__name__, flush=True)
         print("RESULT passed=" + str(sum(c["passed"] for c in suite.checks)) + " failed=" + str(len(suite.failures))
             + " errors=" + str(len(suite.errors)), flush=True)
         if args.report:
             args.report.write_text(json.dumps({"checks": suite.checks, "errors": suite.errors,
-                "arena_ui_snapshots": suite.arena_ui_snapshots}, indent=2), encoding="utf-8")
+                "arena_ui_snapshots": suite.arena_ui_snapshots, "cosmetic_ui_snapshots": getattr(suite, "cosmetic_ui_snapshots", []),
+                "daily_ui_snapshots": getattr(suite, "daily_ui_snapshots", []),
+                "guidance_ui_snapshots": getattr(suite, "guidance_ui_snapshots", []),
+                "consumable_ui_snapshots": getattr(suite, "consumable_ui_snapshots", []),"boss_ui_snapshots":getattr(suite,"boss_ui_snapshots",[])}, indent=2), encoding="utf-8")
     return 1 if suite.failures or suite.errors else 0
 
 

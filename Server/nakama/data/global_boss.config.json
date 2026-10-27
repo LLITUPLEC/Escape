@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "name": "Сердце Разлома",
+  "max_hp": 550000,
+  "base_damage": 3500,
+  "base_armor": 1000,
+  "base_crit": 0.05,
+  "max_turns": 30,
+  "eligibility_min_damage": 1,
+  "think_seconds": 2,
+  "rewards": {"gold": 1500, "ore": 2000, "matter": 5},
+  "reward_title": "Глобальный босс повержен",
+  "reward_body": "Разлом закрыт общими усилиями. Забери награду за свой вклад."
+}

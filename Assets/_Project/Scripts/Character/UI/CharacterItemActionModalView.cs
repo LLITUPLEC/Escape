@@ -19,6 +19,8 @@ namespace Project.Character.UI
 
         private Coroutine _showRoutine;
         private Coroutine _hideRoutine;
+        private Action _onSell, _onUse;
+        private bool _isConsumable;
         public float HideDuration => hideDuration;
 
         public RectTransform PanelRect => panel != null ? panel : transform as RectTransform;
@@ -31,6 +33,7 @@ namespace Project.Character.UI
 
         public void Bind(Action onInfo, Action onSell)
         {
+            _onSell=onSell;
             if (infoButton != null)
             {
                 infoButton.onClick.RemoveAllListeners();
@@ -40,8 +43,18 @@ namespace Project.Character.UI
             if (sellButton != null)
             {
                 sellButton.onClick.RemoveAllListeners();
-                if (onSell != null) sellButton.onClick.AddListener(() => onSell());
+                sellButton.onClick.AddListener(() => { if(_isConsumable)_onUse?.Invoke();else _onSell?.Invoke(); });
             }
+        }
+
+        public void ConfigureItem(ItemDefinition item, bool canUse, Action onUse)
+        {
+            EnsureDefaults();_isConsumable=item!=null&&item.Kind==ItemKind.Consumable;_onUse=onUse;
+            if(sellButton==null)return;
+            sellButton.interactable=_isConsumable?canUse:item!=null&&item.SalePrice>0;
+            ExpeditionUi.Label(sellButton,_isConsumable?"Использовать":"Продать");
+            ExpeditionUi.StyleButton(sellButton,_isConsumable,36);
+            if(infoButton!=null)ExpeditionUi.StyleButton(infoButton,!_isConsumable,36);
         }
 
         public void ShowAt(Vector2 anchoredPosition)

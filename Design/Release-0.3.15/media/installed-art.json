@@ -1,0 +1,126 @@
+{
+  "mode": "built-in image_gen",
+  "pngPixelsModified": false,
+  "assets": [
+    {
+      "id": "mine-01",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-664dd491-a629-4155-8860-0478f0bf71cf.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-1.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Sharp Shard / Острый скол: a gaunt humanoid made of sharp fractured slate, asymmetrical jagged shard arms instead of hands, two dim ember eyes, rusty water seeping from cracks. Fast cutting silhouette. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "e00e61a82478997abb0be738d5d10b90f7caecbd94045c5f2ded90642cac2d51",
+      "bytes": 1616579
+    },
+    {
+      "id": "mine-02",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-29e87736-c453-4c23-909d-777e9a0f2a0a.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-2.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Rusty Nail / Ржавый гвоздь: a stooped hunchback with corroded iron-like skin, a back bristling with bent nails and rusty rods, serrated screw fingers, a little brown mineral ooze at its mouth. Heavy, grasping pose. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "875f8821a9d23716a0632d2c635302748b5011c493f87b65813dcf46fd96aa61",
+      "bytes": 2121449
+    },
+    {
+      "id": "mine-03",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-d73fa46f-da07-47da-b562-c30773a88fa9.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-3.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Rotten Fissure / Гнилой свищ: an amorphous half-liquid ochre-green sludge creature, irregular vents exhaling green gas, sticky puddle feet and uncertain tendril limbs, disturbing readable silhouette, no explicit gore. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "4446e09e71a6cb2d5dc0cd7d040681920bb003cd4b1f37914f719704e3482f49",
+      "bytes": 2094637
+    },
+    {
+      "id": "mine-04",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-d98fc829-fd2a-4b67-81b0-155f51cfffbf.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-4.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Crusher / Крушило: enormous mutant gorilla, exposed dark fibrous muscles intertwined with cables and rebar, huge fists formed from compressed ore and concrete blocks with projecting rods, head sunk between shoulders, black smoke from mouth. Non-graphic fantasy anatomy, boss silhouette. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "0209cc56ee5bf7a34e0b02bcdeec2585e1c4536decc638083f3f74200af8dfe7",
+      "bytes": 2466129
+    },
+    {
+      "id": "mine-05",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-1ec1335c-f289-4f04-b439-e66620d0892f.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-5.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Dry Rattle / Сухой грохот: tall emaciated parchment-skinned skeletal humanoid, huge open lipless mouth with vibrating steel plates inside the throat, long legs with small industrial hammers at its knees, hands held apart as if resonating. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "6997d9dd1d35af455808026ba4b3ff4a27b5a70c040fff97fdc0bc57bac27ef6",
+      "bytes": 1234546
+    },
+    {
+      "id": "mine-06",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-9ec1e8e9-86fd-4bdb-b617-1fd24f0bc0c9.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-6.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Dead Quicksand / Мёртвый плывун: shifting body made of loose gray sand and fine scree, an old one-eyed skull suspended in its center, thick sand-rope arms, lower body flowing into small sand heaps, alien elemental silhouette. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "569887b7bcf9ef89aa4772866ad1e8c9996f4d7563fb8f3debb74a6ed19c6b69",
+      "bytes": 3011249
+    },
+    {
+      "id": "mine-07",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-cdeed8c8-8d95-4057-b1df-69ef5be94f9b.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-7.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Black Soot / Чёрная копоть: a formless upright cloud of coal soot, two red pinpoint eyes, vaguely visible bones and tangled hair deep inside smoke, tiny warm sparks, several small smoke tendrils separating close to its body. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "8375fb48aec7049d32c4f054f26819f4c68f63c2b4665b1dee714f6ea4a3118c",
+      "bytes": 1662322
+    },
+    {
+      "id": "mine-08",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-70601f72-3517-42f2-8573-b5e3fbe7d7c5.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-8.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Dead End / Забой: colossal living assemblage of rusty mine supports, winches and cracked concrete blocks forming a squat body; excavator bucket instead of head, pulsing red mineral vein in the chest, hydraulic manipulator arms, steam hoses protruding from back. Heavy mining boss silhouette. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "87e753efb882ec5c167d89fee5184074494f13f36db1ffe0c0f516271ae86b43",
+      "bytes": 2804986
+    },
+    {
+      "id": "mine-09",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-e5f58624-3e74-432c-adcc-13a8ada671cb.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-9.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Blind Borer / Слепой бурав: a thick curved worm wrapped in segments of old conveyor belt, head is a rotating drill made of three fused drill crowns, thermal pits rather than eyes, many short hook legs, entire coiled body visible. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "bd038d5b467059d1e4b14e7e96cdd6ed638e43d55fbc62d7979e0f34e1316551",
+      "bytes": 2355901
+    },
+    {
+      "id": "mine-10",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-24ac8c62-efb6-4026-ae00-68cfcd8fafda.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-10.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Sticky Scrounger / Липкий ломун: short hunched humanoid, unnaturally long arms, bluish skin covered with rusty battery-shaped mineral growths, palms with suction cups, a ragged leathery sack on its back stuffed with stolen luminous energy capsules. Sly grasping posture. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "dd225a12ec12794ee1a0432cf8417c53450e032f91d947abec7f7b6d825b198b",
+      "bytes": 2018694
+    },
+    {
+      "id": "mine-11",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-03202423-c064-4a51-9d8f-41c65198b867.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-11.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. Silent Rustle / Тихий шорох: translucent alien figure woven from coal dust and fine cobwebs, smooth faceless head with two narrow eye slits, six thin jointed spider harvestman legs, suspended in a low wall-crawling pose that is readable on empty transparent space. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "f30f1b12ff3241b57c43f5d5238ccc7af300570c31c24df73c818d9a21ffde8c",
+      "bytes": 1543057
+    },
+    {
+      "id": "mine-12",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-85a05de1-6c85-4060-810e-3d2c7c7414d1.png",
+      "destination": "Assets/_Project/Resources/Expedition/Monsters/mine-12.png",
+      "prompt": "Use case: stylized-concept. Asset type: final isolated 2D mobile dark fantasy mine monster sprite for Escape. The Vein / Жила: giant ancient organism intertwined with a compact rock outcrop, a network of red glowing mineral veins forming a serpentine dragon, head is a crystalline cluster around a beating pure-ore heart core, new jagged crystals erupting along its body, small molten rock at the base. Monumental final mine boss; entire coiled body and compact rock base visible. Style: detailed hand-painted semi-realistic dark fantasy game art, weathered stone and oxidized industrial materials, restrained teal shadows and warm rust accents, crisp silhouette readable at 180 pixels. Full body, front three-quarter view facing slightly left toward a player, entire body and all extremities within canvas with 7% transparent padding, feet grounded on a single invisible baseline, centered composition. Transparent background with true alpha. One creature only, no scenery, no frame, no UI, no text, no watermark. Do not crop feet or head. Not pixel art, no cartoon outlines. Keep atmospheric wisps close to the body. Output square.",
+      "sha256": "3b966c887fcc8da1939414eb89684164233921fb91be9ef31670ccc496ce2fc9",
+      "bytes": 2798174
+    },
+    {
+      "id": "tesseract",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-338c40b0-c372-4227-9d9a-34a5dba74e2d.png",
+      "destination": "Assets/_Project/Resources/Expedition/Items/tesseract.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game inventory resource sprite. Primary request: one beautiful mysterious tesseract artifact for a dark fantasy underground mining game. A luminous cyan-violet inner cube suspended inside a tilted outer cube made of ancient dark bronze and obsidian struts, connected corners form an impossible four-dimensional hypercube projection, small red amber mineral inclusions, readable distinctive nested-cube silhouette. Detailed hand-painted semi-realistic sculpted fantasy game icon, elegant contained magical radiance, no large glow cloud. Centered isometric three-quarter view, entire artifact visible with 12% padding. True transparent background. No scene, ground, letters, frame, labels, text or watermark. Square output.",
+      "sha256": "960d4b5a46b4ccccc9b80b63325f3affc37e0aab6a235fe37f77cf561c72a6e0",
+      "bytes": 2081808
+    },
+    {
+      "id": "health-red",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-8a9ac32d-a93b-4f4b-ac6b-43e04dd904d0.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/health-red.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game stat icon in a dark fantasy mine RPG. Primary request: a single unmistakable red-rose pink anatomical-symbol HEART, a simple classic symmetrical heart silhouette, faceted polished ruby with sculpted depth, small rose highlights, slim weathered dark bronze beveled edge matching fantasy equipment icon art. Bold readable silhouette at 24 pixels, not a real anatomical organ. Centered, fills 80% canvas, true transparent background, one object only. No UI tile, background, halo, text, watermark or extra objects. Square output.",
+      "sha256": "7b0d867eec3965e499e47e5914c702f43298f75284797b0f3c0a8fc106da5c53",
+      "bytes": 1794351
+    },
+    {
+      "id": "healing-cross",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-89efbf7a-66d8-4997-96a6-52844db863d3.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/healing-cross.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game stat icon in a dark fantasy mine RPG. Primary request: one clearly readable pharmacy/medical healing PLUS CROSS, four equal short wide arms, fresh emerald green enamel and jade sculpted stone face with a slim weathered dark bronze beveled edge, softly lit ivory-green highlights, same sculpted semi-realistic game icon family as ruby heart. Bold simple silhouette clearly readable at24 pixels. Centered fills80% canvas, true transparent background. No heart, no UI tile, no backdrop, no halo, no text, no watermark, one object only. Square output.",
+      "sha256": "56402316ab0e3d19cfb0a752c8baa7ce9745eb49d554acc502e5a0dbc846cacf",
+      "bytes": 1871023
+    }
+  ]
+}

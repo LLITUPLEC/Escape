@@ -1,0 +1,201 @@
+{
+  "schema": 1,
+  "migration": "shop-0.3.14",
+  "system_collection": "duel_shop_catalog",
+  "system_key": "v1",
+  "system_user_id": "00000000-0000-0000-0000-000000000000",
+  "offers": {
+    "ingots_green": {
+      "expected": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_green",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_green",
+            "amount": 10
+          }
+        ],
+        "currency": "matter",
+        "title": "Зелёные слитки",
+        "gold": 0,
+        "description": "10 слитков для ремесла.",
+        "ore": 0,
+        "energy": 0,
+        "price": 4
+      },
+      "replacement": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_green",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_green",
+            "amount": 20
+          }
+        ],
+        "currency": "matter",
+        "title": "Зелёные слитки",
+        "gold": 0,
+        "description": "20 слитков для ремесла.",
+        "ore": 0,
+        "energy": 0,
+        "price": 3
+      }
+    },
+    "ingots_blue": {
+      "expected": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_blue",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_blue",
+            "amount": 5
+          }
+        ],
+        "currency": "matter",
+        "title": "Синие слитки",
+        "gold": 0,
+        "description": "5 слитков для редкой экипировки.",
+        "ore": 0,
+        "energy": 0,
+        "price": 6
+      },
+      "replacement": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_blue",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_blue",
+            "amount": 20
+          }
+        ],
+        "currency": "matter",
+        "title": "Синие слитки",
+        "gold": 0,
+        "description": "20 слитков для редкой экипировки.",
+        "ore": 0,
+        "energy": 0,
+        "price": 4
+      }
+    },
+    "ingots_purple": {
+      "expected": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_purple",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_purple",
+            "amount": 3
+          }
+        ],
+        "currency": "matter",
+        "title": "Фиолетовые слитки",
+        "gold": 0,
+        "description": "3 слитка для эпической экипировки.",
+        "ore": 0,
+        "energy": 0,
+        "price": 9
+      },
+      "replacement": {
+        "tab": "resources",
+        "matter": 0,
+        "id": "ingots_purple",
+        "enabled": true,
+        "badge": "",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_purple",
+            "amount": 20
+          }
+        ],
+        "currency": "matter",
+        "title": "Фиолетовые слитки",
+        "gold": 0,
+        "description": "20 слитков для эпической экипировки.",
+        "ore": 0,
+        "energy": 0,
+        "price": 5
+      }
+    },
+    "craft_pack": {
+      "expected": {
+        "tab": "bundles",
+        "matter": 0,
+        "id": "craft_pack",
+        "enabled": true,
+        "badge": "ДЛЯ КРАФТА",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_green",
+            "amount": 20
+          },
+          {
+            "def_id": "ingot_blue",
+            "amount": 10
+          },
+          {
+            "def_id": "ingot_purple",
+            "amount": 3
+          }
+        ],
+        "currency": "matter",
+        "title": "Запас мастера",
+        "gold": 5000,
+        "description": "Три вида слитков и ресурсы для изученных рецептов.",
+        "ore": 5000,
+        "energy": 0,
+        "price": 45
+      },
+      "replacement": {
+        "tab": "bundles",
+        "matter": 0,
+        "id": "craft_pack",
+        "enabled": true,
+        "badge": "60 СЛИТКОВ",
+        "featured": false,
+        "items": [
+          {
+            "def_id": "ingot_green",
+            "amount": 20
+          },
+          {
+            "def_id": "ingot_blue",
+            "amount": 20
+          },
+          {
+            "def_id": "ingot_purple",
+            "amount": 20
+          }
+        ],
+        "currency": "matter",
+        "title": "Запас мастера",
+        "gold": 5000,
+        "description": "По 20 слитков каждого вида и ресурсы для изученных рецептов.",
+        "ore": 5000,
+        "energy": 0,
+        "price": 30
+      }
+    }
+  }
+}

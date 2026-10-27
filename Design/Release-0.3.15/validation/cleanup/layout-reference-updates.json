@@ -1,0 +1,22 @@
+[
+  "Assets/_Project/Editor/ExpeditionAppearanceMailQa.cs",
+  "Assets/_Project/Editor/ExpeditionArenaBracketQa.cs",
+  "Assets/_Project/Editor/ExpeditionBattleEntryQa.cs",
+  "Assets/_Project/Editor/ExpeditionBattleRoundQa.cs",
+  "Assets/_Project/Editor/ExpeditionReleaseVisualQa20261027.cs",
+  "Assets/_Project/Editor/ExpeditionShelterShortcutQa.cs",
+  "Assets/_Project/Editor/ExpeditionVisualCapture20261027.cs",
+  "Assets/_Project/Editor/ExpeditionWorkshopRecipeQa.cs",
+  "Tools/Art/install_mine_refresh.py",
+  "Tools/Art/validate_mine_refresh.py",
+  "Tools/Audio/build_audition_page.py",
+  "Tools/Audio/build_selected_archive.py",
+  "Tools/Audio/generate_sfx_auditions.py",
+  "Tools/Audio/install_selected_sfx.py",
+  "Tools/Audio/validate_audition_page.py",
+  "Tools/Audio/validate_selected_archive.py",
+  "Tools/Audio/validate_selected_assets.py",
+  "Tools/Audio/archive_selected_auditions.ps1",
+  "Website/escape/render-release.ps1",
+  "Server/nakama/tests/mine_monster_names_test.lua"
+]

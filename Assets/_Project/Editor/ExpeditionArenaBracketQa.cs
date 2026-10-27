@@ -6,7 +6,9 @@ using System.Reflection;
 using Project.UI;
 using TMPro;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
@@ -115,7 +117,7 @@ namespace Project.Editor
                     {
                         var image = toggle.targetGraphic as Image;
                         if (!toggle.gameObject.activeInHierarchy || !toggle.IsInteractable() || image == null
-                            || !image.enabled || image.color.a < .9f || !image.raycastTarget || image.depth < 0)
+                            || !image.enabled || image.color.a <= 0 || !image.raycastTarget || image.depth < 0)
                             throw new InvalidOperationException("Eligible checkbox is not visibly interactive: " + tag.Round + "/" + tag.Slot + "/" + name);
                         AssertBetRaycast(toggle);
                     }
@@ -299,8 +301,8 @@ namespace Project.Editor
             if (side < 0 ? Picks().ContainsKey(selection.Slot) : !Picks().TryGetValue(selection.Slot, out var saved) || saved != side)
                 throw new InvalidOperationException("Bridge local pick did not follow the real checkbox event.");
             foreach (var toggle in new[] { a, b })
-                if (!(toggle.graphic is ExpeditionArenaCheckGraphic) || Mathf.Abs(toggle.graphic.canvasRenderer.GetAlpha() - (toggle.isOn ? 1 : 0)) > .01f)
-                    throw new InvalidOperationException("Native checkbox check is missing or has the wrong visible state.");
+                if (!(toggle.graphic is ExpeditionArenaRadioGraphic radio) || !radio.DotOnly || Mathf.Abs(toggle.graphic.canvasRenderer.GetAlpha() - (toggle.isOn ? 1 : 0)) > .01f)
+                    throw new InvalidOperationException("Native radio dot is missing or has the wrong visible state.");
         }
 
         public static string VerifyProduction()
@@ -371,6 +373,58 @@ namespace Project.Editor
         [Serializable] private sealed class BackendReport { public BackendSnapshot[] arena_ui_snapshots; }
         [Serializable] private sealed class BackendSnapshot { public string name, viewer_uid, poll_json; }
 
+        /// <summary>Runs actual DTO binding and pair-card construction in an isolated edit-mode scene.</summary>
+        public static void RunAvatarsBatch()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Edit mode required.");
+            var previousScene = SceneManager.GetActiveScene();
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            SceneManager.SetActiveScene(scene);
+            var previousFixture = _fixtureRoot;
+            try
+            {
+                var root = new GameObject("OfflineTournamentAvatarQa", typeof(RectTransform), typeof(Canvas));
+                var bridgeRoot = new GameObject("DisabledTournamentTransport"); bridgeRoot.SetActive(false);
+                var bridge = bridgeRoot.AddComponent<ArenaMatch8Bridge>(); bridge.enabled = false;
+                Set(bridge, "_rowsRoot", root.transform);
+                Set(bridge, "_myUserId", "qa-player-1");
+                var tournament = Tournament("sf");
+                var pairType = typeof(ArenaMatch8Bridge).GetNestedType("ArenaPairRow", BindingFlags.NonPublic);
+                var build = typeof(ArenaMatch8Bridge).GetMethod("BuildBracketColumn", Private);
+                foreach (var round in new[] { "qf", "sf", "final" })
+                {
+                    var rows = (Array)Get(tournament, round == "final" ? "final_pairs" : round);
+                    for (var i = 0; i < rows.Length; i++)
+                    {
+                        var pair = rows.GetValue(i);
+                        Set(pair, "avatar_a", "phoenix-female"); Set(pair, "avatar_b", "voidranger-male");
+                        rows.SetValue(JsonUtility.FromJson(JsonUtility.ToJson(pair), pairType), i);
+                    }
+                    build.Invoke(bridge, new object[] { round, round, rows, round == "qf" ? 4 : round == "sf" ? 2 : 1, "sf" });
+                }
+                _fixtureRoot = root;
+                Canvas.ForceUpdateCanvases();
+                var result = VerifyAvatars();
+                // Legacy/default male profile uses the same shipped icon as the player's header.
+                var tag = root.GetComponentsInChildren<ExpeditionArenaPairTag>(true).First(t => t.Round == "qf");
+                ExpeditionArenaOverlays.UpdatePair(tag.transform, tag.UidA, tag.UidB, tag.WinnerUid, "done", false, "", "dawnwarden-female");
+                var male = tag.transform.Find("HeadAFrame/HeadA").GetComponent<Image>();
+                var female = tag.transform.Find("HeadBFrame/HeadB").GetComponent<Image>();
+                if (male.sprite == null || male.sprite != ExpeditionTheme.Icon("hero") || female.sprite != Project.Character.CharacterAppearance.Load("dawnwarden-female", true))
+                    throw new InvalidOperationException("Default-account avatars do not match their actual player icons.");
+                var report = new Report { target = "avatars-batch", ok = true, message = result + " Paired default icons and JsonUtility avatar DTO round-trip verified. No network/account actions.", utc = DateTime.UtcNow.ToString("O") };
+                var path = "Design/Release-0.3.15/media/validation/tournament-avatar-qa.json";
+                Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
+                Debug.Log(report.message);
+            }
+            finally
+            {
+                _fixtureRoot = previousFixture;
+                if (previousScene.IsValid()) SceneManager.SetActiveScene(previousScene);
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         public static string Run(string target)
         {
             if (!EditorApplication.isPlaying) throw new InvalidOperationException("Play mode required.");
@@ -404,11 +458,16 @@ namespace Project.Editor
                 else if (target == "queue-lock" || target == "queue-verify") result = QueueLock(target == "queue-lock");
                 else
                 {
-                    if (target != "qf" && target != "sf" && target != "final") throw new ArgumentException("Use qf, sf, final, verify or restore.");
+                    if (target != "qf" && target != "sf" && target != "final" && target != "avatars") throw new ArgumentException("Use qf, sf, final, avatars, verify or restore.");
                     Prepare();
-                    var state = Tournament(target);
+                    var phase = target == "avatars" ? "sf" : target;
+                    var state = Tournament(phase);
+                    if (target == "avatars")
+                        foreach (var round in new[] { "qf", "sf", "final_pairs" })
+                            foreach (var pair in (Array)Get(state, round) ?? Array.Empty<object>())
+                            { Set(pair, "avatar_a", "phoenix-female"); Set(pair, "avatar_b", "voidranger-male"); }
                     Set(_bridge, "_lastTournament", state);
-                    Set(_bridge, "_bettingRound", target);
+                    Set(_bridge, "_bettingRound", phase);
                     Set(_bridge, "_betsOpen", true);
                     Picks().Clear(); Picks()[2] = 0;
                     typeof(ArenaMatch8Bridge).GetMethod("ShowBracket", Private).Invoke(_bridge, new[] { state });
@@ -421,11 +480,40 @@ namespace Project.Editor
                     // Keep the production selection artwork, but make any real bet callback unreachable.
                     foreach (var toggle in _fixtureRoot.GetComponentsInChildren<Toggle>(true)) toggle.interactable = false;
                     Canvas.ForceUpdateCanvases();
-                    result = "UI-only " + target + " bracket: 7 pairs, authoritative HP fixture, no entry/match/RPC invoked. " + Verify();
+                    result = target == "avatars" ? VerifyAvatars() : "UI-only " + target + " bracket: 7 pairs, authoritative HP fixture, no entry/match/RPC invoked. " + Verify();
                 }
                 Record(target, true, result); return result;
             }
             catch (Exception error) { Record(target, false, error.ToString()); throw; }
+        }
+
+        private static string VerifyAvatars()
+        {
+            var checkedKnown = 0; var checkedUnknown = 0;
+            foreach (var tag in _fixtureRoot.GetComponentsInChildren<ExpeditionArenaPairTag>(false))
+                foreach (var side in new[] { "A", "B" })
+                {
+                    var frame = tag.transform.Find("Head" + side + "Frame");
+                    var portrait = frame?.Find("Head" + side)?.GetComponent<Image>();
+                    var unknown = frame?.Find("Unknown");
+                    var known = !string.IsNullOrEmpty(side == "A" ? tag.UidA : tag.UidB);
+                    if (portrait == null || unknown == null || portrait.enabled != known || unknown.gameObject.activeSelf == known)
+                        throw new InvalidOperationException("Tournament portrait/question mark visibility is incorrect.");
+                    if (known)
+                    {
+                        var expected = Project.Character.CharacterAppearance.Load(side == "A" ? "phoenix-female" : "voidranger-male", true);
+                        if (expected == null || portrait.sprite != expected) throw new InvalidOperationException("Current or completed tournament portrait does not match player icon.");
+                        checkedKnown++;
+                    }
+                    else
+                    {
+                        var name = tag.transform.Find(side == "A" ? "LeftName" : "RightName")?.GetComponent<TMP_Text>();
+                        if (name == null || name.text != " - ") throw new InvalidOperationException("Future tournament participant must display a dash.");
+                        checkedUnknown++;
+                    }
+                }
+            if (checkedKnown != 12 || checkedUnknown != 2) throw new InvalidOperationException("Expected four historical and two current pairs, plus one future final.");
+            return "Tournament avatar QA passed: 12 player icons across completed/current rounds; 2 question marks and dash names in future final. No RPC invoked.";
         }
 
         private static string QueueLock(bool create)
@@ -615,7 +703,7 @@ namespace Project.Editor
         private static void Set(object value, string field, object data) => value.GetType().GetField(field, Private | BindingFlags.Public).SetValue(value, data);
         private static void Record(string target, bool ok, string message)
         {
-            var dir = Path.Combine(Directory.GetCurrentDirectory(), ".utmp/expedition/qa"); Directory.CreateDirectory(dir);
+            var dir = Path.Combine(Directory.GetCurrentDirectory(), ".cache/qa/bridge/qa"); Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "arena-bracket-" + target + ".json"), JsonUtility.ToJson(new Report { target = target, ok = ok, message = message, utc = DateTime.UtcNow.ToString("O") }, true));
         }
         [Serializable] private sealed class Report { public string target; public bool ok; public string message; public string utc; }

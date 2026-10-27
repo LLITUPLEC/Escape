@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "source": "monstr.txt",
+  "catalogs": [
+    {
+      "path": "Server\\nakama\\data\\duel_match3_bots_catalog.example.json",
+      "changed_names": [],
+      "non_name_fields_unchanged": true
+    },
+    {
+      "path": "Server\\nakama\\data\\duel_match3_bots_catalog_easy.json",
+      "changed_names": [],
+      "non_name_fields_unchanged": true
+    },
+    {
+      "path": "Server\\nakama\\data\\duel_match3_bots_catalog_hard.json",
+      "changed_names": [
+        "mine_3",
+        "mine_4",
+        "mine_5",
+        "mine_6",
+        "mine_7",
+        "mine_8",
+        "mine_9",
+        "mine_10"
+      ],
+      "non_name_fields_unchanged": true
+    },
+    {
+      "path": "Server\\nakama\\data\\duel_match3_bots_catalog_medium.json",
+      "changed_names": [
+        "mine_3",
+        "mine_4",
+        "mine_5",
+        "mine_6",
+        "mine_7",
+        "mine_8",
+        "mine_9",
+        "mine_10"
+      ],
+      "non_name_fields_unchanged": true
+    }
+  ]
+}

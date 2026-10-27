@@ -1,13 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using Project.UI;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Project.Achievements
 {
-    /// <summary>Всплывающее уведомление о получении шага цепочки.</summary>
+    /// <summary>Compatibility binding for old achievement prefabs; one global overlay owns all notices.</summary>
     public sealed class AchievementToastPresenter : MonoBehaviour
     {
         [SerializeField] private CanvasGroup canvasGroup;
@@ -17,139 +14,20 @@ namespace Project.Achievements
         [SerializeField] private float showSeconds = 4f;
         [SerializeField] private float slidePixels = 120f;
 
-        private readonly Queue<AchievementUnlockInfo> _queue = new Queue<AchievementUnlockInfo>();
-        private Coroutine _routine;
-
-        private TMP_FontAsset ResolvePreferredFont()
-        {
-            var panel = GetComponentInParent<AchievementsPanelController>();
-            return panel != null ? panel.AchievementUiFontReference : null;
-        }
-
-        private void Awake()
-        {
-            AchievementsTmpMaterialRepair.RepairHierarchy(transform, ResolvePreferredFont());
-            if (panelRect != null)
-            {
-                var surface = panelRect.GetComponent<Image>();
-                if (surface != null) { ExpeditionUi.StylePanel(surface, ExpeditionTheme.Teal); surface.raycastTarget = false; }
-            }
-            StyleToastText(titleTmp, 30, ExpeditionTheme.Ivory);
-            StyleToastText(rewardTmp, 28, ExpeditionTheme.Amber);
-
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 0f;
-                canvasGroup.blocksRaycasts = false;
-                canvasGroup.interactable = false;
-            }
-
-            if (panelRect != null)
-                panelRect.anchoredPosition -= new Vector2(0f, slidePixels);
-        }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (Application.isPlaying) return;
-            AchievementsTmpMaterialRepair.RepairHierarchy(transform, ResolvePreferredFont());
-        }
-#endif
-
+        private void Awake() => HideLegacyPanel();
         private void OnEnable()
         {
-            AchievementLifecycle.OnRewardClaimed += Enqueue;
+            HideLegacyPanel();
+            AchievementInGameToastHost.Ensure();
         }
 
-        private static void StyleToastText(TMP_Text text, float size, Color color)
+        private void HideLegacyPanel()
         {
-            if (text == null) return;
-            text.font = ExpeditionTheme.Font;
-            text.color = color;
-            text.fontSize = text.fontSizeMax = size;
-            text.enableAutoSizing = true;
-            text.fontSizeMin = size * .78f;
-            text.raycastTarget = false;
-            text.overflowMode = TextOverflowModes.Ellipsis;
-        }
-
-        private void OnDisable()
-        {
-            AchievementLifecycle.OnRewardClaimed -= Enqueue;
-        }
-
-        private void Enqueue(AchievementUnlockInfo info)
-        {
-            if (info == null) return;
-            _queue.Enqueue(info);
-            if (_routine == null && isActiveAndEnabled)
-                _routine = StartCoroutine(RunQueue());
-        }
-
-        private IEnumerator RunQueue()
-        {
-            while (_queue.Count > 0)
-            {
-                var info = _queue.Dequeue();
-                if (titleTmp != null)
-                    titleTmp.text = info.Title ?? string.Empty;
-                if (rewardTmp != null)
-                    rewardTmp.text = info.RewardLine ?? string.Empty;
-
-                if (canvasGroup != null && panelRect != null)
-                {
-                    yield return AnimateIn();
-                    yield return new WaitForSecondsRealtime(showSeconds);
-                    yield return AnimateOut();
-                }
-                else
-                {
-                    yield return null;
-                }
-            }
-
-            _routine = null;
-        }
-
-        private IEnumerator AnimateIn()
-        {
-            var fromPos = panelRect.anchoredPosition;
-            var toPos = fromPos + new Vector2(0f, slidePixels);
-            float t = 0f;
-            const float dur = 0.35f;
-            canvasGroup.alpha = 0f;
-            panelRect.anchoredPosition = fromPos;
-            while (t < dur)
-            {
-                t += Time.unscaledDeltaTime;
-                var k = Mathf.Clamp01(t / dur);
-                var ease = 1f - Mathf.Pow(1f - k, 3f);
-                canvasGroup.alpha = ease;
-                panelRect.anchoredPosition = Vector2.Lerp(fromPos, toPos, ease);
-                yield return null;
-            }
-
-            canvasGroup.alpha = 1f;
-            panelRect.anchoredPosition = toPos;
-        }
-
-        private IEnumerator AnimateOut()
-        {
-            var fromPos = panelRect.anchoredPosition;
-            var toPos = fromPos - new Vector2(0f, slidePixels * 0.6f);
-            float t = 0f;
-            const float dur = 0.28f;
-            while (t < dur)
-            {
-                t += Time.unscaledDeltaTime;
-                var k = Mathf.Clamp01(t / dur);
-                canvasGroup.alpha = 1f - k;
-                panelRect.anchoredPosition = Vector2.Lerp(fromPos, toPos, k);
-                yield return null;
-            }
-
-            canvasGroup.alpha = 0f;
-            panelRect.anchoredPosition = fromPos - new Vector2(0f, slidePixels);
+            // Its former panel-relative queue could stop while hidden and its
+            // cumulative slide offsets moved later notices above the viewport.
+            if (canvasGroup == null) return;
+            canvasGroup.alpha = 0;
+            canvasGroup.interactable = canvasGroup.blocksRaycasts = false;
         }
     }
 }

@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: eq_t1_normal_weapon_r
   displayName: "\u041B\u043E\u043C\u0438\u043A-\u0433\u0432\u043E\u0437\u0434\u043E\u0434\u0451\u0440"
   colorDisplayName: {r: 0.08947661, g: 0.8037735, b: 0.13971134, a: 1}
-  description: 
+  description: "Шахтный ломик с загнутым концом. Оружие для правой руки."
   kind: 0
   maxStack: 1
   tier: 1

@@ -21,7 +21,7 @@ namespace Project.Editor
     {
         [Serializable] private sealed class Request { public string id; public string command; public string scene; public string target; }
         [Serializable] private sealed class Reply { public string id; public bool ok; public string message; public string path; public bool playing; public bool compiling; }
-        private static readonly string Root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition"));
+        private static readonly string Root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge"));
         private static double _nextPoll;
 
         static ExpeditionEditorBridge() { EditorApplication.update += Poll; }
@@ -92,6 +92,116 @@ namespace Project.Editor
                 case "result-integration": return new Reply { ok = true, message = ExpeditionResultIntegrationQa.Run(request.target) };
                 case "meta-rows": return new Reply { ok = true, message = request.target == "show" ? ExpeditionMetaRowsQa.ShowLeaderboard() : request.target == "restore" ? ExpeditionMetaRowsQa.RestoreLeaderboard() : request.target == "achievements" ? ExpeditionMetaRowsQa.RunAchievementStates() : ExpeditionMetaRowsQa.VerifyLeaderboard() };
                 case "workshop-slots": return new Reply { ok = true, message = request.target == "restore" ? ExpeditionWorkshopSlotsQa.Restore() : request.target == "verify" ? ExpeditionWorkshopSlotsQa.Verify() : ExpeditionWorkshopSlotsQa.Show(request.target) };
+                case "inventory-pages": return new Reply { ok = true, message = request.target == "diagnose" ? ExpeditionInventoryPagesQa.Diagnose() : request.target == "restore" ? ExpeditionInventoryPagesQa.Restore() : request.target == "verify" ? ExpeditionInventoryPagesQa.Verify() : ExpeditionInventoryPagesQa.Show(request.target) };
+                case "selected-audio": return new Reply { ok = true, message = ExpeditionSelectedAudioQa.Run() };
+                case "ability-art": return new Reply { ok = true, message = ExpeditionAbilityFxImporter.Prepare() };
+                case "sound-settings": return new Reply { ok = true, message = ExpeditionAudioSettingsQa.Run(request.target) };
+                case "ability-fx": return new Reply { ok = true, message = ExpeditionAbilityFxQa.Run() };
+                case "ability-fx-0310": return new Reply { ok = true, message = ExpeditionAbilityFxQa.Run(".cache/qa/legacy-0.3.10/ability-fx") };
+                case "ability-fx-0311":
+                {
+                    foreach (var figure in UnityEngine.Object.FindObjectsByType<ExpeditionCombatantFigure>(FindObjectsSortMode.None))
+                        if (figure.name == "ExpeditionPlayerFigure") figure.BindPreview(Resources.Load<Sprite>("Expedition/Appearance/dawnwarden-male-body"), true);
+                    return new Reply { ok = true, message = ExpeditionAbilityFxQa.Run(".cache/qa/legacy-0.3.11/ability-fx") };
+                }
+                case "stakes-038": return new Reply { ok = true, message = ExpeditionNotificationStakeQa.Capture038() };
+                case "arena-json-contract": return new Reply { ok = true, message = ExpeditionArenaJsonContractQa.Run() };
+                case "resource-amounts": return new Reply { ok = true, message = ExpeditionResourceAmountQa.Run() };
+                case "daily-art": return new Reply { ok = true, message = ExpeditionDailyArtImporter.Prepare() };
+                case "daily": return new Reply { ok = true, message = ExpeditionDailyQa.Run(request.target) };
+                case "stakes-039": return new Reply { ok = true, message = ExpeditionNotificationStakeQa.Capture(".cache/qa/legacy-0.3.9/stakes") };
+                case "consumables-039": return new Reply { ok = true, message = ExpeditionConsumableQa.Run() };
+                case "contracts-039": return new Reply { ok = true, message = ExpeditionRpcContracts039.Run() };
+                case "friends-badge-0310": return new Reply { ok = true, message = ExpeditionFriendsBadgeQa.Run() };
+                case "tournament-queue-0310": return new Reply { ok = true, message = ExpeditionTournamentQueueQa0310.Run(request.target) };
+                case "tournament-queue-0313": return new Reply { ok = true, message = ExpeditionTournamentQueueQa0313.Run(request.target) };
+                case "global-boss-0313": return new Reply { ok = true, message = ExpeditionGlobalBossQa0313.Run(request.target) };
+                case "global-boss-0314": return new Reply { ok = true, message = ExpeditionGlobalBossQa0314.Run(request.target) };
+                case "shop-0314": return new Reply { ok = true, message = ExpeditionShopQa0314.Run(request.target) };
+                case "shop-0313": return new Reply { ok = true, message = ExpeditionShopQa0313.Run(request.target) };
+                case "mail-0313": return new Reply { ok = true, message = ExpeditionMailQa0313.Run(request.target) };
+                case "combatant-grounding-0311": return new Reply { ok = true, message = ExpeditionCombatantGroundingQa.Run() };
+                case "arena-radio-0311": return new Reply { ok = true, message = ExpeditionArenaRadioQa0311.Run(request.target) };
+                case "tutorial-0311": return new Reply { ok = true, message = TutorialQa.Run(request.target) };
+                case "tutorial-0312": return new Reply { ok = true, message = TutorialQa.Run(request.target) };
+                case "daily-login-0312": return new Reply { ok = true, message = ExpeditionDailyLoginQa0312.Run(request.target) };
+                case "daily-login-0313": return new Reply { ok = true, message = ExpeditionDailyLoginQa0313.Run(request.target) };
+                case "connection-0312": return new Reply { ok = true, message = ServerConnectionGuardQa0312.Run(request.target) };
+                case "content-gates-0311": return new Reply { ok = true, message = ProgressiveContentQa0311.Run() };
+                case "appearance-039": return new Reply { ok = true, message = ExpeditionAppearanceCapture039.Run(request.target) };
+                case "completed-media":
+                    ExpeditionMediaCompletionQa.RunAll();
+                    return new Reply { ok = true, message = "All completed media validated; mobile Hero and registration previews captured." };
+                case "appearance-preview":
+                    ExpeditionAppearanceCapture.CapturePreviews();
+                    return new Reply { ok = true, message = "Paired-only Hero appearance previews captured." };
+                case "notification-stakes":
+                    return new Reply { ok = true, message = request.target switch
+                    {
+                        "setup" => ExpeditionNotificationStakeOfflineFixture.Setup(),
+                        "fixture-status" => ExpeditionNotificationStakeOfflineFixture.Status(),
+                        "restore" => ExpeditionNotificationStakeOfflineFixture.Restore(),
+                        "play" => ExpeditionNotificationStakeQa.Run(),
+                        _ => ExpeditionNotificationStakeQa.Capture()
+                    } };
+                case "release-battle-status":
+                {
+                    var battle = UnityEngine.Object.FindFirstObjectByType<DuelMatch3Manager>();
+                    var activeNetworkMatch = false;
+                    if (battle != null)
+                    {
+                        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                        var type = battle.GetType();
+                        var match = type.GetField("_match", flags)?.GetValue(battle);
+                        var ended = type.GetField("_gameEnded", flags)?.GetValue(battle) is bool done && done;
+                        activeNetworkMatch = match != null && !ended;
+                    }
+                    return new Reply { ok = !activeNetworkMatch, message = SceneManager.GetActiveScene().name + "; active network match=" + activeNetworkMatch + "; manager=" + (battle != null) };
+                }
+                case "release-view":
+                {
+                    const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+                    var restore = request.target == "restore";
+                    if (!restore)
+                    {
+                        SessionState.SetString("Escape.ReleaseCapture.StartScene", AssetDatabase.GetAssetPath(EditorSceneManager.playModeStartScene));
+                        EditorSceneManager.playModeStartScene = AssetDatabase.LoadAssetAtPath<SceneAsset>("Assets/_Project/Scenes/MainMenu.unity");
+                    }
+                    typeof(ExpeditionNotificationStakeOfflineFixture).GetMethod(restore ? "RestoreGameView" : "SetGameView", flags).Invoke(null, null);
+                    if (restore)
+                    {
+                        var previous = SessionState.GetString("Escape.ReleaseCapture.StartScene", "");
+                        EditorSceneManager.playModeStartScene = string.IsNullOrEmpty(previous) ? null : AssetDatabase.LoadAssetAtPath<SceneAsset>(previous);
+                    }
+                    return new Reply { ok = true, message = restore ? "Release capture settings restored." : "Real-game release capture set to 1080x1920; MainMenu Play start; original Editor scene preserved." };
+                }
+                case "release-capture-view":
+                    return new Reply { ok = true, message = ExpeditionReleaseCaptureView.Run(request.target) };
+                case "release-hero":
+                {
+                    if (!EditorApplication.isPlaying) throw new InvalidOperationException("Play mode required");
+                    Project.UI.ExpeditionPresentation.OpenCharacter();
+                    var layout = UnityEngine.Object.FindFirstObjectByType<CharacterExpeditionLayout>(FindObjectsInactive.Include);
+                    if (layout == null) throw new InvalidOperationException("Wait for the Hero page to build.");
+                    layout.SelectHeroTab(1);
+                    var panel = layout.GetComponent<CharacterAppearancePanel>();
+                    if (panel == null) throw new InvalidOperationException("Appearance page missing.");
+                    for (var i = 0; i < Project.Character.CharacterAppearance.Themes.Count; i++)
+                        if (Project.Character.CharacterAppearance.Themes[i].Id == request.target) { panel.SelectTheme(i); break; }
+                    return new Reply { ok = true, message = "Real Hero preview opened; no cosmetic Apply or account changes." };
+                }
+                case "release-daily":
+                {
+                    if (!EditorApplication.isPlaying) throw new InvalidOperationException("Play mode required");
+                    foreach (var view in UnityEngine.Object.FindObjectsByType<Project.UI.ExpeditionDailyPanel>(FindObjectsSortMode.None))
+                        UnityEngine.Object.Destroy(view.gameObject);
+                    if (request.target == "close") return new Reply { ok = true, message = "Daily preview closed; no claim or account actions." };
+                    var name = request.target == "quests" ? "ExpeditionDailyQuests" : "ExpeditionDailyLogin";
+                    var button = GameObject.Find(name)?.GetComponent<Button>();
+                    if (button == null) throw new InvalidOperationException("Wait for the Refuge shortcut to build.");
+                    button.onClick.Invoke();
+                    return new Reply { ok = true, message = "Opened the actual daily shortcut; server read only, no claim." };
+                }
                 case "chrome": return new Reply { ok = true, message = request.target switch
                 {
                     "hud" => ExpeditionChromeQa.RunHud(), "aura" => ExpeditionChromeQa.ShowAura(),
@@ -200,6 +310,11 @@ namespace Project.Editor
                         }
                         Canvas.ForceUpdateCanvases();
                     }
+                    if (tag.StartsWith("publish-", StringComparison.Ordinal))
+                    {
+                        var nativeCapture = ExpeditionReleaseCaptureView.Capture(tag);
+                        return new Reply { ok = true, path = nativeCapture, message = "Captured actual 1080x1920 Game-view render texture; full native frame, no image edits." };
+                    }
                     var screenshot = Path.Combine(Root, "screenshots", tag + ".png");
                     Directory.CreateDirectory(Path.GetDirectoryName(screenshot));
                     ScreenCapture.CaptureScreenshot(screenshot);
@@ -239,7 +354,7 @@ namespace Project.Editor
             }
         }
 
-        private static bool AllowedButton(string name) => name.StartsWith("ExpeditionNav") || name.StartsWith("ExpeditionOpen") || name == "CloseButton" || name == "BackButton" || name == "SettingsButton" || name.StartsWith("Tab") || name.StartsWith("InventoryFilter_") || name.StartsWith("Diff_") || name == "DossierAction" || name == "ChooseRecipe" || name == "CloseRecipes" || name == "StartBoss" || name == "QuitBtn" || name == "BtnStay" || name == "BtnYes" || name == "AffixButton" || name == "Close" || name == "NicknameButton" || name == "Cancel" || name == "Btn_Закрыть" || name == "match3Arena" || name == "match3Arena_Ore" || name == "match3Arena_Gold" || name.StartsWith("Depth_");
+        private static bool AllowedButton(string name) => name == "TutorialReplayButton" || name.StartsWith("ExpeditionNav") || name.StartsWith("ExpeditionOpen") || name == "CloseButton" || name == "BackButton" || name == "SettingsButton" || name.StartsWith("Tab") || name.StartsWith("InventoryFilter_") || name.StartsWith("Diff_") || name == "DossierAction" || name == "ChooseRecipe" || name == "CloseRecipes" || name == "StartBoss" || name == "QuitBtn" || name == "BtnStay" || name == "BtnYes" || name == "AffixButton" || name == "Close" || name == "NicknameButton" || name == "Cancel" || name == "Btn_Закрыть" || name == "match3Arena" || name == "match3Arena_Ore" || name == "match3Arena_Gold" || name.StartsWith("Depth_");
 
         private static Reply CheckShortcutState()
         {

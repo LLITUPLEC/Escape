@@ -358,7 +358,7 @@ end
 local start = assert(source:find("local function match_join(context", 1, true))
 local stop = assert(source:find("local function augment_arena_game_over_payload", start, true))
 local env = setmetatable({
-  nk = nk, RaceApi = { Entry = Entry }, Runtime = { Presence = require("modules.duel_match3_presence") },
+  nk = nk, RaceApi = { Entry = Entry }, Runtime = { Rounds=require("modules.duel_match3_rounds"), Presence = require("modules.duel_match3_presence") },
   count_present_players = function(match) local n = 0; for _ in pairs(match.presences) do n = n + 1 end; return n end,
   sorted_two_players = function() return { "a", "b" } end,
   new_stats = function() error("stats initialized before entry claim") end,

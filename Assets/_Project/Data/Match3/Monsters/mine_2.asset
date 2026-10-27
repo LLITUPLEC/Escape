@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: mine_2
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_2
-  displayName: "\u0420\u0436\u0430\u0432\u044B\u0439 \u0433\u0432\u043E\u0437\u0434\u044C"
+  displayName: "Ржавый гвоздь"
   floor: 2
-  icon: {fileID: 21300000, guid: d07869ef699650f47ac96df0804a1cb9, type: 3}
+  icon: {fileID: 21300000, guid: e0e7697abad849d2806509e1b83be94c, type: 3}
   frameEasy: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

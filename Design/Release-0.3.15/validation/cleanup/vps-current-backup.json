@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "backup": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+  "version": "0.3.15",
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "runtime_files": 64,
+  "pg_restore_list_verified": true,
+  "dump_bytes": 184981,
+  "dump_sha256": "68ded8d4b7e104a9df88a6bc8fd36b8090296bd17f5e7b0564f88de4ca82dc37",
+  "private_manifest_entries": 96,
+  "runtime_unchanged_during_backup": true,
+  "configs_and_admin_preserved": true,
+  "other_projects_modified": false
+}

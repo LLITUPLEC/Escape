@@ -1,0 +1,423 @@
+{
+  "schema": 1,
+  "offers": [
+    {
+      "tab": "bundles",
+      "matter": 0,
+      "id": "expedition_pack",
+      "enabled": true,
+      "badge": "КОМПЛЕКТ",
+      "featured": true,
+      "items": [
+        {
+          "def_id": "elixir_assault",
+          "amount": 1
+        },
+        {
+          "def_id": "elixir_stone",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Набор выжившего",
+      "gold": 2500,
+      "description": "Ресурсы, энергия и два эликсира для новых вылазок.",
+      "ore": 2500,
+      "energy": 200,
+      "price": 16
+    },
+    {
+      "tab": "bundles",
+      "matter": 0,
+      "id": "craft_pack",
+      "enabled": true,
+      "badge": "ДЛЯ КРАФТА",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "ingot_green",
+          "amount": 20
+        },
+        {
+          "def_id": "ingot_blue",
+          "amount": 10
+        },
+        {
+          "def_id": "ingot_purple",
+          "amount": 3
+        }
+      ],
+      "currency": "matter",
+      "title": "Запас мастера",
+      "gold": 5000,
+      "description": "Три вида слитков и ресурсы для изученных рецептов.",
+      "ore": 5000,
+      "energy": 0,
+      "price": 45
+    },
+    {
+      "tab": "bundles",
+      "matter": 0,
+      "id": "supply_pack",
+      "enabled": true,
+      "badge": "ПРИПАСЫ",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "scroll_pve_bounty",
+          "amount": 1
+        },
+        {
+          "def_id": "elixir_gambit",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Долгая экспедиция",
+      "gold": 0,
+      "description": "Энергия, свиток добычи и эликсир азарта.",
+      "ore": 0,
+      "energy": 500,
+      "price": 14
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "resources_2500",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "currency": "matter",
+      "title": "Малый тайник",
+      "gold": 2500,
+      "description": "Золото и руда в равных количествах.",
+      "ore": 2500,
+      "energy": 0,
+      "price": 10
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "resources_10000",
+      "enabled": true,
+      "badge": "ДВОЙНОЙ ЗАПАС",
+      "featured": true,
+      "currency": "matter",
+      "title": "Большой тайник",
+      "gold": 10000,
+      "description": "По 10 000 золота и руды.",
+      "ore": 10000,
+      "energy": 0,
+      "price": 40
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "resources_25000",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "currency": "matter",
+      "title": "Склад убежища",
+      "gold": 25000,
+      "description": "По 25 000 золота и руды.",
+      "ore": 25000,
+      "energy": 0,
+      "price": 100
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "ingots_green",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "ingot_green",
+          "amount": 10
+        }
+      ],
+      "currency": "matter",
+      "title": "Зелёные слитки",
+      "gold": 0,
+      "description": "10 слитков для ремесла.",
+      "ore": 0,
+      "energy": 0,
+      "price": 4
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "ingots_blue",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "ingot_blue",
+          "amount": 5
+        }
+      ],
+      "currency": "matter",
+      "title": "Синие слитки",
+      "gold": 0,
+      "description": "5 слитков для редкой экипировки.",
+      "ore": 0,
+      "energy": 0,
+      "price": 6
+    },
+    {
+      "tab": "resources",
+      "matter": 0,
+      "id": "ingots_purple",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "ingot_purple",
+          "amount": 3
+        }
+      ],
+      "currency": "matter",
+      "title": "Фиолетовые слитки",
+      "gold": 0,
+      "description": "3 слитка для эпической экипировки.",
+      "ore": 0,
+      "energy": 0,
+      "price": 9
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "energy_100",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "currency": "matter",
+      "title": "Второе дыхание",
+      "gold": 0,
+      "description": "100 энергии. Покупка доступна при наличии места в запасе.",
+      "ore": 0,
+      "energy": 100,
+      "price": 1
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "energy_500",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "currency": "matter",
+      "title": "Энергия экспедиции",
+      "gold": 0,
+      "description": "500 энергии для следующих спусков.",
+      "ore": 0,
+      "energy": 500,
+      "price": 5
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "elixir_assault",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "elixir_assault",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Эликсир натиска",
+      "gold": 0,
+      "description": "Урон +20%, броня −15%. Один бой PvE или Pro.",
+      "ore": 0,
+      "energy": 0,
+      "price": 3
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "elixir_stone",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "elixir_stone",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Каменная настойка",
+      "gold": 0,
+      "description": "Броня +20%, урон −10%. Один бой PvE или Pro.",
+      "ore": 0,
+      "energy": 0,
+      "price": 3
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "elixir_gambit",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "elixir_gambit",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Эликсир азарта",
+      "gold": 0,
+      "description": "Крит +10 п.п., лечение −50%. Один бой PvE или Pro.",
+      "ore": 0,
+      "energy": 0,
+      "price": 4
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "scroll_bounty",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "scroll_pve_bounty",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Свиток щедрой добычи",
+      "gold": 0,
+      "description": "Золото и руда PvE ×1,5 на один час.",
+      "ore": 0,
+      "energy": 0,
+      "price": 7
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "tesseract",
+      "enabled": true,
+      "badge": "ЛЕГЕНДАРНЫЙ",
+      "featured": false,
+      "items": [
+        {
+          "def_id": "tesseract",
+          "amount": 1
+        }
+      ],
+      "currency": "matter",
+      "title": "Тессеракт",
+      "gold": 0,
+      "description": "Ценный материал для легендарного ремесла.",
+      "ore": 0,
+      "energy": 0,
+      "price": 150
+    },
+    {
+      "tab": "supplies",
+      "matter": 0,
+      "id": "boss_teleport",
+      "enabled": true,
+      "badge": "ГЛОБАЛЬНЫЙ БОСС",
+      "featured": true,
+      "items": [
+        {
+          "def_id": "global_boss_teleport",
+          "amount": 1
+        }
+      ],
+      "currency": "gold",
+      "title": "Телепорт к боссу",
+      "gold": 0,
+      "description": "Одна попытка боя с глобальным боссом. Подготовьте снаряжение.",
+      "ore": 0,
+      "energy": 0,
+      "price": 30000
+    },
+    {
+      "tab": "rub",
+      "matter": 0,
+      "id": "rub_resources_99",
+      "enabled": true,
+      "badge": "НАБОР",
+      "featured": true,
+      "currency": "rub",
+      "title": "Припасы убежища",
+      "gold": 10000,
+      "description": "10 000 золота + 10 000 руды.",
+      "ore": 10000,
+      "energy": 0,
+      "price": 99
+    },
+    {
+      "tab": "rub",
+      "matter": 40,
+      "id": "rub_matter_40",
+      "enabled": true,
+      "badge": "",
+      "featured": false,
+      "currency": "rub",
+      "title": "Горсть материи",
+      "gold": 0,
+      "description": "40 материи на выбранные припасы.",
+      "ore": 0,
+      "energy": 0,
+      "price": 99
+    },
+    {
+      "tab": "rub",
+      "matter": 125,
+      "id": "rub_matter_125",
+      "enabled": true,
+      "badge": "125 МАТЕРИИ",
+      "featured": false,
+      "currency": "rub",
+      "title": "Сундук материи",
+      "gold": 0,
+      "description": "125 материи на выбранные припасы.",
+      "ore": 0,
+      "energy": 0,
+      "price": 299
+    },
+    {
+      "tab": "rub",
+      "matter": 430,
+      "id": "rub_matter_430",
+      "enabled": true,
+      "badge": "430 МАТЕРИИ",
+      "featured": false,
+      "currency": "rub",
+      "title": "Хранилище материи",
+      "gold": 0,
+      "description": "430 материи на выбранные припасы.",
+      "ore": 0,
+      "energy": 0,
+      "price": 999
+    },
+    {
+      "tab": "rub",
+      "matter": 1350,
+      "id": "rub_matter_1350",
+      "enabled": true,
+      "badge": "1 350 МАТЕРИИ",
+      "featured": false,
+      "currency": "rub",
+      "title": "Ядро материи",
+      "gold": 0,
+      "description": "1 350 материи на выбранные припасы.",
+      "ore": 0,
+      "energy": 0,
+      "price": 2990
+    }
+  ]
+}

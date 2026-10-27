@@ -1,0 +1,133 @@
+{
+  "consumables": {
+    "armed_at": 0,
+    "armed_item_id": "",
+    "bounty_active": true,
+    "bounty_ends_at": 1792923056,
+    "bounty_started_at": 1792919456,
+    "schema": 1,
+    "server_now": 1792919456
+  },
+  "equipment_def_ids": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "inventory_capacity": 25,
+  "inventory_counts": [
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "inventory_def_ids": [
+    "elixir_assault",
+    "elixir_stone",
+    "scroll_pve_bounty",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "inventory_slot_price_matter": 3,
+  "learned_recipe_ids": {},
+  "ok": true,
+  "pending_loot": {},
+  "progression": {
+    "energy": 100,
+    "energy_max": 20000,
+    "gold": 0,
+    "ingots": 0,
+    "key_items": {
+      "dark_key": 0,
+      "miner_key": 0
+    },
+    "keys": 0,
+    "level": 1,
+    "matter": 0,
+    "max_level": 12,
+    "mine": {
+      "current_difficulty": "easy",
+      "floor_states": {},
+      "selected_floor": 1,
+      "unlocked": {
+        "easy": 1,
+        "hard": 0,
+        "medium": 0
+      }
+    },
+    "ore": 0,
+    "xp": 0
+  },
+  "stats": {
+    "armor": 0,
+    "crit_chance": 0.005,
+    "damage": 0,
+    "healing": 0,
+    "hp": 150
+  },
+  "workshop_ends_at": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "workshop_output_def_ids": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ]
+}

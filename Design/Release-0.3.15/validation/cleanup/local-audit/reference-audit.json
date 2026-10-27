@@ -1,0 +1,2426 @@
+{
+  "readOnlyAudit": true,
+  "createdUtc": "2026-10-27T19:32:50.611026+00:00",
+  "scannedFiles": 694,
+  "referenceCounts": {
+    "source": 146,
+    "historical-evidence": 76,
+    "documentation": 31
+  },
+  "matches": [
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAbilityFxQa.cs",
+      "line": 20,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.8"
+      ],
+      "code": "private static string Output = \"Design/Release-0.3.8/validation/ability-fx\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAbilityFxQa.cs",
+      "line": 43,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.8"
+      ],
+      "code": "Output = outputDirectory ?? \"Design/Release-0.3.8/validation/ability-fx\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAndroidBuild.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/android-build-status.json"
+      ],
+      "code": "public static string StatusPath => Path.Combine(ProjectRoot, \".utmp/expedition/android-build-status.json\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAndroidBuild.cs",
+      "line": 47,
+      "category": "source",
+      "references": [
+        "Builds/Expedition/Escape-Expedition-"
+      ],
+      "code": "output = Path.Combine(ProjectRoot, \"Builds/Expedition/Escape-Expedition-\" + PlayerSettings.bundleVersion + \"-\" + DateTime.UtcNow.ToString(\"yyyyMMdd-HHmmss\") + \".apk\")"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAndroidBuild.cs",
+      "line": 70,
+      "category": "source",
+      "references": [
+        "Builds/Expedition/Escape-Expedition-"
+      ],
+      "code": "output = Path.Combine(ProjectRoot, \"Builds/Expedition/Escape-Expedition-\" + PlayerSettings.bundleVersion + \"-\" + DateTime.UtcNow.ToString(\"yyyyMMdd-HHmmss\") + \".apk\")"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAndroidBuild.cs",
+      "line": 106,
+      "category": "source",
+      "references": [
+        ".utmp/android-sdk-release-0310"
+      ],
+      "code": "bundledSdk = Path.Combine(ProjectRoot, \".utmp/android-sdk-release-0310\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAppearanceCapture.cs",
+      "line": 279,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "var file = Path.GetFullPath(\"Design/Media-2026-10-24/appearance-server-fixtures.json\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAppearanceCapture.cs",
+      "line": 353,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "var result = Path.Combine(root, \"Design/Media-2026-10-24/validation/hero-ui\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAppearanceCapture039.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "private const string Fixture = \"Design/Release-0.3.9/validation/appearance-server-fixtures.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAppearanceCapture039.cs",
+      "line": 26,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.9/validation/hero-ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAppearanceMailQa.cs",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "private const string Root = \"Design/Media-2026-10-27/validation/\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionArenaBracketQa.cs",
+      "line": 416,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "var path = \"Design/Media-2026-10-27/validation/tournament-avatar-qa.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionArenaBracketQa.cs",
+      "line": 706,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/qa"
+      ],
+      "code": "var dir = Path.Combine(Directory.GetCurrentDirectory(), \".utmp/expedition/qa\"); Directory.CreateDirectory(dir);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionArenaJsonContractQa.cs",
+      "line": 18,
+      "category": "source",
+      "references": [
+        ".utmp/release038/contract-probe"
+      ],
+      "code": "foreach (var file in Directory.GetFiles(\".utmp/release038/contract-probe\", \"*.json\"))"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionArenaJsonContractQa.cs",
+      "line": 36,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.8"
+      ],
+      "code": "File.WriteAllText(\"Design/Release-0.3.8/validation/arena-native-json-contract.json\", json);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionArenaRadioQa0311.cs",
+      "line": 22,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.11"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.11/validation/tournament-ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionAudioSettingsQa.cs",
+      "line": 47,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.8"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.8/validation/sound-settings-validation.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionBattleEntryQa.cs",
+      "line": 74,
+      "category": "source",
+      "references": [
+        "monstr.txt"
+      ],
+      "code": "report.checks.Add(\"All 12 mine names follow monstr.txt; legacy server defaults migrate and administrative names survive\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionBattleEntryQa.cs",
+      "line": 104,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "var path = \"Design/Media-2026-10-27/validation/battle-entry-qa.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionBattleEntryQa.cs",
+      "line": 129,
+      "category": "source",
+      "references": [
+        "monstr.txt"
+      ],
+      "code": "var names = File.ReadAllLines(\"monstr.txt\").Select(line => line.Split('\\t'))"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionBattleRoundQa.cs",
+      "line": 72,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "const string path = \"Design/Media-2026-10-27/validation/battle-round-hud-qa.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionBattleTopQa.cs",
+      "line": 327,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/validation-battle-top-v3"
+      ],
+      "code": "var root = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition/validation-battle-top-v3\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionCombatantGroundingQa.cs",
+      "line": 23,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.11"
+      ],
+      "code": "private const string Output=\"Design/Release-0.3.11/validation/grounding\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionConsumableQa.cs",
+      "line": 22,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.9/validation/consumables\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionDailyLoginQa0312.cs",
+      "line": 23,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.12"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.12/validation/login-ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionDailyLoginQa0313.cs",
+      "line": 23,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.13/validation/login-ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionDailyQa.cs",
+      "line": 191,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.10"
+      ],
+      "code": "var path = \"Design/Release-0.3.10/validation/daily-ui-\" + (_mode ?? \"none\").Replace(\"show-\", \"\") + \".json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionEditorBridge.cs",
+      "line": 24,
+      "category": "source",
+      "references": [
+        ".utmp/expedition"
+      ],
+      "code": "private static readonly string Root = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionEditorBridge.cs",
+      "line": 100,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.10"
+      ],
+      "code": "case \"ability-fx-0310\": return new Reply { ok = true, message = ExpeditionAbilityFxQa.Run(\"Design/Release-0.3.10/validation/ability-fx\") };"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionEditorBridge.cs",
+      "line": 105,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.11"
+      ],
+      "code": "return new Reply { ok = true, message = ExpeditionAbilityFxQa.Run(\"Design/Release-0.3.11/validation/ability-fx\") };"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionEditorBridge.cs",
+      "line": 112,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "case \"stakes-039\": return new Reply { ok = true, message = ExpeditionNotificationStakeQa.Capture(\"Design/Release-0.3.9/validation/stakes\") };"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionFriendsBadgeQa.cs",
+      "line": 20,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.10"
+      ],
+      "code": "private const string Output=\"Design/Release-0.3.10/validation/friends-badge\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0313.cs",
+      "line": 33,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "var height = target == \"tall\" ? 2400 : 1920; var output = \"Design/Release-0.3.13/validation/global-boss/\" + height;"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0313.cs",
+      "line": 143,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "report.passed = true; Directory.CreateDirectory(\"Design/Release-0.3.13/validation/global-boss/play\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0313.cs",
+      "line": 144,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "File.WriteAllText(\"Design/Release-0.3.13/validation/global-boss/play/verify-\" + (GameObject.Find(\"GlobalBossOutcomeModal\") != null ? \"outcome\" : \"battle\") + \".json\", JsonUtility.ToJson(report, true));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 29,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "private const string ServerFixture = \"Design/Release-0.3.14/validation/server/multiclient-isolated-global-boss.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 53,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "if (target == \"logic\") { var logic = new Report(); Protocol(logic); logic.passed = true; Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss\"); File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/contract0314.json\", JsonUtility.ToJson(logic, true)); return JsonUtility.ToJson(logic); }"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 54,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "var height = target == \"tall\" ? 2400 : 1920; var output = \"Design/Release-0.3.14/validation/global-boss/\" + height;"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 181,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss/play\"); File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/native-ui-\" + (_previewPanel.GetComponentsInChildren<TMP_Text>().Any(t => t.name == \"ParticipantName\") ? \"ranking\" : \"dossier\") + \".json\", JsonUtility.ToJson(ui, true)); return JsonUtility.ToJson(ui);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 238,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss/play\"); File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/timer-\" + (_pausedTimer ? \"paused\" : \"running\") + (_opponentTimer ? \"-opponent\" : \"\") + (_delayTimer ? \"-delay\" : \"\") + \".json\", JsonUtility.ToJson(timerReport, true)); return JsonUtility.ToJson(timerReport);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 267,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "Set(\"_pendingGameOver\", true); report.passed = true; Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss/play\"); File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/lethal-hold.json\", JsonUtility.ToJson(report, true));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 275,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/lethal-finish.json\", JsonUtility.ToJson(report, true)); return JsonUtility.ToJson(report);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 300,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "fxReport.passed = true; Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss/play\"); File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/fx0314.json\", JsonUtility.ToJson(fxReport, true));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 328,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "report.passed = true; Directory.CreateDirectory(\"Design/Release-0.3.14/validation/global-boss/play\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs",
+      "line": 329,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "File.WriteAllText(\"Design/Release-0.3.14/validation/global-boss/play/verify-\" + (GameObject.Find(\"GlobalBossOutcomeModal\") != null ? \"outcome\" : \"battle\") + \".json\", JsonUtility.ToJson(report, true));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMailQa0313.cs",
+      "line": 21,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.13/validation/mail\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMatchStatesQa.cs",
+      "line": 86,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/match-states-qa.json."
+      ],
+      "code": "return \"Local production-renderer fixture started; poll .utmp/expedition/match-states-qa.json. No matchmaking/RPC/account actions.\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMatchStatesQa.cs",
+      "line": 193,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/screenshots/match-state-"
+      ],
+      "code": "var screenshot = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition/screenshots/match-state-\" + _state + \".png\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMatchStatesQa.cs",
+      "line": 214,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/match-states-qa.json"
+      ],
+      "code": "var path = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition/match-states-qa.json\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMediaCompletionQa.cs",
+      "line": 29,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "var output = Path.GetFullPath(\"Design/Media-2026-10-24/validation\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMineTravelQa.cs",
+      "line": 69,
+      "category": "source",
+      "references": [
+        ".utmp/expedition"
+      ],
+      "code": "_outputRoot = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMineTravelQa.cs",
+      "line": 76,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/screenshots/mine-travel-mid.png"
+      ],
+      "code": "midScreenshot = \".utmp/expedition/screenshots/mine-travel-mid.png\","
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMineTravelQa.cs",
+      "line": 77,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/screenshots/mine-travel-finish.png"
+      ],
+      "code": "finishScreenshot = \".utmp/expedition/screenshots/mine-travel-finish.png\""
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionMineTravelQa.cs",
+      "line": 93,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/mine-travel-play.json"
+      ],
+      "code": "return \"Started actual-frame mine travel probe; poll .utmp/expedition/mine-travel-play.json until completed. No RPC/resource actions.\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionNotificationStakeQa.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "private const string Output = \"Design/Media-2026-10-24/validation/ui-fixes\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionNotificationStakeQa.cs",
+      "line": 193,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.8"
+      ],
+      "code": "public static string Capture038() => Capture(\"Design/Release-0.3.8/validation/stakes\");"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionPackageOptimizer.cs",
+      "line": 60,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/package-optimizer-report.json"
+      ],
+      "code": "\"../.utmp/expedition/package-optimizer-report.json\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionReleaseCaptureView.cs",
+      "line": 87,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/screenshots"
+      ],
+      "code": "var directory = Path.GetFullPath(\".utmp/expedition/screenshots\"); Directory.CreateDirectory(directory);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionReleaseCaptureView.cs",
+      "line": 207,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/release-capture-view.json"
+      ],
+      "code": "\"; detail=.utmp/expedition/release-capture-view.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionReleaseCaptureView.cs",
+      "line": 235,
+      "category": "source",
+      "references": [
+        ".utmp/expedition"
+      ],
+      "code": "var directory = Path.GetFullPath(\".utmp/expedition\"); Directory.CreateDirectory(directory);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionReleaseVisualQa20261027.cs",
+      "line": 17,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "const string output = \"Design/Media-2026-10-27/validation/release-native-aggregate.json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionResourceAmountQa.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "const string output = \"Design/Release-0.3.9/validation/hud\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionRpcContracts039.cs",
+      "line": 20,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "const string root = \"Design/Release-0.3.9/validation/actual-rpc-json\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionRpcContracts039.cs",
+      "line": 58,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "File.WriteAllText(\"Design/Release-0.3.9/validation/native-rpc-contracts.json\", result);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionShelterShortcutQa.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "private const string Output = \"Design/Media-2026-10-27/validation/shelter\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionShelterShortcutQa.cs",
+      "line": 44,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "var fixture = JsonUtility.FromJson<MailService.State>(File.ReadAllText(\"Design/Media-2026-10-27/validation/appearance-unlock-mail-fixture.json\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionShopQa0313.cs",
+      "line": 21,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.13/validation/shop\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionShopQa0314.cs",
+      "line": 21,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.14/validation/shop\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionStartupQa.cs",
+      "line": 61,
+      "category": "source",
+      "references": [
+        ".utmp/expedition"
+      ],
+      "code": "_root = Path.GetFullPath(Path.Combine(Application.dataPath, \"../.utmp/expedition\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionStartupQa.cs",
+      "line": 76,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/startup-qa.json."
+      ],
+      "code": "return \"Armed before MainMenu load; observe .utmp/expedition/startup-qa.json. No RPC/spend/PlayerPrefs calls.\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionStartupQa.cs",
+      "line": 112,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/screenshots/startup-first-"
+      ],
+      "code": "sample.screenshot = \".utmp/expedition/screenshots/startup-first-\" + Frames.Count.ToString(\"00\") + \".png\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionTournamentQueueQa0310.cs",
+      "line": 21,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.10"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.10/validation/tournament-ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionTournamentQueueQa0313.cs",
+      "line": 22,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "private static string Output => \"Design/Release-0.3.13/validation/tournament-queue/\" + Height;"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionVisualCapture20261027.cs",
+      "line": 24,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "private const string Output = \"Design/Media-2026-10-27/validation/ui\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionVisualCapture20261027.cs",
+      "line": 63,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "report.checks.Add(ExpeditionCombatantGroundingQa.RunTo(\"Design/Media-2026-10-27/validation/grounding\"));"
+    },
+    {
+      "path": "Assets/_Project/Editor/ExpeditionWorkshopRecipeQa.cs",
+      "line": 23,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "private const string Output = \"Design/Media-2026-10-27/validation/workshop\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/ProgressiveContentQa0311.cs",
+      "line": 24,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.11"
+      ],
+      "code": "const string output = \"Design/Release-0.3.11/validation/content-gates\"; Directory.CreateDirectory(output);"
+    },
+    {
+      "path": "Assets/_Project/Editor/ServerConnectionGuardQa0312.cs",
+      "line": 25,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.12"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.12/validation/connection\";"
+    },
+    {
+      "path": "Assets/_Project/Editor/TutorialQa.cs",
+      "line": 22,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.12"
+      ],
+      "code": "private const string Output = \"Design/Release-0.3.12/validation/tutorial\";"
+    },
+    {
+      "path": "Assets/_Project/Scripts/UI/MineSceneController.cs",
+      "line": 182,
+      "category": "source",
+      "references": [
+        "solo.md"
+      ],
+      "code": "/// <summary>Синхрон с MINE_BARRIER_REQUIREMENTS в duel_match3.lua (solo.md × ~1,4).</summary>"
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2515,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-dossier.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2516,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-ranking.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2517,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-ranking-bottom.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2518,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-ranking-self.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2519,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-empty.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2520,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-actual-ranking.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "line": 2521,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/1920/boss-rewards.png\""
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2515,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-dossier.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2516,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-ranking.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2517,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-ranking-bottom.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2518,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-ranking-self.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2519,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-empty.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2520,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-actual-ranking.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "line": 2521,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/global-boss/2400/boss-rewards.png\""
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/public-file-integrity.json",
+      "line": 88,
+      "category": "historical-evidence",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "\"path\": \"audio-035/Escape-audio-choices-0.3.5.txt\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/public-file-integrity.json",
+      "line": 91,
+      "category": "historical-evidence",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "\"url\": \"https://prokrust-play.ru/escape/audio-035/Escape-audio-choices-0.3.5.txt\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/publication-plan.json",
+      "line": 6,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp\\\\escape0314-bb4554f6fdad44188f55cd9c417c735a.tar.gz"
+      ],
+      "code": "\"archive\": \"C:\\\\Users\\\\ProKrust\\\\Desktop\\\\Develope\\\\Escape\\\\.utmp\\\\escape0314-bb4554f6fdad44188f55cd9c417c735a.tar.gz\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 12,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/hub.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 20,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/character.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 28,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/mine.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 38,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/publish-0314-boss-fx-visible.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 43,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/publish-0314-lethal-cry-visible.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 64,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/expedition/prepare-publication-0314.py"
+      ],
+      "code": "\".utmp/expedition/prepare-publication-0314.py\": \"c3e8de2dc4ab755f9c450eac770b8d9a9677cb69eabd54f39feb08c3cea0d680\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 65,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/expedition/check-client-source0314.py"
+      ],
+      "code": "\".utmp/expedition/check-client-source0314.py\": \"247a733513855d60f6878b8c474a60520462c18266fa55dc6adc23e1a0376ed2\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 66,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/expedition/publish-page0314-remote.py"
+      ],
+      "code": "\".utmp/expedition/publish-page0314-remote.py\": \"b7a55487e08c191a9ef54f74e995934fb46b6d40355599fb3e615364634fcadc\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 67,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/expedition/verify-public-integrity0314.py"
+      ],
+      "code": "\".utmp/expedition/verify-public-integrity0314.py\": \"cb93465db65a0b51fc6043473b3ee81d0c62319ff5104477040ab156fce31668\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 68,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/expedition/build-gallery0314.py"
+      ],
+      "code": "\".utmp/expedition/build-gallery0314.py\": \"b85d1a2832fc691fab42412826826265c27fd5e0cd5284a5e32577cd4e027a0b\""
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 71,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/index.html\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-preparation.json",
+      "line": 76,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"independentVisualReview\": \"Design/Release-0.3.14/validation/release-visual-review.json\""
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-summary.json",
+      "line": 6,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"gallery\": \"Design/Release-0.3.14/index.html\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-visual-review.json",
+      "line": 16,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/hub.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-visual-review.json",
+      "line": 23,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/character.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-visual-review.json",
+      "line": 30,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/mine.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-visual-review.json",
+      "line": 37,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/publish-0314-boss-fx-visible.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/release-visual-review.json",
+      "line": 44,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/publish-0314-lethal-cry-visible.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 5,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 10,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 15,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/contract0314.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 20,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/fx0314.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 25,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/lethal-finish.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 30,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/lethal-hold.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 35,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/native-ui-dossier.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 40,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/native-ui-ranking.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 45,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-paused-opponent.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 50,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-paused.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 55,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-running-delay.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 60,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-running-opponent-delay.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 65,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-running-opponent.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 70,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/timer-running.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 75,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/verify-battle.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 80,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/play/verify-outcome.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 85,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/global-boss/visible-fx-pixels.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 90,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/economy-audit.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 95,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/local-validation.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 100,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/policy-console.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 105,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/production-migration-preview.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 110,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-cancelled.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 115,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmation-boss_teleport.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 120,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmation-craft_pack.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 125,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmation-ingots_purple.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 130,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmation-rub_resources_99.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 135,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmed-boss_teleport.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 140,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-confirmed-craft_pack.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 145,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-logic.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/root-native-qa.json",
+      "line": 150,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/validation/shop/ui-payment-stub.json\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/economy-audit.json",
+      "line": 1146,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"Design/Release-0.3.14/validation/economy/production-static-catalogs.json\": \"6424a6bb6d5e16ae765bc10fb865c822f159550450fcf015b0dc13a2f35a0b73\""
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/policy-console.json",
+      "line": 18,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp/shop-0314-policy-tests/Program.cs"
+      ],
+      "code": "\"harness\": \".utmp/shop-0314-policy-tests/Program.cs\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/source-snapshot.json",
+      "line": 4177,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/character.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/source-snapshot.json",
+      "line": 4182,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/hub.png\","
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/source-snapshot.json",
+      "line": 4187,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.14/screens/mine.png\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/public-file-integrity.json",
+      "line": 88,
+      "category": "historical-evidence",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "\"path\": \"audio-035/Escape-audio-choices-0.3.5.txt\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/public-file-integrity.json",
+      "line": 91,
+      "category": "historical-evidence",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "\"url\": \"https://prokrust-play.ru/escape/audio-035/Escape-audio-choices-0.3.5.txt\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/publication-plan.json",
+      "line": 6,
+      "category": "historical-evidence",
+      "references": [
+        ".utmp\\\\escape0315-8f5ff21e6c324a27906c80b04f6d18ae.tar.gz"
+      ],
+      "code": "\"archive\": \"C:\\\\Users\\\\ProKrust\\\\Desktop\\\\Develope\\\\Escape\\\\.utmp\\\\escape0315-8f5ff21e6c324a27906c80b04f6d18ae.tar.gz\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/source-snapshot.json",
+      "line": 9798,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.15/screens/character.png\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/source-snapshot.json",
+      "line": 9803,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.15/screens/hub.png\","
+    },
+    {
+      "path": "Design/Release-0.3.15/validation/source-snapshot.json",
+      "line": 9808,
+      "category": "historical-evidence",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "\"path\": \"Design/Release-0.3.15/screens/mine.png\","
+    },
+    {
+      "path": "eqip_stats.MD",
+      "line": 22,
+      "category": "documentation",
+      "references": [
+        "solo.md"
+      ],
+      "code": "- База статов от уровня задаётся в `duel_match3.lua`, функция `character_stats_base_for_level` (рост от `solo.md`): на уровне `L` бонус к 1 уровню = `L-1` шагов по `+30` к HP, `+1` к урону/броне/лечению, `+0.005` к криту на шаг."
+    },
+    {
+      "path": "eqip_stats.MD",
+      "line": 255,
+      "category": "documentation",
+      "references": [
+        "solo.md"
+      ],
+      "code": "**Барьеры:** требование **уровень персонажа = этаж** для `duel_mine_barrier_unlock` **снято**. Стоимость барьеров в `MINE_BARRIER_REQUIREMENTS`: база **solo.md × ~1,4** (руда / золото / материя; количество ключей без множителя)."
+    },
+    {
+      "path": "eqip_stats.MD",
+      "line": 583,
+      "category": "documentation",
+      "references": [
+        "solo.md"
+      ],
+      "code": "6. **Вечер 2026-04-19 — модалка монстра и барьеры:** в **`MineSceneController`** награды приведены к серверу: рецепт — этажи **1, 2, 3, 5, 6, 7, 9, 11**, только **не босс**, шансы как **`mine_recipe_drop_chance_for_floor`** / **`grant_mine_recipe_drop_v43`**; с боссов строки про рецепт **нет**. Слитки: **тип по `_difficulty`**, шанс по этажу — **`ingot_drop_chance_non_boss`**, у босса **×2** к количеству. Убрана ошибка **`level_too_low`** в RPC **`duel_mine_barrier_unlock`**. Таблица **`BarrierR"
+    },
+    {
+      "path": "eqip_stats.MD",
+      "line": 595,
+      "category": "documentation",
+      "references": [
+        "solo.md"
+      ],
+      "code": "**Актуально:** статы **T1-экипа** в примере каталога считаются **`gen_item_catalog.js`** от реф-ботов **`mine_11`** / легендарка от **`mine_12` (hard)** с правилом **×1,6** после мержа (см. журнал §14 п.5). Каталоги ботов **`duel_match3_bots_catalog_{easy,medium,hard}.json`** — явные статы; **`mine_stat_multiplier`** на награды не влияет. Барьеры шахты: **уровень персонажа больше не требуется** для `duel_mine_barrier_unlock` — только предыдущий этаж, руда/золото/ключи/материя по таблице (**~×1,4"
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 20,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/race_abandoned_receipt.lua."
+      ],
+      "code": "Доказательство: .utmp/audit-20261024/race_abandoned_receipt.lua."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 28,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/gameplay_loot_repro.lua."
+      ],
+      "code": "Доказательство: .utmp/audit-20261024/gameplay_loot_repro.lua."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 35,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/pve_start_failures.lua."
+      ],
+      "code": "Доказательство: .utmp/audit-20261024/pve_start_failures.lua."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 44,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/gameplay_loot_repro.lua."
+      ],
+      "code": "Доказательство: .utmp/audit-20261024/gameplay_loot_repro.lua."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 53,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/client/NicknameSaveExceptionRepro.cs."
+      ],
+      "code": "Доказательство: .utmp/audit-20261024/client/NicknameSaveExceptionRepro.cs."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 67,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.5"
+      ],
+      "code": "в Design/Release-0.3.5/validation. Это не доказательство утечки ключа."
+    },
+    {
+      "path": "Server/nakama/AUDIT_2026-10-24.txt",
+      "line": 139,
+      "category": "source",
+      "references": [
+        ".utmp/audit-20261024/."
+      ],
+      "code": "Локальные воспроизведения и JSON-результаты: .utmp/audit-20261024/."
+    },
+    {
+      "path": "Server/nakama/BALANCE_REVIEW.md",
+      "line": 149,
+      "category": "documentation",
+      "references": [
+        ".utmp/escape-deploy/storage-audit"
+      ],
+      "code": "node Server/nakama/tests/balance/audit.js --storage-dir .utmp/escape-deploy/storage-audit"
+    },
+    {
+      "path": "Server/nakama/BALANCE_REVIEW.md",
+      "line": 155,
+      "category": "documentation",
+      "references": [
+        ".utmp/escape-deploy/storage-audit/"
+      ],
+      "code": "`audit.js` печатает JSON с 36 строками монстров, ценами, статами, источниками matter, найденными противоречиями и SHA-256 каждого входного файла. Проверка структуры завершилась без ошибок; вывод по обоим наборам создан в исключённом `.utmp/escape-deploy/storage-audit/`. Файл `global-records.json` и экспорт не коммитятся. Результат не является нагрузочным тестом или измерением реальных вероятностей победы."
+    },
+    {
+      "path": "Server/nakama/deploy/deploy_download_page.py",
+      "line": 74,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "if not re.fullmatch(r\"[a-f0-9]{64}\", choices_sha) or sha256(audio_root / \"Escape-audio-choices-0.3.5.txt\") != choices_sha:"
+    },
+    {
+      "path": "Server/nakama/deploy/deploy_download_page.py",
+      "line": 86,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "allowed_audio = {\"index.html\", \"files.json\", \"selected-metadata.json\", \"Escape-audio-choices-0.3.5.txt\"}"
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 44,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.12"
+      ],
+      "code": "Under the previous 0.3.12 policy, 30,000 new result receipts/day and 30-day retention implied roughly **900,000 completed result receipts** before scan lag. The 0.3.13 target instead scales with four completed receipts per participating player, plus protected metadata, unfinished work and any deletion backlog. No million-row latency/load test was performed. The historical read-only production snapshot on **2026-10-26 16:35:57 UTC** contained **500 Storage rows**, **1,310,720 bytes** of Storage r"
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 63,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "The 0.3.13 local run passed **43 Lua suites / 491 named cases**, including 18 strict admission/compaction cases, 22 consumable cases and 21 extended maintenance cases. Those checks exercise actual modules, CAS conflicts, lost acknowledgements, out-of-order concurrent modes, 64-to-four normalization, pending protection and eviction/replay. Lua 5.1 syntax compilation passed for all 59 runtime modules. Reports are in `Design/Release-0.3.13/validation/retention-local/`. These local results do not by"
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 65,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.6"
+      ],
+      "code": "Release 0.3.6 additionally passed real Nakama 3.37.0 HTTP/WS tests on a fresh isolated PostgreSQL database: 37 recovery checks with four abrupt restarts of only the verified disposable Nakama container, and 209 multiclient checks. The paid bot Race was genuinely entered, created and joined over WebSocket before process loss; its two-matter refund stayed single after a second restart. Prepared reward and committed-outbox crash-window fixtures were explicitly Console-seeded in that disposable data"
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 71,
+      "category": "documentation",
+      "references": [
+        ".utmp/server-recovery/validation/"
+      ],
+      "code": "Related suites: `durable_journal_test.lua` (12), `pve_entry_recovery_test.lua` (15), `race_crash_recovery_test.lua` (14), `achievement_outbox_recovery_test.lua` (6), `recovery_service_test.lua` (4), existing Race (37), achievement claim (11), stats (11), inventory/journal integration (6), item-cost guard (5), and actual frozen PvE Rewards/Inventory/Journal integration (14): **135 named cases**, re-run after the main hooks landed. The run records exact source hashes and raw logs in `.utmp/server-"
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 73,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/pve-create-core-probe."
+      ],
+      "code": "An independent actual-core probe additionally passed four cases using the verbatim create RPC and `match_init`: lost create acknowledgement returns the registered match; concurrent create CAS loser returns the same winning match without another debit; ordinary create failure refunds once; a profile CAS conflict uses the fresh affix and energy. The original failure branch incorrectly returned `match_create_failed` when `refund_launch` proved the shared token already belonged to a live match; the "
+    },
+    {
+      "path": "Server/nakama/DURABLE_RECOVERY.md",
+      "line": 75,
+      "category": "documentation",
+      "references": [
+        ".utmp/server-recovery/core-integration.md"
+      ],
+      "code": "The main integration contract is in `.utmp/server-recovery/core-integration.md`; a narrow Race match-ID patch is adjacent. Root owns the PvE frozen reward factory and main hooks; the recovery agent did not edit the main module. A crash before the first durable result intent cannot reconstruct an unpersisted winner or in-memory turn counters; recovery does not invent them."
+    },
+    {
+      "path": "Server/nakama/modules/duel_match3.lua",
+      "line": 367,
+      "category": "source",
+      "references": [
+        "eqip_stats.MD"
+      ],
+      "code": "-- Не умножаем повторно — иначе двойной скейл (см. eqip_stats.MD §3.6 вариант A)."
+    },
+    {
+      "path": "Server/nakama/modules/duel_match3_config.lua",
+      "line": 157,
+      "category": "source",
+      "references": [
+        "solo.md"
+      ],
+      "code": "--- Базовые значения барьеров шахты (solo.md × ~1,4)."
+    },
+    {
+      "path": "Server/nakama/STORAGE_ADMIN.md",
+      "line": 111,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "`Design/Release-0.3.14/validation/aura-admin/deployment-verification.json`."
+    },
+    {
+      "path": "Server/nakama/STORAGE_ADMIN.md",
+      "line": 162,
+      "category": "documentation",
+      "references": [
+        ".utmp/escape-deploy/aura.current.json"
+      ],
+      "code": "python Server/nakama/tools/storage_admin.py read aura --out .utmp/escape-deploy/aura.current.json"
+    },
+    {
+      "path": "Server/nakama/STORAGE_ADMIN.md",
+      "line": 179,
+      "category": "documentation",
+      "references": [
+        ".utmp/escape-deploy/aura.before-disable.json"
+      ],
+      "code": "python Server/nakama/tools/storage_admin.py update aura --file Server/nakama/data/admin/server_aura.disabled.json --version VERSION_FROM_READ --backup .utmp/escape-deploy/aura.before-disable.json"
+    },
+    {
+      "path": "Server/nakama/tests/aura_admin_deploy_test.py",
+      "line": 12,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/aura-admin0314-deployment-plan.json"
+      ],
+      "code": "plan=json.loads((REPO/'.utmp/expedition/aura-admin0314-deployment-plan.json').read_text())"
+    },
+    {
+      "path": "Server/nakama/tests/client-cache/run.ps1",
+      "line": 4,
+      "category": "source",
+      "references": [
+        ".utmp/client-cache-tests"
+      ],
+      "code": "$buildDir = Join-Path $projectRoot '.utmp/client-cache-tests'"
+    },
+    {
+      "path": "Server/nakama/tests/consumable_catalog_merge_test.py",
+      "line": 16,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "MANIFEST = json.loads((ROOT / \"Design/Release-0.3.9/consumable-item-defs.json\").read_text(encoding=\"utf-8\"))"
+    },
+    {
+      "path": "Server/nakama/tests/consumable_catalog_merge_test.py",
+      "line": 28,
+      "category": "source",
+      "references": [
+        ".utmp/consumable-catalog-tests"
+      ],
+      "code": "TEMP_ROOT = (ROOT / \".utmp/consumable-catalog-tests\").resolve()"
+    },
+    {
+      "path": "Server/nakama/tests/mine_monster_names_test.lua",
+      "line": 4,
+      "category": "source",
+      "references": [
+        "monstr.txt"
+      ],
+      "code": "local f=assert(io.open(\"monstr.txt\",\"r\"));local spec=f:read(\"*a\");f:close()"
+    },
+    {
+      "path": "Server/nakama/tests/mine_monster_names_test.lua",
+      "line": 23,
+      "category": "source",
+      "references": [
+        "monstr.txt"
+      ],
+      "code": "assert(CFG.MINE_MONSTER_NAMES[floor]==expected[floor],\"config differs from monstr.txt at \"..floor)"
+    },
+    {
+      "path": "Server/nakama/tests/mine_monster_names_test.lua",
+      "line": 33,
+      "category": "source",
+      "references": [
+        "monstr.txt"
+      ],
+      "code": "print(\"PASS mine monster names: all12 match monstr.txt; legacy/generic aliases migrate without storage writes; admin names/stats preserved\")"
+    },
+    {
+      "path": "Server/nakama/tests/release0313_catalog_installer_test.py",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "TOKEN = json.loads((REPO / \"Design/Release-0.3.13/shop-item-defs.json\").read_text(encoding=\"utf-8\"))"
+    },
+    {
+      "path": "Server/nakama/tests/shop_catalog_merge_test.py",
+      "line": 15,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "MANIFEST = json.loads((ROOT / \"Design/Release-0.3.13/shop-item-defs.json\").read_text(encoding=\"utf-8\"))"
+    },
+    {
+      "path": "Server/nakama/tests/shop_catalog_merge_test.py",
+      "line": 21,
+      "category": "source",
+      "references": [
+        ".utmp/shop-catalog-tests"
+      ],
+      "code": "TEMP = (ROOT / \".utmp/shop-catalog-tests\").resolve()"
+    },
+    {
+      "path": "Server/nakama/tests/shop_economy0314_audit.py",
+      "line": 11,
+      "category": "source",
+      "references": [
+        ".utmp/lua-test-runtime"
+      ],
+      "code": "sys.path.insert(0, str(ROOT / \".utmp/lua-test-runtime\"))"
+    },
+    {
+      "path": "Server/nakama/tests/shop_economy0314_audit.py",
+      "line": 26,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "out = ROOT / \"Design/Release-0.3.14/validation/shop\"; out.mkdir(parents=True, exist_ok=True)"
+    },
+    {
+      "path": "Server/nakama/tests/shop_economy0314_audit.py",
+      "line": 39,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "static_path = \"Design/Release-0.3.14/validation/economy/production-static-catalogs.json\""
+    },
+    {
+      "path": "Server/nakama/tests/shop_prices0314_migration_test.py",
+      "line": 14,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "MANIFEST = json.loads((ROOT / \"Design/Release-0.3.14/shop-price-migration.json\").read_text(encoding=\"utf-8\"))"
+    },
+    {
+      "path": "Server/nakama/tests/shop_prices0314_migration_test.py",
+      "line": 15,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "OLD = json.loads((ROOT / \"Design/Release-0.3.13/shop-catalog.json\").read_text(encoding=\"utf-8\"))"
+    },
+    {
+      "path": "Server/nakama/tools/merge_consumable_catalog.py",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.9"
+      ],
+      "code": "DEFAULT_MANIFEST = Path(__file__).resolve().parents[3] / \"Design/Release-0.3.9/consumable-item-defs.json\""
+    },
+    {
+      "path": "Server/nakama/tools/merge_shop_catalog.py",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "DEFAULT_MANIFEST = Path(__file__).resolve().parents[3] / \"Design/Release-0.3.13/shop-item-defs.json\""
+    },
+    {
+      "path": "Server/nakama/tools/merge_shop_prices0314.py",
+      "line": 16,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "DEFAULT = Path(__file__).resolve().parents[3] / \"Design/Release-0.3.14/shop-price-migration.json\""
+    },
+    {
+      "path": "Tools/Art/audit_media.py",
+      "line": 215,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "output = ROOT / \"Design/Media-2026-10-24\""
+    },
+    {
+      "path": "Tools/Art/build_media_gallery.ps1",
+      "line": 4,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "$output = Join-Path $ProjectRoot 'Design/Media-2026-10-24'"
+    },
+    {
+      "path": "Tools/Art/install_mine_refresh.py",
+      "line": 10,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "MEDIA = ROOT / 'Design/Media-2026-10-27'"
+    },
+    {
+      "path": "Tools/Art/validate_mine_refresh.py",
+      "line": 10,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-27"
+      ],
+      "code": "MEDIA = ROOT / 'Design/Media-2026-10-27'"
+    },
+    {
+      "path": "Tools/Art/validate_shelter_art.py",
+      "line": 8,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "RELEASE = ROOT / 'Design/Release-0.3.15'"
+    },
+    {
+      "path": "Tools/Audio/archive_selected_auditions.ps1",
+      "line": 4,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "$archiveRoot = (Resolve-Path (Join-Path $workspacePath 'Design/Audio-Auditions-0.3.5')).Path"
+    },
+    {
+      "path": "Tools/Audio/archive_selected_auditions.ps1",
+      "line": 5,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "$expectedRoot = [IO.Path]::GetFullPath((Join-Path $workspacePath 'Design/Audio-Auditions-0.3.5'))"
+    },
+    {
+      "path": "Tools/Audio/audition_page.template.html",
+      "line": 114,
+      "category": "documentation",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "link.href = url; link.download = 'Escape-audio-choices-0.3.5.txt';"
+    },
+    {
+      "path": "Tools/Audio/build_audition_page.py",
+      "line": 7,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/build_audition_page.py",
+      "line": 49,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "print(json.dumps({\"page\": \"Design/Audio-Auditions-0.3.5/index.html\", \"effect_pairs\": len(metadata[\"effects\"]), \"network_dependencies\": 0}))"
+    },
+    {
+      "path": "Tools/Audio/build_selected_archive.py",
+      "line": 9,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/build_selected_archive.py",
+      "line": 15,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "choice_file = ROOT / \"Escape-audio-choices-0.3.5.txt\""
+    },
+    {
+      "path": "Tools/Audio/build_selected_archive.py",
+      "line": 31,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "\"В архиве оставлены только **19 выбранных WAV**. Выбор пользователя подтверждён исходным [текстовым списком](Escape-audio-choices-0.3.5.txt); точные хеши, направление A/B, параметры PCM и соответствие клиентским ресурсам — в [selected-metadata.json](selected-metadata.json). Упоминание «не автоматическая интеграция» в исходном текстовом списке является частью сохранённого оригинала; после отдельного запроса пользователя эти 19 файлов установлены в клиентские ресурсы.\", \"\","
+    },
+    {
+      "path": "Tools/Audio/build_selected_archive.py",
+      "line": 40,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "\"Для локального HTTP-просмотра: `python -m http.server 8765 --bind 127.0.0.1 --directory Design/Audio-Auditions-0.3.5`, затем `http://127.0.0.1:8765/`. Можно открыть index.html непосредственно вместе с папкой selected.\", \"\"]"
+    },
+    {
+      "path": "Tools/Audio/generate_expedition_sfx.py",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.1"
+      ],
+      "code": "REPORT = ROOT / \"Design/Release-0.3.1/validation\""
+    },
+    {
+      "path": "Tools/Audio/generate_sfx_auditions.py",
+      "line": 20,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/generate_sfx_auditions.py",
+      "line": 318,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "\"При желании открыть через локальный сервер: `python -m http.server 8765 --bind 127.0.0.1 --directory Design/Audio-Auditions-0.3.5`, затем `http://127.0.0.1:8765/`. Публикация и интеграция в игру не выполняются.\", \"\"]"
+    },
+    {
+      "path": "Tools/Audio/install_selected_sfx.py",
+      "line": 17,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "AUDITIONS = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/install_selected_sfx.py",
+      "line": 18,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "CHOICES = ROOT / \"Escape-audio-choices-0.3.5.txt\""
+    },
+    {
+      "path": "Tools/Audio/selected_archive.template.html",
+      "line": 5,
+      "category": "documentation",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "</style></head><body><div class=\"shell\"><header><span class=\"wordmark\">ESCAPE</span><span class=\"tag\">История выбора · 0.3.5</span></header><main><div class=\"intro\"><p class=\"eyebrow\">Экспедиция в разлом</p><h1>Выбранные звуки</h1><p>19 эффектов, выбранных для игры. Здесь оставлен только утверждённый вариант каждого звука.</p><p>Поездка лифта остаётся прежней. Ярость / Bloodlust, щит / Heroism и критический удар — без изменений.</p></div><nav class=\"history\" aria-label=\"История и параметры выбра"
+    },
+    {
+      "path": "Tools/Audio/validate_audition_page.py",
+      "line": 11,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/validate_selected_archive.py",
+      "line": 13,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/validate_selected_archive.py",
+      "line": 32,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "assert hashlib.sha256((OUT / \"Escape-audio-choices-0.3.5.txt\").read_bytes()).hexdigest() == metadata[\"selection_sha256\"]"
+    },
+    {
+      "path": "Tools/Audio/validate_selected_assets.py",
+      "line": 9,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "OUT = ROOT / \"Design/Audio-Auditions-0.3.5\""
+    },
+    {
+      "path": "Tools/Audio/validate_selected_assets.py",
+      "line": 19,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "assert digest(ROOT / \"Escape-audio-choices-0.3.5.txt\") == metadata[\"selection_sha256\"]"
+    },
+    {
+      "path": "Tools/Audio/validate_selected_assets.py",
+      "line": 50,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/validation-audio-selected/asset-report.json"
+      ],
+      "code": "destination = ROOT / \".utmp/expedition/validation-audio-selected/asset-report.json\""
+    },
+    {
+      "path": "Tools/Audio/validate_selected_runtime.ps1",
+      "line": 3,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/validation-audio-selected"
+      ],
+      "code": "$outputPath = Join-Path $workspacePath '.utmp/expedition/validation-audio-selected'"
+    },
+    {
+      "path": "Tools/Audio/verify_public_auditions.py",
+      "line": 48,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "if not re.fullmatch(r\"[a-f0-9]{64}\", choices) or digest((bundle / \"Escape-audio-choices-0.3.5.txt\").read_bytes()) != choices:"
+    },
+    {
+      "path": "Tools/Audio/verify_public_auditions.py",
+      "line": 100,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "if digest(get(base + \"Escape-audio-choices-0.3.5.txt\", 100_000)) != selected[\"selection_sha256\"]:"
+    },
+    {
+      "path": "Tools/Balance/audit_smith_tournament.py",
+      "line": 57,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "aggregate_path = ROOT / \"Design/Media-2026-10-24/blacksmith-production-aggregate.json\""
+    },
+    {
+      "path": "Tools/Balance/audit_smith_tournament.py",
+      "line": 95,
+      "category": "source",
+      "references": [
+        "Design/Media-2026-10-24"
+      ],
+      "code": "out = ROOT / \"Design/Media-2026-10-24\""
+    },
+    {
+      "path": "Tools/Balance/calibrate_global_boss.py",
+      "line": 16,
+      "category": "source",
+      "references": [
+        ".utmp/lua-test-runtime"
+      ],
+      "code": "sys.path.insert(0, str(ROOT / '.utmp/lua-test-runtime'))"
+    },
+    {
+      "path": "Tools/Balance/calibrate_global_boss.py",
+      "line": 26,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "P.add_argument('--output', default='Design/Release-0.3.13/validation/boss-balance.json')"
+    },
+    {
+      "path": "Tools/Release/prepare-android-sdk.ps1",
+      "line": 13,
+      "category": "source",
+      "references": [
+        ".utmp/android-sdk-release-0310"
+      ],
+      "code": "if ([string]::IsNullOrWhiteSpace($Destination)) { $Destination = Join-Path $project '.utmp/android-sdk-release-0310' }"
+    },
+    {
+      "path": "Tools/Release/prepare-android-sdk.ps1",
+      "line": 14,
+      "category": "source",
+      "references": [
+        "Design/Release-0.3.10"
+      ],
+      "code": "if ([string]::IsNullOrWhiteSpace($ReportPath)) { $ReportPath = Join-Path $project 'Design/Release-0.3.10/validation/sdk-copy.json' }"
+    },
+    {
+      "path": "Tools/Release/validate-apk.ps1",
+      "line": 6,
+      "category": "source",
+      "references": [
+        ".utmp/expedition/android-build-status.json"
+      ],
+      "code": "if ([string]::IsNullOrWhiteSpace($StatusPath)) { $StatusPath = Join-Path $project '.utmp/expedition/android-build-status.json' }"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 5,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "Серверный runtime из 64 файлов установлен с резервной копией БД и runtime. Проверки: 728 локальных, 713 сетевых и 64 восстановления; после установки — 31 проверка защиты и 3 Console/HTTPS. Исходники и ресурсы сборки подтверждены снимком 1988 файлов; native Unity проверил 9 групп и 11 кадров. Итог: `Design/Release-0.3.15/validation/release-completion.json`. Физический Android не проверялся. Ниже сохранён порядок воспроизведения упаковки и публикации."
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 7,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "Три исходных PNG 1080×1920 в `Design/Release-0.3.15/screens/`: `hub.png` — новое убежище, `character.png` — мастерская, `mine.png` — шахта с новыми монстрами. Alt, подписи и увеличение изображений соответствуют этим кадрам. Имена файлов сохранены для совместимости упаковки; PNG переносятся без обработки."
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 9,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/"
+      ],
+      "code": "Новые helpers находятся в `.utmp/expedition/`: `check-client-source0315.py`, `prepare-publication-0315.py`, `publish-page0315-remote.py`, `verify-public-integrity0315.py`. Предыдущие0314-скрипты и отчёты сохранены. Проверка исходников выбирает **все файлы Assets и ProjectSettings**, manifests пакетов и три итоговых PNG, включая runtime/editor C#, asmdef, плагины, Resources, новые монстры/иконки/предметы, данные, сцены, prefabs, шрифты и `.meta`. Содержимое файлов не попадает в отчёт — только раз"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 15,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/check-client-source0315.py"
+      ],
+      "code": "& $releasePython .utmp/expedition/check-client-source0315.py --inventory"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 17,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/check-client-source0315.py"
+      ],
+      "code": "& $releasePython .utmp/expedition/check-client-source0315.py --create"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 19,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/check-client-source0315.py"
+      ],
+      "code": "& $releasePython .utmp/expedition/check-client-source0315.py"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 20,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.15"
+      ],
+      "code": "./Website/escape/render-release.ps1 -ApkPath '<проверенный APK0.3.15>' -ScreensRoot './Design/Release-0.3.15/screens' -FinalValidationJson './Design/Release-0.3.15/validation/apk-validation.json'"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 21,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/prepare-publication-0315.py"
+      ],
+      "code": "& $releasePython .utmp/expedition/prepare-publication-0315.py"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 32,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/verify-public-integrity0315.py"
+      ],
+      "code": "& $releasePython .utmp/expedition/verify-public-integrity0315.py"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 41,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "Версия **0.3.14**, Android versionCode **16** опубликована 27.10.2026 на https://prokrust-play.ru/escape/. APK `Escape-0.3.14-46a458ea2e41.apk`, 124206651 байт, SHA-256 `46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525`. Подпись, версия и обе архитектуры проверены; все 32 публичных файла, включая полный APK, сверены по размеру и SHA-256. Итог: `Design/Release-0.3.14/validation/release-completion.json`; физический Android не проверялся."
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 43,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "Для упаковки нужны финальный APK 0.3.14/code16 и три исходных PNG 1080×1920 в `Design/Release-0.3.14/screens/`: `hub.png` — подтверждение покупки, `character.png` — досье мирового босса, `mine.png` — участники. Кадры должны быть получены в настоящем Unity GameView. Исторические имена файлов сохранены для совместимости упаковки."
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 46,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.14"
+      ],
+      "code": "./Website/escape/render-release.ps1 -ApkPath '<проверенный APK0.3.14>' -ScreensRoot './Design/Release-0.3.14/screens' -FinalValidationJson './Design/Release-0.3.14/validation/apk-validation.json'"
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 51,
+      "category": "documentation",
+      "references": [
+        ".utmp/expedition/"
+      ],
+      "code": "Подготовлены отдельные helpers `.utmp/expedition/*0314.py`: проверка снимка исходников, локальная упаковка, проверка публикации, чтение всех публичных файлов и локальная галерея. Снимок исходников создаёт root только после окончательных UI/арт/версий и выбора трёх кадров; данный scaffolding его не создаёт. Publisher сначала проверяет старый helper SHA `baf1bc42b54e499c7a2647c82a8ac6c10ab021455aa0b773cba35a12e73cd723`, затем сохраняет резервную копию. Публикация страницы не перезапускает API или "
+    },
+    {
+      "path": "Website/escape/README.md",
+      "line": 55,
+      "category": "documentation",
+      "references": [
+        "Design/Release-0.3.13"
+      ],
+      "code": "Предыдущий публичный выпуск **0.3.13/code15** опубликован 26.10.2026: `Escape-0.3.13-9501088bdf77.apk`, 123315471 байт, SHA256 `9501088bdf779491e478831d7a5f103aef5211a7510a380968141b3efec393b0`. Его APK сохраняется и используется как previous URL при проверке 0.3.14. История 0.3.13 и более ранних версий сохранена в HTML template. Фактические отчёты прошлого выпуска остаются в `Design/Release-0.3.13/validation/`."
+    },
+    {
+      "path": "Website/escape/render-release.ps1",
+      "line": 187,
+      "category": "source",
+      "references": [
+        "Design/Audio-Auditions-0.3.5"
+      ],
+      "code": "$audioSource = Join-Path $projectRoot 'Design/Audio-Auditions-0.3.5'"
+    },
+    {
+      "path": "Website/escape/render-release.ps1",
+      "line": 192,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "$choicesFile = Get-RequiredFile (Join-Path $audioSource 'Escape-audio-choices-0.3.5.txt') 'Audio choice history'"
+    },
+    {
+      "path": "Website/escape/render-release.ps1",
+      "line": 200,
+      "category": "source",
+      "references": [
+        "Escape-audio-choices-0.3.5.txt"
+      ],
+      "code": "Copy-Item -LiteralPath $choicesFile.FullName -Destination (Join-Path $audioTarget 'Escape-audio-choices-0.3.5.txt')"
+    }
+  ],
+  "latestToolingCandidates": [
+    {
+      "path": ".utmp/expedition/check-client-source0315.py",
+      "bytes": 8073,
+      "tracked": false,
+      "docstring": "Create once after final QA, then compare every client source/asset used by a release.\n\nThis command never builds, imports, publishes, contacts a server, or copies file\ncontents into evidence. --inventory is read-only and does not freeze a snapshot.",
+      "references": []
+    },
+    {
+      "path": ".utmp/expedition/finalize-release0315.py",
+      "bytes": 4485,
+      "tracked": false,
+      "docstring": "Finalize only from the build, native, deployment and full HTTPS evidence.",
+      "references": [
+        "Design/Release-0.3.14",
+        "Design/Release-0.3.15"
+      ]
+    },
+    {
+      "path": ".utmp/expedition/prepare-publication-0315.py",
+      "bytes": 4018,
+      "tracked": false,
+      "docstring": "Validate the rendered0315 bundle and prepare an upload archive. No network.",
+      "references": [
+        "Design/Release-0.3.15"
+      ]
+    },
+    {
+      "path": ".utmp/expedition/publish-page0315-remote.py",
+      "bytes": 4691,
+      "tracked": false,
+      "docstring": "Remote0315 installer draft. Root uploads inputs and explicitly invokes it.",
+      "references": []
+    },
+    {
+      "path": ".utmp/expedition/run-lua.py",
+      "bytes": 949,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime"
+      ]
+    },
+    {
+      "path": ".utmp/expedition/verify-public-integrity0315.py",
+      "bytes": 5508,
+      "tracked": false,
+      "docstring": "Stream each exact public0315 file over HTTPS; retain hashes, never bodies.",
+      "references": [
+        "Design/Release-0.3.15"
+      ]
+    },
+    {
+      "path": ".utmp/release0311-backend/run_local.py",
+      "bytes": 2501,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.11"
+      ]
+    },
+    {
+      "path": ".utmp/release0312-backend/run_local.py",
+      "bytes": 2503,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.12"
+      ]
+    },
+    {
+      "path": ".utmp/release0313-backend/run_local.py",
+      "bytes": 2586,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.13"
+      ]
+    },
+    {
+      "path": ".utmp/release0314-backend/run_local.py",
+      "bytes": 2586,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.14"
+      ]
+    },
+    {
+      "path": ".utmp/release0315-backend/prepare.py",
+      "bytes": 1523,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/release0315-backend",
+        "Design/Release-0.3.9"
+      ]
+    },
+    {
+      "path": ".utmp/release0315-backend/prepare_deploy_remote.py",
+      "bytes": 3309,
+      "tracked": false,
+      "docstring": "Prepare validated Escape deployment inputs only. Never apply or restart.",
+      "references": []
+    },
+    {
+      "path": ".utmp/release0315-backend/run_local.py",
+      "bytes": 2586,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.15"
+      ]
+    },
+    {
+      "path": ".utmp/release0315-backend/validate_remote.py",
+      "bytes": 4913,
+      "tracked": false,
+      "docstring": "Stage exact inputs and run isolated suites; production runtime is read-only.",
+      "references": []
+    },
+    {
+      "path": ".utmp/release0316-backend/run_local.py",
+      "bytes": 2586,
+      "tracked": false,
+      "docstring": null,
+      "references": [
+        ".utmp/lua-test-runtime",
+        "Design/Release-0.3.16"
+      ]
+    }
+  ]
+}

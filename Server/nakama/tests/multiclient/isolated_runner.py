@@ -17,6 +17,42 @@ from urllib.request import urlopen
 import uuid
 
 
+def capture_runtime_diagnostics(cmd, escape, scenario):
+    # A Go fatal dump can exceed hundreds of lines. Preserve the complete local
+    # test log privately; its beginning is essential for diagnosing the cause.
+    logs = subprocess.run(cmd + ["logs", "--no-color", "nakama"], capture_output=True, text=True)
+    path = escape / ("multiclient-isolated-" + scenario + "-runtime-errors.log")
+    path.write_text(logs.stdout + logs.stderr, encoding="utf-8")
+    containers = subprocess.run(cmd + ["ps", "-a", "-q", "nakama"], capture_output=True, text=True)
+    states = []
+    for container in containers.stdout.split():
+        inspected = subprocess.run(["docker", "inspect", "--format", "{{json .State}}", container], capture_output=True, text=True)
+        if inspected.returncode == 0:
+            state = json.loads(inspected.stdout)
+            states.append({key: state.get(key) for key in ("Status", "Running", "OOMKilled", "Dead", "ExitCode", "Error", "StartedAt", "FinishedAt")})
+    (escape / ("multiclient-isolated-" + scenario + "-container-state.json")).write_text(json.dumps(states, indent=2), encoding="utf-8")
+    print("Isolated runtime diagnostics saved in protected " + str(path), flush=True)
+
+
+def suite_arguments(escape, root, project, scenario):
+    if scenario == "recovery":
+        return ["python3", str(escape / "recovery_probe.py"), "--url", "http://127.0.0.1:28350",
+            "--console-url", "http://127.0.0.1:28351", "--config", str(root / "secrets/server.yml"),
+            "--root", str(root), "--compose-project", project, "--compose-file", str(root / "compose.yml"),
+            "--item-catalog", str(root / "item-catalog.json"),
+            "--report", str(escape / "multiclient-isolated-recovery.json")]
+    result = ["python3", str(escape / "multiclient_review.py"),
+        "--url", "http://127.0.0.1:28350", "--console-url", "http://127.0.0.1:28351",
+        "--config", str(root / "secrets/server.yml"), "--scenario", scenario,
+        "--report", str(escape / ("multiclient-isolated-" + scenario + ".json"))]
+    if scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "shop"):
+        result.extend(["--item-catalog", str(root / "item-catalog.json")])
+    if scenario == "all":
+        result.extend(["--catalog-migration-helper", str(root / "catalog-migration/merge_consumable_catalog.py"),
+            "--consumable-manifest", str(root / "catalog-migration/consumable-item-defs.json"), "--fail-fast"])
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scenario", default="arena")
@@ -24,6 +60,10 @@ def main():
     escape = Path("/opt/escape").resolve()
     if Path.cwd().resolve() != escape or not (escape / "runtime/duel_match3.lua").is_file():
         raise SystemExit("Run from the existing /opt/escape project only")
+    if args.scenario in ("recovery", "all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "shop") and not (escape / "recovery-item-catalog.json").is_file():
+        raise SystemExit("Install canonical repository item defs as /opt/escape/recovery-item-catalog.json first")
+    if args.scenario == "all" and not (escape / "multiclient-catalog-migration/merge_consumable_catalog.py").is_file():
+        raise SystemExit("Install the isolated consumable migration fixture before --scenario all")
     available = int(next(line.split()[1] for line in Path("/proc/meminfo").read_text().splitlines()
         if line.startswith("MemAvailable:")))
     if available < 600000:
@@ -32,13 +72,19 @@ def main():
         with socket.socket() as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(("127.0.0.1", port))
-    project = "escape-multiclient-" + uuid.uuid4().hex[:10]
-    parent = escape / "tests"
+    recovery = args.scenario == "recovery"
+    suffix = uuid.uuid4().hex[:10]
+    project = ("escape-review-" if recovery else "escape-multiclient-") + suffix
+    parent = escape if recovery else escape / "tests"
     parent.mkdir(mode=0o700, exist_ok=True)
-    root = parent / project
+    root = parent / (".multiclient-" + suffix if recovery else project)
     root.mkdir(mode=0o700)
     os.umask(0o077)
     shutil.copytree(escape / "runtime", root / "runtime")
+    if recovery or args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "shop"):
+        shutil.copy2(escape / "recovery-item-catalog.json", root / "item-catalog.json")
+    if args.scenario == "all":
+        shutil.copytree(escape / "multiclient-catalog-migration", root / "catalog-migration")
     overlay = escape / "multiclient-runtime-overlay"
     if overlay.is_dir():
         for source in overlay.glob("*.lua"):
@@ -97,20 +143,21 @@ def main():
             except Exception:
                 pass
             if time.monotonic() > deadline:
-                logs = subprocess.run(cmd + ["logs", "--no-color", "--tail", "30", "nakama"], capture_output=True, text=True)
-                # Preserve diagnostics only in the protected server-local project directory.
-                (escape / "multiclient-isolated-failure.log").write_text(logs.stdout + logs.stderr, encoding="utf-8")
-                print("Isolated startup diagnostics saved in protected /opt/escape/multiclient-isolated-failure.log", flush=True)
+                capture_runtime_diagnostics(cmd, escape, args.scenario)
                 raise RuntimeError("Isolated Nakama failed healthcheck")
             time.sleep(1)
         print("Isolated test backend healthy; fresh DB; Lua pool 4..16; 512MiB combined memory limits", flush=True)
-        result = subprocess.run(["python3", str(escape / "multiclient_review.py"),
-            "--url", "http://127.0.0.1:28350", "--console-url", "http://127.0.0.1:28351",
-            "--config", str(root / "secrets/server.yml"), "--scenario", args.scenario,
-            "--report", str(escape / ("multiclient-isolated-" + args.scenario + ".json"))])
+        if recovery and not (escape / "recovery_probe.py").is_file():
+            raise RuntimeError("Install recovery_probe.py beside isolated_runner.py before --scenario recovery")
+        arguments = suite_arguments(escape, root, project, args.scenario)
+        result = subprocess.run(arguments)
+        if result.returncode:
+            capture_runtime_diagnostics(cmd, escape, args.scenario)
         return result.returncode
     finally:
-        if root.parent == escape / "tests" and root.name == project and project.startswith("escape-multiclient-"):
+        owned_recovery = recovery and root.parent == escape and root.name == ".multiclient-" + suffix and project == "escape-review-" + suffix
+        owned_legacy = not recovery and root.parent == escape / "tests" and root.name == project and project.startswith("escape-multiclient-")
+        if owned_recovery or owned_legacy:
             subprocess.run(cmd + ["down", "--volumes", "--remove-orphans"], check=True, stdout=subprocess.DEVNULL)
             shutil.rmtree(root)
             print("Removed only disposable test containers, network, DB volume and server-local test credentials", flush=True)

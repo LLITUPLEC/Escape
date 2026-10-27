@@ -7,5 +7,6 @@ namespace Project.Character
         Material = 1,
         Recipe = 2,
         Tesseract = 3,
+        Consumable = 4,
     }
 }

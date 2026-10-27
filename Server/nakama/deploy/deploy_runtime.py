@@ -1,4 +1,4 @@
-"""Deploy the exact tested Escape runtime only during an idle window.
+"""Deploy the exact tested Escape runtime with backup, verification and rollback.
 
 Run server-locally in /opt/escape after isolated regression tests. Without
 --apply this only validates hashes and reads status. Never manages other projects.
@@ -61,7 +61,7 @@ def storage_value(console, row, collection, system_user_id, expected_key=None):
     return value
 
 
-def check_idle(console, system_user_id):
+def check_idle(console, system_user_id, allow_test_games=False):
     matches = console.call('GET', '/v2/console/match?limit=1')
     status = console.call('GET', '/v2/console/status')
     if not isinstance(matches, dict) or not isinstance(matches.get('matches'), list):
@@ -130,15 +130,19 @@ def check_idle(console, system_user_id):
                 queued += not player.get('bot', False)
     print('Idle check: matches=' + str(len(matches['matches'])) + ', tournaments=' + str(active)
           + ', queued=' + str(queued) + ', connected_sessions=' + str(sessions), flush=True)
-    if matches['matches'] or active or queued:
+    if allow_test_games:
+        print('Explicit test-game interruption authorized: Escape Nakama may restart while test games are active', flush=True)
+    if not allow_test_games and (matches['matches'] or active or queued):
         raise RuntimeError('Escape is busy; no update made')
-    if registry is None and sessions:
+    if not allow_test_games and registry is None and sessions:
         raise RuntimeError('Legacy queue migration waits for connected clients to leave')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--allow-test-games', action='store_true',
+                        help='Explicit owner authorization to interrupt active Escape test games; all hash, backup and health checks remain required')
     args = parser.parse_args()
     if Path.cwd().resolve() != ROOT or ROOT.is_symlink():
         raise SystemExit('Run from /opt/escape only')
@@ -168,7 +172,7 @@ def main():
 
     try:
         console.login(config['console']['username'], config['console']['password'])
-        check_idle(console, admin.SYSTEM_USER_ID)
+        check_idle(console, admin.SYSTEM_USER_ID, args.allow_test_games)
         if not args.apply:
             print('PASS preflight only; production files unchanged', flush=True)
             return
@@ -185,7 +189,7 @@ def main():
                             'pg_restore', '--list'], stdin=source, stdout=subprocess.DEVNULL, check=True)
         if tree(runtime) != before:
             raise RuntimeError('Production runtime changed during preparation')
-        check_idle(console, admin.SYSTEM_USER_ID)  # Last check immediately before the explicitly authorized restart.
+        check_idle(console, admin.SYSTEM_USER_ID, args.allow_test_games)  # Last check immediately before the explicitly authorized restart.
         try:
             for name, source in updates.items():
                 pending = runtime / ('.' + name + '.incoming')
@@ -217,7 +221,7 @@ def main():
                 elif target.is_file() and target.parent == runtime:
                     target.unlink()
             subprocess.run(['docker', 'compose', '-p', 'escape', 'restart', 'nakama'], check=True)
-            print('Rolled back runtime; database was not changed by deployment', flush=True)
+            print('Rolled back runtime; database backup retained; no database restore attempted', flush=True)
             raise
     finally:
         console.close()

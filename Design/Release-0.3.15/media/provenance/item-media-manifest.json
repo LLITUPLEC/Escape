@@ -1,0 +1,160 @@
+{
+  "generatedAt": "2026-10-24",
+  "mode": "built-in image_gen",
+  "note": "16 missing or misbound epic/legendary equipment icons replaced; existing 32 colored recipe icons and 4 materials retained. supply-cache replaces incorrect affix fallback.",
+  "items": [
+    {
+      "id": "eq_t1_epic_helmet",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-27d4ce2f-d56a-4cbf-8214-ac353ce29c9c.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_helmet.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nPrimary request: Epic quality expedition miner's HELMET. A closed industrial steel miner helmet with integrated gas respirator, ridged brow armour, two circular charcoal filters, a small violet mineral lamp above the visor, worn bronze rivets, violet enamel insets and narrow leather straps. Empty wearable equipment, no face or person.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, restrained purple epic accents.\nComposition/framing: single centered helmet in three-quarter front view, square canvas, object fills 82 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, additional items.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "6699b3bcfecbe15d3d72ea4f74c02e32"
+    },
+    {
+      "id": "eq_t1_epic_shoulders",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-9259763d-e044-4d19-9a8e-70df5d8a19f0.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_shoulders.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of epic miner's bulky shoulder pauldrons, separated slightly as one equipment set. Layered dark forged steel, violet enamel bands, a violet mineral power capsule and reinforced leather connecting straps. Premium veteran expedition gear, restrained purple epic accents.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "1a88312dda2cf52d728913756ecd22b5"
+    },
+    {
+      "id": "eq_t1_epic_chest",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-c1630ae2-392b-4324-95a3-89b969379d03.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_chest.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: An empty epic miner's armoured CHEST VEST with no arms or head, heavy steel chest plate over dark quilted leather torso, bronze belts, reinforced abdomen, a small embedded violet crystal reactor and violet enamel seam details. Premium veteran expedition gear, restrained purple epic accents.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "b6d27ab2ca13715d6d9c876289d3d90b"
+    },
+    {
+      "id": "eq_t1_epic_gloves",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-778a059e-ed68-4447-b3bd-26635d4b5779.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_gloves.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of epic miner's heavy armoured GLOVES, separated slightly as one equipment set. Thick brown leather, steel knuckle plates and segmented fingers, bronze rivets, violet crystal studs on wrist guards and restrained purple enamel accents. Empty gloves, no hands inside.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "a00e119538577e8ff1e31fb18cbc59b7"
+    },
+    {
+      "id": "eq_t1_epic_legs",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-fe3f6413-7f3f-4e6a-b23f-2eb7dcb77f38.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_legs.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: Epic miner's armoured TROUSERS, one empty pair of pants with both legs. Charcoal canvas and leather straps, massive segmented steel knee guards and thigh plates, thick utility belt, small violet power conduits and restrained purple epic accents. No boots, torso, or body.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "fa8464796296794e1595af84fd1ab74a"
+    },
+    {
+      "id": "eq_t1_epic_feet",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-626e8aae-95b7-462c-99a2-8e5fbe35853f.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_feet.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of epic miner's armoured BOOTS, separated slightly as one equipment set. Thick dark brown leather, chunky reinforced tread, forged steel toe caps and ankle guards, bronze buckles, small violet crystal rivets and restrained purple enamel. No legs inside.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "878555206214ef7ee106cadc7fb95093"
+    },
+    {
+      "id": "eq_t1_epic_weapon_l",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-f3ed017c-7f0d-42dc-9e52-22c1f0554d0f.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_weapon_l.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A SINGLE epic miner's LEFT-HAND INDUSTRIAL CRUSHER TOOL, short steel-handled pick-hammer with a hook-shaped mining claw, leather grip, chunky bronze ferrule, violet mineral energy core in the head, worn steel cutting edge. Diagonal from bottom-left handle to upper-right head. Practical rugged tool, not sword or firearm.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "a60ac8a02697328e3fdcfae9ec3f5e16"
+    },
+    {
+      "id": "eq_t1_epic_weapon_r",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-cf1ab8d8-7b25-4a96-b3ba-d4c6e59991bc.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_weapon_r.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A SINGLE epic miner's RIGHT-HAND HEAVY POWER HAMMER, broad asymmetrical steel sledgehammer with two solid impact faces, visible violet mineral power core between them, reinforced leather-wrapped long handle, brass bolts. Diagonal from bottom-left handle to upper-right head. Practical rugged tool, not sword or firearm.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "bb0aba86ba8b3af9d845db92ee34eb79"
+    },
+    {
+      "id": "eq_t1_legendary_helmet",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-5cb32225-d5dc-4793-8420-1cb02ec68c6b.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_helmet.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: Legendary expedition miner's HELMET. Empty closed industrial steel miner helmet with integrated gas respirator, sweeping reinforced bronze brow, two circular charcoal filters, one amber mineral beacon above visor, ornate but practical engraved geometric metal seams, worn bronze and ivory ceramic armour inserts. More prestigious than veteran gear. Restrained warm amber #EDAA53 crystals, no crown or horns.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "9df7ce85e056d7cfad7eee563a024996"
+    },
+    {
+      "id": "eq_t1_legendary_shoulders",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-acd120d2-c400-4f36-97da-7847cbc82e50.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_shoulders.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of legendary miner's bulky shoulder pauldrons, separated slightly as one equipment set. Layered dark forged steel with bronze-edge reinforcements, ivory ceramic bands, amber mineral power capsules protected in bronze cages, reinforced leather connecting straps. Prestigious master expedition gear, restrained warm amber #EDAA53 accents.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "13c614c7378b55561bbf3e58acc40431"
+    },
+    {
+      "id": "eq_t1_legendary_chest",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-5ef20720-dea4-4d55-8815-4a3a490d7d88.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_chest.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: An empty legendary miner's armoured CHEST VEST with no arms or head. Massive bevelled steel breastplate over quilted charcoal leather, ivory ceramic inset panels and bronze reinforcements, leather utility belts, small amber hexagonal mineral reactor in the centre. Prestigious master expedition gear, restrained warm amber #EDAA53 accents.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "3034ab1bcb04119a25609c300a726044"
+    },
+    {
+      "id": "eq_t1_legendary_gloves",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-90e48763-4d9d-40f6-a9bf-0752c50ebe5e.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_gloves.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of legendary miner's heavy armoured GLOVES, separated slightly as one equipment set. Thick dark brown leather, steel articulated knuckle plates and segmented fingers, bronze edging, ivory ceramic wrist guards with small amber crystal reactor studs. Prestigious master expedition gear, restrained warm amber #EDAA53 accents. Empty gloves, no hands inside.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "b574bd01ab9d54c91e4265f15e2adb86"
+    },
+    {
+      "id": "eq_t1_legendary_legs",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-94eb16b3-564a-479b-be3c-002a9253d3f0.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_legs.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: Legendary miner's armoured TROUSERS, one empty pair of pants with both legs. Charcoal canvas and thick leather utility belt, massive steel knee guards and thigh plates with ivory ceramic insets, bronze protective edging, small amber power conduits. Prestigious master expedition gear, restrained warm amber #EDAA53 accents. No boots, torso, or body.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "e2b2b42c841fcd9fc09ca5bb2e25d2c9"
+    },
+    {
+      "id": "eq_t1_legendary_feet",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-7e23f6b8-f39b-49de-bab8-b834f80c6fab.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_feet.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A matching PAIR of legendary miner's armoured BOOTS, separated slightly as one equipment set. Thick dark brown leather, massive reinforced tread, forged steel toe caps and ankle guards with ivory ceramic insets, bronze buckles, small amber mineral reactor crystals in guarded ankle sockets. Prestigious master expedition gear, restrained warm amber #EDAA53 accents. No legs inside.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "56ef1c7d012bb53e7b5e96c9e9851e2b"
+    },
+    {
+      "id": "eq_t1_legendary_weapon_l",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-2fe4a19d-c6b3-45f7-8232-dda34ca85dc5.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_weapon_l.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A SINGLE legendary miner's LEFT-HAND INDUSTRIAL EXCAVATOR TOOL, short-handled forged steel double-hook claw pick with one heavy hammer poll, leather grip, ornate geometric bronze reinforcements, amber mineral reactor in the mechanical head, ivory ceramic plates. Diagonal from bottom-left handle to upper-right head. Prestigious practical rugged tool, restrained warm amber #EDAA53 accents, not sword or firearm.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "2f02aff9012df7ef919677e70bde5ebf"
+    },
+    {
+      "id": "eq_t1_legendary_weapon_r",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-e82c5ac8-f8b7-4abf-9456-ff40fe88d9a7.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_weapon_r.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A SINGLE legendary miner's RIGHT-HAND MASTER POWER HAMMER, massive two-faced industrial sledgehammer with bevelled steel impact faces and an amber hexagonal mineral reactor in a bronze cage between them, ivory ceramic panels, leather-wrapped reinforced long handle. Diagonal from bottom-left handle to upper-right head. Prestigious practical rugged tool, restrained warm amber #EDAA53 accents, not sword or firearm.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "d03f815a5cfe8f144306863c06959046"
+    },
+    {
+      "id": "supply-cache",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a16f48-9386-7763-8a83-bf7e3dd67135\\exec-9efaaaf7-33c3-4ad5-8953-5053d250a998.png",
+      "path": "Assets/_Project/Resources/Expedition/Items/supply-cache.png",
+      "prompt": "Use case: stylized-concept\nAsset type: Unity inventory equipment sprite, single isolated object on genuine transparent background.\nStyle/medium: premium adult 2.5D sculpted hand-painted game icon, chunky bevelled forms, matte weathered steel and leather, crisp readable silhouette. Industrial mining refuge, not medieval fantasy. Petrol shadows #142E36, mineral teal #285A60, muted sand highlights #D8C5A2, worn bronze rivets.\nComposition/framing: single centered equipment object, three-quarter front view, square canvas, object fills 80 percent with ample transparent margin, every part fully visible. Clear at 64 px. Soft top-left warm studio lighting, subtle cool edge light. No person or body, no background, floor, drop shadow, tile, UI border, rarity frame, lettering, logos, watermarks, glowing aura, particles, unrelated items.\nPrimary request: A SINGLE neutral expedition SUPPLY CACHE: a sturdy small closed square metal toolbox crate with two chunky bronze clasps, a leather carrying handle on top, petrol teal steel shell, worn ivory corner reinforcements. Recognisable useful inventory fallback for unidentified supplies. No rarity color, no question mark, no writing, no contents visible, no other objects.",
+      "tool": "built-in image_gen",
+      "transparent_background": true,
+      "guid": "3cb603fa5900326cc4de933ebcae3cd2"
+    }
+  ]
+}

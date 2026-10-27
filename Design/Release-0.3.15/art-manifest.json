@@ -1,0 +1,23 @@
+{
+  "mode": "built-in image_gen",
+  "assets": [
+    {
+      "id": "shelter-rating",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-707ec369-d4c7-4dd9-b529-7b1d17d7bb3b.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/shelter-rating.png",
+      "prompt": "Use case: stylized-concept. Asset type: final standalone clickable home-screen game menu icon for Escape dark fantasy mine RPG. Subject: a prestigious ranking emblem: one sculpted gold and weathered bronze trophy cup, two small symmetrical laurel branches, tiny petrol teal enamel details, broad recognizable silhouette. Style: polished semi-realistic hand-painted sculpted game item, precise metallic bevels, bronze edges, warm amber highlights and dark petrol teal shadows, same family as fantasy inventory icons. Centered object, fills 82% of a square canvas, true transparent background. Silhouette must be clear at 80-120 pixels. Entire object inside canvas with transparent padding. No rectangular button, no UI frame, no plaque, no scenery, no lettering, no numbers, no text, no watermark, one coherent icon."
+    },
+    {
+      "id": "shelter-friends",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-61590eb2-090d-474d-a039-71f1a324e590.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/shelter-friends.png",
+      "prompt": "Use case: stylized-concept. Asset type: final standalone clickable home-screen game menu icon for Escape dark fantasy mine RPG. Subject: a friends emblem: two friendly underground explorers side by side in weathered petrol teal hoods and bronze respirator masks, warm amber glass goggles, busts only, compact paired silhouette, no weapons. Style: polished semi-realistic hand-painted sculpted game item, precise metallic bevels, bronze edges, warm amber highlights and dark petrol teal shadows, same family as fantasy inventory icons. Centered object, fills 82% of a square canvas, true transparent background. Silhouette must be clear at 80-120 pixels. Entire object inside canvas with transparent padding. No rectangular button, no UI frame, no plaque, no scenery, no lettering, no numbers, no text, no watermark, one coherent icon."
+    },
+    {
+      "id": "shelter-mail",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-37db6f44-ff8a-4dfd-840c-6ca4f9eda997.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/shelter-mail.png",
+      "prompt": "Use case: stylized-concept. Asset type: final standalone clickable home-screen game menu icon for Escape dark fantasy mine RPG. Subject: a mail emblem: one thick weathered ivory envelope with bronze metal corner guards and a vivid red wax seal, a small folded letter peeking out, petrol teal straps, recognizable envelope silhouette. Style: polished semi-realistic hand-painted sculpted game item, precise metallic bevels, bronze edges, warm amber highlights and dark petrol teal shadows, same family as fantasy inventory icons. Centered object, fills 82% of a square canvas, true transparent background. Silhouette must be clear at 80-120 pixels. Entire object inside canvas with transparent padding. No rectangular button, no UI frame, no plaque, no scenery, no lettering, no numbers, no text, no watermark, one coherent icon."
+    }
+  ]
+}

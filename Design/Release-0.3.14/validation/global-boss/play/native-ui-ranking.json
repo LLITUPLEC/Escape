@@ -1,0 +1,483 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "width": 1080,
+    "height": 1920,
+    "error": "",
+    "checks": [
+        {
+            "name": "Native dossier/ranking text: Kicker",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: BossName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: EventClock",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: RankingIntro",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Rank",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantAttempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantDamage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: ParticipantPercent",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: RankingRange",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: PersonalRankText",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Attempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Contribution",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: BossStatus",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Offline GameView preview performs no account/network work",
+            "passed": true
+        }
+    ],
+    "screenshots": []
+}

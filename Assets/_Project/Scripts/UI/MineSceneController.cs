@@ -10,6 +10,7 @@ using Project.Character;
 using Project.Match3;
 using Project.Mine3D;
 using Project.Nakama;
+using Project.Audio;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -79,7 +80,7 @@ namespace Project.UI
         private const string HudExpIconAssetPath = "Assets/_Project/img/resources_hud/exp.png";
         private const string HudEnergyIconAssetPath = "Assets/_Project/img/resources_hud/energy.png";
         private const string HudBlueprintIconAssetPath = "Assets/_Project/img/resources_hud/blueprint.png";
-        private const string HudTesseractIconAssetPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        private const string HudTesseractIconAssetPath = "Assets/_Project/Resources/Expedition/Items/tesseract.png";
         private const string HudWhistleIconAssetPath = "Assets/_Project/img/resources_hud/whistle.png";
         private const float BarrierDismissButtonMaxWidth = 450f;
         /// <summary>Пропорции кнопок футера модалки (как у спрайта 230×65).</summary>
@@ -525,7 +526,7 @@ namespace Project.UI
                     id = botId,
                     name = def != null && !string.IsNullOrWhiteSpace(def.DisplayName)
                         ? def.DisplayName
-                        : ("Монстр " + floor),
+                        : MonsterNames.Default(floor),
                     floor = floor,
                 };
 
@@ -1466,8 +1467,7 @@ namespace Project.UI
                     hasCatalog = hasCatalog,
                     respawnSeconds = mine != null ? Mathf.Max(0, mine.respawn_left_seconds) : 0,
                     wins = mine != null ? mine.wins : 0,
-                    name = bot != null && !string.IsNullOrWhiteSpace(bot.name) ? bot.name
-                        : definition != null ? definition.DisplayName : "Неизведанная глубина",
+                    name = MonsterNames.Resolve(bot != null ? bot.name : null, definition, floor),
                     rewards = rewards.Length > 0 ? rewards.ToString() : "Награды и условия — в досье",
                     barrierCost = barrier.ToString(),
                     portrait = definition != null ? definition.Icon : null
@@ -1512,6 +1512,7 @@ namespace Project.UI
             _modalSupplementalInfo = view.SupplementalInfoText;
             _modalBarrierInfo = view.BarrierInfoText;
             _modalFightButton = view.FightButton;
+            GameplayConnectionButton.Bind(_modalFightButton);
             _modalDismissButton = view.DismissButton;
             _modalAffixIcon = view.AffixIcon;
             _modalAffixIconText = view.AffixIconGlyph;
@@ -1634,7 +1635,7 @@ namespace Project.UI
             if (_barrierContentRoot != null)
                 _barrierContentRoot.SetActive(false);
 
-            var name = bot != null ? bot.name : ("Монстр " + floor);
+            var name = MonsterNames.Resolve(bot != null ? bot.name : null, ResolveMonsterDefinition(bot, floor), floor);
             var hp = 150 + Mathf.Max(0, bot != null ? bot.hp_bonus : 0);
             var dmg = bot != null ? bot.base_damage : 0;
             var armor = bot != null ? bot.base_armor : 0;
@@ -1687,11 +1688,13 @@ namespace Project.UI
 
         private async void OnFightClicked()
         {
+            if (!ServerConnectionGuard.CanPlay) { ServerConnectionGuard.ShowUnavailable(); return; }
             _botByFloor.TryGetValue(_selectedFloor, out var bot);
             if (bot == null) return;
 
             try
             {
+                await ServerConnectionGuard.RequireAsync(_cts != null ? _cts.Token : CancellationToken.None);
                 if (_cts != null && !_cts.IsCancellationRequested)
                 {
                     var resources = _lastResources ?? await PlayerResourcesService.GetAsync(_cts.Token);
@@ -1717,9 +1720,11 @@ namespace Project.UI
             }
             catch
             {
-                // if precheck fails, allow server-authoritative check below
+                ServerConnectionGuard.ShowUnavailable();
+                return;
             }
 
+            if (this == null || _cts == null || _cts.IsCancellationRequested) return;
             Match3LaunchContext.SetSoloMine(
                 bot.id,
                 _selectedFloor,
@@ -1771,6 +1776,7 @@ namespace Project.UI
             _summonInFlight = true;
             if (_modalDismissButton != null) _modalDismissButton.interactable = false;
             if (_expeditionPresentation != null) _expeditionPresentation.SetSummonBusy(true);
+            var summonConfirmed = false;
 
             try
             {
@@ -1799,6 +1805,7 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
+                    ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                     if (string.Equals(model.err, "not_enough_energy", StringComparison.OrdinalIgnoreCase))
                         OpenEnergyBuyDialog();
                     if (IsSummonInsufficientResourcesError(model.err))
@@ -1808,6 +1815,8 @@ namespace Project.UI
                     return;
                 }
 
+                summonConfirmed = true;
+                ExpeditionAudio.Play(ExpeditionCue.BarrierUnlock);
                 if (string.Equals(_difficulty, requestedDifficulty, StringComparison.OrdinalIgnoreCase)
                     && _mineByFloor.TryGetValue(requestedFloor, out var mine) && mine != null)
                 {
@@ -1832,6 +1841,7 @@ namespace Project.UI
             catch (Exception e)
             {
                 Debug.LogWarning("[MineScene] Summon failed: " + e.Message);
+                if (!summonConfirmed && this != null && !token.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
             }
             finally
             {
@@ -1851,6 +1861,7 @@ namespace Project.UI
 
             _rerollInFlight = true;
             _modalDismissButton.interactable = false;
+            var rerollConfirmed = false;
 
             try
             {
@@ -1877,6 +1888,7 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
+                    ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                     if (string.Equals(model.err, "not_enough_energy", StringComparison.OrdinalIgnoreCase))
                         OpenEnergyBuyDialog();
                     if (IsSummonInsufficientResourcesError(model.err))
@@ -1886,6 +1898,7 @@ namespace Project.UI
                     return;
                 }
 
+                rerollConfirmed = true;
                 if (_mineByFloor.TryGetValue(_selectedFloor, out var mine) && mine != null && !string.IsNullOrWhiteSpace(model.affix))
                     mine.affix = model.affix;
 
@@ -1900,6 +1913,7 @@ namespace Project.UI
             catch (Exception e)
             {
                 Debug.LogWarning("[MineScene] Affix reroll failed: " + e.Message);
+                if (!rerollConfirmed && this != null && _cts != null && !_cts.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
             }
             finally
             {
@@ -2024,6 +2038,7 @@ namespace Project.UI
 
             _unlockInFlight = true;
             _modalDismissButton.interactable = false;
+            var unlockConfirmed = false;
             try
             {
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
@@ -2049,11 +2064,14 @@ namespace Project.UI
 
                 if (!model.ok)
                 {
+                    ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                     if (_modalSupplementalInfo != null)
                         _modalSupplementalInfo.text += "\n\n" + DescribeUnlockError(model);
                     return;
                 }
 
+                unlockConfirmed = true;
+                ExpeditionAudio.Play(ExpeditionCue.BarrierUnlock);
                 await RefreshAsync(_cts.Token);
                 await RefreshResourcesAsync(_cts.Token);
                 OpenMonsterModal(_selectedFloor);
@@ -2065,6 +2083,7 @@ namespace Project.UI
             catch (Exception e)
             {
                 Debug.LogWarning("[MineScene] Unlock failed: " + e.Message);
+                if (!unlockConfirmed && this != null && _cts != null && !_cts.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
             }
             finally
             {

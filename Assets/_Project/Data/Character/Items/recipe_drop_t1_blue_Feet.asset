@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_blue_Feet
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_blue_Feet
-  displayName: "\u0420\u0435\u0446\u0435\u043F\u0442 \"\u0428\u0430\u0445\u0442\u043D\u044B\u0435
-    \u0448\u0438\u043F\u044B\""
+  displayName: "Рецепт «Шахтные шипы»"
   colorDisplayName: {r: 0.19274472, g: 0.45172274, b: 0.9547169, a: 1}
-  description: 
+  description: "Чертёж изготовления предмета «Шахтные шипы». После изучения хранится в книге рецептов мастерской."
   kind: 2
   maxStack: 1
   tier: 1

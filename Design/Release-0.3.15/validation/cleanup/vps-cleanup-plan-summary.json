@@ -1,0 +1,21 @@
+{
+  "manifest_sha256": "6f1e3c1b7dbe5c4ca724a8d926e0e4c80cc0a157ab76c626270736c877c868bc",
+  "count": 122,
+  "estimated_bytes": 6501818368,
+  "by_reason_bytes": {
+    "obsolete_staging_or_one_off_helper": 3187265536,
+    "archived_test_report_duplicate": 491520,
+    "older_backup": 13000704,
+    "web_release_older_than_0.3.14": 1752084480,
+    "apk_older_than_0.3.14": 1548976128
+  },
+  "retained_versions": [
+    "0.3.15",
+    "0.3.14"
+  ],
+  "backup_paths": [
+    "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+    "/opt/escape/backups/runtime-release-20261027T162323Z"
+  ],
+  "production_deleted": false
+}

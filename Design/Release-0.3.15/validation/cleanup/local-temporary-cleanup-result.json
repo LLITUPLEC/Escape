@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "workspace": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape",
+  "deleted": [
+    {
+      "path": ".utmp",
+      "bytes": 2328296906,
+      "reason": "temporary inputs migrated; tests archived"
+    }
+  ],
+  "deletedBytes": 2328296906.0,
+  "driveFreeBefore": 100108320768,
+  "driveFreeAfter": 102441603072,
+  "retainedReleases": [
+    "0.3.15",
+    "0.3.14"
+  ],
+  "gitHistoryRewritten": false
+}

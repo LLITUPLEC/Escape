@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "unread_count": 2,
+  "messages": [
+    {
+      "body": "Вы выполнили условия открытия образа. Найдите его в разделе «Герой» → «Образы». Награда за открытие уже начислена: 5 материи и +0,5% к здоровью навсегда.",
+      "theme_id": "voidranger",
+      "id": "appearance_unlock:voidranger",
+      "action": "hero",
+      "schema": 1,
+      "title": "Новый образ героя: «Разведчик глубин»",
+      "claimed": false,
+      "created_at": 1793116476,
+      "avatar_id": "voidranger-female",
+      "kind": "appearance_unlock"
+    },
+    {
+      "body": "Вы выполнили условия открытия образа. Найдите его в разделе «Герой» → «Образы». Награда за открытие уже начислена: 5 материи и +0,5% к здоровью навсегда.",
+      "theme_id": "stormforged",
+      "id": "appearance_unlock:stormforged",
+      "action": "hero",
+      "schema": 1,
+      "title": "Новый образ героя: «Мастер грозы»",
+      "claimed": false,
+      "created_at": 1793116476,
+      "avatar_id": "stormforged-female",
+      "kind": "appearance_unlock"
+    }
+  ]
+}

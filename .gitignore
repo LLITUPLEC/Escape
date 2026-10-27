@@ -7,14 +7,33 @@
 [Bb]uild/
 [Bb]uilds/
 Logs/
+*.apk
+*.aab
+*.apks
+*.obb
+*.symbols.zip
+*.symbols.tar.gz
+*.symbols/
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+*_BurstDebugInformation_DoNotShip/
+# Generated release/upload bundles; source art and JSON reports stay versioned.
+Design/**/*.tar.gz
+Design/**/*.tgz
+Design/**/page-bundle*.zip
+Design/**/site-bundle*.zip
+Website/**/*.tar.gz
+Website/**/*.tgz
+Website/**/page-bundle*.zip
+Website/**/site-bundle*.zip
 *.log
-!Design/Expedition-Implementation/validation/**/*.log
 
 # Unity user settings
 UserSettings/
 
 # Generated solution/project files
 .utmp/
+.cache/
+.local/
 __pycache__/
 *.py[cod]
 *.csproj
@@ -40,12 +59,23 @@ ParrelSync/
 
 # Secrets
 key_meshy.txt
-.utmp/expedition/
-.utmp/expedition-v2/
-.utmp/website-release-check/
-.utmp/validation-workshop/
-.utmp/Debug/
-.utmp/tools/debug/
+.env
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.key
+*.pem
+**/id_rsa
+**/id_ed25519
+**/.ssh/
+**/service-account*.json
+**/service_account*.json
+**/firebase-adminsdk-*.json
 Assets/_Project/Resources/NakamaConnectionConfig.asset
 Assets/_Project/Resources/NakamaConnectionConfig.asset.meta
 
@@ -55,8 +85,10 @@ Server/nakama/deploy/secrets/
 Server/nakama/deploy/runtime/
 Server/nakama/deploy/backups/
 Server/nakama/deploy/__pycache__/
-.utmp/escape-deploy/
-.utmp/lua-test-runtime/
-.utmp/client-cache-tests/
-.utmp/security-*
 
+# Generated website output and atomic release staging directories.
+Website/**/dist/
+Website/**/.dist-stage-*/
+Website/**/.dist-previous-*/
+Website/**/.release-stage-*/
+Website/**/.release-previous-*/

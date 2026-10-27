@@ -6,7 +6,7 @@ namespace Project.Character.UI
 {
     public sealed class ItemSlotView : MonoBehaviour
     {
-        [Tooltip("Индекс ячейки сундука 0..24. Если ≥0, порядок привязки к duel_character.inventory идёт по этому полю, а не по порядку детей.")]
+        [Tooltip("Индекс ячейки сундука 0..49. Если ≥0, порядок привязки к duel_character.inventory идёт по этому полю, а не по порядку детей.")]
         [SerializeField] private int inventorySlotIndex = -1;
 
         [Header("Wiring")]
@@ -89,6 +89,7 @@ namespace Project.Character.UI
             background.enabled = sprite != null;
         }
 
+        public void SetInventorySlotIndex(int index) => inventorySlotIndex = index;
         public int InventorySlotIndex => inventorySlotIndex;
     }
 }

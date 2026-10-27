@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "retainedPublishedVersions": [
+    "0.3.15",
+    "0.3.14"
+  ],
+  "localDeletedBytes": 43821748400,
+  "vpsAvailableBytesGained": 6501814272,
+  "localLayout": [
+    "Assets",
+    "Packages",
+    "ProjectSettings",
+    "Server",
+    "Website",
+    "Tools",
+    "Docs",
+    "Design/Audio",
+    "Design/Release-0.3.14",
+    "Design/Release-0.3.15",
+    "Builds/0.3.14",
+    "Builds/0.3.15"
+  ],
+  "preservedIgnoredDependencies": [
+    ".cache/android-sdk",
+    ".cache/lua-test-runtime"
+  ],
+  "gitHistoryRewritten": false,
+  "productionRuntimeUnchanged": true,
+  "protectedProductionFilesUnchanged": true,
+  "retainedVpsBackups": [
+    "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+    "/opt/escape/backups/runtime-release-20261027T162323Z"
+  ],
+  "postCleanupLuaSuites": 52,
+  "postCleanupLuaCases": 728,
+  "postCleanupLuaSourcesUnchanged": true,
+  "stagedReadinessReport": "final-staged-readiness.json",
+  "note": "The readiness report audited the complete source index before adding these three generated cleanup evidence JSON files. Git history is retained; only working-tree artifacts outside the latest two published versions were removed."
+}

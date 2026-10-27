@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "selected_wav_hashes": 19,
+  "relative_links_valid": true,
+  "audio_players": 1,
+  "radio_choices": 0,
+  "autoplay": false,
+  "network_dependencies": 0,
+  "protected_history_metadata_has_no_absolute_private_paths": true,
+  "javascript_syntax": "passed",
+  "browser_visual_qa_performed": false
+}

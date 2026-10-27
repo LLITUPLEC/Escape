@@ -45,6 +45,15 @@ namespace Project.Nakama
         public ISocket Socket { get; private set; }
 
         public bool IsReady => Socket != null && Socket.IsConnected && Session != null;
+        internal bool GameplaySessionAllowed => !_sessionReplacedFlowActive && !_skipOnlineHeartbeat;
+        internal void AcceptGameplayPing(string payload) => TryConsumePingPayloadForSessionEpoch(payload);
+        internal void InvalidateGameplaySocket(ISocket expected)
+        {
+            if (expected == null || !ReferenceEquals(Socket, expected)) return;
+            Socket = null; _socketBoundAuthToken = null;
+            _ = CloseStaleGameplaySocketAsync(expected);
+        }
+        private static async Task CloseStaleGameplaySocketAsync(ISocket socket) { try { await socket.CloseAsync(); } catch { } }
 
         /// <summary>Только с главного потока. Для фона используйте <see cref="UsesEmailSessionPersistenceAsync"/>.</summary>
         public bool UsesEmailSessionPersistence => NakamaCredentialStore.UsesEmail;
@@ -119,6 +128,7 @@ namespace Project.Nakama
             }
 
             Instance = this;
+            ServerConnectionGuard.Install(this);
             Volatile.Write(ref _localSessionEpoch, PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0));
             DeleteLegacyEmailPasswordSync();
             DontDestroyOnLoad(gameObject);
@@ -158,8 +168,8 @@ namespace Project.Nakama
                 await EnsureConnectedAsync(_cts.Token);
                 await MaybeShowEmailSetupGateAsync(_cts.Token).ConfigureAwait(true);
                 _ = AchievementCatalogService.RefreshOnLoginAsync(_cts.Token);
-                if (keepOnlineHeartbeat)
-                    _ = OnlineHeartbeatLoopAsync(_cts.Token);
+                // ServerConnectionGuard sends the same presence/session heartbeat over
+                // the actual game WebSocket, with a bounded response timeout.
             }
             catch (Exception e)
             {
@@ -253,7 +263,10 @@ namespace Project.Nakama
                 if (Socket != null && Socket.IsConnected && Session != null &&
                     !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)) &&
                     string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal))
+                {
+                    await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
                     return;
+                }
 
                 if (Client == null)
                 {
@@ -269,7 +282,10 @@ namespace Project.Nakama
                     string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal) &&
                     !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew));
                 if (sessionMatchesSocket)
+                {
+                    await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
                     return;
+                }
 
                 if (Socket != null)
                 {
@@ -294,6 +310,7 @@ namespace Project.Nakama
                 await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
                 await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
                 _socketBoundAuthToken = Session?.AuthToken;
+                await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
             }
             finally
             {
@@ -302,11 +319,13 @@ namespace Project.Nakama
         }
 
         /// <summary>Привязать e-mail к текущему user_id и сохранить вход по e-mail (+ привязать device id).</summary>
-        public async Task LinkEmailAsync(string email, string password, CancellationToken ct)
+        public async Task LinkEmailAsync(string email, string password, CancellationToken ct, bool? female = null)
         {
             await EnsureConnectedAsync(ct).ConfigureAwait(false);
             if (Session == null || Client == null)
                 throw new InvalidOperationException("Нет активной сессии Nakama.");
+            if (female.HasValue)
+                await Project.Character.AccountGender.RegisterAsync(female.Value, ct).ConfigureAwait(false);
             await Client.LinkEmailAsync(Session, email, password, canceller: ct).ConfigureAwait(false);
             // Переключаем локальную сессию на email-токены и линкуем device → тот же user_id на новых телефонах.
             await LoginWithEmailAsync(email, password, create: false, ct).ConfigureAwait(false);
@@ -362,6 +381,7 @@ namespace Project.Nakama
             Socket = CreateAndWireSocket();
             await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
             _socketBoundAuthToken = Session?.AuthToken;
+            await Project.Character.AccountGender.RefreshAsync(ct, force: true).ConfigureAwait(false);
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
@@ -705,7 +725,7 @@ namespace Project.Nakama
                     return;
                 }
 
-                PersistLocalSessionEpochSync(m.session_epoch);
+                if (m.session_epoch != local) PersistLocalSessionEpochSync(m.session_epoch);
             }
             catch
             {

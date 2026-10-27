@@ -187,6 +187,11 @@ namespace Project.UI
             if (_scroll != null) _scroll.verticalNormalizedPosition = 1;
         }
 
+        public void SetStatsCaption(string value)
+        {
+            if (_statsCaption != null) _statsCaption.text = value ?? string.Empty;
+        }
+
         private void CreateScroll(RectTransform panel, float x0, float y0, float x1, float y1)
         {
             var scrollRect = ExpeditionUi.Rect(panel, "ExpeditionDialogBody", x0, y0, x1, y1);

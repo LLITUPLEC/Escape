@@ -16,6 +16,7 @@ namespace Project.Character.UI
         public static readonly Color Muted = new Color32(157, 183, 176, 255);
         public static readonly Color Amber = new Color32(237, 170, 83, 255);
         public struct MaterialState { public Sprite icon; public string name; public long owned, required; }
+        public struct PrerequisiteState { public Sprite icon; public string name; public ItemQualityTier quality; public bool owned; }
         private readonly Image[] _slots = new Image[8];
         private readonly Text[] _emptyMarks = new Text[8];
         private readonly Image[] _progress = new Image[8];
@@ -25,6 +26,9 @@ namespace Project.Character.UI
         private readonly Text[] _materialValues = new Text[4];
         private readonly RectTransform[] _materialCells = new RectTransform[4];
         private Text _queueTitle, _duration, _fodder, _emptyItemHint;
+        private Text _fodderStatus;
+        private RectTransform _fodderRoot;
+        private Image _fodderIcon, _fodderFrame;
         private Image _itemPreview;
         private GameObject _picker;
         private Button _claimReady, _chooseRecipe;
@@ -129,8 +133,14 @@ namespace Project.Character.UI
                 28, Ivory, TextAnchor.MiddleLeft, .37f, .55f, .965f, .95f);
             _chooseRecipe = Button(_recipePanel, "ChooseRecipe", "РЕЦЕПТЫ ›", false, .023f, .06f, .345f, .235f);
             _chooseRecipe.onClick.AddListener(() => OpenRecipes());
-            _duration = Text(_recipePanel, "CraftDuration", "", 22, Ivory, TextAnchor.MiddleLeft, .365f, .225f, .97f, .285f);
-            _fodder = Text(_recipePanel, "FodderRequirement", "", 18, Muted, TextAnchor.MiddleLeft, .365f, .287f, .97f, .335f);
+            _duration = Text(_recipePanel, "CraftDuration", "", 20, Ivory, TextAnchor.MiddleLeft, .365f, .221f, .97f, .269f);
+            _fodderRoot = ExpeditionUi.Rect(_recipePanel, "PrerequisiteItem", .37f, .27f, .97f, .382f);
+            _fodderFrame = Plate(_fodderRoot, "PrerequisiteFrame", 0, .025f, .09f, .975f);
+            _fodderIcon = Image(_fodderFrame.transform, "PrerequisiteIcon", Color.white, .08f, .08f, .92f, .92f);
+            _fodderIcon.preserveAspect = true;
+            _fodder = Text(_fodderRoot, "FodderRequirement", "", 21, Ivory, TextAnchor.MiddleLeft, .115f, .45f, 1, 1);
+            _fodderStatus = Text(_fodderRoot, "PrerequisiteStatus", "", 17, Muted, TextAnchor.MiddleLeft, .115f, 0, 1, .47f);
+            _fodderRoot.gameObject.SetActive(false);
             for (var i = 0; i < 4; i++)
             {
                 var cell = ExpeditionUi.Rect(_recipePanel, "Material_" + i, .37f, .34f, .66f, .52f);
@@ -226,21 +236,22 @@ namespace Project.Character.UI
             if (_chooseRecipe != null) _chooseRecipe.interactable = chooseEnabled;
             foreach (var cell in _materialCells) if (cell != null) cell.gameObject.SetActive(false);
             if (_fodder != null) _fodder.text = "";
+            if (_fodderRoot != null) _fodderRoot.gameObject.SetActive(false);
             var details = _recipePanel != null ? _recipePanel.Find("DetailText") : null;
             if (details != null) details.gameObject.SetActive(true);
         }
 
-        public void SetMaterials(MaterialState[] materials, string fodder)
+        public void SetMaterials(MaterialState[] materials, PrerequisiteState prerequisite)
         {
-            var count = Mathf.Min(materials.Length, 4);
+            var count = Mathf.Min(materials?.Length ?? 0, 4);
             for (var i = 0; i < 4; i++)
             {
                 var show = i < count;
                 _materialCells[i].gameObject.SetActive(show);
                 if (!show) continue;
                 var col = i % 2; var row = i / 2;
-                var y0 = count <= 2 ? .345f : row == 0 ? .438f : .337f;
-                var y1 = count <= 2 ? .53f : row == 0 ? .535f : .434f;
+                var y0 = count <= 2 ? .382f : row == 0 ? .462f : .382f;
+                var y1 = count <= 2 ? .54f : row == 0 ? .54f : .46f;
                 Rect(_materialCells[i], .37f + col * .305f, y0, .66f + col * .305f, y1);
                 var material = materials[i];
                 _materialIcons[i].sprite = material.icon;
@@ -248,7 +259,18 @@ namespace Project.Character.UI
                 _materialValues[i].text = material.owned + "/" + material.required;
                 _materialValues[i].color = material.owned >= material.required ? Ivory : new Color32(218, 123, 94, 255);
             }
-            _fodder.text = fodder ?? "";
+            var hasPrerequisite = !string.IsNullOrEmpty(prerequisite.name);
+            _fodderRoot.gameObject.SetActive(hasPrerequisite);
+            if (hasPrerequisite)
+            {
+                _fodderIcon.sprite = prerequisite.icon;
+                _fodderIcon.enabled = prerequisite.icon != null;
+                SetRarityBorder(_fodderFrame.transform, prerequisite.quality);
+                _fodder.text = prerequisite.name;
+                _fodder.color = EquipmentSlotView.QualitySlotColor(prerequisite.quality);
+                _fodderStatus.text = prerequisite.owned ? "Есть · будет поглощён" : "Нет в наличии · требуется для ковки";
+                _fodderStatus.color = prerequisite.owned ? Muted : new Color32(218, 123, 94, 255);
+            }
             var details = _recipePanel.Find("DetailText");
             if (details != null) details.gameObject.SetActive(false);
         }
@@ -261,12 +283,41 @@ namespace Project.Character.UI
             if (row.GetComponent<Button>() == null) return;
             var image = row.GetComponent<Image>();
             if (image != null) { ExpeditionUi.StylePanel(image, selected ? new Color32(66, 87, 77, 255) : Panel); image.raycastTarget = true; }
+            var marker = row.transform.Find("SelectedRecipeMarker")?.GetComponent<Image>();
+            if (marker == null) marker = Image(row.transform, "SelectedRecipeMarker", Amber, .008f, .15f, .015f, .85f);
+            marker.gameObject.SetActive(selected);
             var element = row.GetComponent<LayoutElement>();
-            if (element != null) { element.minHeight = 105; element.preferredHeight = 105; }
+            if (element != null) { element.minHeight = 118; element.preferredHeight = 118; }
             var text = row.transform.Find("Txt")?.GetComponent<Text>();
-            if (text != null) { Rect(text.rectTransform, .035f, .1f, .73f, .94f); StyleText(text, 28, Ivory, TextAnchor.MiddleLeft); }
+            if (text != null) { Rect(text.rectTransform, .15f, .1f, .735f, .94f); StyleText(text, 27, Ivory, TextAnchor.MiddleLeft); }
             var owned = row.transform.Find("OwnedStatus")?.GetComponent<TextMeshProUGUI>();
             if (owned != null) { Rect(owned.rectTransform, .75f, .1f, .975f, .9f); owned.font = ExpeditionTheme.Font; owned.fontSize = 22; owned.enableAutoSizing = true; owned.fontSizeMin = 18; owned.fontSizeMax = 22; }
+        }
+
+        public static void SetRecipeArtwork(GameObject row, Sprite icon, ItemQualityTier quality)
+        {
+            if (row == null) return;
+            SetRarityBorder(row.transform, quality);
+            var frame = row.transform.Find("RecipeIconFrame")?.GetComponent<Image>();
+            if (frame == null) frame = Plate(row.transform, "RecipeIconFrame", .022f, .12f, .125f, .88f);
+            SetRarityBorder(frame.transform, quality);
+            var preview = frame.transform.Find("RecipeResultIcon")?.GetComponent<Image>();
+            if (preview == null) preview = Image(frame.transform, "RecipeResultIcon", Color.white, .07f, .07f, .93f, .93f);
+            preview.sprite = icon;
+            preview.preserveAspect = true;
+            preview.enabled = icon != null;
+        }
+
+        private static void SetRarityBorder(Transform parent, ItemQualityTier quality)
+        {
+            var border = parent.Find("RarityBorder")?.GetComponent<Image>();
+            if (border == null) border = Image(parent, "RarityBorder", Color.white, 0, 0, 1, 1);
+            ExpeditionUi.StylePanel(border, EquipmentSlotView.QualitySlotColor(quality));
+            border.color = EquipmentSlotView.QualitySlotColor(quality);
+            border.fillCenter = false;
+            border.pixelsPerUnitMultiplier = 7;
+            border.raycastTarget = false;
+            border.transform.SetAsLastSibling();
         }
 
         public void SetQueueState(int index, bool occupied, bool ready, float progress = 0f)

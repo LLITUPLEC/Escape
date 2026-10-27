@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-27T15:59:35.740557+00:00",
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "runtime_files": 64,
+  "suite_sha256": "34ef0070474d77f87b285e9acb176980c703d9dc4afdc86c3a8eda66835851e4",
+  "catalog_sha256": "b704eb8519ff12d734d10603c3496da886f2cdee392cd93f825bd5ee5752acc1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f",
+  "scenarios": {
+    "all": {
+      "exit_code": 1,
+      "seconds": 222.3,
+      "checks": 671,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    }
+  }
+}

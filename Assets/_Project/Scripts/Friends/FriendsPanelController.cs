@@ -58,6 +58,8 @@ namespace Project.Friends
         private Coroutine _pendingBadgeIdleCo;
         private bool _incomingBadgeRefreshInFlight;
         private CancellationTokenSource _incomingBadgeCts;
+        private string _incomingAccountScope;
+        public FriendsIncomingInviteState IncomingInvites { get; } = new FriendsIncomingInviteState();
 
         private Coroutine _slideRoutine;
         private Vector2 _sheetShownPos;
@@ -150,19 +152,36 @@ namespace Project.Friends
 
         private void OnEnable()
         {
+            IncomingInvites.Changed += RefreshLegacyIncomingBadge;
+            IncomingInvites.SynchronizeAccount();
+            _incomingAccountScope = IncomingInvites.AccountScope;
             ExpeditionMetaPanels.ApplyFriends(transform);
             TryBindOpenButton();
             EnsurePendingInviteBadge();
             StopPendingBadgeIdle();
             _pendingBadgeIdleCo = StartCoroutine(PendingInviteBadgeIdleLoop());
+            RefreshLegacyIncomingBadge();
         }
 
         private void OnDisable()
         {
+            IncomingInvites.Changed -= RefreshLegacyIncomingBadge;
             StopPendingBadgeIdle();
             _incomingBadgeCts?.Cancel();
             _friendsCts?.Cancel();
             _onlineCts?.Cancel();
+        }
+
+        private void Update()
+        {
+            IncomingInvites.SynchronizeAccount();
+            if (string.Equals(_incomingAccountScope, IncomingInvites.AccountScope, StringComparison.Ordinal)) return;
+            _incomingAccountScope = IncomingInvites.AccountScope;
+            _incomingBadgeCts?.Cancel(); _friendsCts?.Cancel(); _onlineCts?.Cancel();
+            HideAddFriendOverlay(); HideActionPopup(); HideRemoveConfirm(); _actionTarget = null;
+            ClearFriendRows(); ClearOnlineRows();
+            _ = RefreshIncomingInviteBadgeAsync();
+            if (_visible && _currentTab == FriendsTab.Friends) _ = RefreshFriendsAsync();
         }
 
         private void OnDestroy()
@@ -866,6 +885,9 @@ namespace Project.Friends
             _friendsCts = new CancellationTokenSource();
             var request = _friendsCts;
             var ct = _friendsCts.Token;
+            IncomingInvites.SynchronizeAccount();
+            var scope = IncomingInvites.AccountScope;
+            var generation = IncomingInvites.Generation;
 
             SetFriendsStatus("Загрузка...");
             ExpeditionMetaPanels.SetFriendsEmpty(transform, false, false);
@@ -878,7 +900,7 @@ namespace Project.Friends
 
                 await MainThreadDispatcher.RunAsync(() =>
                 {
-                    if (ct.IsCancellationRequested)
+                    if (ct.IsCancellationRequested || !IncomingInvites.IsCurrent(scope, generation))
                         return;
                     if (!result.Ok)
                     {
@@ -890,7 +912,7 @@ namespace Project.Friends
                     ApplyFriends(result.Friends);
                     SetFriendsStatus(string.Empty);
                     ExpeditionMetaPanels.SetFriendsEmpty(transform, false, result.Friends.Length == 0);
-                    ApplyIncomingInviteBadge(CountIncomingInList(result.Friends));
+                    IncomingInvites.Publish(scope, generation, FriendsIncomingInviteState.CountIncoming(result.Friends));
                 });
             }
             catch (OperationCanceledException)
@@ -1121,12 +1143,16 @@ namespace Project.Friends
 
         private async System.Threading.Tasks.Task AcceptFriendAsync(string userId)
         {
+            IncomingInvites.SynchronizeAccount();
+            var scope = IncomingInvites.AccountScope;
             SetFriendsStatus("Принятие...");
             try
             {
                 var result = await FriendsService.AcceptFriendAsync(userId, CancellationToken.None);
                 await MainThreadDispatcher.RunAsync(() =>
                 {
+                    IncomingInvites.SynchronizeAccount();
+                    if (!string.Equals(scope, IncomingInvites.AccountScope, StringComparison.Ordinal)) return;
                     if (!result.Ok)
                     {
                         SetFriendsStatus(FriendsService.DescribeError(result.Err));
@@ -1134,6 +1160,7 @@ namespace Project.Friends
                     }
 
                     SetFriendsStatus("Заявка принята");
+                    InvalidateIncomingReads();
                     _ = RefreshFriendsAsync();
                     _ = RefreshIncomingInviteBadgeAsync();
                 });
@@ -1147,12 +1174,16 @@ namespace Project.Friends
 
         private async System.Threading.Tasks.Task DeleteFriendAsync(string userId, string username)
         {
+            IncomingInvites.SynchronizeAccount();
+            var scope = IncomingInvites.AccountScope;
             SetFriendsStatus("Удаление...");
             try
             {
                 var result = await FriendsService.DeleteFriendAsync(userId, username, CancellationToken.None);
                 await MainThreadDispatcher.RunAsync(() =>
                 {
+                    IncomingInvites.SynchronizeAccount();
+                    if (!string.Equals(scope, IncomingInvites.AccountScope, StringComparison.Ordinal)) return;
                     if (!result.Ok)
                     {
                         SetFriendsStatus(FriendsService.DescribeError(result.Err));
@@ -1160,6 +1191,7 @@ namespace Project.Friends
                     }
 
                     SetFriendsStatus(string.Empty);
+                    InvalidateIncomingReads();
                     _ = RefreshFriendsAsync();
                     _ = RefreshIncomingInviteBadgeAsync();
                 });
@@ -1212,7 +1244,7 @@ namespace Project.Friends
             var target = _actionTarget;
             var name = string.IsNullOrWhiteSpace(target?.Username) ? "игроку" : target.Username;
             HideActionPopup();
-            if (kind == "race")
+            if (kind == "race" || kind == "duel")
             {
                 if (target == null || string.IsNullOrWhiteSpace(target.UserId))
                 {
@@ -1220,22 +1252,20 @@ namespace Project.Friends
                     return;
                 }
 
-                _ = SendRaceInviteAsync(target.UserId, name);
+                _ = SendMatchInviteAsync(target.UserId, name, kind);
                 return;
             }
 
-            var message = kind == "tournament"
-                ? $"Приглашение в группу турнира для «{name}» скоро будет доступно"
-                : $"Предложение дуэли для «{name}» скоро будет доступно";
-            SetFriendsStatus(message);
+            SetFriendsStatus($"Приглашение в группу турнира для «{name}» скоро будет доступно");
         }
 
-        private async System.Threading.Tasks.Task SendRaceInviteAsync(string userId, string username)
+        private async System.Threading.Tasks.Task SendMatchInviteAsync(string userId, string username, string kind)
         {
             try
             {
-                SetFriendsStatus($"Отправляем предложение Спуска «{username}»…");
-                var result = await FriendsService.InviteRaceAsync(userId, CancellationToken.None);
+                var title = kind == "duel" ? "дуэли" : "Спуска";
+                SetFriendsStatus($"Отправляем предложение {title} «{username}»…");
+                var result = await FriendsService.InviteRaceAsync(userId, CancellationToken.None, kind);
                 await MainThreadDispatcher.RunAsync(() =>
                 {
                     if (!result.Ok)
@@ -1245,7 +1275,7 @@ namespace Project.Friends
                     }
 
                     var shown = string.IsNullOrWhiteSpace(result.TargetUsername) ? username : result.TargetUsername;
-                    SetFriendsStatus($"Предложение Спуска отправлено «{shown}»");
+                    SetFriendsStatus($"Предложение {title} отправлено «{shown}»");
                 });
             }
             catch (System.OperationCanceledException)
@@ -1342,8 +1372,9 @@ namespace Project.Friends
             _pendingBadgeText = tmp;
         }
 
-        private void ApplyIncomingInviteBadge(int count)
+        private void RefreshLegacyIncomingBadge()
         {
+            var count = IncomingInvites.Count;
             EnsurePendingInviteBadge();
             if (_pendingBadgeText != null)
                 _pendingBadgeText.text = count > 99 ? "99+" : count.ToString();
@@ -1351,27 +1382,25 @@ namespace Project.Friends
                 _pendingBadgeCanvasGroup.alpha = count > 0 ? 1f : 0f;
         }
 
-        private static int CountIncomingInList(FriendListEntry[] friends)
+        private void InvalidateIncomingReads()
         {
-            if (friends == null) return 0;
-            var n = 0;
-            foreach (var f in friends)
-            {
-                if (f != null && f.State == FriendRelationState.InviteReceived)
-                    n++;
-            }
-
-            return n;
+            IncomingInvites.Invalidate();
+            _incomingBadgeCts?.Cancel(); _friendsCts?.Cancel();
         }
 
         private async System.Threading.Tasks.Task RefreshIncomingInviteBadgeAsync()
         {
-            if (_incomingBadgeRefreshInFlight)
+            if (_incomingBadgeRefreshInFlight && _incomingBadgeCts != null && !_incomingBadgeCts.IsCancellationRequested)
                 return;
+            IncomingInvites.SynchronizeAccount();
+            var scope = IncomingInvites.AccountScope;
+            if (string.IsNullOrEmpty(scope)) return;
+            var generation = IncomingInvites.Generation;
             _incomingBadgeRefreshInFlight = true;
             _incomingBadgeCts?.Cancel();
             _incomingBadgeCts?.Dispose();
             _incomingBadgeCts = new CancellationTokenSource();
+            var request = _incomingBadgeCts;
             var ct = _incomingBadgeCts.Token;
 
             try
@@ -1381,8 +1410,8 @@ namespace Project.Friends
                     return;
                 await MainThreadDispatcher.RunAsync(() =>
                 {
-                    if (!ct.IsCancellationRequested)
-                        ApplyIncomingInviteBadge(count);
+                    if (!ct.IsCancellationRequested && count >= 0)
+                        IncomingInvites.Publish(scope, generation, count);
                 });
             }
             catch (OperationCanceledException)
@@ -1395,7 +1424,7 @@ namespace Project.Friends
             }
             finally
             {
-                _incomingBadgeRefreshInFlight = false;
+                if (ReferenceEquals(_incomingBadgeCts, request)) _incomingBadgeRefreshInFlight = false;
             }
         }
 

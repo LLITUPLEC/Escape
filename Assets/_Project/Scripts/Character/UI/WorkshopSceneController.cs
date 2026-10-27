@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Character;
+using Project.Audio;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -60,6 +61,7 @@ namespace Project.Character.UI
         private int _lastTimerSecond = -1;
         private int _lastSelectedDetailState = -1;
         private bool _craftRequestInFlight;
+        private readonly ExpeditionCraftReadyTracker _craftReadyAudio = new ExpeditionCraftReadyTracker();
 
         private const float WorkshopSlotSquareSize = 200f;
         private const float WorkshopColumnWidth = 220f;
@@ -656,7 +658,7 @@ namespace Project.Character.UI
                 return;
             var slot = _selectedSlot;
             var output = _selectedOutputDefId;
-            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftStartAsync(slot, output, ct));
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftStartAsync(slot, output, ct), ExpeditionCue.CraftStart);
         }
 
         private async Task OnClaimClicked()
@@ -670,15 +672,15 @@ namespace Project.Character.UI
             if (_craftRequestInFlight || _profile == null || !_profile.ok || _selectedSlot < 0) return;
             if (WorkshopState(_selectedSlot) != WorkshopSlotState.Busy) return;
             var slot = _selectedSlot;
-            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftRushAsync(slot, ct));
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftRushAsync(slot, ct), ExpeditionCue.CraftStart);
         }
 
         private async Task ClaimAtSlot(int slotIndex)
         {
-            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftClaimAsync(slotIndex, ct));
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftClaimAsync(slotIndex, ct), ExpeditionCue.RewardClaim);
         }
 
-        private async Task RunCraftRequestAsync(Func<CancellationToken, Task<CharacterGetRpcResponse>> request)
+        private async Task RunCraftRequestAsync(Func<CancellationToken, Task<CharacterGetRpcResponse>> request, ExpeditionCue successCue)
         {
             if (_craftRequestInFlight) return;
             _craftRequestInFlight = true;
@@ -688,15 +690,19 @@ namespace Project.Character.UI
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
             var ct = _cts.Token;
+            var craftConfirmed = false;
             try
             {
                 var resp = await request(ct).ConfigureAwait(true);
                 if (this == null || ct.IsCancellationRequested) return;
                 if (resp == null || !resp.ok)
                 {
+                    ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                     if (hintText != null) hintText.text = "Ошибка: " + (resp == null ? "нет ответа от мастерской" : ErrToRu(resp.err));
                     return;
                 }
+                craftConfirmed = true;
+                ExpeditionAudio.Play(successCue);
                 _profile = resp;
                 ApplyProfile(resp);
             }
@@ -705,6 +711,7 @@ namespace Project.Character.UI
             {
                 if (this == null || ct.IsCancellationRequested) return;
                 if (hintText != null) hintText.text = "Связь с мастерской прервана. Попробуйте ещё раз.";
+                if (!craftConfirmed) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 Debug.LogWarning("[Workshop] Craft request failed: " + e.Message);
             }
             finally
@@ -724,11 +731,13 @@ namespace Project.Character.UI
 
             foreach (var row in _recipeRows)
             {
-                if (row != null) Destroy(row);
+                if (row == null) continue;
+                row.SetActive(false);
+                if (Application.isPlaying) Destroy(row); else DestroyImmediate(row);
             }
             _recipeRows.Clear();
 
-            string firstLearnedId = null;
+            var learnedRecipes = new List<ItemDefinition>();
             foreach (var def in itemCatalog.EnumerateDefinitions())
             {
                 if (def == null || def.Kind != ItemKind.Equipment) continue;
@@ -736,6 +745,19 @@ namespace Project.Character.UI
                 if (string.IsNullOrEmpty(def.CraftRecipeId)) continue;
                 if (!IsRecipeLearnedForCraft(def.CraftRecipeId)) continue;
                 if (def.Tier < 1 || def.Tier > 3) continue;
+                learnedRecipes.Add(def);
+            }
+            learnedRecipes.Sort((left, right) =>
+            {
+                var quality = right.Quality.CompareTo(left.Quality);
+                if (quality != 0) return quality;
+                var tier = right.Tier.CompareTo(left.Tier);
+                return tier != 0 ? tier : StringComparer.Ordinal.Compare(left.ItemId, right.ItemId);
+            });
+
+            string firstLearnedId = null;
+            foreach (var def in learnedRecipes)
+            {
 
                 if (firstLearnedId == null)
                     firstLearnedId = def.ItemId;
@@ -744,13 +766,14 @@ namespace Project.Character.UI
                 var rt = line.GetComponent<RectTransform>();
                 rt.SetParent(_recipeContent, false);
                 line.GetComponent<Image>().color = RecipeRowQualityTint(def.Quality);
+                ExpeditionWorkshopLayout.SetRecipeArtwork(line, itemCatalog.GetDisplayIcon(def), def.Quality);
                 var le = line.AddComponent<LayoutElement>();
                 le.minHeight = 48f;
                 var bt = line.GetComponent<Button>();
                 var title = string.IsNullOrEmpty(def.DisplayName) ? def.ItemId : def.DisplayName;
                 var lineTitle = title + " (T" + def.Tier + ", " + WorkshopCraftRules.QualityRu(def.Quality) + ")";
                 CreateUiText("Txt", line.transform, lineTitle, 30, TextAnchor.MiddleLeft,
-                    new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(10f, 3f), new Vector2(-270f, -3f));
+                    new Vector2(.15f, 0f), new Vector2(1f, 1f), new Vector2(10f, 3f), new Vector2(-270f, -3f));
                 AddRecipeOwnedStatusLabel(line.transform, def);
                 var idCopy = def.ItemId;
                 bt.onClick.AddListener(() =>
@@ -1028,8 +1051,9 @@ namespace Project.Character.UI
                     materials.Add(new ExpeditionWorkshopLayout.MaterialState { icon = itemCatalog.GetDisplayIcon(itemCatalog.Get("tesseract")),
                         name = "Тессеракт", owned = tess, required = needTess });
                 var fodderDef = FindFodderDefinition(od);
-                var fodderText = fodderDef != null ? (fodderOk ? "✓ " : "Нужен: ") + fodderDef.DisplayName : "";
-                _expeditionLayout.SetMaterials(materials.ToArray(), fodderText);
+                var prerequisite = fodderDef != null ? new ExpeditionWorkshopLayout.PrerequisiteState
+                { icon = itemCatalog.GetDisplayIcon(fodderDef), name = fodderDef.DisplayName, quality = fodderDef.Quality, owned = fodderOk } : default;
+                _expeditionLayout.SetMaterials(materials.ToArray(), prerequisite);
             }
         }
 
@@ -1453,12 +1477,14 @@ namespace Project.Character.UI
         {
             if (_slotTimers == null || _profile == null || !_profile.ok) return;
             if (_expeditionLayout == null) EnsureCraftSlotBusyGlowSprite();
+            var becameReady = false;
 
             for (var i = 0; i < 8; i++)
             {
                 var wOut = GetWorkshopOut(i);
                 var wEnd = GetWorkshopEnd(i);
                 var crafting = !string.IsNullOrEmpty(wOut);
+                if (_craftReadyAudio.Observe(i, crafting, crafting && wEnd <= NowUnix())) becameReady = true;
                 ItemDefinition outDef = null;
                 if (crafting && itemCatalog != null)
                     outDef = itemCatalog.Get(wOut);
@@ -1510,6 +1536,7 @@ namespace Project.Character.UI
                     _slotTimers[i].text = "Готово!";
             }
 
+            if (becameReady) ExpeditionAudio.Play(ExpeditionCue.CraftReady);
             // A completed timer must reveal Claim immediately, without requiring another server refresh.
             if (_expeditionLayout != null && _selectedSlot >= 0 && _lastSelectedDetailState != (int)WorkshopState(_selectedSlot))
                 UpdateDetailPanel();

@@ -81,7 +81,7 @@
     },
     "mine_3": {
       "id": "mine_3",
-      "name": "Соляной клещ",
+      "name": "Гнилой свищ",
       "floor": 3,
       "is_boss": false,
       "hp_bonus": 4940,
@@ -120,7 +120,7 @@
     },
     "mine_4": {
       "id": "mine_4",
-      "name": "Корунд",
+      "name": "Крушило",
       "floor": 4,
       "is_boss": true,
       "hp_bonus": 10030,
@@ -159,7 +159,7 @@
     },
     "mine_5": {
       "id": "mine_5",
-      "name": "Шлаковый червь",
+      "name": "Сухой грохот",
       "floor": 5,
       "is_boss": false,
       "hp_bonus": 5646,
@@ -198,7 +198,7 @@
     },
     "mine_6": {
       "id": "mine_6",
-      "name": "Кремень",
+      "name": "Мёртвый плывун",
       "floor": 6,
       "is_boss": false,
       "hp_bonus": 5999,
@@ -237,7 +237,7 @@
     },
     "mine_7": {
       "id": "mine_7",
-      "name": "Пыльный коготь",
+      "name": "Чёрная копоть",
       "floor": 7,
       "is_boss": false,
       "hp_bonus": 6351,
@@ -276,7 +276,7 @@
     },
     "mine_8": {
       "id": "mine_8",
-      "name": "Сталеплав",
+      "name": "Забой",
       "floor": 8,
       "is_boss": true,
       "hp_bonus": 12852,
@@ -315,7 +315,7 @@
     },
     "mine_9": {
       "id": "mine_9",
-      "name": "Липкий ломун",
+      "name": "Слепой бурав",
       "floor": 9,
       "is_boss": false,
       "hp_bonus": 7057,
@@ -354,7 +354,7 @@
     },
     "mine_10": {
       "id": "mine_10",
-      "name": "Тихий шорох",
+      "name": "Липкий ломун",
       "floor": 10,
       "is_boss": false,
       "hp_bonus": 7410,

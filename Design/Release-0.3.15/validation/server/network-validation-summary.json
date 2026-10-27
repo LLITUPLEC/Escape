@@ -1,0 +1,29 @@
+{
+  "utc": "2026-10-27T16:08:40.751371+00:00",
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "runtime_files": 64,
+  "suite_sha256": "db2c7e18df7e2aa8c47892bd6122293c32156c516ea3d01cc9dfef32358b2b02",
+  "catalog_sha256": "b704eb8519ff12d734d10603c3496da886f2cdee392cd93f825bd5ee5752acc1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f",
+  "scenarios": {
+    "all": {
+      "exit_code": 0,
+      "seconds": 687.2,
+      "checks": 713,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    },
+    "recovery": {
+      "exit_code": 0,
+      "seconds": 71.9,
+      "checks": 64,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    }
+  },
+  "success": true,
+  "production_runtime_after_sha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f"
+}

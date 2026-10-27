@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-27T05:20:01.866964+00:00",
+  "assertions": 39,
+  "executed": "Production ShopPurchaseConfirmation.cs compiled and run in isolated .NET6console; DTOs and Valid predicate copied verbatim from ShopService.cs. No Unity/account/network actions.",
+  "coverage": [
+    "All3 currencies: prepare/cancel emits no dispatch",
+    "All3 currencies: onlyfirst approval dispatches; repeated approval blocked",
+    "All3 currencies: catalog and pricechanges rejected inclRUB",
+    "All3 currencies: scope/epoch/SessionRef/locked account fences",
+    "Uncertain original requestID+seq+price retained aftercatalogchange",
+    "Otherpending request cannotbe replaced",
+    "Display DTO mutation cannotalter protected terms",
+    "Changeditemquantities reject oldapproval",
+    "Exact Russian RUBstub string"
+  ],
+  "production_policy_sha256": "f49d38df48f20e05090a4f42a46dc1230951758842548e446a08b31a0ce14359",
+  "harness": ".utmp/shop-0314-policy-tests/Program.cs",
+  "harness_sha256": "7f607779173bcf4f249d81ef0586d3e960fb830e6feef386125de567ae2f6b46"
+}

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: mine_3
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_3
-  displayName: "\u0413\u043D\u0438\u043B\u043E\u0439 \u0441\u0432\u0438\u0449"
+  displayName: "Гнилой свищ"
   floor: 3
-  icon: {fileID: 21300000, guid: 16be56c26f0bc9e49b03efd1da9285a2, type: 3}
+  icon: {fileID: 21300000, guid: 908f54c19efd4a2e9bdd2e0b1dca9620, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

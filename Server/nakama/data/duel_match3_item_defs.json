@@ -947,7 +947,46 @@
       "recipe_slot": "Feet",
       "recipe_target_slot": "Feet",
       "sale_price": 100
+    },
+    "elixir_assault": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_assault"
+    },
+    "elixir_stone": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_stone"
+    },
+    "elixir_gambit": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_gambit"
+    },
+    "scroll_pve_bounty": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "scroll_pve_bounty"
+    },
+    "global_boss_teleport": {
+      "tier": 1,
+      "sale_price": 0,
+      "kind": "material",
+      "max_stack": 99,
+      "quality": "legendary"
     }
   },
-  "version": 3
+  "version": 5
 }

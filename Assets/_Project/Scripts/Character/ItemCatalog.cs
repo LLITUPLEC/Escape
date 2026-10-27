@@ -7,7 +7,7 @@ namespace Project.Character
     public sealed class ItemCatalog : ScriptableObject
     {
         [Header("Fallback")]
-        [Tooltip("Если у ItemDefinition нет своей иконки (синие/фиолет/легенда до отдельных артов).")]
+        [Tooltip("Нейтральный ящик припасов для новых определений, у которых ещё нет своей иконки.")]
         [SerializeField] private Sprite missingItemIcon;
 
         [SerializeField] private List<ItemDefinition> items = new();

@@ -83,7 +83,7 @@ namespace Project.Editor
             EditorApplication.update -= Validate;
             EditorApplication.update += Validate;
             Write("running", null, null);
-            return "Local production-renderer fixture started; poll .utmp/expedition/match-states-qa.json. No matchmaking/RPC/account actions.";
+            return "Local production-renderer fixture started; poll .cache/qa/bridge/match-states-qa.json. No matchmaking/RPC/account actions.";
         }
 
         private static void BuildRows(string state)
@@ -190,7 +190,7 @@ namespace Project.Editor
                     Require(_backCalls == before + 1, "repeated theme application retains exactly one continue callback");
                     InsideSafe(_result.backButton.transform as RectTransform);
                 }
-                var screenshot = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition/screenshots/match-state-" + _state + ".png"));
+                var screenshot = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge/screenshots/match-state-" + _state + ".png"));
                 Directory.CreateDirectory(Path.GetDirectoryName(screenshot));
                 ScreenCapture.CaptureScreenshot(screenshot);
                 Write("passed", null, screenshot);
@@ -211,7 +211,7 @@ namespace Project.Editor
             var report = new Report { state = status, fixture = _state, completed = status != "running", passed = status == "passed",
                 error = error, screenshot = screenshot, frame = Time.frameCount, cancelCallbacks = _cancelCalls,
                 backCallbacks = _backCalls, rpcOrAccountActions = false, checks = Checks.ToArray() };
-            var path = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition/match-states-qa.json"));
+            var path = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge/match-states-qa.json"));
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, JsonUtility.ToJson(report, true));
         }

@@ -1,0 +1,9 @@
+{
+  "status": "explicit_human_approved_isolated_validation_passed",
+  "human_approved": true,
+  "approval_text": "Да, разрешаю передачу, проверку и обновление",
+  "scope": "Owned Escape runtime and isolated tests/static catalogs on the existing dedicated game host; no credentials, git or player profiles",
+  "runtime_candidate_sha256": "b743c7f047ecf4d90708e9e5088eb5a9b74f42e763ad938ea9bdda185455bb4f",
+  "remote_stage": "/opt/escape/release0314-validation-7cddaebfd211",
+  "production_deployment_performed_by_agent": false
+}

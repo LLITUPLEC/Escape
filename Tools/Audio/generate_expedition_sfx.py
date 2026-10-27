@@ -16,7 +16,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "Assets/_Project/Audio/SFX/Match3"
-REPORT = ROOT / "Design/Release-0.3.1/validation"
+REPORT = ROOT / ".cache/qa/audio"
 RATE = 44100
 RNG = np.random.default_rng(3012026)
 CRIT_HASH = "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341"

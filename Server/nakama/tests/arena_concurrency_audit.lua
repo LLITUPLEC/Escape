@@ -1,5 +1,10 @@
 -- Run against the real arena module with Lua 5.4 (yield through pcall).
 -- Storage implements Nakama batch atomicity and exact create/version checks.
+package.path = "Server/nakama/modules/?.lua;" .. package.path
+local Inventory = require("duel_match3_inventory")
+local defs = {ingot_green={max_stack=999},ingot_blue={max_stack=999},ingot_purple={max_stack=999},
+  tesseract={max_stack=99},junk={max_stack=1},recipe_drop_t1_green_Helmet={kind="recipe",max_stack=1},
+  recipe_drop_t1_green_Chest={kind="recipe",max_stack=1}}
 local function copy(v)
   if type(v) ~= "table" then return v end
   local r = {}
@@ -17,7 +22,7 @@ os.time = function() return clock end
 local function key(o) return o.collection .. "/" .. o.key .. "/" .. (o.user_id or system) end
 local function put(collection, k, uid, value)
   serial = serial + 1
-  store[collection .. "/" .. k .. "/" .. (uid or system)] = { value = copy(value), version = "v" .. serial }
+  store[collection .. "/" .. k .. "/" .. (uid or system)] = { collection=collection,key=k,user_id=uid or system,value = copy(value), version = "v" .. serial }
 end
 local function get(collection, k, uid)
   local row = store[collection .. "/" .. k .. "/" .. (uid or system)]
@@ -67,10 +72,14 @@ local nk = {
 }
 package.preload.nakama = function() return nk end
 package.preload["modules.duel_match3_config"] = function() return cfg end
+local function avatar(uid) return uid == "user-1" and "phoenix-female" or "voidranger-male" end
+package.preload["modules.duel_public_appearance"] = function() return {resolve=function(uid) return {avatar_id=avatar(uid)} end} end
 package.preload["modules.duel_fake_online"] = function() return {
   arena_eligible_bot_names = function() return { "bot-a", "bot-b", "bot-c" } end,
   is_online_pool_name = function() return false end,
 } end
+local Guidance=require("duel_player_guidance")
+Guidance.configure({get_defs=function()return defs end})
 local factory = assert(loadfile("Server/nakama/modules/arena_tournament.lua"))()
 local function instance()
   local api
@@ -106,11 +115,17 @@ local function instance()
     end,
     ensure_sheet_inventory_counts = function(sheet) sheet.inventory_counts = sheet.inventory_counts or {} end,
     inventory_remove_def_total = function(sheet, def, n)
-      local have = sheet.inventory_counts[def] or 0
+      Inventory.normalize(sheet)
+      local have = 0
+      for i,id in ipairs(sheet.inventory) do if id == def then have=have+sheet.inventory_counts[i] end end
       if have < n then return false end
-      sheet.inventory_counts[def] = have - n
+      for i,id in ipairs(sheet.inventory) do if id == def then
+        local used=math.min(n,sheet.inventory_counts[i]); n=n-used; sheet.inventory_counts[i]=sheet.inventory_counts[i]-used
+        if sheet.inventory_counts[i] == 0 then sheet.inventory[i]="" end
+      end end
       return true
     end,
+    get_item_defs = function() return defs end,
     inventory_try_add = function(sheet, def, n)
       if sheet.full then return false, "inventory_full" end
       sheet.inventory_counts[def] = (sheet.inventory_counts[def] or 0) + n
@@ -134,6 +149,10 @@ end
 local function reset(round)
   store, serial, wallet_writes, fail_next, before_write, barrier, creates, api_for_creation = {}, 0, 0, nil, nil, false, 0, nil
   clock = 1000
+  -- All existing tournament fixtures represent eligible accounts. Gate boundary
+  -- tests below replace these server rows explicitly, without a client claim.
+  for _,uid in ipairs({"alice","smith","new","poor","old"})do put(cfg.STATS_COLLECTION,cfg.STATS_KEY,uid,{modes={mine={wins=10}}})end
+  for i=1,8 do for _,prefix in ipairs({"user-","player-"})do put(cfg.STATS_COLLECTION,cfg.STATS_KEY,prefix..i,{modes={mine={wins=10}}})end end
   if round then
     put("arena_tournament", "audit", system, fixture(round))
     for i = 1, 8 do put("arena_user_tid", "tid", "user-" .. i, { tid = "audit", kind = "gold" }) end
@@ -193,6 +212,8 @@ local hp_poll = hp_api.duel_arena_queue_poll({ user_id = "user-1" }, { arena_kin
 local finished = hp_poll.tournament.qf[1]
 assert(finished.status == "done" and finished.hp_a == 730 and finished.hp_max_a == 1000 and finished.hp_known_a)
 assert(finished.hp_b == 250 and finished.hp_max_b == 700 and finished.hp_known_b)
+assert(finished.avatar_a == "phoenix-female" and finished.avatar_b == "voidranger-male")
+pass("legacy active brackets resolve server avatar identity for current and completed participants")
 pass("finished waiting bracket preserves authoritative HP and maximum, including a living forfeiter")
 
 reset("qf")
@@ -321,17 +342,20 @@ assert(a.duel_arena_queue_leave({ user_id = "alice" }).ok and gold("alice") == 5
 pass("queue debit/refund outage cannot lose an entry or double refund")
 
 reset() a = instance()
-put(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith", { inventory_counts = { ingot_green = 100 } })
+put(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith", { inventory={"ingot_green"},inventory_counts={100} })
 assert(a.duel_arena_queue_join({ user_id = "smith" }, { arena_kind = "smith", bet_tier = "green" }).ok)
 local smith = get(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith")
-assert(smith.inventory_counts.ingot_green == 50)
-smith = copy(smith) smith.full = true put(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith", smith)
-assert(a.duel_arena_queue_leave({ user_id = "smith" }).err == "inventory_full")
-assert(get("arena_queue", "state").users.smith and get(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith").inventory_counts.ingot_green == 50)
-smith.full = false put(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith", smith)
+assert(smith.inventory_counts[1] == 90)
+for i=1,25 do smith.inventory[i],smith.inventory_counts[i]="junk",1 end
+put(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith", smith)
 assert(a.duel_arena_queue_leave({ user_id = "smith" }).ok)
-assert(get(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith").inventory_counts.ingot_green == 100)
-pass("smith refund needs inventory space and preserves paid entry until successful refund")
+smith=get(cfg.CHARACTER_SHEET_COLLECTION, "sheet", "smith")
+assert(not get("arena_queue", "state").users.smith and smith.inventory_pending_loot[1].amount == 10)
+assert(not a.duel_arena_queue_leave({user_id="smith"}).ok and smith.inventory_pending_loot[1].amount == 10)
+smith.inventory[1],smith.inventory_counts[1]="",0
+Inventory.drain(smith,defs)
+assert(smith.inventory[1] == "ingot_green" and smith.inventory_counts[1] == 10 and #smith.inventory_pending_loot == 0)
+pass("smith full-inventory cancellation atomically queues exact ten-ingot refund once and later drains")
 
 reset()
 local clients = {}
@@ -358,6 +382,7 @@ local tid = registry.users["player-1"].tid
 for _, pr in ipairs(get("arena_tournament", tid).qf) do
   assert(pr.hp_a == 0 and pr.hp_b == 0 and pr.hp_max_a == 0 and pr.hp_max_b == 0)
   assert(pr.hp_known_a == false and pr.hp_known_b == false)
+  assert(pr.avatar_a == avatar(pr.uid_a) and pr.avatar_b == avatar(pr.uid_b))
 end
 pass("new bracket never invents full HP before authoritative fight stats exist")
 for i = 1, 8 do
@@ -397,6 +422,7 @@ for _, rk in ipairs({ "qf", "sf", "final" }) do
       local row = saved[old_round][index]
       assert(row.uid_a == prior.uid_a and row.uid_b == prior.uid_b and row.winner_uid == prior.winner_uid)
       assert(row.display_a == prior.display_a and row.display_b == prior.display_b and row.display_a ~= "" and row.display_b ~= "")
+      assert(row.avatar_a == avatar(row.uid_a) and row.avatar_b == avatar(row.uid_b))
       assert(row.status == "done" and row.hp_known_a and row.hp_known_b)
       assert(row.hp_a == 730 - index and row.hp_max_a == 1000 and row.hp_b == 250 - index and row.hp_max_b == 700)
     end
@@ -409,6 +435,7 @@ for _, rk in ipairs({ "qf", "sf", "final" }) do
         local row = polled[old_round][index]
         assert(row.uid_a == prior.uid_a and row.uid_b == prior.uid_b and row.winner_uid == prior.winner_uid)
         assert(row.display_a == prior.display_a and row.display_b == prior.display_b)
+        assert(row.avatar_a == avatar(row.uid_a) and row.avatar_b == avatar(row.uid_b))
         assert(row.hp_known_a and row.hp_known_b and row.hp_a == prior.hp_a and row.hp_b == prior.hp_b)
       end
     end
@@ -421,5 +448,188 @@ assert(gold(last_winner) == 7400 and creates == 7)
 assert(next(get("arena_queue", "state").users) == nil)
 pass("full three-round tournament reaches one prize and clears every active membership")
 
+-- A losing last human still earned forecast achievement progress for every
+-- completed other pair. Terminal abort must settle those results exactly once.
+do
+  local function last_human_fixture(partial)
+    betting()
+    local api = instance()
+    bet(api, "user-1", {slot=2,side="a"})
+    bet(api, "user-1", {slot=3,side="b"})
+    bet(api, "user-1", {slot=4,side="a"})
+    local tour = get("arena_tournament", "audit")
+    tour.phase = "qf"
+    for uid, part in pairs(tour.parts) do part.bot = uid ~= "user-1" end
+    for slot=2,4 do
+      local pair = tour.qf[slot]
+      pair.status, pair.winner_uid, pair.match_id = "done", pair.uid_a, ""
+    end
+    if partial then tour.qf[4].status, tour.qf[4].winner_uid = "pending", "" end
+    return api
+  end
+  local api = last_human_fixture(false)
+  api.on_match_finished(state("qf",1), "user-2")
+  api.on_match_finished(state("qf",1), "user-2")
+  assert(get("arena_tournament","audit").phase == "done")
+  assert(ach("user-1","slaughter.arena_bets_won") == 2 and ach("user-1","slaughter.arena_bets_lost") == 1)
+  assert(wallet_writes == 0)
+  pass("last-human elimination settles completed forecasts once without a prize")
+
+  api = last_human_fixture(false)
+  fail_next = "injected terminal settlement outage"
+  assert(not pcall(api.on_match_finished, state("qf",1), "user-2"))
+  assert(ach("user-1","slaughter.arena_bets_won") == 0 and get("arena_tournament","audit").qf[1].status == "fighting")
+  api.on_match_finished(state("qf",1), "user-2")
+  assert(ach("user-1","slaughter.arena_bets_won") == 2 and ach("user-1","slaughter.arena_bets_lost") == 1)
+  pass("terminal forecast outage rolls back result and counters together; retry recovers")
+
+  api = last_human_fixture(true)
+  api.on_match_finished(state("qf",1), "user-2")
+  assert(get("arena_tournament","audit").phase == "qf")
+  assert(api.duel_arena_queue_poll({user_id="user-1"},{arena_kind="gold",bet_tier="600"}).ok)
+  assert(get("arena_tournament","audit").phase == "done")
+  assert(ach("user-1","slaughter.arena_bets_won") == 1 and ach("user-1","slaughter.arena_bets_lost") == 1)
+  assert(wallet_writes == 0)
+  pass("terminal polling settles known outcomes and never invents an unfinished forecast result")
+end
+
+do
+  reset()
+  put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","old",{inventory={},inventory_counts={}})
+  put("arena_queue","state",system,{queues={["smith:green"]={kind="smith",bet="green",entries={{uid="old",bot=false,display="old"}},next_bot_at=99999}},users={old={kind="smith",bet="green"}}})
+  local api=instance()
+  local oldpoll=api.duel_arena_queue_poll({user_id="old"},{arena_kind="smith",bet_tier="green"})
+  assert(oldpoll.rules_version == 1 and oldpoll.queue_entry_cost.amount == 50 and oldpoll.smith_offers[1].champion_ingots == 0)
+  put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","new",{inventory={"ingot_green"},inventory_counts={100}})
+  assert(api.duel_arena_queue_join({user_id="new"},{arena_kind="smith",bet_tier="green",entry_amount=1,rules_version=1}).ok)
+  local registry=get("arena_queue","state")
+  assert(#registry.queues["smith:green"].entries == 1 and #registry.queues["smith:green:v2"].entries == 1)
+  assert(get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","new").inventory_counts[1] == 90)
+  assert(api.duel_arena_queue_leave({user_id="old"}).ok)
+  assert(get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","old").inventory_counts[1] == 50)
+  pass("legacy fifty-ingot queue is isolated, quotes old rules, refunds fifty; forged new price/version is ignored")
+
+  for _,row in ipairs({{"green",10},{"blue",15},{"purple",20}}) do
+    reset(); api=instance()
+    local id,n=row[1],row[2]
+    put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","poor",{inventory={"ingot_"..id},inventory_counts={n-1}})
+    local denied=api.duel_arena_queue_join({user_id="poor"},{arena_kind="smith",bet_tier=id})
+    assert(not denied.ok and denied.required == n and not get("arena_queue","state"))
+  end
+  pass("all new tier debits enforce ten/fifteen/twenty available ingots without consuming pending loot")
+
+  local function smith_final(full, legacy)
+    reset("final")
+    local T=get("arena_tournament","audit"); T.kind,T.bet_tier="smith","green"
+    for uid,p in pairs(T.parts) do
+      if not legacy then p.entry_cost={version=2,amount=10,def_id="ingot_green"} end
+      local sheet={inventory={},inventory_counts={},learned_recipes={}}
+      if full then for i=1,25 do sheet.inventory[i],sheet.inventory_counts[i]="junk",1 end end
+      put(cfg.CHARACTER_SHEET_COLLECTION,"sheet",uid,sheet)
+      put(cfg.PVE_PROGRESS_COLLECTION,"profile",uid,{gold=0,ore=0,mine={unlocked={easy=2},floor_states={["easy:1"]={wins=1},["easy:2"]={wins=1}}}})
+    end
+    return instance(),instance()
+  end
+  local api,other=smith_final(true)
+  interleave(function() finish(api,"final",1) end,function() finish(other,"final",1) end)
+  local T=get("arena_tournament","audit")
+  assert(T.phase == "done" and T.craft_receipts["user-1"].outcome == "champion" and T.craft_receipts["user-2"].outcome == "participation")
+  local winner=get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1")
+  local loser=get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-2")
+  assert(winner.inventory_pending_loot[1].amount == 20 and winner.inventory_pending_loot[2].def_id == "recipe_drop_t1_green_Chest")
+  assert(loser.inventory_pending_loot[1].amount == 2 and gold("user-1") == 300)
+  finish(api,"final",1)
+  assert(#get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1").inventory_pending_loot == 2)
+  pass("concurrent/replayed smith final atomically pays one champion recipe, twenty ingots and two loser ingots into durable pending")
+
+  api=smith_final(false)
+  fail_next="injected craft delivery outage"
+  assert(not pcall(finish,api,"final",1))
+  assert(get("arena_tournament","audit").phase == "final" and not get("arena_tournament","audit").craft_receipts and gold("user-1") == 0)
+  assert(#get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-2").inventory == 0)
+  finish(api,"final",1)
+  assert(get("arena_tournament","audit").craft_receipts["user-2"].items[1].amount == 2)
+  pass("smith result outage commits neither compensation nor champion rewards; retry recovers both once")
+
+  api=smith_final(false)
+  before_write=function()
+    put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1",{inventory={"recipe_drop_t1_green_Chest"},inventory_counts={1},learned_recipes={}})
+  end
+  finish(api,"final",1)
+  T=get("arena_tournament","audit")
+  assert(T.craft_receipts["user-1"].items[2].def_id == "recipe_drop_t1_green_Helmet")
+  pass("inventory CAS conflict reselects a useful recipe from fresh ownership rather than duplicating a concurrently acquired scroll")
+
+  api=smith_final(false)
+  put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1",{inventory={},inventory_counts={},learned_recipes={"recipe_drop_t1_green_Chest"},inventory_pending_loot={{def_id="recipe_drop_t1_green_Helmet",amount=1}}})
+  finish(api,"final",1)
+  T=get("arena_tournament","audit")
+  assert(#T.craft_receipts["user-1"].items == 1 and T.craft_receipts["user-1"].items[1].def_id == "ingot_green" and T.craft_receipts["user-1"].items[1].amount == 30)
+  pass("learned and pending-owned eligible recipes are excluded; completed local pool receives ten-ingot fallback")
+
+  api=smith_final(false,true)
+  finish(api,"final",1)
+  T=get("arena_tournament","audit")
+  assert(not T.craft_receipts and gold("user-1") == 300)
+  pass("already-started legacy smith tournament retains original gold/ore-only rewards")
+
+  api=smith_final(false)
+  before_write=function()
+    put(cfg.PVE_PROGRESS_COLLECTION,"profile","user-1",{gold=9,ore=2,mine={unlocked={easy=1},floor_states={}}})
+  end
+  finish(api,"final",1)
+  T=get("arena_tournament","audit")
+  assert(#T.craft_receipts["user-1"].items==1 and T.craft_receipts["user-1"].items[1].amount==30 and gold("user-1")==309)
+  pass("progress CAS conflict rechecks won/unlocked drop eligibility and preserves unrelated money before fallback")
+
+  api=smith_final(false)
+  T=get("arena_tournament","audit");T.phase="done"
+  T.craft_receipts={["user-1"]={version=2,items={{def_id="ingot_green",amount=25},{def_id="recipe_drop_t1_green_Chest",amount=1}}}}
+  put("arena_tournament","audit",system,T)
+  put(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1",{inventory={"recipe_drop_t1_green_Chest"},inventory_counts={1}})
+  put(cfg.PVE_PROGRESS_COLLECTION,"profile","user-1",{gold=0,ore=0,mine={unlocked={easy=1},floor_states={["easy:1"]={wins=1}}}})
+  local before=serial
+  finish(api,"final",1)
+  assert(serial==before and get("arena_tournament","audit").craft_receipts["user-1"].items[1].amount==25)
+  assert(get(cfg.CHARACTER_SHEET_COLLECTION,"sheet","user-1").inventory[1]=="recipe_drop_t1_green_Chest")
+  pass("new recipe policy never rewrites old terminal receipts or removes a previously awarded now-ineligible scroll")
+end
+do
+  reset();local api=instance();local uid="locked"
+  put(cfg.PVE_PROGRESS_COLLECTION,"profile",uid,{gold=5000,ore=5000})
+  put(cfg.CHARACTER_SHEET_COLLECTION,"sheet",uid,{inventory={"ingot_green"},inventory_counts={100}})
+  for _,wins in ipairs({0,9})do
+    put(cfg.STATS_COLLECTION,cfg.STATS_KEY,uid,{modes={mine={wins=wins}}})
+    for _,payload in ipairs({{arena_kind="gold",bet_tier="600",mine_wins=999,tournaments_unlocked=true},{arena_kind="smith",bet_tier="green",mine_wins=999}})do
+      local r=api.duel_arena_queue_join({user_id=uid},payload)
+      assert(not r.ok and r.err=="tournaments_locked" and gold(uid)==5000)
+      assert(get(cfg.CHARACTER_SHEET_COLLECTION,"sheet",uid).inventory_counts[1]==100 and not get("arena_queue","state"))
+    end
+  end
+  pass("0 and9 durable wins reject every forged entry before any currency/item/queue change")
+  put(cfg.STATS_COLLECTION,cfg.STATS_KEY,uid,{modes={mine={wins=10}}})
+  assert(api.duel_arena_queue_join({user_id=uid},{arena_kind="gold",bet_tier="600"}).ok and gold(uid)==4400)
+  assert(api.duel_arena_queue_leave({user_id=uid}).ok and gold(uid)==5000)
+  assert(api.duel_arena_queue_join({user_id=uid},{arena_kind="smith",bet_tier="green"}).ok and get(cfg.CHARACTER_SHEET_COLLECTION,"sheet",uid).inventory_counts[1]==90)
+  assert(api.duel_arena_queue_leave({user_id=uid}).ok and get(cfg.CHARACTER_SHEET_COLLECTION,"sheet",uid).inventory_counts[1]==100)
+  pass("exact10 durable wins allow paid gold/smith entry and exact refund with old callback semantics")
+  reset();api=instance();put(cfg.PVE_PROGRESS_COLLECTION,"profile",uid,{gold=5000})
+  local read=nk.storage_read
+  nk.storage_read=function(ids)if ids[1].collection==cfg.STATS_COLLECTION then error("guidance read outage")end;return read(ids)end
+  local r=api.duel_arena_queue_join({user_id=uid},{arena_kind="gold",bet_tier="600"});nk.storage_read=read
+  assert(not r.ok and gold(uid)==5000 and not get("arena_queue","state"))
+  pass("guidance storage outage fails paid entry closed before debit")
+end
+do
+  reset("final");local api=instance();local s=state("final",1)
+  s.arena_no_show_users={["user-1"]=true,["user-2"]=true};s.end_reason="join_timeout"
+  s.stats={["user-1"]={hp=150,max_hp=150},["user-2"]={hp=150,max_hp=150}}
+  api.on_match_finished(s,"user-1")
+  local T=get("arena_tournament","audit")
+  assert(T.phase=="done" and T.aborted and T.eliminated["user-1"] and T.eliminated["user-2"])
+  assert(gold("user-1")==0 and not T.reward_receipt)
+  local g,o=api.final_prize_for_winner("audit","user-1","gold","600");assert(g==0 and o==0)
+  pass("both absent finalists are eliminated without awarding or advertising a free champion prize")
+end
 os.time = original_time
 print("arena_concurrency_audit: " .. count .. " invariants passed")

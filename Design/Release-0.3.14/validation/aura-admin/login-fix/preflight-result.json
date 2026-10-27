@@ -1,0 +1,16 @@
+{
+  "mode": "preflight",
+  "bundleId": "aura-login-fix0314-2a1426de9c7e",
+  "target": "/opt/escape/admin/aura",
+  "changedAssets": [
+    "aura-model.js",
+    "aura-page.js",
+    "index.html"
+  ],
+  "unchangedCss": true,
+  "bindDirectoryInodePreserved": true,
+  "auraStorageWrites": 0,
+  "consoleLogins": 0,
+  "serviceRestarts": 0,
+  "configChanges": 0
+}

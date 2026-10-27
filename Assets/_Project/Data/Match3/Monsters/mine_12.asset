@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: mine_12
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_12
-  displayName: "\u0421\u0442\u0440\u0430\u0436 \u0448\u0430\u0445\u0442\u044B 12"
+  displayName: "Жила"
   floor: 12
-  icon: {fileID: 21300000, guid: 4beedcfd892e1f646afc42cf218e3871, type: 3}
+  icon: {fileID: 21300000, guid: 6b3d782029dfd604db663c59dd070df1, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

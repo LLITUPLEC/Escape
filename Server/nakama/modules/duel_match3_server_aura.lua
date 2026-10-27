@@ -7,6 +7,8 @@ return function(deps)
 
   local _cache_doc = nil
   local _cache_expiry = nil
+  local _cache_start = nil
+  local _cache_loaded = false
   local _cache_t = 0
 
   local function storage_row_time_unix(row)
@@ -43,14 +45,17 @@ return function(deps)
 
   local M = {}
 
+  local function cached_active(now)
+    if _cache_doc == nil or (_cache_start ~= nil and now < _cache_start)
+        or (_cache_expiry ~= nil and now >= _cache_expiry) then return nil end
+    return _cache_doc
+  end
+
   function M.get_active()
     local now = os.time()
     local ttl = math.max(5, tonumber(CFG.SERVER_AURA_CACHE_TTL_SECONDS) or 30)
-    if _cache_doc ~= nil and (now - _cache_t) < ttl then
-      if _cache_expiry ~= nil and now > _cache_expiry then
-        return nil
-      end
-      return _cache_doc
+    if _cache_loaded and now >= _cache_t and (now - _cache_t) < ttl then
+      return cached_active(now)
     end
 
     local ok_read, rows = pcall(function()
@@ -65,6 +70,8 @@ return function(deps)
     _cache_t = now
     _cache_doc = nil
     _cache_expiry = nil
+    _cache_start = nil
+    _cache_loaded = ok_read
 
     if not ok_read or rows == nil or #rows == 0 then
       return nil
@@ -77,19 +84,30 @@ return function(deps)
     end
 
     local exp = compute_aura_expiry_unix(doc, row)
-    if exp ~= nil and now > exp then
-      return nil
-    end
+    local start = tonumber(doc.started_at_unix) or tonumber(doc.anchor_unix)
+    if start ~= nil and start <= 0 then start = nil end
+    if start ~= nil and (start ~= start or start == math.huge or start == -math.huge) then return nil end
+    if exp ~= nil and (exp ~= exp or exp == math.huge or exp == -math.huge or (start ~= nil and exp <= start)) then return nil end
 
     _cache_expiry = exp
+    _cache_start = start
     _cache_doc = doc
-    return doc
+    return cached_active(now)
   end
 
   function M.xp_multiplier(aura)
     if aura == nil then return 1 end
     local p = tonumber(aura.xp_bonus_pct) or tonumber(aura.xp_pct) or 0
     return math.max(0, 1 + p / 100)
+  end
+
+  -- Currency boosts share the same domain as the personal PvE scroll: max,
+  -- never a product. Existing auras without explicit currency fields stay x1.
+  function M.currency_multiplier(aura, currency)
+    if aura==nil then return 1 end
+    local percent=tonumber(aura[currency.."_bonus_pct"]) or tonumber(aura[currency.."_pct"])
+      or tonumber(aura.currency_bonus_pct) or 0
+    return math.max(1,1+percent/100)
   end
 
   function M.apply_to_pve_reward_xp(reward_xp, aura)

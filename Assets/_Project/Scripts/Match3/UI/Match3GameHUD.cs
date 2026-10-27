@@ -11,6 +11,7 @@ namespace Project.Match3
     public sealed class Match3GameHUD : MonoBehaviour
     {
         [SerializeField] public TMP_Text turnText;
+        [SerializeField] public TMP_Text roundText;
         [SerializeField] public TMP_Text timerText;
         [Tooltip("Подпись под таймером: «Время на решение» / «Анимация хода»")]
         [SerializeField] public TMP_Text timerPhaseText;
@@ -41,17 +42,54 @@ namespace Project.Match3
         private bool _expeditionStyle;
         private bool _moveResolving;
         private TMP_Text _compactTurnSeparator;
+        private int _roundNumber;
+        public int RoundNumber => _roundNumber;
 
         public void UseExpeditionStyle()
         {
             _expeditionStyle = true;
-            _timerFontSizeBase = 60f;
+            EnsureRoundText();
+            _timerFontSizeBase = 52f;
             _timerNeutralColor = Project.UI.ExpeditionTheme.Amber;
             if (turnText != null) SetTurn(turnText.text);
             if (timerText != null) timerText.text = CompactTimerText(timerText.text);
             ApplyAffixTooltipChrome();
             LayoutAffixTooltip();
             ApplyCompactPhaseVisibility();
+        }
+
+        private void EnsureRoundText()
+        {
+            if (roundText != null) return;
+            roundText = transform.Find("RoundText")?.GetComponent<TMP_Text>();
+            if (roundText == null)
+                roundText = ExpeditionUi.Text(transform, "RoundText", "", 20, .05f, .80f, .95f, .99f, TextAlignmentOptions.Center);
+            roundText.color = ExpeditionTheme.Amber;
+            roundText.raycastTarget = false;
+            RefreshRoundText();
+        }
+
+        public void ResetRoundNumber()
+        {
+            _roundNumber = 0;
+            RefreshRoundText();
+        }
+
+        public void SetRoundNumber(int number)
+        {
+            // The server owns the count. Repeated/reordered checkpoints and legacy
+            // zero fields cannot rewind a round already displayed in this match.
+            if (number < 1) return;
+            _roundNumber = Mathf.Max(_roundNumber, number);
+            EnsureRoundText();
+            RefreshRoundText();
+        }
+
+        private void RefreshRoundText()
+        {
+            if (roundText == null) return;
+            roundText.text = _roundNumber > 0 ? _roundNumber + " ход" : string.Empty;
+            roundText.gameObject.SetActive(_roundNumber > 0);
         }
 
         public void BindCompactTurnSeparator(TMP_Text separator)

@@ -1,0 +1,6 @@
+{
+    "target": "avatars-batch",
+    "ok": true,
+    "message": "Tournament avatar QA passed: 12 player icons across completed/current rounds; 2 question marks and dash names in future final. No RPC invoked. Paired default icons and JsonUtility avatar DTO round-trip verified. No network/account actions.",
+    "utc": "2026-10-27T16:03:33.3423332Z"
+}

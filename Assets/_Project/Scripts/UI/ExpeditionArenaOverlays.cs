@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Project.Character;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,35 +22,14 @@ namespace Project.UI
         public int SourceSlot, TargetSlot;
     }
 
-    /// <summary>A real checkbox tick without a font glyph or baked art.</summary>
-    [RequireComponent(typeof(CanvasRenderer), typeof(RectTransform))]
-    public sealed class ExpeditionArenaCheckGraphic : MaskableGraphic
-    {
-        protected override void OnPopulateMesh(VertexHelper mesh)
-        {
-            mesh.Clear();
-            var rect = GetPixelAdjustedRect();
-            var width = Mathf.Min(rect.width, rect.height) * .16f;
-            AddStroke(mesh, rect, new Vector2(.10f, .49f), new Vector2(.39f, .19f), width);
-            AddStroke(mesh, rect, new Vector2(.39f, .19f), new Vector2(.91f, .84f), width);
-        }
-        private void AddStroke(VertexHelper mesh, Rect rect, Vector2 from, Vector2 to, float width)
-        {
-            var a = new Vector2(rect.xMin + rect.width * from.x, rect.yMin + rect.height * from.y);
-            var b = new Vector2(rect.xMin + rect.width * to.x, rect.yMin + rect.height * to.y);
-            var delta = (b - a).normalized;
-            var normal = new Vector2(-delta.y, delta.x) * width * .5f;
-            var points = new[] { a - normal, a + normal, b + normal, b - normal };
-            var quad = new UIVertex[4];
-            for (var i = 0; i < 4; i++) { quad[i] = UIVertex.simpleVert; quad[i].position = points[i]; quad[i].color = color; }
-            mesh.AddUIVertexQuad(quad);
-        }
-    }
-
     /// <summary>Presentation only: tournament/race controllers retain all values, RPCs and selection callbacks.</summary>
     [DisallowMultipleComponent]
     public sealed class ExpeditionArenaOverlays : MonoBehaviour
     {
+        // All three stages use exactly the same fraction of the physical rows
+        // area. The two equal gutters also own their corresponding connectors.
+        public static Vector2 BracketColumnBounds(string round) => round == "qf" ? new Vector2(0, .30f)
+            : round == "sf" ? new Vector2(.35f, .65f) : new Vector2(.70f, 1);
         private bool _built;
         private RectTransform _panel;
         private RectTransform _costRow;
@@ -66,106 +46,10 @@ namespace Project.UI
             return root != null ? ExpeditionUi.Ensure<ExpeditionArenaOverlays>(root.gameObject) : null;
         }
 
-        public static void ApplyStakeChooser(Transform root, TMP_Text title, Transform close)
+        public static void ApplyStakeChooser(Transform root, TMP_Text title, Transform close, string kind = "smith", int rulesVersion = 2)
         {
-            var view = Ensure(root);
-            if (view == null) return;
-            view._panel = root.Find("Panel") as RectTransform;
-            if (view._panel == null) return;
-            var panel = view._panel;
-            DisableLayout(panel);
-            SafeRect(panel, .05f, .135f, .95f, .865f);
-            ExpeditionUi.StylePanel(panel.GetComponent<Image>(), ExpeditionTheme.Panel);
-            if (title != null)
-            {
-                title.gameObject.SetActive(true);
-                ExpeditionUi.SetRect(title.rectTransform, .055f, .89f, .945f, .975f);
-                StyleText(title, 39, ExpeditionTheme.Ivory);
-            }
-            if (!view._built)
-            {
-                var caption = ExpeditionUi.Text(panel, "ExpeditionStakeHint", "ВЫБЕРИТЕ ВЗНОС ДЛЯ УЧАСТИЯ", 24, .06f, .845f, .94f, .885f, TextAlignmentOptions.Center);
-                caption.color = ExpeditionTheme.Muted;
-                view._built = true;
-            }
-            if (close != null)
-            {
-                ExpeditionUi.SetRect(close as RectTransform, .06f, .025f, .94f, .1f);
-                ExpeditionUi.StyleButton(close.GetComponent<Button>(), false, 34);
-            }
-            var rows = new List<RectTransform>();
-            for (var i = 0; i < panel.childCount; i++)
-            {
-                var child = panel.GetChild(i);
-                if (child.name.StartsWith("Row_", System.StringComparison.Ordinal) && child.GetComponent<Button>() != null)
-                    rows.Add(child as RectTransform);
-            }
-            var stride = .705f / Mathf.Max(1, rows.Count);
-            for (var i = 0; i < rows.Count; i++)
-            {
-                var row = rows[i];
-                DisableLayout(row);
-                var top = .825f - i * stride;
-                ExpeditionUi.SetRect(row, .045f, top - stride + .016f, .955f, top);
-                ExpeditionUi.StyleButton(row.GetComponent<Button>(), false, 38);
-                var rowButton = row.GetComponent<Button>();
-                if (rowButton != null)
-                {
-                    var colors = rowButton.colors;
-                    colors.normalColor = colors.selectedColor = ExpeditionTheme.Teal;
-                    rowButton.colors = colors;
-                }
-                Place(row, "ResIcon", .03f, .25f, .185f, .77f);
-                var icon = row.Find("ResIcon")?.GetComponent<Image>();
-                if (icon != null) { icon.preserveAspect = true; icon.raycastTarget = false; }
-                var cost = row.Find("CostCol") as RectTransform;
-                if (cost != null)
-                {
-                    DisableLayout(cost);
-                    ExpeditionUi.SetRect(cost, .2f, .17f, .43f, .74f);
-                    foreach (var value in cost.GetComponentsInChildren<TMP_Text>(true))
-                    { StyleText(value, 40, ExpeditionTheme.Ivory); ExpeditionUi.SetRect(value.rectTransform, 0, 0, 1, 1); }
-                }
-                var prize = row.Find("PrizeCol") as RectTransform;
-                if (prize != null)
-                {
-                    ExpeditionUi.SetRect(prize, .49f, .19f, .965f, .73f);
-                    var line = prize.GetComponent<HorizontalLayoutGroup>();
-                    if (line != null)
-                    {
-                        line.childControlWidth = true;
-                        line.childControlHeight = true;
-                        line.childForceExpandHeight = false;
-                        line.childForceExpandWidth = false;
-                        line.spacing = 9;
-                        line.childAlignment = TextAnchor.MiddleCenter;
-                    }
-                    foreach (var resource in prize.GetComponentsInChildren<Image>(true))
-                    {
-                        resource.preserveAspect = true;
-                        resource.raycastTarget = false;
-                        var le = ExpeditionUi.Ensure<LayoutElement>(resource.gameObject);
-                        le.preferredWidth = le.minWidth = 44;
-                        le.preferredHeight = le.minHeight = 44;
-                    }
-                    foreach (var value in prize.GetComponentsInChildren<TMP_Text>(true))
-                    {
-                        StyleText(value, 35, ExpeditionTheme.Amber);
-                        var le = ExpeditionUi.Ensure<LayoutElement>(value.gameObject);
-                        le.flexibleWidth = 1;
-                        le.minWidth = 55;
-                        le.preferredHeight = 72;
-                    }
-                }
-                var costCaption = ExpeditionUi.Text(row, "ExpeditionStakeCost", "ВЗНОС", 22, .2f, .73f, .43f, .94f, TextAlignmentOptions.Center);
-                costCaption.color = ExpeditionTheme.Muted;
-                var prizeCaption = ExpeditionUi.Text(row, "ExpeditionStakePrize", "НАГРАДА ПОБЕДИТЕЛЮ", 22, .49f, .73f, .965f, .94f, TextAlignmentOptions.Center);
-                prizeCaption.color = ExpeditionTheme.Muted;
-                var arrow = ExpeditionUi.Text(row, "ExpeditionStakeArrow", "→", 40, .42f, .2f, .49f, .72f, TextAlignmentOptions.Center);
-                arrow.color = ExpeditionTheme.Muted;
-            }
+            ExpeditionTournamentStakeChooser.Apply(root, title, close, kind, rulesVersion);
         }
-
         public static void ApplyBracket(Transform root)
         {
             var view = Ensure(root);
@@ -280,8 +164,8 @@ namespace Project.UI
             ExpeditionUi.Text(rt, "HpStatusB", "HP —", 13, .245f, .055f, .90f, .17f, TextAlignmentOptions.MidlineLeft).color = ExpeditionTheme.Muted;
             _betA = EnsureBet("BetA");
             _betB = EnsureBet("BetB");
-            Move(_betA.transform as RectTransform, rt, .84f, .74f, .985f, .95f);
-            Move(_betB.transform as RectTransform, rt, .84f, .255f, .985f, .465f);
+            PositionRadio(_betA.transform as RectTransform, rt, .845f);
+            PositionRadio(_betB.transform as RectTransform, rt, .36f);
             _betALabel = BuildBetVisual(_betA);
             _betBLabel = BuildBetVisual(_betB);
             _betA.onValueChanged.AddListener(OnBetVisualChanged);
@@ -303,6 +187,9 @@ namespace Project.UI
             head.sprite = ExpeditionTheme.Icon("hero");
             head.preserveAspect = true;
             head.raycastTarget = false;
+            var unknown = ExpeditionUi.Text(frame.transform, "Unknown", "?", 40, .05f, .05f, .95f, .95f, TextAlignmentOptions.Center);
+            unknown.color = ExpeditionTheme.Muted;
+            unknown.gameObject.SetActive(false);
             var badge = ExpeditionUi.Fill(frame.transform, "ResultBadge", .5f, .5f, .5f, .5f, new Color32(7, 22, 24, 245));
             badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = new Vector2(.96f, .06f);
             badge.rectTransform.pivot = new Vector2(1, 0);
@@ -330,7 +217,7 @@ namespace Project.UI
             rt.localRotation = Quaternion.Euler(0, 0, angle);
         }
 
-        public static void UpdatePair(Transform row, string uidA, string uidB, string winner, string status, bool ownPair)
+        public static void UpdatePair(Transform row, string uidA, string uidB, string winner, string status, bool ownPair, string avatarA = null, string avatarB = null)
         {
             var tag = row.GetComponent<ExpeditionArenaPairTag>();
             if (tag != null)
@@ -349,7 +236,15 @@ namespace Project.UI
                 if (frame != null)
                 {
                     var portrait = frame.transform.Find("Head" + side)?.GetComponent<Image>();
-                    if (portrait != null) portrait.color = complete && !won ? new Color(.40f, .48f, .48f, 1) : Color.white;
+                    var known = !string.IsNullOrEmpty(side == "A" ? uidA : uidB);
+                    if (portrait != null)
+                    {
+                        portrait.enabled = known;
+                        portrait.sprite = CharacterAppearance.Load(side == "A" ? avatarA : avatarB, true) ?? ExpeditionTheme.Icon("hero");
+                        portrait.color = complete && !won ? new Color(.40f, .48f, .48f, 1) : Color.white;
+                    }
+                    var unknown = frame.transform.Find("Unknown");
+                    if (unknown != null) unknown.gameObject.SetActive(!known);
                     var badge = frame.transform.Find("ResultBadge");
                     if (badge != null)
                     {
@@ -392,8 +287,8 @@ namespace Project.UI
                 // Later rounds are shuffled by the real server. Draw the actual
                 // winner route; an unformed next round remains a neutral guide.
                 var targetSlot = target != null ? target.Slot : left.Round == "qf" ? (left.Slot + 1) / 2 : 1;
-                var from = left.Round == "qf" ? .39f : .71f;
-                var to = left.Round == "qf" ? .46f : .78f;
+                var from = BracketColumnBounds(left.Round).y;
+                var to = BracketColumnBounds(nextRound).x;
                 var joint = (from + to) * .5f;
                 var color = target != null ? new Color(1, .75f, .31f, 1) : new Color(.62f, .48f, .27f, .9f);
                 var route = ExpeditionUi.Rect(rows, "BracketRoute_" + left.Round + "_" + left.Slot, 0, 0, 1, 1);
@@ -414,8 +309,8 @@ namespace Project.UI
                 var target = FindDestination(tags, first);
                 var targetSlot = target != null ? target.Slot : first.Round == "qf" ? (first.Slot + 1) / 2 : 1;
                 var targetY = target != null ? PairCenter(target) : first.Round == "qf" ? .75f - (targetSlot - 1) * .5f : .5f;
-                var from = first.Round == "qf" ? .39f : .71f;
-                var to = first.Round == "qf" ? .46f : .78f;
+                var from = BracketColumnBounds(first.Round).y;
+                var to = BracketColumnBounds(first.Round == "qf" ? "sf" : "final").x;
                 var joint = (from + to) * .5f;
                 var low = targetY; var high = targetY;
                 foreach (var source in bus.Value) { low = Mathf.Min(low, PairCenter(source)); high = Mathf.Max(high, PairCenter(source)); }
@@ -424,7 +319,7 @@ namespace Project.UI
                 if (high - low > .001f) FlowLine(trunk, joint - .0028f, low, joint + .0028f, high, color);
                 FlowLine(trunk, joint, targetY - .0036f, to, targetY + .0036f, color);
             }
-            var trophy = ExpeditionUi.Fill(rows, "FinalTrophy", .825f, .68f, .96f, .84f, Color.white);
+            var trophy = ExpeditionUi.Fill(rows, "FinalTrophy", .78f, .68f, .92f, .84f, Color.white);
             trophy.sprite = ExpeditionTheme.Icon("trophy"); trophy.preserveAspect = true; trophy.raycastTarget = false;
         }
 
@@ -521,24 +416,38 @@ namespace Project.UI
             background.enabled = true;
             background.sprite = background.overrideSprite = null;
             background.type = Image.Type.Simple;
-            background.color = new Color32(13, 32, 36, 255);
+            // Rectangular48px hit target, with only the circular metal art visible.
+            background.color = new Color(0, 0, 0, 1f / 255f);
             background.raycastTarget = true;
             background.canvasRenderer.cullTransparentMesh = false;
-            var rim = ExpeditionUi.Ensure<Outline>(toggle.gameObject);
-            rim.effectColor = ExpeditionTheme.Ivory; rim.effectDistance = new Vector2(1.5f, 1.5f);
+            var oldRim = toggle.GetComponent<Outline>();
+            if (oldRim != null) oldRim.enabled = false;
             toggle.targetGraphic = background;
             toggle.transition = Selectable.Transition.None;
             toggle.toggleTransition = Toggle.ToggleTransition.None;
             for (var i = 0; i < toggle.transform.childCount; i++) toggle.transform.GetChild(i).gameObject.SetActive(false);
-            var markRoot = ExpeditionUi.Rect(toggle.transform, "ExpeditionBetCheck", .15f, .13f, .85f, .87f);
-            ExpeditionUi.Ensure<CanvasRenderer>(markRoot.gameObject);
-            var mark = markRoot.gameObject.AddComponent<ExpeditionArenaCheckGraphic>();
-            mark.color = new Color32(124, 222, 144, 255); mark.raycastTarget = false;
+            var ringRoot = ExpeditionUi.Rect(toggle.transform, "ExpeditionBetRadioRing", .08f, .08f, .92f, .92f);
+            var ring = ringRoot.gameObject.AddComponent<ExpeditionArenaRadioGraphic>();
+            ring.raycastTarget = false;
+            var markRoot = ExpeditionUi.Rect(toggle.transform, "ExpeditionBetRadioDot", .08f, .08f, .92f, .92f);
+            var mark = markRoot.gameObject.AddComponent<ExpeditionArenaRadioGraphic>();
+            mark.raycastTarget = false;
             toggle.graphic = mark;
-            // Keep the old view's private caption reference, but never rely on a font checkmark.
+            ExpeditionUi.Ensure<ExpeditionArenaRadioVisual>(toggle.gameObject).Bind(toggle, ring, mark);
+            // Keep the old view's private caption reference without a font symbol.
             var caption = ExpeditionUi.Text(toggle.transform, "ExpeditionBetCaption", "", 22, 0, 0, 1, 1);
             caption.gameObject.SetActive(false);
             return caption;
+        }
+
+        private static void PositionRadio(RectTransform rect, RectTransform parent, float y)
+        {
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(1, y);
+            rect.pivot = new Vector2(1, .5f);
+            rect.anchoredPosition = new Vector2(-4, 0);
+            rect.sizeDelta = new Vector2(48, 48);
+            rect.localScale = Vector3.one;
         }
 
         public static void SetBetControlsVisible(Transform row, bool visible)
@@ -560,22 +469,18 @@ namespace Project.UI
         private static void RefreshBet(Toggle toggle, TMP_Text label)
         {
             if (toggle == null) return;
-            var image = toggle.targetGraphic as Image;
-            if (image != null)
-            {
-                image.enabled = true;
-                image.color = toggle.isOn ? new Color32(31, 68, 49, 255) : new Color32(13, 32, 36, 255);
-                var rim = image.GetComponent<Outline>();
-                if (rim != null) rim.effectColor = toggle.isOn ? ExpeditionTheme.Amber : ExpeditionTheme.Ivory;
-            }
-            if (toggle.graphic != null) toggle.graphic.canvasRenderer.SetAlpha(toggle.isOn ? 1 : 0);
+            toggle.GetComponent<ExpeditionArenaRadioVisual>()?.Refresh();
             if (label != null) label.text = "";
         }
 
         private void OnDestroy()
         {
             if (_isBracket) ExpeditionPresentation.SetTournamentVisible(false);
-            if (_bracketBlocker != null) Destroy(_bracketBlocker);
+            if (_bracketBlocker != null)
+            {
+                if (Application.isPlaying) Destroy(_bracketBlocker);
+                else DestroyImmediate(_bracketBlocker);
+            }
             if (_betA != null) _betA.onValueChanged.RemoveListener(OnBetVisualChanged);
             if (_betB != null) _betB.onValueChanged.RemoveListener(OnBetVisualChanged);
         }
@@ -678,12 +583,50 @@ namespace Project.UI
             }
         }
 
-        public static void ApplyQueue(TMP_Text text, Button leave)
+        public static void ApplyQueue(TMP_Text text, Button leave, TMP_Text title = null)
         {
-            if (text != null) StyleText(text, 42, ExpeditionTheme.Ivory);
+            if (title != null)
+            {
+                StyleText(title, 38, ExpeditionTheme.Amber);
+                title.fontStyle = FontStyles.Bold;
+                var plate = title.transform.parent as RectTransform;
+                if (plate != null && plate.name == "ArenaQueueTournamentTitleFrame")
+                {
+                    SafeRect(plate, .055f, .79f, .945f, .90f);
+                    ExpeditionUi.SetRect(title.rectTransform, .035f, .12f, .965f, .88f);
+                }
+                else SafeRect(title.rectTransform, .06f, .79f, .94f, .90f);
+            }
+            if (text != null)
+            {
+                StyleText(text, 42, ExpeditionTheme.Ivory);
+                SafeRect(text.rectTransform, .08f, .68f, .92f, .75f);
+            }
             if (leave == null) return;
             ExpeditionUi.StyleButton(leave, false, 34);
             SafeRect(leave.transform as RectTransform, .24f, .075f, .76f, .13f);
+        }
+
+        public static void ApplySmithIcons(Transform button, Sprite green, Sprite blue, Sprite purple)
+        {
+            if (button == null || green == null || blue == null || purple == null) return;
+            var original = button.Find("ExpeditionModeIcon");
+            if (original != null) original.gameObject.SetActive(false);
+            var sprites = new[] { green, blue, purple };
+            var names = new[] { "Green", "Blue", "Purple" };
+            // Three separate silhouettes fit the existing mode-icon area and
+            // leave the card's title and prize description at their normal bounds.
+            for (var i = 0; i < sprites.Length; i++)
+            {
+                var name = "ExpeditionSmithIngot" + names[i];
+                var found = button.Find(name);
+                var image = found != null ? ExpeditionUi.Ensure<Image>(found.gameObject)
+                    : ExpeditionUi.Fill(button, name, 0, 0, 1, 1, Color.white);
+                ExpeditionUi.SetRect(image.rectTransform, .027f + i * .073f, .51f, .105f + i * .073f, .88f);
+                image.sprite = sprites[i]; image.overrideSprite = null; image.type = Image.Type.Simple;
+                image.color = Color.white; image.preserveAspect = true; image.raycastTarget = false;
+                image.enabled = true; image.gameObject.SetActive(true);
+            }
         }
 
         public static void ApplyToast(Transform root, TMP_Text text)

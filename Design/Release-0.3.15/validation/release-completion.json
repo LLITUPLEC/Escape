@@ -1,0 +1,32 @@
+{
+  "version": "0.3.15",
+  "versionCode": 17,
+  "published": true,
+  "allRequiredWorkComplete": true,
+  "completedUtc": "2026-10-27T16:28:54.060783+00:00",
+  "site": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.15-e7ac556941de.apk",
+  "apkSha256": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8",
+  "apkBytes": 123571699,
+  "previousApkPreserved": true,
+  "previousApkBytes": 124206651,
+  "signingCertificateUnchanged": true,
+  "runtimeSha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "runtimeFiles": 64,
+  "runtimeBackup": "/opt/escape/backups/runtime-release-20261027T162323Z",
+  "localServerChecks": 728,
+  "isolatedNetworkChecks": 713,
+  "recoveryChecks": 64,
+  "postDeploymentSecurityChecks": 31,
+  "postDeploymentDashboardChecks": 3,
+  "sourceFiles": 1988,
+  "sourceManifest": "449c962d45417cb7ee7e992c7bb71a12afcb610be2a950144a030e90f07de620",
+  "nativeScreenshots": 11,
+  "publicFilesFullyVerified": 32,
+  "browserVisualChecked": true,
+  "physicalAndroidTested": false,
+  "notes": [
+    "Initial isolated Go crash retained separately; narrow32 and final777 checks passed on unchanged runtime bytes/limits.",
+    "Native screenshots render actual production widgets with offline fixtures; not physical Android footage."
+  ]
+}

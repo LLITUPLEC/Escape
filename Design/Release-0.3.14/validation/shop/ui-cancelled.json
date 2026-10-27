@@ -1,0 +1,11 @@
+{
+    "passed": true,
+    "networkOrAccountActions": false,
+    "stage": "cancelled",
+    "error": "",
+    "assertions": 77,
+    "products": 6,
+    "labels": 42,
+    "purchaseIntents": 0,
+    "rubAttempts": 0
+}

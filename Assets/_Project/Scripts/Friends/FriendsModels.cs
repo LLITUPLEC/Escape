@@ -93,6 +93,7 @@ namespace Project.Friends
 
     public sealed class FriendsRaceRespondResult
     {
+        public string Kind;
         public bool Ok;
         public string Err;
         public string Status;
@@ -118,6 +119,7 @@ namespace Project.Friends
     [Serializable]
     public sealed class FriendsRaceRespondRpcResponse
     {
+        public string kind;
         public bool ok;
         public string err;
         public string status;

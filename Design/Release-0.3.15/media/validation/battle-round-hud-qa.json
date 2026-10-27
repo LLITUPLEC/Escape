@@ -1,0 +1,14 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "checks": 44,
+    "modes": [
+        "classic",
+        "pro",
+        "race",
+        "mine",
+        "tournament",
+        "boss"
+    ]
+}

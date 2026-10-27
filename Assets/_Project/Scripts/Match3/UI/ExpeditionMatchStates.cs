@@ -56,6 +56,7 @@ namespace Project.Match3
             well.gameObject.AddComponent<RectMask2D>();
             var hero = ExpeditionUi.Fill(well, "Portrait", 0, 0, 1, 1, unknown ? new Color(0, 0, 0, .72f) : Color.white);
             hero.sprite = Resources.Load<Sprite>("Expedition/Art/hero"); hero.preserveAspect = true;
+            if (!unknown && name == "LocalExplorerPortrait") Project.Character.UI.CharacterAppearanceImage.Bind(hero);
             if (upperBody) CropUpperBody(hero);
             if (unknown)
             {

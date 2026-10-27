@@ -48,6 +48,12 @@ namespace Project.Mine3D
             ApplyImmediate();
         }
 
+        public void FocusFloor(int floor)
+        {
+            _targetY = Mathf.Clamp(Mine3DGeometryBuilder.FloorCenterY(Mathf.Clamp(floor, 1, 12)), minY, maxY);
+            ApplyImmediate();
+        }
+
         private void Awake()
         {
             if (targetCamera == null)

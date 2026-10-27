@@ -7,7 +7,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$releaseVersion = '0.3.5'
+$releaseVersion = '0.3.15'
+$releaseCode = 17
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $siteRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $distPath = Join-Path $siteRoot 'dist'
@@ -100,10 +101,15 @@ if (-not [string]::IsNullOrWhiteSpace($FinalValidationJson)) {
     $report = [IO.File]::ReadAllText($reportFile.FullName) | ConvertFrom-Json -ErrorAction Stop
     if ($null -eq $report -or $report -is [array]) { throw 'Final validation JSON must contain an object.' }
     if ((Get-Field $report 'build_result') -cne 'Succeeded') { throw 'APK build did not succeed.' }
+    if ((Get-Field $report 'version') -cne $releaseVersion) { throw 'APK version does not match this release.' }
+    $reportedCode = Get-Field $report 'version_code'
+    if (($reportedCode -isnot [int] -and $reportedCode -isnot [long]) -or [long]$reportedCode -ne $releaseCode) { throw 'APK version code does not match this release.' }
     $signature = Get-Field $report 'signature_verified'
     if ($signature -isnot [bool] -or -not $signature) { throw 'APK signature has not been verified.' }
     $development = Get-Field $report 'development_build'
     if ($development -isnot [bool] -or $development) { throw 'Development APKs must not be packaged as release downloads.' }
+    $debuggable = Get-Field $report 'debuggable'
+    if ($debuggable -isnot [bool] -or $debuggable) { throw 'Debuggable APKs must not be packaged as release downloads.' }
     $reportedHash = [string](Get-Field $report 'sha256')
     if ($reportedHash -notmatch '^[a-fA-F0-9]{64}$' -or $reportedHash.ToLowerInvariant() -cne $sha256) {
         throw 'Final validation SHA-256 does not match this APK.'
@@ -177,22 +183,37 @@ try {
     }
     [IO.File]::WriteAllText((Join-Path $stagePath 'index.html'), $html, $utf8)
     [IO.File]::WriteAllText((Join-Path $stagePath 'release.json'), $releaseJson + [Environment]::NewLine, $utf8)
-    # Only public audition media, never the source inventory, logs or local account data.
-    $audioSource = Join-Path $projectRoot 'Design/Audio-Auditions-0.3.5'
+    # Retain only the user's nineteen selected clips and their public choice history.
+    $audioSource = Join-Path $projectRoot 'Design/Audio'
     $audioTarget = Join-Path $stagePath 'audio-035'
     New-Item -ItemType Directory -Path $audioTarget | Out-Null
     Copy-Item -LiteralPath (Join-Path $audioSource 'index.html') -Destination (Join-Path $audioTarget 'index.html')
+    $selectedFile = Get-RequiredFile (Join-Path $audioSource 'selected-metadata.json') 'Selected audio metadata'
+    $choicesFile = Get-RequiredFile (Join-Path $audioSource 'Escape-audio-choices-0.3.5.txt') 'Audio choice history'
+    $selectedJson = [IO.File]::ReadAllText($selectedFile.FullName)
+    if ($selectedJson -match '(?i)([a-z]:[\\/]|file://|https?://|"[/\\])') { throw 'Selected audio metadata contains a non-public absolute path or URL.' }
+    $selected = $selectedJson | ConvertFrom-Json -ErrorAction Stop
+    if ((Get-Field $selected 'audition_version') -cne '0.3.5' -or (Get-Field $selected 'selected_count') -ne 19 -or @($selected.selected).Count -ne 19) { throw 'Expected nineteen selected audio effects.' }
+    $selectionSha = Get-Field $selected 'selection_sha256'
+    if ($selectionSha -cnotmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath $choicesFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -cne $selectionSha) { throw 'Audio choice history hash does not match selected metadata.' }
+    Copy-Item -LiteralPath $selectedFile.FullName -Destination (Join-Path $audioTarget 'selected-metadata.json')
+    Copy-Item -LiteralPath $choicesFile.FullName -Destination (Join-Path $audioTarget 'Escape-audio-choices-0.3.5.txt')
+    New-Item -ItemType Directory -Path (Join-Path $audioTarget 'selected') | Out-Null
     $audioManifest = [System.Collections.Generic.List[object]]::new()
-    foreach ($audioFolder in @('A', 'B', 'pairs', 'montages', 'showcases')) {
-        New-Item -ItemType Directory -Path (Join-Path $audioTarget $audioFolder) | Out-Null
-        foreach ($audioFile in Get-ChildItem -LiteralPath (Join-Path $audioSource $audioFolder) -Filter '*.wav' -File) {
-            if ($audioFile.Name -notmatch '^[A-Za-z0-9_-]+\.wav$' -or ($audioFile.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Unexpected audition media path.' }
-            $audioRel = $audioFolder + '/' + $audioFile.Name
-            Copy-Item -LiteralPath $audioFile.FullName -Destination (Join-Path $audioTarget $audioRel)
-            $audioManifest.Add([ordered]@{ file = $audioRel; bytes = $audioFile.Length; sha256 = (Get-FileHash -LiteralPath $audioFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant() })
-        }
+    $audioPaths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($effect in $selected.selected) {
+        $audioRel = [string](Get-Field $effect 'file')
+        $id = [string](Get-Field $effect 'id')
+        $choice = [string](Get-Field $effect 'choice')
+        $expectedSha = [string](Get-Field $effect 'sha256')
+        if ($id -cnotmatch '^[a-z][a-z0-9_]*$' -or $audioRel -cne ('selected/' + $id + '.wav') -or $choice -cnotin @('A', 'B') -or -not $audioPaths.Add($audioRel) -or $expectedSha -cnotmatch '^[a-f0-9]{64}$') { throw 'Unexpected or duplicate selected audio path.' }
+        $audioFile = Get-RequiredFile (Join-Path $audioSource $audioRel) 'Selected WAV'
+        if (($audioFile.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $audioFile.Length -le 44 -or $audioFile.Length -ge 10000000) { throw 'Unexpected selected media file.' }
+        if ((Get-FileHash -LiteralPath $audioFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -cne $expectedSha) { throw 'Selected WAV hash does not match user choice metadata.' }
+        Copy-Item -LiteralPath $audioFile.FullName -Destination (Join-Path $audioTarget $audioRel)
+        $audioManifest.Add([ordered]@{ file = $audioRel; bytes = $audioFile.Length; sha256 = $expectedSha })
     }
-    if ($audioManifest.Count -ne 64) { throw 'Expected 64 public audition WAV files.' }
+    if ($audioManifest.Count -ne 19) { throw 'Expected nineteen public selected WAV files.' }
     [IO.File]::WriteAllText((Join-Path $audioTarget 'files.json'), (ConvertTo-Json -InputObject @($audioManifest.ToArray()) -Depth 4), $utf8)
     # Verify the resolved absolute targets immediately before recursive moves/removal.
     Assert-OwnedOutputPath $distPath

@@ -1,0 +1,338 @@
+{
+  "groups": [
+    {
+      "group": "untracked, Design",
+      "files": 936,
+      "bytes": 1207878726.0
+    },
+    {
+      "group": "tracked, Design",
+      "files": 292,
+      "bytes": 430441947.0
+    },
+    {
+      "group": "untracked, Assets",
+      "files": 457,
+      "bytes": 218018222.0
+    },
+    {
+      "group": "tracked, Assets",
+      "files": 1499,
+      "bytes": 166264379.0
+    },
+    {
+      "group": "tracked, .utmp",
+      "files": 182,
+      "bytes": 7741999.0
+    },
+    {
+      "group": "tracked, maket.png",
+      "files": 1,
+      "bytes": 3929180.0
+    },
+    {
+      "group": "tracked, Server",
+      "files": 102,
+      "bytes": 1230861.0
+    },
+    {
+      "group": "untracked, Server",
+      "files": 97,
+      "bytes": 769420.0
+    },
+    {
+      "group": "untracked, Tools",
+      "files": 17,
+      "bytes": 140242.0
+    },
+    {
+      "group": "tracked, Tools",
+      "files": 9,
+      "bytes": 111702.0
+    },
+    {
+      "group": "tracked, Website",
+      "files": 4,
+      "bytes": 73546.0
+    },
+    {
+      "group": "tracked, eqip_stats.MD",
+      "files": 1,
+      "bytes": 71855.0
+    },
+    {
+      "group": "tracked, ProjectSettings",
+      "files": 25,
+      "bytes": 58910.0
+    },
+    {
+      "group": "tracked, Новый текстовый документ.html",
+      "files": 1,
+      "bytes": 26315.0
+    },
+    {
+      "group": "tracked, solo.md",
+      "files": 1,
+      "bytes": 21745.0
+    },
+    {
+      "group": "tracked, UpgradeLog.htm",
+      "files": 1,
+      "bytes": 17467.0
+    },
+    {
+      "group": "tracked, Packages",
+      "files": 2,
+      "bytes": 17306.0
+    },
+    {
+      "group": "tracked, escape.md",
+      "files": 1,
+      "bytes": 14623.0
+    },
+    {
+      "group": "tracked, lb.md",
+      "files": 1,
+      "bytes": 10303.0
+    },
+    {
+      "group": "untracked, monstr.txt",
+      "files": 1,
+      "bytes": 6614.0
+    },
+    {
+      "group": "tracked, ach.md",
+      "files": 1,
+      "bytes": 4917.0
+    },
+    {
+      "group": "tracked, unity_build_modal_log.txt",
+      "files": 1,
+      "bytes": 4354.0
+    },
+    {
+      "group": "tracked, arena_tour_log.txt",
+      "files": 1,
+      "bytes": 2958.0
+    },
+    {
+      "group": "tracked, HZ_pravki.md",
+      "files": 1,
+      "bytes": 2619.0
+    },
+    {
+      "group": "tracked, unity_git_push.ps1",
+      "files": 1,
+      "bytes": 1789.0
+    },
+    {
+      "group": "tracked, log8.txt",
+      "files": 1,
+      "bytes": 1684.0
+    },
+    {
+      "group": "tracked, arena_tour_log copy.txt",
+      "files": 1,
+      "bytes": 1664.0
+    },
+    {
+      "group": "untracked, Escape-audio-choices-0.3.5.txt",
+      "files": 1,
+      "bytes": 1447.0
+    },
+    {
+      "group": "tracked, Mine3D_create_log.txt",
+      "files": 1,
+      "bytes": 1119.0
+    },
+    {
+      "group": "tracked, unity_git_pull.ps1",
+      "files": 1,
+      "bytes": 1055.0
+    },
+    {
+      "group": "tracked, .gitignore",
+      "files": 1,
+      "bytes": 1039.0
+    },
+    {
+      "group": "tracked, .vsconfig",
+      "files": 1,
+      "bytes": 102.0
+    }
+  ],
+  "filesAtLeast50MiB": [
+    {
+      "path": "Design/Release-0.3.10/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 123842888,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.9/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 122023303,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.8/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 121199107,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.7/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 119236478,
+      "extension": ".gz"
+    }
+  ],
+  "largest20": [
+    {
+      "path": "Design/Release-0.3.10/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 123842888,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.9/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 122023303,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.8/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 121199107,
+      "extension": ".gz"
+    },
+    {
+      "path": "Design/Release-0.3.7/page-bundle.tar.gz",
+      "kind": "untracked",
+      "root": "Design",
+      "bytes": 119236478,
+      "extension": ".gz"
+    },
+    {
+      "path": "Assets/_Project/Fonts/TF2CSecondary SDF.asset",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 33645498,
+      "extension": ".asset"
+    },
+    {
+      "path": "Assets/_Project/Materials/man.fbx",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 9018556,
+      "extension": ".fbx"
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/ExpeditionSerif.asset",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 8614177,
+      "extension": ".asset"
+    },
+    {
+      "path": "Assets/_Project/Prefabs/Mine3D/MineShaft3D.prefab",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 7565548,
+      "extension": ".prefab"
+    },
+    {
+      "path": "Assets/_Project/Scenes/MineScene3D.unity",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 7552454,
+      "extension": ".unity"
+    },
+    {
+      "path": "Assets/_Project/Materials/man.png",
+      "kind": "tracked",
+      "root": "Assets",
+      "bytes": 6557775,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.4/screenshots/mine.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 6081783,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.5/screenshots/mine.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5986040,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.0/screens/hub.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5860877,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.1/screens/hub.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5856668,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.0/screens/character.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5846000,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.5/screenshots/hub.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5838304,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.1/screens/character.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5826339,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.3/screenshots/hub.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5807169,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.4/screenshots/hub.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5805668,
+      "extension": ".png"
+    },
+    {
+      "path": "Design/Release-0.3.4/validation/startup/startup-first-03.png",
+      "kind": "tracked",
+      "root": "Design",
+      "bytes": 5805086,
+      "extension": ".png"
+    }
+  ],
+  "lfsFiles": [],
+  "trackedTmpFiles": 192
+}

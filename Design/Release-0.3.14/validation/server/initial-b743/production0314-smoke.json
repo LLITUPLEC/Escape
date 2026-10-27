@@ -1,0 +1,93 @@
+{
+  "utc": "2026-10-27T05:56:00.380586+00:00",
+  "passed": true,
+  "checks": [
+    {
+      "name": "live runtime exactly matches tested final manifest",
+      "passed": true
+    },
+    {
+      "name": "create exactly one own disposable account through publicHTTPS",
+      "passed": true
+    },
+    {
+      "name": "new account claims its current session epoch",
+      "passed": true
+    },
+    {
+      "name": "new account sees shared boss and untouched three-attempt weekly allowance",
+      "passed": true
+    },
+    {
+      "name": "boss section exposes exact frozen event base statistics without healing",
+      "passed": true
+    },
+    {
+      "name": "bounded boss ranking returns the new own unranked identity",
+      "passed": true
+    },
+    {
+      "name": "public ranking whitelist exposes no private reward or admission fields",
+      "passed": true
+    },
+    {
+      "name": "empty mailbox has zero unread and a Unity-compatible absent or empty array",
+      "passed": true
+    },
+    {
+      "name": "live server prices one boss teleport at30000gold",
+      "passed": true
+    },
+    {
+      "name": "live shop migrated twenty green ingots to 3 matter",
+      "passed": true
+    },
+    {
+      "name": "live shop migrated twenty blue ingots to 4 matter",
+      "passed": true
+    },
+    {
+      "name": "live shop migrated twenty purple ingots to 5 matter",
+      "passed": true
+    },
+    {
+      "name": "live craft pack keeps server-priced thirty-matter contents",
+      "passed": true
+    },
+    {
+      "name": "unpaid entry cannot create a boss attempt",
+      "passed": true
+    },
+    {
+      "name": "replaying rejected unpaid entry remains rejected",
+      "passed": true
+    },
+    {
+      "name": "a previous-week entry intent cannot charge a different current event",
+      "passed": true
+    },
+    {
+      "name": "client cannot forge a cheaper shop price",
+      "passed": true
+    },
+    {
+      "name": "mail claim cannot create an unissued chest",
+      "passed": true
+    },
+    {
+      "name": "mail mutation rejects an old account epoch",
+      "passed": true
+    },
+    {
+      "name": "rejected and repeated requests leave currency, tokens and weekly attempts unchanged",
+      "passed": true
+    },
+    {
+      "name": "finally deletes only the disposable account and its owned records",
+      "passed": true
+    }
+  ],
+  "account_deleted": true,
+  "scope": "One fresh own temporary account; read feature APIs and public ranking fields without logging player rows. No matches, queues, reward seeds or changes to existing accounts.",
+  "runtime_changed": false
+}

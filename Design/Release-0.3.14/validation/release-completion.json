@@ -1,0 +1,42 @@
+{
+  "version": "0.3.14",
+  "versionCode": 16,
+  "completedUtc": "2026-10-27T06:33:29.087180+00:00",
+  "published": true,
+  "allRequiredWorkComplete": true,
+  "site": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.14-46a458ea2e41.apk",
+  "apkSha256": "46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525",
+  "apkBytes": 124206651,
+  "runtimeSha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f",
+  "runtimeFiles": 62,
+  "networkChecks": 735,
+  "sourceFiles": 841,
+  "sourceManifest": "de6d719ddcf18d8c2bee8bf037db783dd066bfe106573faf24b2e41cb20dcf2e",
+  "publicFilesFullyVerified": 32,
+  "auraAdminUrl": "https://console.prokrust-play.ru/escape-admin/aura/",
+  "auraAdminAuthenticatedUiLiveTested": false,
+  "auraStorageWritesDuringAdminInstall": 0,
+  "runtimeBackup": "/opt/escape/backups/runtime-release-20261027T063132Z",
+  "auraBackup": "/opt/escape/backups/aura-admin0314-20261027T060201-98fd92a38723",
+  "physicalAndroidTested": false,
+  "notes": [
+    "Client/nativeQA used initial-b743 actualDTO snapshots, archived as provenance; final runtime has identical UI contract.",
+    "Initial b743 deployment and unsuccessful transport-only dfd test evidence retained separately.",
+    "Previous APK0.3.13 preserved.",
+    "No actual payment connection."
+  ],
+  "auraAdminLoginHotfix": {
+    "publishedUtc": "2026-10-27T16:10:51Z",
+    "verified": true,
+    "browserTransportVerified": true,
+    "realAdminCredentialsUsed": false,
+    "report": "aura-admin/login-fix/deployment-verification.json",
+    "browserReport": "aura-admin/login-fix/browser-login-verification.json",
+    "tests": {
+      "model": 22,
+      "deployment": 10
+    },
+    "auraStorageWrites": 0
+  }
+}

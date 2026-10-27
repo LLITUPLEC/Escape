@@ -29,6 +29,8 @@ RECORDS = {
     "contests": ("duel_match3_contest_goals", "config"),
     "aura": ("duel_match3_server_aura", "active"),
     "debug-preview": ("duel_match3_cheat_whitelist", "emails"),
+    "global-boss": ("duel_global_boss", "config"),
+    "shop": ("duel_shop_catalog", "v1"),
 }
 MAX_JSON_BYTES = 8 * 1024 * 1024
 
@@ -119,6 +121,19 @@ def validate_value(alias, value):
         if (not isinstance(entries, dict) or not entries
                 or any(not isinstance(row, dict) for row in entries.values())):
             raise AdminError(f"Catalog requires a nonempty {field} object of definitions")
+    elif alias == "global-boss":
+        for key in ("max_hp", "base_damage", "base_armor", "max_turns", "eligibility_min_damage"):
+            if type(value.get(key)) is not int or value[key] < (0 if key == "base_armor" else 1):
+                raise AdminError(f"Global boss {key} must be a valid nonnegative integer")
+        if value["max_hp"] % 50000 or value["base_damage"] % 500:
+            raise AdminError("Global boss HP must be a multiple of50000; damage a multiple of500")
+        if not 0 <= value.get("base_crit", -1) <= 1 or value["max_turns"] > 60:
+            raise AdminError("Global boss crit/turn limit is invalid")
+        if not isinstance(value.get("rewards"), dict) or any(type(value["rewards"].get(k)) is not int or value["rewards"][k] < 0 for k in ("gold", "ore", "matter")):
+            raise AdminError("Global boss rewards require nonnegative gold/ore/matter integers")
+    elif alias == "shop":
+        if value.get("schema") != 1 or not isinstance(value.get("offers"), list) or not value["offers"]:
+            raise AdminError("Shop requires schema1 and a nonempty offers array; runtime performs exact price validation")
     elif alias == "achievements":
         chains = value.get("chains")
         if not isinstance(chains, (dict, list)) or not chains:

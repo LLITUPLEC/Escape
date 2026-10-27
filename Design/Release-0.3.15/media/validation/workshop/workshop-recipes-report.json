@@ -1,0 +1,17 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "checkedSlots": 8,
+    "deterministicTieCases": 2,
+    "checks": [
+        "All8 queues order learned results Legendary/Epic/Rare/Common, show actual result sprites, and preserve rarity borders during selection.",
+        "Exact prerequisite item icon/name/rarity and owned/missing state match live craft gating; basic/busy/ready states clear old gear; unlearned recipes remain excluded."
+    ],
+    "screenshots": [
+        "Design/Media-2026-10-27/validation/workshop/learned-recipes-sorted.png",
+        "Design/Media-2026-10-27/validation/workshop/legendary-requirements-owned.png",
+        "Design/Media-2026-10-27/validation/workshop/legendary-requirements-missing.png",
+        "Design/Media-2026-10-27/validation/workshop/basic-requirements-no-prerequisite.png"
+    ]
+}

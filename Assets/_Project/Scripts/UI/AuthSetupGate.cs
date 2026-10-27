@@ -111,7 +111,8 @@ namespace Project.UI
             NewText(panel.transform, "Hint",
                 "Укажите e-mail и пароль.\n" +
                 "• Новый аккаунт — привяжем к этому устройству.\n" +
-                "• Уже играли на другом телефоне — войдёте и восстановите прогресс.",
+                "• Уже играли на другом телефоне — войдёте и восстановите прогресс.\n" +
+                "Пол героя выбирается один раз.",
                 30, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
 
             var email = CreateInput(panel.transform, "Email", "E-mail", false);
@@ -121,6 +122,7 @@ namespace Project.UI
             status.color = new Color(1f, 0.85f, 0.7f);
 
             var busy = false;
+            AccountGenderPicker gender = null;
 
             async Task SubmitAsync(bool preferRestore)
             {
@@ -134,6 +136,7 @@ namespace Project.UI
                 }
 
                 busy = true;
+                if (gender != null) gender.SetBusy(true);
                 status.text = preferRestore ? "Вход и восстановление…" : "Регистрация…";
                 try
                 {
@@ -148,7 +151,7 @@ namespace Project.UI
                         // Сначала привязка к текущему device-user; если почта занята — вход в неё (перенос прогресса).
                         try
                         {
-                            await bootstrap.LinkEmailAsync(em, pw, ct);
+                            await bootstrap.LinkEmailAsync(em, pw, ct, gender != null && gender.SelectedFemale);
                         }
                         catch
                         {
@@ -166,6 +169,7 @@ namespace Project.UI
                 {
                     status.text = "Ошибка: " + e.Message;
                     busy = false;
+                    if (gender != null) gender.SetBusy(false);
                 }
             }
 
@@ -174,6 +178,8 @@ namespace Project.UI
             AddActionButton(panel.transform, "У меня уже есть аккаунт", new Color(0.28f, 0.35f, 0.55f, 1f),
                 () => _ = SubmitAsync(preferRestore: true));
             ExpeditionSystemDialogs.ApplyAuth(root, panelRt, email, pass, status);
+            gender = AccountGenderPicker.Create(panel.transform, .23f, .335f, .77f, .425f);
+            ExpeditionUi.SetRect(status.rectTransform, .055f, .275f, .945f, .33f);
         }
 
         private static void AddActionButton(Transform parent, string label, Color color, Action onClick)

@@ -256,7 +256,7 @@ function craftRecipeForEq(quality, slotName) {
 }
 
 const items = {
-  version: 3,
+  version: 5,
   items: {},
 };
 
@@ -386,6 +386,13 @@ for (const row of SLOTS) {
     recipe_target_slot: row.slot,
   });
 }
+
+// 0.3.9 fixed consumables. Combat effects are server-owned in duel_consumable_effects.
+addItem("elixir_assault", {"kind": "consumable", "tier": 1, "quality": "rare", "max_stack": 20, "sale_price": 0, "effect_id": "elixir_assault"});
+addItem("elixir_stone", {"kind": "consumable", "tier": 1, "quality": "rare", "max_stack": 20, "sale_price": 0, "effect_id": "elixir_stone"});
+addItem("elixir_gambit", {"kind": "consumable", "tier": 1, "quality": "epic", "max_stack": 20, "sale_price": 0, "effect_id": "elixir_gambit"});
+addItem("scroll_pve_bounty", {"kind": "consumable", "tier": 1, "quality": "epic", "max_stack": 20, "sale_price": 0, "effect_id": "scroll_pve_bounty"});
+addItem("global_boss_teleport", {"kind": "material", "tier": 1, "quality": "legendary", "max_stack": 99, "sale_price": 0});
 
 fs.writeFileSync(OUT, JSON.stringify(items, null, 2), "utf8");
 console.log("Wrote", OUT, "items:", Object.keys(items.items).length);

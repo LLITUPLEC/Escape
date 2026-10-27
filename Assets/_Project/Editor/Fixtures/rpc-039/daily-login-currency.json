@@ -1,0 +1,151 @@
+{
+  "completion_claimed": false,
+  "completion_ready": false,
+  "completion_reward": {
+    "gold": 0,
+    "items": [
+      {
+        "amount": 1,
+        "def_id": "scroll_pve_bounty"
+      }
+    ],
+    "matter": 0,
+    "ore": 0
+  },
+  "day": 20751,
+  "login": {
+    "can_claim": false,
+    "claimed_today": true,
+    "next_day": 2,
+    "rewards": [
+      {
+        "gold": 150,
+        "matter": 0,
+        "ore": 100
+      },
+      {
+        "gold": 0,
+        "items": [
+          {
+            "amount": 3,
+            "def_id": "ingot_green"
+          }
+        ],
+        "matter": 0,
+        "ore": 0
+      },
+      {
+        "gold": 0,
+        "matter": 2,
+        "ore": 0
+      },
+      {
+        "gold": 0,
+        "items": [
+          {
+            "amount": 1,
+            "def_id": "elixir_assault"
+          }
+        ],
+        "matter": 0,
+        "ore": 0
+      },
+      {
+        "gold": 300,
+        "matter": 0,
+        "ore": 200
+      },
+      {
+        "gold": 0,
+        "items": [
+          {
+            "amount": 3,
+            "def_id": "ingot_blue"
+          },
+          {
+            "amount": 1,
+            "def_id": "elixir_stone"
+          }
+        ],
+        "matter": 0,
+        "ore": 0
+      },
+      {
+        "gold": 0,
+        "items": [
+          {
+            "amount": 1,
+            "def_id": "scroll_pve_bounty"
+          },
+          {
+            "amount": 3,
+            "def_id": "ingot_purple"
+          },
+          {
+            "amount": 1,
+            "def_id": "elixir_gambit"
+          }
+        ],
+        "matter": 0,
+        "ore": 0
+      }
+    ],
+    "total_claimed": 1
+  },
+  "now": 1792919420,
+  "ok": true,
+  "quests": [
+    {
+      "claimed": false,
+      "id": "mine",
+      "label": "Победить монстров в шахте",
+      "progress": 0,
+      "ready": false,
+      "reward": {
+        "gold": 100,
+        "matter": 0,
+        "ore": 75
+      },
+      "target": 3
+    },
+    {
+      "claimed": false,
+      "id": "abilities",
+      "label": "Применить способности в завершённых боях",
+      "progress": 0,
+      "ready": false,
+      "reward": {
+        "gold": 75,
+        "matter": 0,
+        "ore": 50
+      },
+      "target": 4
+    },
+    {
+      "claimed": false,
+      "id": "pvp",
+      "label": "Завершить PvP: победить или сделать 3 своих хода",
+      "progress": 0,
+      "ready": false,
+      "reward": {
+        "gold": 75,
+        "items": [
+          {
+            "amount": 2,
+            "def_id": "ingot_green"
+          }
+        ],
+        "matter": 0,
+        "ore": 0
+      },
+      "target": 2
+    }
+  ],
+  "receipt": {
+    "day": 20751,
+    "gold": 150,
+    "matter": 0,
+    "ore": 100
+  },
+  "reset_at": 1792962000
+}

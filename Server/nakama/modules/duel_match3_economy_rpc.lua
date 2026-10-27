@@ -1,4 +1,8 @@
 local nk = require("nakama")
+local inventory_ok, Inventory = pcall(require, "modules.duel_match3_inventory")
+if not inventory_ok then Inventory = require("duel_match3_inventory") end
+local guidance_ok, Guidance = pcall(require, "modules.duel_player_guidance")
+if not guidance_ok then Guidance = require("duel_player_guidance") end
 
 --- Character / workshop / resources RPCs (вынесено из duel_match3.lua из‑за лимита локалей).
 return function(deps)
@@ -36,6 +40,14 @@ return function(deps)
   local pve_energy_max_for_user = deps.pve_energy_max_for_user
   local empty_key_items = deps.empty_key_items
 
+  local function commit_sheet(uid, sheet, progress, version)
+    if progress == nil then progress, version = read_pve_progress(uid) end
+    local defs = get_merged_item_defs()
+    Inventory.drain(sheet, defs)
+    Inventory.sync_resource_counters(sheet, progress, defs)
+    write_character_sheet(uid, sheet, progress, version)
+  end
+
   local M = {}
 
   function M.duel_character_item_move(ctx, payload)
@@ -69,7 +81,7 @@ return function(deps)
       if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
       inv_index = math.floor(inv_index)
       slot_index = math.floor(slot_index)
-      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
+      if inv_index < 0 or inv_index >= Inventory.capacity(sheet) then return json_fail("bad_inv_index") end
       if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
       local i = inv_index + 1
       local s = slot_index + 1
@@ -94,7 +106,7 @@ return function(deps)
       if inv_index == nil or slot_index == nil then return json_fail("bad_indices") end
       inv_index = math.floor(inv_index)
       slot_index = math.floor(slot_index)
-      if inv_index < 0 or inv_index > 24 then return json_fail("bad_inv_index") end
+      if inv_index < 0 or inv_index >= Inventory.capacity(sheet) then return json_fail("bad_inv_index") end
       if slot_index < 0 or slot_index > 7 then return json_fail("bad_slot_index") end
       local i = inv_index + 1
       local s = slot_index + 1
@@ -120,7 +132,7 @@ return function(deps)
       if a == nil or b == nil then return json_fail("bad_indices") end
       a = math.floor(a)
       b = math.floor(b)
-      if a < 0 or a > 24 or b < 0 or b > 24 then return json_fail("bad_inv_index") end
+      if a < 0 or a >= Inventory.capacity(sheet) or b < 0 or b >= Inventory.capacity(sheet) then return json_fail("bad_inv_index") end
       if a ~= b then
         local ia, ib = a + 1, b + 1
         local id_a = sheet.inventory[ia] or ""
@@ -187,7 +199,7 @@ return function(deps)
       return json_fail("unknown_op")
     end
 
-    write_character_sheet(user_id, sheet)
+    commit_sheet(user_id, sheet)
 
     local progress = read_pve_progress(user_id)
     return encode_character_ok_response(sheet, progress, user_id)
@@ -207,9 +219,18 @@ end
       return nk.json_encode({ ok = false, err = "unauthorized" })
     end
 
-    local progress = read_pve_progress(user_id)
-    local sheet = read_character_sheet(user_id)
-    return encode_character_ok_response(sheet, progress, user_id)
+    -- Opening a fresh profile also recovers queued item delivery when space is
+    -- available; no timer, extra per-move RPC or client-supplied loot is needed.
+    for attempt = 1, 4 do
+      local progress, version = read_pve_progress(user_id)
+      local sheet = read_character_sheet(user_id)
+      Inventory.normalize(sheet)
+      local drained = Inventory.drain(sheet, get_merged_item_defs and get_merged_item_defs() or {})
+      if drained.delivered == 0 then return encode_character_ok_response(sheet, progress, user_id) end
+      local written = pcall(commit_sheet, user_id, sheet, progress, version)
+      if written then return encode_character_ok_response(sheet, progress, user_id) end
+    end
+    return nk.json_encode({ ok = false, err = "storage_conflict_retry" })
   end)
 
   if not ok then
@@ -240,12 +261,11 @@ end
       return nk.json_encode({ ok = false, err = "bad_indices" })
     end
     inv_index = math.floor(inv_index)
-    if inv_index < 0 or inv_index > 24 then
-      return nk.json_encode({ ok = false, err = "bad_inv_index" })
-    end
-
     local sheet = read_character_sheet(user_id)
     ensure_sheet_inventory_counts(sheet)
+    if inv_index < 0 or inv_index >= Inventory.capacity(sheet) then
+      return nk.json_encode({ ok = false, err = "bad_inv_index" })
+    end
     local defs = get_merged_item_defs()
     local i = inv_index + 1
     local item_id = sheet.inventory[i] or ""
@@ -279,7 +299,7 @@ end
 
     lr[#lr + 1] = item_id
     sheet.learned_recipes = lr
-    write_character_sheet(user_id, sheet)
+    commit_sheet(user_id, sheet)
 
     local progress = read_pve_progress(user_id)
     return encode_character_ok_response(sheet, progress, user_id)
@@ -305,113 +325,83 @@ end
     return 100
   end
 
-  --- Продажа предмета из инвентаря (весь стек) или со слота экипировки.
-  --- payload: { session_epoch, source="inventory"|"equipment", inv_index?, slot_index? }
-  function M.duel_character_item_sell(ctx, payload)
-  local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
-    end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-
-    local source = tostring(p.source or "inventory")
-    local sheet = read_character_sheet(user_id)
-    ensure_sheet_inventory_counts(sheet)
-    local defs = get_merged_item_defs()
-
-    local item_id = ""
-    local count = 0
-    local clear_fn = nil
-
-    if source == "inventory" then
-      local inv_index = tonumber(p.inv_index)
-      if inv_index == nil then
-        return nk.json_encode({ ok = false, err = "bad_indices" })
-      end
-      inv_index = math.floor(inv_index)
-      if inv_index < 0 or inv_index > 24 then
-        return nk.json_encode({ ok = false, err = "bad_inv_index" })
-      end
-      local i = inv_index + 1
-      item_id = tostring(sheet.inventory[i] or "")
-      count = tonumber(sheet.inventory_counts[i]) or 0
-      if item_id == "" or count < 1 then
-        return nk.json_encode({ ok = false, err = "empty_source" })
-      end
-      clear_fn = function()
-        sheet.inventory[i] = ""
-        sheet.inventory_counts[i] = 0
-      end
-    elseif source == "equipment" then
-      local slot_index = tonumber(p.slot_index)
-      if slot_index == nil then
-        return nk.json_encode({ ok = false, err = "bad_indices" })
-      end
-      slot_index = math.floor(slot_index)
-      if slot_index < 0 or slot_index > 7 then
-        return nk.json_encode({ ok = false, err = "bad_slot_index" })
-      end
-      local i = slot_index + 1
-      item_id = tostring(sheet.equipment[i] or "")
-      count = 1
-      if item_id == "" then
-        return nk.json_encode({ ok = false, err = "empty_source" })
-      end
-      clear_fn = function()
-        sheet.equipment[i] = ""
-      end
-    else
-      return nk.json_encode({ ok = false, err = "bad_source" })
-    end
-
-    local def = defs[item_id]
-    if def == nil then
-      return nk.json_encode({ ok = false, err = "unknown_item" })
-    end
-
-    local unit = item_sale_unit_price(def, item_id)
-    if unit < 1 then
-      return nk.json_encode({ ok = false, err = "not_sellable" })
-    end
-
-    local gold_gain = unit * count
-    if gold_gain < 1 then
-      return nk.json_encode({ ok = false, err = "not_sellable" })
-    end
-
-    clear_fn()
-    local progress, version = read_pve_progress(user_id)
-    progress.gold = (tonumber(progress.gold) or 0) + gold_gain
-    write_character_sheet(user_id, sheet, progress, version)
-
-    local encoded = encode_character_ok_response(sheet, progress, user_id)
-    -- Дополняем ответ суммой продажи (если encode вернул JSON-строку).
-    local ok_dec, decoded = pcall(nk.json_decode, encoded)
-    if ok_dec and type(decoded) == "table" and decoded.ok == true then
-      decoded.sold_item_id = item_id
-      decoded.sold_count = count
-      decoded.gold_gained = gold_gain
+  local function encode_sale(sheet, progress, uid, receipt, replayed)
+    local encoded = encode_character_ok_response(sheet, progress, uid)
+    local ok, decoded = pcall(nk.json_decode, encoded)
+    if ok and type(decoded) == "table" and decoded.ok == true then
+      decoded.sold_item_id, decoded.sold_count, decoded.gold_gained = receipt.sold_item_id, receipt.sold_count, receipt.gold_gained
+      decoded.sale_replayed = replayed == true
       return nk.json_encode(decoded)
     end
     return encoded
-  end)
+  end
 
-  if not ok then
+  --- Existing clients without both fields retain the legacy index-based sale.
+  --- New confirmations include {expected_def_id,request_id}; their receipt shares
+  --- the item deletion, queued-loot delivery and wallet CAS transaction.
+  function M.duel_character_item_sell(ctx, payload)
+    local ok, result = pcall(function()
+      local uid = ctx and ctx.user_id or ""
+      if uid == "" then return nk.json_encode({ ok = false, err = "unauthorized" }) end
+      local epoch_ok, epoch_err = Guard.assert_client_epoch_matches(uid, payload)
+      if not epoch_ok then return nk.json_encode({ ok = false, err = epoch_err }) end
+      local p = payload and payload ~= "" and nk.json_decode(payload) or {}
+      if type(p) ~= "table" then return nk.json_encode({ ok = false, err = "bad_payload" }) end
+      local modern = p.request_id ~= nil or p.expected_def_id ~= nil
+      if modern and (type(p.request_id) ~= "string" or #p.request_id < 8 or #p.request_id > 80
+          or not p.request_id:match("^[%w_%-]+$") or type(p.expected_def_id) ~= "string"
+          or p.expected_def_id == "" or #p.expected_def_id > 128) then
+        return nk.json_encode({ ok = false, err = "bad_sale_request" })
+      end
+      local source = tostring(p.source or "inventory")
+      if source ~= "inventory" and source ~= "equipment" then return nk.json_encode({ ok = false, err = "bad_source" }) end
+      local index
+      if source == "inventory" then index = tonumber(p.inv_index) else index = tonumber(p.slot_index) end
+      if not index or index ~= index or index == math.huge or index == -math.huge then return nk.json_encode({ ok = false, err = "bad_indices" }) end
+      if modern and index ~= math.floor(index) then return nk.json_encode({ ok = false, err = "bad_indices" }) end
+      index = math.floor(index)
+      for attempt = 1, modern and 4 or 1 do
+        local sheet = read_character_sheet(uid)
+        ensure_sheet_inventory_counts(sheet)
+        Inventory.normalize(sheet)
+        if index < 0 or index >= (source == "inventory" and Inventory.capacity(sheet) or 8) then
+          return nk.json_encode({ ok = false, err = source == "inventory" and "bad_inv_index" or "bad_slot_index" })
+        end
+        if modern then
+          local receipt = Inventory.sale_receipt(sheet, p.request_id)
+          if receipt then
+            if receipt.source ~= source or receipt.index ~= index or receipt.expected_def_id ~= p.expected_def_id then
+              return nk.json_encode({ ok = false, err = "request_id_reused" })
+            end
+            return encode_sale(sheet, read_pve_progress(uid), uid, receipt, true)
+          end
+        end
+        local i = index + 1
+        local item_id = tostring(source == "inventory" and (sheet.inventory[i] or "") or (sheet.equipment[i] or ""))
+        local count = source == "inventory" and (tonumber(sheet.inventory_counts[i]) or 0) or 1
+        if modern and item_id ~= p.expected_def_id then return nk.json_encode({ ok = false, err = "item_changed" }) end
+        if item_id == "" or count < 1 then return nk.json_encode({ ok = false, err = "empty_source" }) end
+        local def = get_merged_item_defs()[item_id]
+        if not def then return nk.json_encode({ ok = false, err = "unknown_item" }) end
+        local unit = item_sale_unit_price(def, item_id)
+        local gain = unit * count
+        if gain < 1 then return nk.json_encode({ ok = false, err = "not_sellable" }) end
+        if source == "inventory" then sheet.inventory[i], sheet.inventory_counts[i] = "", 0 else sheet.equipment[i] = "" end
+        local receipt = { request_id = p.request_id, expected_def_id = p.expected_def_id,
+          source = source, index = index, sold_item_id = item_id, sold_count = count, gold_gained = gain }
+        if modern then Inventory.remember_sale(sheet, receipt) end
+        local progress, version = read_pve_progress(uid)
+        progress.gold = (tonumber(progress.gold) or 0) + gain
+        local committed, err = pcall(commit_sheet, uid, sheet, progress, version)
+        if committed then return encode_sale(sheet, progress, uid, receipt, false) end
+        if not modern then error(err) end
+      end
+      return nk.json_encode({ ok = false, err = "storage_conflict_retry" })
+    end)
+    if ok then return result end
     nk.logger_error("duel_character_item_sell: " .. tostring(result))
     return nk.json_encode({ ok = false, err = "server_error" })
   end
-  return result
-end
 
   function M.duel_workshop_craft_start(ctx, payload)
   local ok, result = pcall(function()
@@ -461,6 +451,9 @@ end
     end
 
     local sheet = read_character_sheet(user_id)
+    if not Guidance.workshop_unlocked(sheet, defs) then
+      return nk.json_encode({ ok = false, err = "workshop_locked" })
+    end
     ensure_sheet_inventory_counts(sheet)
     ensure_sheet_workshop(sheet)
     local wslot = sheet.workshop_slots[slot_index + 1]
@@ -588,7 +581,7 @@ end
         end
         wslot.output_def_id = output_def_id
         wslot.ends_at = os.time() + dur
-        write_character_sheet(user_id, sheet, progress, version)
+        commit_sheet(user_id, sheet, progress, version)
         return encode_character_ok_response(sheet, progress, user_id)
     end
   end)
@@ -645,7 +638,7 @@ end
 
     wslot.output_def_id = ""
     wslot.ends_at = 0
-    write_character_sheet(user_id, sheet)
+    commit_sheet(user_id, sheet)
 
     local progress = read_pve_progress(user_id)
     return encode_character_ok_response(sheet, progress, user_id)
@@ -878,7 +871,7 @@ end
       end
       wslot.ends_at = wend
       local w_ok, w_err = pcall(function()
-        write_character_sheet(user_id, sheet, progress, version)
+        commit_sheet(user_id, sheet, progress, version)
       end)
       if w_ok then
         return encode_character_ok_response(sheet, progress, user_id)

@@ -1,9 +1,9 @@
 [CmdletBinding()]
-param([string]$StatusPath, [string]$ReportDirectory, [string]$ExpectedVersion = '0.3.5', [long]$MinimumVersionCode = 7)
+param([string]$StatusPath, [string]$ReportDirectory, [string]$ExpectedVersion = '0.3.15', [long]$MinimumVersionCode = 17)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-if ([string]::IsNullOrWhiteSpace($StatusPath)) { $StatusPath = Join-Path $project '.utmp/expedition/android-build-status.json' }
+if ([string]::IsNullOrWhiteSpace($StatusPath)) { $StatusPath = Join-Path $project ('Builds/' + $ExpectedVersion + '/build-status.json') }
 if ([string]::IsNullOrWhiteSpace($ReportDirectory)) { $ReportDirectory = Join-Path $project ('Design/Release-' + $ExpectedVersion + '/validation') }
 $status = Get-Content -LiteralPath $StatusPath -Raw | ConvertFrom-Json
 if ($status.state -cne 'succeeded' -or $status.result -cne 'Succeeded') { throw 'APK build has not succeeded' }

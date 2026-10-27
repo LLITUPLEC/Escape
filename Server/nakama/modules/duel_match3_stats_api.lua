@@ -252,9 +252,9 @@ return function(deps)
       bag.wins = bag.wins + (won and 1 or 0)
       bag.losses = bag.losses + (won and 0 or 1)
       val.modes = modes
-      -- Bounded deduplication history; the current match also keeps a success map.
+      -- Four recent IDs; strict durable journal tickets reject compacted retries.
       local result_ids = {}
-      for i = math.max(1, #recent - 62), #recent do
+      for i = math.max(1, #recent - 2), #recent do
         result_ids[#result_ids + 1] = recent[i]
       end
       result_ids[#result_ids + 1] = result_id
@@ -285,6 +285,30 @@ return function(deps)
 
   -- Internal API only: the finished authoritative match supplies identities and
   -- mode. Local SoloBot and client RPC payloads never reach this path.
+  local function build_match_finish_effects(state, winner, is_draw)
+    local plans = {}
+    if not state or not state.started or not state.ended or is_draw or tostring(winner or "") == "" then return plans end
+    local players = state.players_sorted
+    if type(players) ~= "table" or #players ~= 2 or players[1] == players[2]
+        or (winner ~= players[1] and winner ~= players[2]) or tostring(state.stats_result_id or "") == "" then return plans end
+    -- Freeze the completion day in the authoritative state so storage retries
+    -- around midnight retain the exact same journal plan.
+    state._daily_result_day = state._daily_result_day or math.floor((os.time() + 10800) / 86400)
+    for _, uid in ipairs(players) do
+      if Ach.is_human(uid) then
+        local uses = 0
+        local counters = type(state._ach_counters) == "table" and state._ach_counters[uid] or {}
+        for _, key in ipairs({"uses.cross", "uses.square", "uses.petard", "uses.shield", "uses.fury"}) do
+          uses = uses + math.max(0, math.floor(tonumber(counters and counters[key]) or 0))
+        end
+        plans[uid] = { match_stats = { mode = match_stats_mode(state), won = uid == winner,
+          result_id = state.stats_result_id, daily_day = state._daily_result_day, ability_uses = uses,
+          daily_pvp_eligible = uid == winner or (type(state._daily_player_actions) == "table" and (tonumber(state._daily_player_actions[uid]) or 0) >= 3) } }
+      end
+    end
+    return plans
+  end
+
   local function record_match_finish(state, winner, is_draw)
     if state == nil or state.started ~= true or state.ended ~= true then return false end
     -- Preserve existing behavior: draws do not increment wins/losses/played.
@@ -295,10 +319,35 @@ return function(deps)
     local result_id = state.stats_result_id
     if type(result_id) ~= "string" or result_id == "" then return false end
 
+    if deps.finalization_journal then
+      local journal, all_ok = deps.finalization_journal, true
+      for uid, plan in pairs(build_match_finish_effects(state, winner, is_draw)) do
+        if not (state._finalization_managed and state._finalization_managed[uid]) then
+        local ok, prepared = pcall(function()
+          -- A 0.3.8 Race receipt may already own this durable outbox ID. Never
+          -- overwrite its plan or delay its existing counters behind a conflict;
+          -- legacy results intentionally do not invent historical daily progress.
+          local old = type(journal.read) == "function" and journal.read(uid, result_id .. ":stats") or nil
+          local old_stats = old and type(old.plan) == "table" and old.plan.match_stats
+          if old and old.kind == "effects" and type(old_stats) == "table" and old_stats.daily_day == nil and
+              old_stats.mode == plan.match_stats.mode and old_stats.won == plan.match_stats.won and old_stats.result_id == result_id then return true end
+          local id=result_id..":stats"
+          return journal.prepare(uid,id,"effects",plan,journal.ticket and journal.ticket(uid,id))
+        end)
+        if ok and prepared then
+          local delivered, applied = pcall(journal.deliver_effects, uid, result_id .. ":stats")
+          if not delivered or applied ~= true then all_ok = false end
+        else all_ok = false end
+        end
+      end
+      return all_ok
+    end
+
     state._stats_finish_recorded = state._stats_finish_recorded or {}
     local all_ok = true
     for _, uid in ipairs(players) do
-      if Ach.is_human(uid) and state._stats_finish_recorded[uid] ~= true then
+      if Ach.is_human(uid) and state._stats_finish_recorded[uid] ~= true
+          and not (state._finalization_managed and state._finalization_managed[uid]) then
         local ok, recorded = pcall(record_user_result, uid, result_id, match_stats_mode(state), uid == winner)
         if ok and recorded then
           state._stats_finish_recorded[uid] = true
@@ -317,5 +366,6 @@ return function(deps)
     duel_match3_stats_get = duel_match3_stats_get,
     duel_match3_stats_record = duel_match3_stats_record,
     record_match_finish = record_match_finish,
+    build_match_finish_effects = build_match_finish_effects,
   }
 end

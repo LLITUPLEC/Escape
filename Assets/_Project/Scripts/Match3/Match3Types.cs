@@ -35,6 +35,8 @@ namespace Project.Match3
         public int baseArmor = 0;
         public float baseCrit = 0f; // 0..1
         public int baseHeal = 0;
+        public string consumableId;
+        public float damageMultiplier=1, armorMultiplier=1, healingMultiplier=1, consumableCritAdd;
     }
 
     // MatchResult used by Match3BoardLogic
@@ -51,6 +53,13 @@ namespace Project.Match3
     [Serializable]
     public class M3BoardSyncMsg
     {
+        public bool globalBoss, globalBossQualified, bossScreamTriggered, bossAdaptationTriggered;
+        public bool turnPaused;
+        public int turnDurationSeconds;
+        public long bossActionSequence;
+        public string globalBossEventId;
+        public long globalBossMyDamage, globalBossTotalDamage;
+        public int bossOwnTurn, bossScreamCooldown, bossScreamDamage, bossPlayerTurnsLeft;
         // board[y * 6 + x] = (int)PieceType, 36 elements
         public int[] board = new int[36];
 
@@ -74,6 +83,8 @@ namespace Project.Match3
         public int aMaxMana;
         public int aPetardBank;
         public int aRaceActions;
+        public string aConsumableId;
+        public float aDamageMultiplier=1, aArmorMultiplier=1, aHealingMultiplier=1, aConsumableCritAdd;
 
         public int bHp, bMana, bCrossCd, bSquareCd, bPetardCd, bShieldCd, bFuryCd;
         public int bMaxHp;
@@ -86,6 +97,9 @@ namespace Project.Match3
         public int bMaxMana;
         public int bPetardBank;
         public int bRaceActions;
+        public string bConsumableId;
+        public float bDamageMultiplier=1, bArmorMultiplier=1, bHealingMultiplier=1, bConsumableCritAdd;
+        public long bountyEndsAt;
         /// <summary>«Спуск»: цель по мане на этот матч.</summary>
         public int raceGoalMana;
         /// <summary>«Спуск»: чей last-turn (пусто, если ещё не начался).</summary>
@@ -101,6 +115,8 @@ namespace Project.Match3
         public bool extraTurn;      // active player gets another turn
         /// <summary>Кому принадлежит текущий ход после применения этого синка.</summary>
         public string activeUserId;
+        /// <summary>One authoritative round covers the first combatant and the response; extra actions keep it unchanged. Zero means unavailable on a legacy snapshot.</summary>
+        public int roundNumber;
         /// <summary>Кто совершил действие в этом синке (swap/способность). Пусто, если синк без действия.</summary>
         public string actionActorUserId;
 
@@ -133,8 +149,13 @@ namespace Project.Match3
     [Serializable]
     public class M3GameOverMsg
     {
+        public bool globalBoss, bossAttemptFinished, bossQualified, bossAttemptRefunded;
+        public long bossGlobalHp, bossGlobalMaxHp, bossMyDamage, bossTotalDamage;
         public string winnerUserId;
         public bool isDraw;
+        public bool matchCancelled;
+        public bool retryAllowed;
+        public string endReason;
         public bool entryRefund;
         public int rewardXp;
         public int rewardGold;
@@ -147,6 +168,11 @@ namespace Project.Match3
         /// <summary>Def id предмета-рецепта из §4.3 (v43), если сервер положил в сундук.</summary>
         public string rewardRecipeItemId;
         public int rewardTesseract;
+        /// <summary>The reward transaction is not committed yet; distinct from saved items awaiting bag space.</summary>
+        public bool rewardPending;
+        public long itemLootPendingCount;
+        public M3ItemLoot[] deliveredItems;
+        public M3ItemLoot[] pendingItems;
         public int newLevel;
 
         // Arena tournament meta (optional).
@@ -155,6 +181,30 @@ namespace Project.Match3
         public string arenaBetTier; // "green" | "blue" | "purple"
         /// <summary>Сервер: smith | ore | gold — для достижений и UI.</summary>
         public string arenaKind;
+        public M3ArenaCraftReward[] arenaCraftRewards;
+    }
+
+    [Serializable]
+    public sealed class M3ArenaCraftReward
+    {
+        public string userId, outcome, ingotDef, recipeItemId;
+        public int ingots, pendingCount;
+        /// <summary>Receipts are broadcast to both players. Only the exact local user's row belongs in this result.</summary>
+        public static M3ArenaCraftReward ForUser(M3GameOverMsg result, string userId)
+        {
+            if (string.IsNullOrEmpty(userId) || result?.arenaCraftRewards == null) return null;
+            foreach(var row in result.arenaCraftRewards)
+                if(row != null && string.Equals(row.userId,userId,StringComparison.Ordinal) &&
+                   (row.outcome == "champion" || row.outcome == "participation")) return row;
+            return null;
+        }
+    }
+
+    [Serializable]
+    public sealed class M3ItemLoot
+    {
+        public string def_id;
+        public long amount;
     }
 
     /// <summary>Сервер (duel_match3): соперник временно потерял связь; матч продолжается до истечения grace.</summary>

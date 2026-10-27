@@ -1,0 +1,57 @@
+{
+  "version": "0.3.14",
+  "checkedUtc": "2026-10-27T06:03:43.642094+00:00",
+  "installed": true,
+  "publicUrl": "https://console.prokrust-play.ru/escape-admin/aura/",
+  "wholeGameReleasePublished": false,
+  "bundleId": "aura-admin0314-3eb340ae8d5a",
+  "archiveSha256": "3789575eb3bbc82eda3e280cdccff7832fd1276f714a43155506f88c710841ce",
+  "backup": "/opt/escape/backups/aura-admin0314-20261027T060201-98fd92a38723",
+  "configBaselinesMatched": true,
+  "candidateNginxTestPassed": true,
+  "liveNginxTestPassed": true,
+  "onlyRecreatedService": "escape/api-gateway",
+  "nakamaRestartedByThisInstall": false,
+  "consoleLogins": 0,
+  "auraStorageWrites": 0,
+  "databaseWrites": 0,
+  "httpChecks": {
+    "assets": 4,
+    "exactSha256": true,
+    "privateNoStore": true,
+    "csp": true,
+    "anonymousConsoleStatusDenied": true,
+    "auraStorageWrites": 0
+  },
+  "realPosixPermissionProbe": {
+    "passed": true,
+    "umask": "0077",
+    "publicDirectory": "0755",
+    "publicAsset": "0644",
+    "requestedConfigModePreserved": "0640",
+    "privateProbeDirectory": "0700",
+    "probeRemoved": true
+  },
+  "rollbackNeeded": false,
+  "visualReviewPassed": null,
+  "visualLimitation": "Browser-local and native-app preview unavailable; root independently reviewing real HTTPS login shell. No claimed authenticated visual review.",
+  "physicalAndroidTested": false,
+  "assets": [
+    {
+      "path": "index.html",
+      "sha256": "70aa071f03eb82aa3a6a3a7426c6acb4d8ac0838851ab687f223d040321659e8"
+    },
+    {
+      "path": "aura.css",
+      "sha256": "8d1b1ec19ec7c7ac682a87ba885fc1f5b44ab66eef757c9f7aa2b4bfdc55300c"
+    },
+    {
+      "path": "aura-model.js",
+      "sha256": "e3b90876309da19423aecc87369cad6c07b39fb523ea8b6bacfddbb175c7df5d"
+    },
+    {
+      "path": "aura-page.js",
+      "sha256": "c891560ddee17795e87855b81c4ddf28430d349836adc79c01bd609ae1ec0208"
+    }
+  ]
+}

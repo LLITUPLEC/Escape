@@ -27,6 +27,12 @@ namespace Project.UI
                 _iconsLoaded = atlas.Length > 0;
             }
             var canonical = CanonicalKey(key);
+            if ((canonical == "friends" || canonical == "health-red" || canonical == "healing-cross") &&
+                (!Icons.TryGetValue(canonical, out var standalone) || standalone == null))
+            {
+                standalone = Resources.Load<Sprite>("Expedition/Icons/" + canonical);
+                if (standalone != null) Icons[canonical] = standalone;
+            }
             if (!_utilityIconsLoaded && (canonical == "trophy" || canonical == "settings"))
             {
                 foreach (var sprite in Resources.LoadAll<Sprite>(Root + "utility-icons-atlas"))
@@ -70,7 +76,8 @@ namespace Project.UI
                 case "slot-feet": case "feet": return "boots";
                 case "slot-hand-left": case "hand-left": return "left-hand";
                 case "slot-hand-right": case "hand-right": return "right-hand";
-                case "stat-health": case "stat-healing": case "health": case "healing": return "heart";
+                case "stat-health": case "health": case "heart": return "health-red";
+                case "stat-healing": case "healing": return "healing-cross";
                 case "stat-damage": case "damage": case "sword": return "swords";
                 case "stat-armor": case "armor": return "shield";
                 case "stat-critical": case "critical": return "energy";

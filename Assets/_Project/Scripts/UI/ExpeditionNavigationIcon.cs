@@ -15,6 +15,35 @@ namespace Project.UI
             {
                 case 5: Trophy(vh); break;
                 case 6: Gear(vh); break;
+                case 7:
+                {
+                    // Brushed-metal shackle and beveled body, with a dark keyhole.
+                    // All coordinates stay inside the existing icon rect.
+                    var center = new Vector2(.5f, .64f);
+                    for (var i = 0; i < 12; i++)
+                    {
+                        var a0 = i * Mathf.PI / 12; var a1 = (i + 1) * Mathf.PI / 12;
+                        var d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
+                        var d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
+                        QuadShade(vh, center + d0 * .13f, center + d0 * .23f,
+                            center + d1 * .23f, center + d1 * .13f, color * (i < 6 ? .72f : 1.1f));
+                    }
+                    Box(vh, .27f, .49f, .37f, .65f); Box(vh, .63f, .49f, .73f, .65f);
+                    QuadShade(vh, new Vector2(.17f,.16f), new Vector2(.17f,.54f), new Vector2(.23f,.54f), new Vector2(.23f,.10f), color * .74f);
+                    QuadShade(vh, new Vector2(.77f,.10f), new Vector2(.77f,.54f), new Vector2(.83f,.54f), new Vector2(.83f,.16f), color * .47f);
+                    QuadShade(vh, new Vector2(.17f,.16f), new Vector2(.23f,.10f), new Vector2(.77f,.10f), new Vector2(.83f,.16f), color * .57f);
+                    QuadShade(vh, new Vector2(.17f,.54f), new Vector2(.23f,.60f), new Vector2(.77f,.60f), new Vector2(.83f,.54f), color * 1.15f);
+                    QuadShade(vh, new Vector2(.23f,.16f), new Vector2(.23f,.54f), new Vector2(.77f,.54f), new Vector2(.77f,.16f), color * .93f);
+                    var hole = new Vector2(.5f, .38f);
+                    for (var i = 0; i < 10; i++)
+                    {
+                        var a0 = i * Mathf.PI * 2 / 10; var a1 = (i + 1) * Mathf.PI * 2 / 10;
+                        QuadShade(vh, hole, hole + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * .056f,
+                            hole + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * .056f, hole, color * .18f);
+                    }
+                    QuadShade(vh, new Vector2(.469f,.24f), new Vector2(.478f,.37f), new Vector2(.522f,.37f), new Vector2(.531f,.24f), color * .18f);
+                    break;
+                }
                 case 0: Line(vh, .08f, .48f, .5f, .89f, .14f); Line(vh, .5f, .89f, .92f, .48f, .14f); Box(vh, .2f, .1f, .44f, .56f); Box(vh, .63f, .1f, .8f, .56f); Box(vh, .2f, .1f, .8f, .22f); break;
                 case 1: Line(vh, .2f, .13f, .76f, .83f, .14f); Line(vh, .28f, .8f, .84f, .59f, .18f); break;
                 case 2: Box(vh, .13f, .48f, .9f, .68f); Box(vh, .3f, .22f, .65f, .49f); Box(vh, .17f, .1f, .79f, .25f); Line(vh, .07f, .75f, .37f, .58f, .15f); break;

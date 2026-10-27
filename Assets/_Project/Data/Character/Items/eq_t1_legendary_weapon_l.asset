@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: eq_t1_legendary_weapon_l
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_legendary_weapon_l
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "Клевец «Разлом глубин»"
   colorDisplayName: {r: 1, g: 0.679736, b: 0, a: 1}
-  description: 
+  description: "Легендарный клевец с янтарным рудным сердечником. Оружие для левой руки."
   kind: 0
   maxStack: 1
   tier: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_epic_weapon_l
   craftMinutes: 300
   salePrice: 100
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2f02aff9012df7ef919677e70bde5ebf, type: 3}
   equippable: 1
   slot: 6
   modifiers: []

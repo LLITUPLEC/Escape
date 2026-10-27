@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "utc": "2026-10-27T19:40:00.778821+00:00",
+  "canonical": "/opt/escape/deploy_runtime.py",
+  "canonical_before_sha256": "45707e11129bf7bab6a6c9ba9e13ebedd119a5751307459f9080bf9d3cd07da1",
+  "canonical_after_sha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31",
+  "deleted_only": "/opt/escape/deploy_runtime0313-candidate.py",
+  "both_originals_retained_in": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z/operations",
+  "python_syntax_verified": true,
+  "canonical_help_verified": true,
+  "runtime_unchanged": true,
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "db_or_services_changed": false,
+  "separately_authorized_after_122_entry_manifest": true
+}

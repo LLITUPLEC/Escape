@@ -14,7 +14,7 @@ local dispatcher = {
 local env = setmetatable({
   CFG = { TICK_RATE=6, RECONNECT_GRACE_SECONDS=300, OP_PEER_DISCONNECT=18,
     OP_BOARD_SYNC=10, OP_PLAYER_LEFT=12, OP_ACTION_REQUEST=13, OP_SNAPSHOT_REQUEST=16, OP_SELECTION_SYNC=15 },
-  Runtime = { Presence=Presence, RateLimit={filter_match_messages=function(_, messages) return messages end} },
+  Runtime = { Rounds=require("modules.duel_match3_rounds"), Presence=Presence, RateLimit={filter_match_messages=function(_, messages) return messages end} },
   nk = {json_encode=function(value) return value end, time=function() return 0 end, logger_error=function() end},
   count_present_players = function(state) local n=0; for _ in pairs(state.presences) do n=n+1 end; return n end,
   make_sync_msg = function(state) return {board=state.board, activeUserId=state.active_user_id} end,
@@ -28,6 +28,15 @@ local env = setmetatable({
   on_pve_owner_socket_gone = function() end,
   parse_action = function() error("obsolete socket reached action parser") end,
 }, {__index=_G})
+-- The focused session fixture keeps finalization at its existing boundary;
+-- the integrated lifecycle suite below exercises the actual shared finalizer.
+env.Runtime.forfeit_match=function(d,s,uid,reason)
+  s.ended=true
+  if not s.started then
+    s.players_sorted={};for id in pairs(s.invited or {})do s.players_sorted[#s.players_sorted+1]=id end;table.sort(s.players_sorted)
+  end
+  env.finalize_pvp_forfeit_win(d,s,env.other_player_id(s,uid),reason)
+end
 local helpers_start = assert(source:find("Runtime.finish_arena_result = function", 1, true))
 local helpers_end = assert(source:find("-- Board dimensions:", helpers_start, true))
 local helpers = assert(loadstring(source:sub(helpers_start, helpers_end-1)))

@@ -78,7 +78,7 @@ namespace Project.Editor
             if (target == "battle")
             {
                 var background = GameObject.Find("ExpeditionBattleBackdrop")?.GetComponent<Image>();
-                if (background == null || background.sprite == null || background.sprite.name != "battle-world-v4") throw new InvalidOperationException("Wrong battle world");
+                if (background == null || background.sprite == null || background.sprite.name != "battle-world-v5") throw new InvalidOperationException("Wrong battle world");
                 CoversScreen(background.rectTransform);
                 if (GameObject.Find("ExpeditionCombatantStage") != null || GameObject.Find("CombatBoardTransition") != null) throw new InvalidOperationException("Clipped battle scene remains");
                 return "Single portrait battle world covers physical screen, no second scene or transition band";

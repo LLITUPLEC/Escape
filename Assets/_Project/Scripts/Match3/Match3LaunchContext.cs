@@ -19,6 +19,8 @@ namespace Project.Match3
         private static bool _autoStartSolo;
         /// <summary>Куда вернуться после соло-PVE (MineScene / MineScene3D).</summary>
         private static string _soloReturnScene = "MineScene";
+        private static int _mineReturnFloor;
+        private static string _mineReturnFloorScene, _mineReturnFloorOwner;
 
         /// <summary>Турнир арены: присоединиться к уже созданному authoritative матчу без матчмейкера.</summary>
         private static bool _arenaJoinPending;
@@ -36,6 +38,25 @@ namespace Project.Match3
 
         /// <summary>После автовыхода из боя 1/4–1/2: арена показывает блокер до первого poll с активной сеткой.</summary>
         private static bool _arenaMenuAwaitBracketOverlay;
+
+        public sealed class GlobalBossJoin
+        {
+            public string MatchId, EventId, AttemptId, BotUserId, Name, OwnerScope;
+        }
+        private static GlobalBossJoin _bossJoin;
+        public static void ArmGlobalBoss(string matchId, string eventId, string attemptId, string botUserId, string name)
+        {
+            ClearArenaJoinArm(); ClearFriendRaceJoinArm();
+            _nextPvpPro = _nextPvpRace = false;
+            SetSoloMine("global_boss", 0, "hard", false, "MainMenu");
+            _bossJoin = new GlobalBossJoin { MatchId = matchId, EventId = eventId, AttemptId = attemptId, BotUserId = botUserId, Name = name, OwnerScope = Project.Nakama.LocalAccountCacheScope.Current };
+        }
+        public static GlobalBossJoin PeekGlobalBoss()
+        {
+            if (_bossJoin != null && !Project.Nakama.LocalAccountCacheScope.IsCurrent(_bossJoin.OwnerScope)) _bossJoin = null;
+            return _bossJoin;
+        }
+        public static void ClearGlobalBoss() => _bossJoin = null;
 
         public static Match3LaunchMode ConsumeMode()
         {
@@ -79,6 +100,7 @@ namespace Project.Match3
 
         public static void SetSoloMine(string botId, int floor, string difficulty, bool autoStart = true, string returnScene = null)
         {
+            _bossJoin = null;
             _nextMode = Match3LaunchMode.SoloBot;
             _preferredBotId = string.IsNullOrWhiteSpace(botId) ? null : botId;
             _preferredFloor = floor;
@@ -86,6 +108,25 @@ namespace Project.Match3
             _autoStartSolo = autoStart;
             if (!string.IsNullOrWhiteSpace(returnScene))
                 _soloReturnScene = returnScene.Trim();
+            // Keep the fought floor separately from the launch payload, which is consumed
+            // as soon as DuelMatch3 starts. Scene recreation must not pick the deepest floor.
+            _mineReturnFloor = floor >= 1 && floor <= 12 && (_soloReturnScene == "MineScene" || _soloReturnScene == "MineScene3D") ? floor : 0;
+            _mineReturnFloorScene = _soloReturnScene;
+            _mineReturnFloorOwner = Project.Nakama.LocalAccountCacheScope.Current;
+        }
+
+        public static bool TryConsumeMineReturnFloor(string scene, out int floor)
+        {
+            floor = 0;
+            if (_mineReturnFloor <= 0 || scene != _mineReturnFloorScene) return false;
+            if (!Project.Nakama.LocalAccountCacheScope.IsCurrent(_mineReturnFloorOwner))
+            {
+                _mineReturnFloor = 0;
+                return false;
+            }
+            floor = _mineReturnFloor;
+            _mineReturnFloor = 0;
+            return true;
         }
 
         public static void ConsumeSoloMine(out string botId, out int floor, out string difficulty, out bool autoStart)

@@ -11,6 +11,7 @@ using Project.Utils;
 using Project.Character;
 using Project.Achievements;
 using Project.Friends;
+using Project.Audio;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -34,13 +35,10 @@ namespace Project.Match3
     ///     scene for edit-time layout; at play mode it is detected and wired (no duplicate Canvas).
     ///  6. Add scene to Build Settings.
     ///
-    /// NETWORK ARCHITECTURE (client-authoritative relay):
-    ///  • Nakama acts as a relay only — no server-side game logic needed.
-    ///  • The active player runs timer + calculations locally, then sends
-    ///    the full board state + both players' stats to the opponent via
-    ///    Nakama match-state messages.
+    /// Nakama owns board state, timers, outcomes and rewards. This client
+    /// sends actions and presents authoritative snapshots and acknowledgements.
     /// </summary>
-    public sealed class DuelMatch3Manager : MonoBehaviour
+    public sealed partial class DuelMatch3Manager : MonoBehaviour
     {
         // ─── Prefab Fields ────────────────────────────────────────────────────────
         [Header("Prefabs — assign after running Tools → Match3 → Создать префабы UI")]
@@ -77,6 +75,7 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxDamageCrit;
         [SerializeField] private AudioClip sfxVictory;
         [SerializeField] private AudioClip sfxDefeat;
+        private string _audioConfirmedMatchId;
 
         [Header("Ability Icon Sprites")]
         [SerializeField] private Sprite petardAbilitySprite;
@@ -135,7 +134,7 @@ namespace Project.Match3
         private const string RewardIngotsIconPath = "Assets/_Project/img/resources_hud/ingots.png";
         private const string RewardKeyIconPath = "Assets/_Project/img/resources_hud/key.png";
         private const string RewardBlueprintIconPath = "Assets/_Project/img/resources_hud/blueprint.png";
-        private const string RewardTesseractIconPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        private const string RewardTesseractIconPath = "Assets/_Project/Resources/Expedition/Items/tesseract.png";
         /// <summary>Resources.Load без расширения: Assets/_Project/Resources/UI/Match3GameHUD.prefab</summary>
         private const string Match3HudResourcesPath = "UI/Match3GameHUD";
         private const int DefaultRewardCellsPerLine = 2;
@@ -206,8 +205,16 @@ namespace Project.Match3
         private bool  _gameEnded;
         private Coroutine _remoteSyncRoutine;
         private readonly Queue<M3BoardSyncMsg> _pendingBoardSyncs = new();
+        private readonly HashSet<M3BoardSyncMsg> _silentBoardSyncs = new();
+        private readonly Match3PresentationSyncGate _presentationSyncGate = new();
+        private Match3AbilityFx _abilityFx;
+        private bool _awaitingPresentationSnapshot;
+        private long _consumableBountyEndsAt,_consumableServerNow;
         private Coroutine _snapshotRetryRoutine;
         private bool _hasInitialBoardSync;
+        private bool _matchRevealPending;
+        private string _revealedMatchId;
+        private PublicPlayerAppearance.State _remoteAppearance;
         private int _remoteSelX = -1, _remoteSelY = -1;
         private string _lastRewardText;
         private int _lastRewardXp;
@@ -215,11 +222,20 @@ namespace Project.Match3
         private int _lastRewardOre;
         private int _lastRewardMatter;
         private int _lastRewardIngots;
+        private string _lastRewardIngotDef;
+        private int _arenaCraftPendingCount;
+#if UNITY_EDITOR
+        // Enabled only by the isolated Editor fixture; never compiled into a player.
+        private bool _offlinePresentationQa;
+#endif
         private string _lastRewardKeyId = string.Empty;
         private int _lastRewardKeyAmount;
         private string _lastRewardBlueprint = string.Empty;
         private string _lastRewardRecipeItemId = string.Empty;
         private int _lastRewardTesseract;
+        private bool _lastRewardPending;
+        private long _lastRewardItemLootPendingCount;
+        private M3ItemLoot[] _lastRewardPendingItems = Array.Empty<M3ItemLoot>();
         private bool _pendingGameOver;
         private bool _pendingGameOverWon;
         private bool _isArenaTournamentMatch;
@@ -261,6 +277,8 @@ namespace Project.Match3
         private int          _selX = -1, _selY = -1;
         private AbilityType? _pendingAbility;
         private bool         _inputBlocked;
+        private bool _connectionInputPaused, _matchCancelled;
+        private bool CanSendGameplayInput => _useLocalBotSimulation || ServerConnectionGuard.CanPlay;
 
         // ─── UI Component Instances ───────────────────────────────────────────────
         private Match3PlayerPanel   _myPanel;
@@ -307,6 +325,7 @@ namespace Project.Match3
             _opStats = new PlayerStats();
             _launchMode = Match3LaunchContext.ConsumeMode();
             _isSoloBotMode = _launchMode == Match3LaunchMode.SoloBot;
+            _matchRevealPending = true;
             _pvpProQueue = !_isSoloBotMode && Match3LaunchContext.ConsumePvpPro();
             _pvpRaceQueue = !_isSoloBotMode && Match3LaunchContext.ConsumePvpRace();
             if (_pvpRaceQueue) _pvpProQueue = false;
@@ -318,6 +337,7 @@ namespace Project.Match3
 
             EnsureCamera();
             BuildUI();
+            if (_pveStartButton != null) GameplayConnectionButton.Bind(_pveStartButton);
             _searchingPanel?.SetModeLabel(_isSoloBotMode ? "Экспедиция" : _pvpRaceQueue ? "Спуск" : _pvpProQueue ? "Дуэль Pro" : "Дуэль");
             // Любой вход в DuelMatch3 (поиск/PvE/друзья) снимает висящие предложения Спуска.
             FriendsRaceInviteHost.InvalidatePendingForMatchEntry();
@@ -329,7 +349,7 @@ namespace Project.Match3
             _searchingPanel?.Show(_isSoloBotMode
                 ? "Подготовка боя с ботом…"
                 : (friendRacePending
-                    ? "Телепортируемся в шахту с другом…"
+                    ? (_pvpRaceQueue ? "Телепортируемся в шахту с другом…" : "Подготовка дуэли с другом…")
                     : (_pvpRaceQueue ? "Поиск соперника (Спуск)…" : (_pvpProQueue ? "Поиск соперника (Pro)…" : "Поиск соперника…"))));
 
             if (_isSoloBotMode)
@@ -350,7 +370,7 @@ namespace Project.Match3
 
             try
             {
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                await ServerConnectionGuard.RequireAsync(_cts.Token);
                 _myUserId = NakamaBootstrap.Instance.Session.UserId;
                 ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
                 if (_launchMode == Match3LaunchMode.Multiplayer &&
@@ -394,10 +414,9 @@ namespace Project.Match3
                 }
                 else if (_launchMode == Match3LaunchMode.Multiplayer &&
                          Match3LaunchContext.TryPeekFriendRaceJoin(
-                             out var raceMatchId, out var raceOppHint, out var raceOppUserId, out var racePrepSeconds))
+                             out var raceMatchId, out var raceOppHint, out var raceOppUserId, out _))
                 {
                     _pvpProQueue = false;
-                    _pvpRaceQueue = true;
                     _isArenaTournamentMatch = false;
                     _mmTcs?.TrySetCanceled();
                     await CancelMatchmakerTicketAsync();
@@ -407,12 +426,9 @@ namespace Project.Match3
                         _opDisplayName = raceOppHint;
                     _opponentIsServerBot = false;
 
-                    // 5 с «телепорта» на SearchingPanel, затем JoinMatch.
-                    await RunFriendRacePrepCountdownAsync(racePrepSeconds, _cts.Token);
-                    if (_cts.IsCancellationRequested || _gameEnded) return;
-
                     try
                     {
+                        await ServerConnectionGuard.RequireAsync(_cts.Token);
                         _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(raceMatchId);
                     }
                     catch (Exception joinEx)
@@ -421,6 +437,7 @@ namespace Project.Match3
                         Debug.LogWarning("[Match3] FriendRace JoinMatchAsync: " + joinEx.Message);
                         MainThreadDispatcher.Enqueue(() =>
                         {
+                            ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                             _searchingPanel?.Show("Не удалось войти в матч.\n" + joinEx.Message);
                         });
                         return;
@@ -451,12 +468,16 @@ namespace Project.Match3
             {
                 Debug.LogException(e);
                 MainThreadDispatcher.Enqueue(() =>
-                    _searchingPanel?.Show("Ошибка подключения: " + e.Message));
+                {
+                    ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
+                    _searchingPanel?.Show("Ошибка подключения: " + e.Message);
+                });
             }
         }
 
         private void OnDestroy()
         {
+            _abilityFx?.CancelTransient();
             if (_botTurnRoutine != null)
             {
                 StopCoroutine(_botTurnRoutine);
@@ -476,10 +497,22 @@ namespace Project.Match3
         private void Update()
         {
             if (_gameEnded || _pendingGameOver) return;
-            if (!_useLocalBotSimulation && _match != null && _hasInitialBoardSync)
+            if (!_useLocalBotSimulation)
+            {
+                var paused = !CanSendGameplayInput;
+                if (paused != _connectionInputPaused)
+                {
+                    var recovered = _connectionInputPaused && !paused;
+                    _connectionInputPaused = paused;
+                    _boardView?.SetDimmed(paused || !_hasInitialBoardSync);
+                    RefreshAbilityUi(_isMyTurn && !_inputBlocked, _gameEnded);
+                    if (recovered && _match != null) TryRecoverMatchNetworkFireAndForget();
+                }
+            }
+            if (!_useLocalBotSimulation && _match != null)
             {
                 var socket = NakamaBootstrap.Instance?.Socket;
-                if (socket != null && !socket.IsConnected && !_reconnectInFlight)
+                if ((socket == null || !socket.IsConnected || !ServerConnectionGuard.CanPlay) && !_reconnectInFlight)
                 {
                     _socketDownAccum += Time.unscaledDeltaTime;
                     if (_socketDownAccum >= 1.25f)
@@ -520,7 +553,7 @@ namespace Project.Match3
 
                 _searchingPanel?.Show("Восстановление связи…\nПожалуйста, подождите.");
 
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                await ServerConnectionGuard.RequireAsync(_cts.Token);
                 if (_match == null || _gameEnded) return;
 
                 ReplaceMatchSocketHooks(NakamaBootstrap.Instance.Socket);
@@ -539,7 +572,7 @@ namespace Project.Match3
                         {
                             _match = null;
                             _gameEnded = true;
-                            _searchingPanel?.Hide();
+                            _searchingPanel?.Show("Бой уже завершён или отменён сервером.\nВернитесь в меню для нового боя.");
                             return;
                         }
 
@@ -547,7 +580,7 @@ namespace Project.Match3
                     }
                 }
 
-                _searchingPanel?.Hide();
+                if (!_matchRevealPending) _searchingPanel?.Hide();
                 RequestSnapshot();
             }
             catch (OperationCanceledException)
@@ -561,7 +594,7 @@ namespace Project.Match3
                 {
                     _match = null;
                     _gameEnded = true;
-                    _searchingPanel?.Hide();
+                    _searchingPanel?.Show("Бой уже завершён или отменён сервером.\nВернитесь в меню для нового боя.");
                     return;
                 }
 
@@ -600,6 +633,7 @@ namespace Project.Match3
             if (_turnEndsAtUnixMs > 0)
                 return Mathf.Max(0f, (_turnEndsAtUnixMs - AlignedUtcNowMsForHud()) / 1000f);
             // turnEndsAtUnixMs == 0: сервер ждёт OP 17 или локальный бот — не считать как «время вышло».
+            if (_isGlobalBoss && _hasInitialBoardSync) return _bossDecisionDuration;
             if (_hasInitialBoardSync)
                 return 999f;
             return Mathf.Max(0f, _turnTimer);
@@ -617,7 +651,12 @@ namespace Project.Match3
             if (_turnEndsAtUnixMs <= 0)
             {
                 var resolvingPending = _remoteSyncRoutine != null || (_isMyTurn && _inputBlocked);
-                _hud?.SetTimerPhase(resolvingPending);
+                _hud?.SetTimerPhase(resolvingPending || _isGlobalBoss && _bossTurnPaused);
+                if (_isGlobalBoss)
+                {
+                    _hud?.SetTimer(Mathf.CeilToInt(_bossDecisionDuration).ToString(), _bossDecisionDuration);
+                    return;
+                }
                 // Пусто вместо «—»: иначе при каждой смене хода на кадр мелькает чёрточка до прихода дедлайна.
                 _hud?.SetTimer(string.Empty, -1f);
                 return;
@@ -630,6 +669,7 @@ namespace Project.Match3
             _hud?.SetTimer(Mathf.CeilToInt(rem).ToString(), rem);
 
             if (!_isMyTurn || _inputBlocked || _remoteSyncRoutine != null) return;
+            if (!CanSendGameplayInput) return;
             if (rem > 0.05f) _localTurnTimeoutDispatched = false;
             if (rem <= 0f && !_localTurnTimeoutDispatched)
             {
@@ -641,16 +681,25 @@ namespace Project.Match3
         private void ApplyTurnDeadlineFromBoardSync(M3BoardSyncMsg msg)
         {
             if (msg == null) return;
-            _localTurnTimeoutDispatched = false;
-            if (msg.serverNowUnixMs > 1_000_000_000_000L)
+            if (msg.globalBoss)
             {
-                _serverClockOffsetMs = msg.serverNowUnixMs - UtcNowMs();
-                _hasServerClockSample = true;
+                _bossTurnPaused = msg.turnPaused;
+                if (msg.turnDurationSeconds > 0) _bossDecisionDuration = Mathf.Clamp(msg.turnDurationSeconds, 1, 120);
             }
+            _localTurnTimeoutDispatched = false;
             if (msg.turnEndsAtUnixMs > 0)
                 _turnEndsAtUnixMs = msg.turnEndsAtUnixMs;
             else
                 _turnEndsAtUnixMs = 0;
+        }
+
+        private void SampleServerClockOnReceive(M3BoardSyncMsg msg)
+        {
+            if (msg == null || msg.serverNowUnixMs <= 1_000_000_000_000L) return;
+            // Sample before presentation can queue or animate the packet. Otherwise
+            // a free ability's animation would be added back to the remaining turn.
+            _serverClockOffsetMs = msg.serverNowUnixMs - UtcNowMs();
+            _hasServerClockSample = true;
         }
 
         /// <summary>Сервер стартует дедлайн хода только после этого (анимации на клиенте уже отыграны).</summary>
@@ -684,6 +733,7 @@ namespace Project.Match3
 
         private async Task FindMatchAsync(CancellationToken ct)
         {
+            await ServerConnectionGuard.RequireAsync(ct);
             _mmTcs = new TaskCompletionSource<IMatchmakerMatched>();
             ct.ThrowIfCancellationRequested();
             await CancelMatchmakerTicketAsync();
@@ -701,43 +751,48 @@ namespace Project.Match3
                     { "rules", rules },
                 });
             _matchmakerTicket = ticket?.Ticket;
+            if (!ct.IsCancellationRequested && this != null && !string.IsNullOrEmpty(_matchmakerTicket))
+                ExpeditionAudio.Play(ExpeditionCue.QueueEnter);
 
             IMatchmakerMatched matched = null;
-            if (_pvpRaceQueue)
+            var pending = _mmTcs.Task;
+            var searchStarted = Time.realtimeSinceStartup;
+            try
             {
-                // «Спуск»: 20 с ждём человека, иначе серверный бот.
-                var timeoutTask = Task.Delay(RaceBotFillTimeoutMs, ct);
-                var finished = await Task.WhenAny(_mmTcs.Task, timeoutTask);
-                if (finished == _mmTcs.Task)
+                while (!pending.IsCompleted)
                 {
-                    matched = await _mmTcs.Task;
+                    ct.ThrowIfCancellationRequested();
+                    if (!CanSendGameplayInput) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
+                    if (_pvpRaceQueue && (Time.realtimeSinceStartup - searchStarted) * 1000 >= RaceBotFillTimeoutMs) break;
+                    await Task.WhenAny(pending, Task.Delay(200, ct));
                 }
+                if (pending.IsCompleted) matched = await pending;
                 else
                 {
                     await CancelMatchmakerTicketAsync();
-                    // Гонка: матч мог прийти в момент таймаута.
-                    if (_mmTcs.Task.Status == TaskStatus.RanToCompletion)
-                        matched = await _mmTcs.Task;
+                    if (pending.Status == TaskStatus.RanToCompletion) matched = await pending;
                     else
                     {
                         _mmTcs = null;
                         _matchmakerTicket = null;
-                        MainThreadDispatcher.Enqueue(() =>
-                            _searchingPanel?.Show("Соперник не найден.\nПодключаем бота…"));
+                        await ServerConnectionGuard.RequireAsync(ct);
+                        _searchingPanel?.Show("Соперник не найден.\nПодключаем бота…");
                         await CreateRaceVsBotAndJoinAsync(ct);
                         return;
                     }
                 }
             }
-            else
+            catch
             {
-                matched = await _mmTcs.Task;
+                _mmTcs?.TrySetCanceled();
+                await CancelMatchmakerTicketAsync();
+                throw;
             }
 
             _mmTcs = null;
             _matchmakerTicket = null; // consumed by successful match
             ct.ThrowIfCancellationRequested();
-
+            await ServerConnectionGuard.RequireAsync(ct);
             _match = await NakamaBootstrap.Instance.Socket.JoinMatchAsync(matched);
 
             if (matched?.Users != null)
@@ -750,23 +805,6 @@ namespace Project.Match3
 
             _opponentIsServerBot = !string.IsNullOrEmpty(_opUserId) &&
                                   _opUserId.StartsWith("zz-bot-", StringComparison.Ordinal);
-        }
-
-        private async Task RunFriendRacePrepCountdownAsync(int prepSeconds, CancellationToken ct)
-        {
-            var secs = Mathf.Clamp(prepSeconds, 1, 15);
-            for (var left = secs; left >= 1; left--)
-            {
-                ct.ThrowIfCancellationRequested();
-                if (_gameEnded) return;
-                var n = left;
-                MainThreadDispatcher.Enqueue(() =>
-                    _searchingPanel?.Show($"Телепортируемся в шахту с другом…\n{n}"));
-                await Task.Delay(1000, ct);
-            }
-
-            MainThreadDispatcher.Enqueue(() =>
-                _searchingPanel?.Show("Телепортируемся в шахту с другом…\nВходим…"));
         }
 
         private async Task CreateRaceVsBotAndJoinAsync(CancellationToken ct)
@@ -795,13 +833,48 @@ namespace Project.Match3
 
         private void OnMatchFound()
         {
-            _searchingPanel?.Hide();
+            AnnounceConfirmedMatchAudio();
             EnsureRaceHudApplied();
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
             _lastRewardText = null;
             ClearLastPveRewards();
+            BeginConfirmedMatchPresentation();
+        }
+
+        private void BeginConfirmedMatchPresentation()
+        {
+            if (_match == null || _revealedMatchId == _match.Id || _gameEnded) return;
+            _revealedMatchId = _match.Id;
+            _matchRevealPending = true;
             StartGameWaitingServer();
+            StartCoroutine(PresentConfirmedMatch());
+        }
+
+        private IEnumerator PresentConfirmedMatch()
+        {
+            // Keep OP 17 (turn-ready) behind this reveal by queuing BoardSyncs.
+            // The authoritative initial turn remains paused during the two seconds.
+            if (!_isSoloBotMode && !_opponentIsServerBot && !string.IsNullOrEmpty(_opUserId))
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+                timeout.CancelAfter(1500);
+                var appearance = PublicPlayerAppearance.GetAsync(_opUserId, timeout.Token);
+                while (!appearance.IsCompleted && !_gameEnded) yield return null;
+                if (appearance.Status == TaskStatus.RanToCompletion) _remoteAppearance = appearance.Result;
+            }
+            ApplyExpeditionPortraits();
+            for (var left = 2; left > 0 && !_gameEnded; left--)
+            {
+                _searchingPanel?.ShowReady(_opPanel?.avatarImage != null ? _opPanel.avatarImage.sprite : null,
+                    !string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник", !_isSoloBotMode,
+                    $"Соперник готов. Бой начнётся через {left}…");
+                yield return new WaitForSecondsRealtime(1);
+            }
+            _matchRevealPending = false;
+            _searchingPanel?.Hide();
+            TryStartNextBoardSync();
+            TryShowDeferredGameOver();
         }
 
         private async Task PreparePveLobbyAsync(CancellationToken ct)
@@ -810,12 +883,18 @@ namespace Project.Match3
             if (boot == null)
                 throw new Exception("NakamaBootstrap отсутствует. Запустите игру с MainMenu (не с MineScene3D напрямую).");
 
-            await boot.EnsureConnectedAsync(ct);
+            await ServerConnectionGuard.RequireAsync(ct);
             if (boot.Session == null || boot.Client == null)
                 throw new Exception("Нет сессии Nakama. Сначала войдите через MainMenu.");
 
             _myUserId = boot.Session.UserId;
             ReplaceMatchSocketHooks(boot.Socket);
+            var bossJoin = Match3LaunchContext.PeekGlobalBoss();
+            if (bossJoin != null)
+            {
+                await JoinGlobalBossAsync(bossJoin, ct);
+                return;
+            }
             await LoadPveCatalogAsync(ct);
             ApplyPreferredPveSelection();
             MainThreadDispatcher.Enqueue(() =>
@@ -899,13 +978,23 @@ namespace Project.Match3
 
         private void OnBotMatchFound(string botName)
         {
+            AnnounceConfirmedMatchAudio();
             ShowPveSelector(false);
-            _searchingPanel?.Hide();
+            if (!_isGlobalBoss)
+                botName = MonsterNames.Resolve(botName, presentationMonsterCatalog != null ? presentationMonsterCatalog.GetByFloor(_activePveBotFloor) : null, _activePveBotFloor);
+            _opDisplayName = botName;
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(botName);
             _lastRewardText = null;
             ClearLastPveRewards();
-            StartGameWaitingServer();
+            BeginConfirmedMatchPresentation();
+        }
+
+        private void AnnounceConfirmedMatchAudio()
+        {
+            if (_match == null || string.IsNullOrEmpty(_match.Id) || _match.Id == _audioConfirmedMatchId) return;
+            _audioConfirmedMatchId = _match.Id;
+            ExpeditionAudio.Play(ExpeditionCue.MatchReady);
         }
 
         private void ShowPveSelector(bool visible)
@@ -921,7 +1010,7 @@ namespace Project.Match3
             var bot = _pveBots[_selectedPveBotIndex];
             if (bot == null) return;
             if (_pveBotTitleText != null)
-                _pveBotTitleText.text = bot.name;
+                _pveBotTitleText.text = MonsterNames.Resolve(bot.name, presentationMonsterCatalog != null ? presentationMonsterCatalog.GetByFloor(bot.floor) : null, bot.floor);
             if (_pveBotStatsText != null)
             {
                 var difficulty = _pveProgress?.mine?.current_difficulty ?? "easy";
@@ -955,25 +1044,30 @@ namespace Project.Match3
 
         private async void StartSelectedPveBot()
         {
+            if (!ServerConnectionGuard.CanPlay) { ServerConnectionGuard.ShowUnavailable(); return; }
             if (_pveBots == null || _pveBots.Count == 0) return;
             if (_pveStartButton != null) _pveStartButton.interactable = false;
             _searchingPanel?.Show("Создание боя с боссом...");
             try
             {
+                await ServerConnectionGuard.RequireAsync(_cts != null ? _cts.Token : CancellationToken.None);
                 var bot = _pveBots[Mathf.Clamp(_selectedPveBotIndex, 0, _pveBots.Count - 1)];
                 await StartSoloBotServerAsync(_cts != null ? _cts.Token : CancellationToken.None, bot.id);
             }
             catch (PveCreateFailedException e)
             {
+                ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 _searchingPanel?.Hide();
                 ShowPveSelector(true);
                 ShowPveCreateErrorToast(e);
                 if (_pveStartButton != null) _pveStartButton.interactable = true;
             }
+            catch (OperationCanceledException) { }
             catch (Exception e)
             {
                 Debug.LogException(e);
                 _searchingPanel?.Hide();
+                ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 ShowPveSelector(true);
                 ShowPveErrorToast("Не удалось создать PVE бой.\nПопробуйте ещё раз.");
                 if (_pveStartButton != null) _pveStartButton.interactable = true;
@@ -984,8 +1078,13 @@ namespace Project.Match3
 
         private void StartGameWaitingServer()
         {
+            _hud?.ResetRoundNumber();
             _hasInitialBoardSync = false;
             _pendingBoardSyncs.Clear();
+            _silentBoardSyncs.Clear();
+            _presentationSyncGate.Reset();
+            _awaitingPresentationSnapshot = true;
+            _abilityFx?.CancelTransient();
             _pendingGameOver = false;
             _pendingGameOverWon = false;
             _pendingGameOverDraw = false;
@@ -1073,7 +1172,7 @@ namespace Project.Match3
 
         private void OnCellClicked(int x, int y)
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
 
             if (_pendingAbility.HasValue)
             {
@@ -1105,7 +1204,7 @@ namespace Project.Match3
 
         private void OnCellSwiped(int fromX, int fromY, int toX, int toY)
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             if (_pendingAbility.HasValue) return;
             if (Mathf.Abs(fromX - toX) + Mathf.Abs(fromY - toY) != 1) return;
 
@@ -1239,6 +1338,9 @@ namespace Project.Match3
             _lastRewardKeyId = string.Empty;
             _lastRewardBlueprint = string.Empty;
             _lastRewardRecipeItemId = string.Empty;
+            _lastRewardPending = false; _lastRewardItemLootPendingCount = 0;
+            _lastRewardPendingItems = Array.Empty<M3ItemLoot>();
+            _lastRewardIngotDef = string.Empty; _arenaCraftPendingCount = 0;
         }
 
         private string ResolveMyDisplayName()
@@ -1338,7 +1440,9 @@ namespace Project.Match3
         }
 
         private Sprite ResolvePveIngotRewardRowSprite()
-            => MineRewardFormat.IngotIconForDifficulty(
+            => !string.IsNullOrEmpty(_lastRewardIngotDef)
+                ? MineRewardFormat.ItemIconOrFallback(itemCatalog, _lastRewardIngotDef, rewardIngotsSprite)
+                : MineRewardFormat.IngotIconForDifficulty(
                 GetActiveMineDifficultyForRewardIcons(),
                 itemCatalog,
                 rewardIngotsSprite);
@@ -1369,7 +1473,7 @@ namespace Project.Match3
                                    (string.IsNullOrWhiteSpace(_lastRewardKeyId) || _lastRewardKeyAmount <= 0) &&
                                    string.IsNullOrWhiteSpace(_lastRewardBlueprint) &&
                                    string.IsNullOrWhiteSpace(_lastRewardRecipeItemId) &&
-                                   _lastRewardTesseract <= 0;
+                                   _lastRewardTesseract <= 0 && _lastRewardItemLootPendingCount <= 0 && _arenaCraftPendingCount <= 0 && !_lastRewardPending;
             if (!won && noNumericRewards && string.IsNullOrWhiteSpace(_lastRewardText))
                 rewardXp = DefaultLossXpReward;
 
@@ -1396,6 +1500,31 @@ namespace Project.Match3
             if (_lastRewardTesseract > 0)
                 count += AddRewardRow(rewardTesseractSprite, _lastRewardTesseract);
 
+            if (_lastRewardPending)
+            {
+                AddPendingLootNotice("Награда подтверждается сервером. Она сохранится после завершения операции.");
+                count++;
+            }
+            if (_lastRewardItemLootPendingCount > 0)
+            {
+                // These rows describe durable pending items, never a credited +reward.
+                foreach (var item in _lastRewardPendingItems)
+                {
+                    if (item == null || item.amount <= 0 || string.IsNullOrEmpty(item.def_id)) continue;
+                    var icon = MineRewardFormat.ItemIconOrFallback(itemCatalog, item.def_id, rewardBlueprintSprite);
+                    count += AddRewardRowDisplay(icon, item.amount + "\nОжидает места");
+                }
+                AddPendingLootNotice("Предметы сохранены: " + _lastRewardItemLootPendingCount +
+                    ". Освободите место в инвентаре — они появятся автоматически.");
+                count++;
+            }
+            if (_arenaCraftPendingCount > 0)
+            {
+                AddPendingLootNotice("Ожидает места в инвентаре: " + _arenaCraftPendingCount +
+                    ". Награда сохранена и поступит после освобождения ячеек.");
+                count++;
+            }
+
             if (count == 0 && !string.IsNullOrEmpty(_lastRewardText))
             {
                 fallback.text = _lastRewardText;
@@ -1405,6 +1534,21 @@ namespace Project.Match3
             }
 
             _gameOverRewardRowsRoot.gameObject.SetActive(count > 0);
+        }
+
+        private void AddPendingLootNotice(string message)
+        {
+            // A full-width notice stays readable alongside the normal reward grid.
+            _gameOverRewardLineRoot = null; _gameOverRewardSlotsInLine = 0;
+            var go = new GameObject("PendingLootNotice", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(_gameOverRewardRowsRoot, false);
+            var label = go.GetComponent<TextMeshProUGUI>();
+            label.font = Project.UI.ExpeditionTheme.Font; label.text = message;
+            label.fontSize = label.fontSizeMax = 34; label.fontSizeMin = 25; label.enableAutoSizing = true;
+            label.color = Project.UI.ExpeditionTheme.Amber; label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.Normal; label.raycastTarget = false;
+            var layout = go.GetComponent<LayoutElement>();
+            layout.minHeight = layout.preferredHeight = 132; layout.flexibleWidth = 1;
         }
 
         private void ClearRewardRows()
@@ -1523,6 +1667,7 @@ namespace Project.Match3
 
         private void ShowGameOver(bool won)
         {
+            if (_isGlobalBoss) { ShowGlobalBossOutcome(); return; }
             var isDraw = _pendingGameOverDraw;
             if (!isDraw)
                 ReportAchievementProgressAfterGameOver(won);
@@ -1533,9 +1678,11 @@ namespace Project.Match3
             _isMyTurn    = false;
             _inputBlocked = true;
             _boardView?.SetDimmed(false);
-            PlaySfx(isDraw ? sfxVictory : (won ? sfxVictory : sfxDefeat));
+            if (!_matchCancelled) PlaySfx(isDraw ? sfxVictory : (won ? sfxVictory : sfxDefeat));
             string arenaTitle = null;
-            if (isDraw)
+            if (_matchCancelled)
+                arenaTitle = "Бой отменён";
+            else if (isDraw)
                 arenaTitle = "Ничья!";
             else if (_isArenaTournamentMatch)
             {
@@ -1545,13 +1692,16 @@ namespace Project.Match3
                     arenaTitle = "Победа в турнире!";
             }
             if (_hud != null && _hud.affixTooltipRoot != null) _hud.affixTooltipRoot.gameObject.SetActive(false);
-            _gameOverPanel?.Show(won, _lastRewardText, arenaTitle);
+            _gameOverPanel?.Show(won, _lastRewardText, arenaTitle, _matchCancelled);
             // Ничья в Спуске тоже с наградой (refund entry + XP) — не подменять на fake loss XP.
             RefreshGameOverRewardRows(won || isDraw);
         }
 
         private void ReportAchievementProgressAfterGameOver(bool won)
         {
+#if UNITY_EDITOR
+            if (_offlinePresentationQa) return;
+#endif
             if (!won)
             {
                 _pendingFinisherActionTypeForAchievement = 0;
@@ -1625,6 +1775,9 @@ namespace Project.Match3
 
         private void TryReportAchievementsFromBoardSync(M3BoardSyncMsg msg, int prevMyHp, int prevOpHp)
         {
+#if UNITY_EDITOR
+            if (_offlinePresentationQa) return;
+#endif
             if (msg == null || string.IsNullOrEmpty(_myUserId)) return;
             var actedAs = string.IsNullOrEmpty(msg.actionActorUserId) ? msg.activeUserId : msg.actionActorUserId;
             if (!string.Equals(actedAs, _myUserId, StringComparison.Ordinal)) return;
@@ -1643,7 +1796,7 @@ namespace Project.Match3
 
         private void SendActionRequest(M3ActionRequest req)
         {
-            if (_gameEnded) return;
+            if (_gameEnded || !CanSendGameplayInput) return;
             if (_useLocalBotSimulation)
             {
                 HandleLocalActionRequest(req, _myUserId);
@@ -1666,18 +1819,21 @@ namespace Project.Match3
         private void RequestSnapshot()
         {
             if (_useLocalBotSimulation || _match == null || _gameEnded) return;
+            _awaitingPresentationSnapshot = true;
             _ = SendStateAsync(M3Op.SnapshotRequest, Encoding.UTF8.GetBytes("{}"));
         }
 
         private IEnumerator RequestSnapshotUntilSynced()
         {
-            const int maxAttempts = 8;
+            const int maxAttempts = 25;
             for (int i = 0; i < maxAttempts && !_hasInitialBoardSync && !_gameEnded; i++)
             {
                 RequestSnapshot();
-                yield return new WaitForSeconds(1.0f);
+                yield return new WaitForSecondsRealtime(1.0f);
             }
             _snapshotRetryRoutine = null;
+            if (!_hasInitialBoardSync && !_gameEnded && !_pendingGameOver)
+                _searchingPanel?.Show("Бой ещё не подтверждён сервером.\nПроверяем подключение и состояние матча…");
         }
 
         private async Task SendStateAsync(long opCode, byte[] data)
@@ -1711,7 +1867,9 @@ namespace Project.Match3
         }
 
         private void OnMatchmakerMatched(IMatchmakerMatched matched)
-            => _mmTcs?.TrySetResult(matched);
+        {
+            if (CanSendGameplayInput) _mmTcs?.TrySetResult(matched);
+        }
 
         private void OnMatchPresence(IMatchPresenceEvent e)
         {
@@ -1741,7 +1899,6 @@ namespace Project.Match3
 
                         if (!string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId)
                         {
-                            _searchingPanel?.Hide();
                             if (learnedOpponent)
                                 RequestSnapshot();
                         }
@@ -1757,8 +1914,8 @@ namespace Project.Match3
                     // PvP: сервер даёт окно на переподключение; итог — только OP_GAME_OVER / явный уход.
                     if (!string.IsNullOrEmpty(_opUserId) && p.UserId == _opUserId) continue;
 
-                    _gameEnded = true;
-                    ShowGameOver(won: true);
+                    // Presence loss is never proof of victory. Only the
+                    // authoritative terminal message may finish this match.
                 }
             });
         }
@@ -1783,6 +1940,18 @@ namespace Project.Match3
                 MainThreadDispatcher.Enqueue(() =>
                 {
                     if (_gameEnded || _pendingGameOver) return;
+                    _matchCancelled = msg.matchCancelled;
+                    if (msg.globalBoss)
+                    {
+                        _isGlobalBoss = true; _bossGameOver = msg; ClearLastPveRewards();
+                        _pendingGameOver = true; _pendingGameOverDraw = false;
+                        _pendingGameOverWon = msg.bossGlobalHp <= 0;
+                        TryShowDeferredGameOver(); return;
+                    }
+                    var receivesOwnReward = _isSoloBotMode || msg.isDraw || msg.entryRefund || string.Equals(msg.winnerUserId, _myUserId, StringComparison.Ordinal);
+                    _lastRewardPending = receivesOwnReward && msg.rewardPending;
+                    _lastRewardItemLootPendingCount = receivesOwnReward ? Math.Max(0L, msg.itemLootPendingCount) : 0;
+                    _lastRewardPendingItems = receivesOwnReward && msg.pendingItems != null ? msg.pendingItems : Array.Empty<M3ItemLoot>();
                     if (_isSoloBotMode)
                     {
                         var rxp = Mathf.Max(0, msg.rewardXp);
@@ -1844,7 +2013,7 @@ namespace Project.Match3
                         if (msg.entryRefund) _lastRewardText = "Бой с ботом · взнос возвращён\n" + _lastRewardText;
                     }
                     _pendingGameOver = true;
-                    _pendingGameOverDraw = msg.isDraw;
+                    _pendingGameOverDraw = msg.isDraw || msg.matchCancelled;
                     _pendingGameOverWon = !msg.isDraw && msg.winnerUserId == _myUserId;
                     _arenaGameOverRound = msg.arenaRound ?? string.Empty;
                     _arenaGameOverBetTier = msg.arenaBetTier ?? string.Empty;
@@ -1864,7 +2033,8 @@ namespace Project.Match3
                         _lastRewardTesseract = 0;
                         _lastRewardText = BuildRewardLinesTextFull(0, _lastRewardGold, _lastRewardOre, 0, 0, "", 0, "", "", 0);
                     }
-            TryShowDeferredGameOver();
+                    ApplyOwnArenaCraftRewards(msg);
+                    TryShowDeferredGameOver();
                 });
             }
             else if (state.OpCode == M3Op.PeerDisconnect)
@@ -1877,8 +2047,7 @@ namespace Project.Match3
                     if (string.IsNullOrEmpty(msg.disconnectedUserId) || msg.disconnectedUserId == _myUserId)
                         return;
                     var sec = msg.reconnectGraceSeconds > 0 ? msg.reconnectGraceSeconds : 300;
-                    var min = Mathf.Max(1, Mathf.CeilToInt(sec / 60f));
-                    _hud?.SetTurn("Соперник offline — ждём до ~" + min + " мин. Матч продолжается.");
+                    _hud?.SetTurn("Соперник потерял связь. Ожидаем до " + sec + " сек.");
                 });
             }
             else if (state.OpCode == M3Op.PlayerLeft)
@@ -1892,8 +2061,8 @@ namespace Project.Match3
                 try { msg = JsonUtility.FromJson<M3ActionRejectMsg>(json); } catch { return; }
                 MainThreadDispatcher.Enqueue(() =>
                 {
-                    _inputBlocked = false;
-                    RefreshAbilityUi(_isMyTurn, _gameEnded);
+                    _inputBlocked = _remoteSyncRoutine != null || _pendingBoardSyncs.Count > 0 || !_isMyTurn;
+                    RefreshAbilityUi(_isMyTurn && !_inputBlocked, _gameEnded);
                     if (!string.IsNullOrEmpty(msg.reason))
                         Debug.Log($"[Match3] Ход отклонён сервером: {msg.reason}");
                 });
@@ -1907,15 +2076,46 @@ namespace Project.Match3
             }
         }
 
+        private void ApplyOwnArenaCraftRewards(M3GameOverMsg result)
+        {
+            if (!_isArenaTournamentMatch) return;
+            var receipt = M3ArenaCraftReward.ForUser(result, _myUserId);
+            if (receipt == null) return; // Legacy v1 results have no crafting receipt.
+            _lastRewardIngots += Mathf.Max(0, receipt.ingots);
+            _lastRewardIngotDef = receipt.ingotDef ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(receipt.recipeItemId)) _lastRewardRecipeItemId = receipt.recipeItemId;
+            _arenaCraftPendingCount = Mathf.Max(0, receipt.pendingCount);
+            _lastRewardText = BuildRewardLinesTextFull(_lastRewardXp, _lastRewardGold, _lastRewardOre,
+                _lastRewardMatter, _lastRewardIngots, _lastRewardKeyId, _lastRewardKeyAmount,
+                _lastRewardBlueprint, _lastRewardRecipeItemId, _lastRewardTesseract);
+        }
+
         private void OnBoardSyncReceived(M3BoardSyncMsg msg)
         {
             if (_gameEnded) return;
+            var recovering = _awaitingPresentationSnapshot && msg != null && msg.actionType == 0;
+            if (!_presentationSyncGate.TryAccept(msg, recovering)) return;
+            SampleServerClockOnReceive(msg);
+            var silent = !_hasInitialBoardSync || _awaitingPresentationSnapshot ||
+                         (msg.actionType == 0 && !HasBossAbilityAction(msg));
+            if (recovering)
+            {
+                // The fresh authoritative checkpoint supersedes interrupted presentation, never replays it.
+                if (_remoteSyncRoutine != null) StopCoroutine(_remoteSyncRoutine);
+                _remoteSyncRoutine = null;
+                _pendingBoardSyncs.Clear(); _silentBoardSyncs.Clear();
+                _abilityFx?.CancelTransient();
+                _awaitingPresentationSnapshot = false;
+            }
+            if (silent) _silentBoardSyncs.Add(msg);
 
             EnsureCheatRowsOverlay(msg);
 
             _hasInitialBoardSync = true;
             if (_snapshotRetryRoutine != null) { StopCoroutine(_snapshotRetryRoutine); _snapshotRetryRoutine = null; }
             _pendingBoardSyncs.Enqueue(msg);
+            _inputBlocked = true;
+            RefreshAbilityUi(false, _gameEnded);
             TryStartNextBoardSync();
         }
 
@@ -1958,6 +2158,7 @@ namespace Project.Match3
 
         private void TryStartNextBoardSync()
         {
+            if (_matchRevealPending) return;
             if (_remoteSyncRoutine != null) return;
             if (_pendingBoardSyncs.Count == 0)
             {
@@ -1965,11 +2166,14 @@ namespace Project.Match3
                 return;
             }
             var next = _pendingBoardSyncs.Dequeue();
+            _inputBlocked = true;
+            RefreshAbilityUi(false, _gameEnded);
             _remoteSyncRoutine = StartCoroutine(ApplyRemoteBoardSync(next));
         }
 
         private void TryShowDeferredGameOver()
         {
+            if (_matchRevealPending) return;
             if (_gameEnded || !_pendingGameOver) return;
             if (_remoteSyncRoutine != null || _pendingBoardSyncs.Count > 0) return;
             _pendingGameOver = false;
@@ -2019,6 +2223,14 @@ namespace Project.Match3
 
         private IEnumerator ApplyRemoteBoardSync(M3BoardSyncMsg msg)
         {
+            // Ensure StartCoroutine has published its handle even for an instantaneous snapshot.
+            yield return null;
+            var silent = _silentBoardSyncs.Remove(msg);
+            var presentAction = !silent && msg.actionType > 0;
+            var actor = string.Equals(msg.actionActorUserId, _myUserId, StringComparison.Ordinal) ? _myPanel
+                : string.Equals(msg.actionActorUserId, _opUserId, StringComparison.Ordinal) ? _opPanel : null;
+            var target = actor == _myPanel ? _opPanel : _myPanel;
+            var petardPresented = false;
             if (msg.pvpRace && !_pvpRaceQueue)
             {
                 _pvpRaceQueue = true;
@@ -2032,8 +2244,29 @@ namespace Project.Match3
             int prevOpHp = _opStats.hp;
             int prevMyMana = _myStats.mana;
             int prevOpMana = _opStats.mana;
+            var ownBossDamage = msg.globalBoss ? Math.Max(0L, msg.globalBossMyDamage - _bossDamagePresented) : 0;
+            if (msg.globalBoss) _bossDamagePresented = msg.globalBossMyDamage;
 
-            if (_boardView != null)
+            if (presentAction && msg.actionType == 4 && actor != null)
+            {
+                _abilityFx = Match3AbilityFx.Ensure(actor);
+                if (_abilityFx != null)
+                {
+                    yield return _abilityFx.FlyPetard(actor, target, _pvpRaceQueue || msg.pvpRace);
+                    petardPresented = _abilityFx.ImpactIsActive;
+                }
+                // The existing selected explosion clip and authoritative HP/drain appear at contact.
+                PlaySfx(sfxAbilityPetard != null ? sfxAbilityPetard : sfxAbilitySquare);
+            }
+            else if (presentAction && msg.actionType == 5 && actor != null)
+            {
+                _abilityFx = Match3AbilityFx.Ensure(actor);
+                _abilityFx?.PlayShield(actor);
+                PlaySfx(sfxAbilityShield);
+            }
+            else if (presentAction && msg.actionType == 6) PlaySfx(sfxAbilityFury);
+
+            if (_boardView != null && presentAction)
             {
                 if (msg.actionType == 1 &&
                     msg.fromX >= 0 && msg.fromY >= 0 && msg.toX >= 0 && msg.toY >= 0)
@@ -2059,23 +2292,9 @@ namespace Project.Match3
                     if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
                         yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
                 }
-                else if (msg.actionType == 4)
-                {
-                    PlaySfx(sfxAbilityPetard != null ? sfxAbilityPetard : sfxAbilitySquare);
-                }
-                else if (msg.actionType == 5)
-                {
-                    PlaySfx(sfxAbilityShield);
-                    _boardView.ShowCenterAnnouncement("Щит", new Color(0.65f, 0.85f, 1f), 1.2f);
-                }
-                else if (msg.actionType == 6)
-                {
-                    PlaySfx(sfxAbilityFury);
-                    _boardView.ShowCenterAnnouncement("Ярость", new Color(1f, 0.55f, 0.25f), 1.2f);
-                }
             }
 
-            bool usedAnimSteps = msg.animSteps != null && msg.animSteps.Count > 0;
+            bool usedAnimSteps = presentAction && msg.animSteps != null && msg.animSteps.Count > 0;
             if (usedAnimSteps && _boardView != null)
             {
                 for (int i = 0; i < msg.animSteps.Count; i++)
@@ -2153,6 +2372,17 @@ namespace Project.Match3
             _opStats.shieldT3 = amA ? msg.bShieldT3 : msg.aShieldT3;
             _opStats.furyTurnsRemaining = amA ? msg.bFuryTurns : msg.aFuryTurns;
             _opStats.furyDamageBonus    = amA ? msg.bFuryBonus : msg.aFuryBonus;
+            _myStats.consumableId=amA?msg.aConsumableId:msg.bConsumableId;
+            _opStats.consumableId=amA?msg.bConsumableId:msg.aConsumableId;
+            _myStats.damageMultiplier=ServerEffectMultiplier(amA?msg.aDamageMultiplier:msg.bDamageMultiplier);
+            _opStats.damageMultiplier=ServerEffectMultiplier(amA?msg.bDamageMultiplier:msg.aDamageMultiplier);
+            _myStats.armorMultiplier=ServerEffectMultiplier(amA?msg.aArmorMultiplier:msg.bArmorMultiplier);
+            _opStats.armorMultiplier=ServerEffectMultiplier(amA?msg.bArmorMultiplier:msg.aArmorMultiplier);
+            _myStats.healingMultiplier=ServerEffectMultiplier(amA?msg.aHealingMultiplier:msg.bHealingMultiplier);
+            _opStats.healingMultiplier=ServerEffectMultiplier(amA?msg.bHealingMultiplier:msg.aHealingMultiplier);
+            _myStats.consumableCritAdd=amA?msg.aConsumableCritAdd:msg.bConsumableCritAdd;
+            _opStats.consumableCritAdd=amA?msg.bConsumableCritAdd:msg.aConsumableCritAdd;
+            _consumableBountyEndsAt=msg.bountyEndsAt;_consumableServerNow=msg.serverNowUnixMs/1000;
 
             RecalcDerivedBuffs(_myStats);
             RecalcDerivedBuffs(_opStats);
@@ -2186,17 +2416,20 @@ namespace Project.Match3
             }
 
             _boardView?.RefreshAll(_board);
-            if (!usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
+            if (presentAction && !usedAnimSteps && _boardView != null && msg.board != null && !BoardArraysEqual(beforeBoard, msg.board))
                 yield return _boardView.AnimateBoardTransition(beforeBoard, _board, 0.45f);
             RefreshStatsUI();
+            if (msg.globalBoss) UpdateGlobalBossPresentation(msg, !silent);
 
-            if (msg.critTriggered && _boardView != null)
+            if (presentAction && msg.critTriggered && _boardView != null)
                 _boardView.ShowCenterAnnouncement("Критический урон!", new Color(1f, 0.8f, 0.25f), 1.3f);
 
-            if (!string.IsNullOrWhiteSpace(msg.boardPopup) && _boardView != null)
+            if (presentAction && !string.IsNullOrWhiteSpace(msg.boardPopup) && _boardView != null)
                 _boardView.ShowCenterAnnouncement(msg.boardPopup, new Color(0.75f, 0.9f, 1f), 2.2f);
 
             // Damage / mana-drain popups.
+            if (presentAction)
+            {
             if (_pvpRaceQueue || msg.pvpRace)
             {
                 var drain = Mathf.Max(0, msg.manaDrain);
@@ -2222,7 +2455,7 @@ namespace Project.Match3
             else
             {
                 var myDamageTaken = Mathf.Max(0, prevMyHp - _myStats.hp);
-                var opDamageTaken = Mathf.Max(0, prevOpHp - _opStats.hp);
+                var opDamageTaken = msg.globalBoss ? (int)Math.Min(int.MaxValue, ownBossDamage) : Mathf.Max(0, prevOpHp - _opStats.hp);
                 if (myDamageTaken > 0 && _myPanel != null)
                     _myPanel.ShowDamagePopup(myDamageTaken, msg.critTriggered && opDamageTaken == 0);
                 if (opDamageTaken > 0 && _opPanel != null)
@@ -2250,11 +2483,18 @@ namespace Project.Match3
                 PlaySfx(sfxExtraTurn);
                 _boardView?.ShowCenterAnnouncement("Дополнительный ход\nза 5+ камней", new Color(0.35f, 1f, 0.35f), 2f);
             }
+            }
 
             ApplyTurnDeadlineFromBoardSync(msg);
 
-            TryReportAchievementsFromBoardSync(msg, prevMyHp, prevOpHp);
+            if (presentAction && !msg.globalBoss) TryReportAchievementsFromBoardSync(msg, prevMyHp, prevOpHp);
+            if (petardPresented && _abilityFx != null) yield return _abilityFx.WaitForImpact();
+            // A lethal free boss ability has no board move. Let its impact remain visible
+            // before the queued outcome modal replaces combat presentation.
+            if (!silent && msg.actionType == 0 && HasBossAbilityAction(msg))
+                yield return new WaitForSecondsRealtime(1.35f);
 
+            _hud?.SetRoundNumber(msg.roundNumber);
             bool keepTurnWithoutTimerReset = (msg.actionType == 4 || msg.actionType == 5 || msg.actionType == 6)
                                              && ((msg.activeUserId == _myUserId) == _isMyTurn);
             if (keepTurnWithoutTimerReset)
@@ -2296,6 +2536,8 @@ namespace Project.Match3
                 if (a[i] != b[i]) return false;
             return true;
         }
+
+        private static float ServerEffectMultiplier(float value)=>value>0?Mathf.Clamp(value,.1f,3f):1;
 
         private IEnumerator BotTurnRoutine()
         {
@@ -2996,6 +3238,7 @@ namespace Project.Match3
 
         private void RefreshAbilityUi(bool isMyTurn, bool gameEnded)
         {
+            isMyTurn = isMyTurn && CanSendGameplayInput;
             _abilityPanel?.Refresh(
                 _myStats,
                 isMyTurn,
@@ -3021,6 +3264,8 @@ namespace Project.Match3
             }
             _myPanel?.UpdateStats(_myStats.hp, EffectiveMaxHp(_myStats), _myStats.mana, maxMana);
             _opPanel?.UpdateStats(_opStats.hp, EffectiveMaxHp(_opStats), _opStats.mana, maxMana);
+            _myPanel?.SetConsumableVisual(_myStats.consumableId);_opPanel?.SetConsumableVisual(_opStats.consumableId);
+            Match3ConsumableBountyBadge.Ensure(_myPanel)?.Bind(_consumableBountyEndsAt,_consumableServerNow);
             RefreshAvatarLevelUI();
             if (!_pvpRaceQueue)
                 RefreshCombatStatsUI();
@@ -3037,19 +3282,32 @@ namespace Project.Match3
 
         private void ApplyExpeditionPortraits()
         {
+#if UNITY_EDITOR
+            if (_offlinePresentationQa) return; // The disposable fixture pins a shipped portrait; it never fakes account gender/cosmetics.
+#endif
             if (_expeditionHeroPortrait == null)
                 _expeditionHeroPortrait = Resources.Load<Sprite>("Expedition/Art/hero");
             if (_myPanel != null && _myPanel.avatarImage != null && _expeditionHeroPortrait != null)
             {
                 _myPanel.avatarImage.sprite = _expeditionHeroPortrait;
-                ExpeditionBattlePortrait.MarkFullBody(_myPanel.avatarImage);
+                Project.Character.UI.CharacterAppearanceImage.Bind(_myPanel.avatarImage);
+                ExpeditionBattlePortrait.MarkLocalPlayer(_myPanel.avatarImage);
                 _myPanel.avatarImage.color = Color.white;
                 if (_myPanel.avatarPlaceholderText != null) _myPanel.avatarPlaceholderText.gameObject.SetActive(false);
             }
             if (_opPanel == null || _opPanel.avatarImage == null) return;
+            ExpeditionBattleLayout.SetMineDifficulty(_opPanel, _isSoloBotMode && !_isGlobalBoss ? GetActiveMineDifficultyForRewardIcons() : null);
+            if (_isGlobalBoss)
+            {
+                var bossArt = Resources.Load<Sprite>(GlobalBossService.Art);
+                if (bossArt != null) { _opPanel.avatarImage.sprite = bossArt; ExpeditionBattlePortrait.MarkFullBody(_opPanel.avatarImage, .62f); }
+                _opPanel.avatarImage.color = Color.white;
+                if (_opPanel.avatarPlaceholderText != null) _opPanel.avatarPlaceholderText.gameObject.SetActive(false);
+                return;
+            }
             var monster = _isSoloBotMode && presentationMonsterCatalog != null
                 ? presentationMonsterCatalog.GetByFloor(Mathf.Clamp(_activePveBotFloor, 1, 12)) : null;
-            var portrait = _isSoloBotMode ? (monster != null ? monster.Icon : null) : _expeditionHeroPortrait;
+            var portrait = _isSoloBotMode ? (monster != null ? monster.Icon : null) : _remoteAppearance?.Body(_expeditionHeroPortrait) ?? _expeditionHeroPortrait;
             if (portrait == null) return;
             _opPanel.avatarImage.sprite = portrait;
             if (!_isSoloBotMode) ExpeditionBattlePortrait.MarkFullBody(_opPanel.avatarImage);
@@ -3069,6 +3327,7 @@ namespace Project.Match3
 
         private int ResolveOpAvatarLevel()
         {
+            if (_isGlobalBoss) return -1;
             if (_opProgressionLevel > 0) return _opProgressionLevel;
             if (_isSoloBotMode) return Mathf.Max(1, _activePveBotFloor);
             var fromStats = EstimateCharacterLevelFromStats(_opStats);
@@ -3118,10 +3377,10 @@ namespace Project.Match3
             if (_myPanel != null)
             {
                 var myFury = _myStats.furyTurnsRemaining > 0;
-                var dmg = Mathf.Max(0, _myStats.baseDamage) + (myFury ? Mathf.Max(0, _myStats.furyDamageBonus) : 0);
-                var armor = Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats);
-                var crit = Mathf.Max(0f, _myStats.baseCrit) + (myFury ? furyCritChance : 0f);
-                _myPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_myStats), Mathf.Clamp01(crit) * 100f);
+                var dmg = Mathf.FloorToInt((Mathf.Max(0, _myStats.baseDamage) + (myFury ? Mathf.Max(0, _myStats.furyDamageBonus) : 0))*_myStats.damageMultiplier+.5f);
+                var armor = Mathf.FloorToInt((Mathf.Max(0, _myStats.baseArmor) + GetShieldArmor(_myStats))*_myStats.armorMultiplier+.5f);
+                var crit = Mathf.Max(0f, _myStats.baseCrit) + (myFury ? furyCritChance : 0f)+_myStats.consumableCritAdd;
+                _myPanel.UpdateCombatStats(dmg, armor, Mathf.FloorToInt(GetTotalHealBonus(_myStats)*_myStats.healingMultiplier), Mathf.Clamp01(crit) * 100f);
                 _myPanel.UpdateBuffState(GetShieldStacks(_myStats), Mathf.Max(_myStats.shieldT1, Mathf.Max(_myStats.shieldT2, _myStats.shieldT3)));
                 _myPanel.SetFuryVisual(myFury);
             }
@@ -3129,10 +3388,10 @@ namespace Project.Match3
             if (_opPanel != null)
             {
                 var opFury = _opStats.furyTurnsRemaining > 0;
-                var dmg = Mathf.Max(0, _opStats.baseDamage) + (opFury ? Mathf.Max(0, _opStats.furyDamageBonus) : 0);
-                var armor = Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats);
-                var crit = Mathf.Max(0f, _opStats.baseCrit) + (opFury ? furyCritChance : 0f);
-                _opPanel.UpdateCombatStats(dmg, armor, GetTotalHealBonus(_opStats), Mathf.Clamp01(crit) * 100f);
+                var dmg = Mathf.FloorToInt((Mathf.Max(0, _opStats.baseDamage) + (opFury ? Mathf.Max(0, _opStats.furyDamageBonus) : 0))*_opStats.damageMultiplier+.5f);
+                var armor = Mathf.FloorToInt((Mathf.Max(0, _opStats.baseArmor) + GetShieldArmor(_opStats))*_opStats.armorMultiplier+.5f);
+                var crit = Mathf.Max(0f, _opStats.baseCrit) + (opFury ? furyCritChance : 0f)+_opStats.consumableCritAdd;
+                _opPanel.UpdateCombatStats(dmg, armor, Mathf.FloorToInt(GetTotalHealBonus(_opStats)*_opStats.healingMultiplier), Mathf.Clamp01(crit) * 100f, !_isGlobalBoss);
                 _opPanel.UpdateBuffState(GetShieldStacks(_opStats), Mathf.Max(_opStats.shieldT1, Mathf.Max(_opStats.shieldT2, _opStats.shieldT3)));
                 _opPanel.SetFuryVisual(opFury);
             }
@@ -3271,17 +3530,18 @@ namespace Project.Match3
 
         private void EnsureAudioSource()
         {
-            if (sfxSource != null) return;
-            sfxSource = GetComponent<AudioSource>();
+            if (sfxSource == null) sfxSource = GetComponent<AudioSource>();
             if (sfxSource == null) sfxSource = gameObject.AddComponent<AudioSource>();
             sfxSource.playOnAwake = false;
             sfxSource.loop = false;
             sfxSource.spatialBlend = 0f;
+            ExpeditionAudioRouting.RegisterSource(sfxSource, ExpeditionAudioBus.Sound);
         }
 
         private void PlaySfx(AudioClip clip, float volume = 1f)
         {
-            if (clip == null) return;
+            if (clip == null || !AudioPreferences.SoundEnabled) return;
+            clip = ExpeditionAudio.ResolveVoiceClip(clip);
             EnsureAudioSource();
             if (sfxSource == null) return;
             sfxSource.PlayOneShot(clip, Mathf.Clamp01(volume));
@@ -3309,11 +3569,11 @@ namespace Project.Match3
         private void TryAutoAssignAbilitySpritesInEditor()
         {
 #if UNITY_EDITOR
-            if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/petarda.png");
-            if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/cross.png");
-            if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/square.png");
-            if (shieldAbilitySprite == null) shieldAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/shield.png");
-            if (furyAbilitySprite == null) furyAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/fury.png");
+            if (petardAbilitySprite == null) petardAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/1_spell.png");
+            if (crossAbilitySprite == null) crossAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/3_spell.png");
+            if (squareAbilitySprite == null) squareAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/2_spell.png");
+            if (shieldAbilitySprite == null) shieldAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/4_spell.png");
+            if (furyAbilitySprite == null) furyAbilitySprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/img/butt_spells/5_spell.png");
 #endif
         }
 
@@ -3710,40 +3970,68 @@ namespace Project.Match3
         {
             if (_isLeavingToMenu) return;
             _isLeavingToMenu = true;
-            Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
-            // «Спуск»: отмена поиска до старта матча — вернуть prepaid вход.
-            var shouldRefundRaceEntry = _pvpRaceQueue && !_hasInitialBoardSync;
-            _gameEnded = true;
+            var leaveConfirmed = _gameEnded;
             try
             {
                 _mmTcs?.TrySetCanceled();
                 await CancelMatchmakerTicketAsync();
-
-                if (shouldRefundRaceEntry)
-                    await RefundRaceEntryAsync();
-
-                if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
+                if (_match != null && !leaveConfirmed)
+                    leaveConfirmed = await ConfirmForfeitAsync(_match.Id);
+                else if (_match == null)
+                    leaveConfirmed = !_pvpRaceQueue || await RefundRaceEntryAsync();
+                if (!leaveConfirmed)
                 {
-                    await NakamaBootstrap.Instance.Socket.SendMatchStateAsync(
-                        _match.Id, M3Op.PlayerLeft, Array.Empty<byte>());
-                    await NakamaBootstrap.Instance.Socket.LeaveMatchAsync(_match.Id);
+                    _searchingPanel?.Show("Не удалось подтвердить выход на сервере.\nПроверьте связь и повторите выход.");
+                    return;
                 }
+                _gameEnded = true;
+                Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
+                if (_match != null && NakamaBootstrap.Instance?.Socket?.IsConnected == true)
+                    await NakamaBootstrap.Instance.Socket.LeaveMatchAsync(_match.Id);
             }
-            catch { /* ignore */ }
+            catch
+            {
+                if (!leaveConfirmed) _searchingPanel?.Show("Сдача не подтверждена сервером.\nВосстановите связь и повторите выход.");
+            }
             finally
             {
-                Match3LaunchContext.ClearArenaJoinArm();
-                Match3LaunchContext.ClearFriendRaceJoinArm();
-                SceneManager.LoadScene(_isSoloBotMode ? Match3LaunchContext.ConsumeSoloReturnScene() : "ArenaMenu");
+                _isLeavingToMenu = false;
+                if (leaveConfirmed)
+                {
+                    Match3LaunchContext.ClearArenaJoinArm();
+                    Match3LaunchContext.ClearFriendRaceJoinArm();
+                    SceneManager.LoadScene(_isSoloBotMode ? Match3LaunchContext.ConsumeSoloReturnScene() : "ArenaMenu");
+                }
             }
         }
-
-        private async Task RefundRaceEntryAsync()
+        [Serializable] private sealed class ForfeitRequest { public string match_id; public int session_epoch; }
+        [Serializable] private sealed class ForfeitReply { public bool ok, accepted, terminal; public string err; }
+        private async Task<bool> ConfirmForfeitAsync(string matchId)
+        {
+            var boot = NakamaBootstrap.Instance;
+            if (boot?.Client == null || boot.Session == null) return false;
+            var owner = LocalAccountCacheScope.Current;
+            var session = boot.Session;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            var payload = JsonUtility.ToJson(new ForfeitRequest { match_id = matchId, session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var response = await boot.Client.RpcAsync(session, "duel_match3_forfeit", payload, canceller: timeout.Token);
+                if (!LocalAccountCacheScope.IsCurrent(owner) || !ReferenceEquals(session, boot.Session)) return false;
+                var reply = JsonUtility.FromJson<ForfeitReply>(response?.Payload ?? "{}");
+                if (reply != null && reply.ok && reply.accepted && reply.terminal) return true;
+                if (reply?.err != "result_pending") return false;
+                await Task.Delay(200, timeout.Token);
+            }
+            return false;
+        }
+        private async Task<bool> RefundRaceEntryAsync()
         {
             try
             {
                 var boot = NakamaBootstrap.Instance;
-                if (boot?.Client == null || boot.Session == null) return;
+                if (boot?.Client == null || boot.Session == null) return false;
                 await boot.EnsureConnectedAsync(CancellationToken.None);
                 var payload = JsonUtility.ToJson(new SessionEpochRpcPayload
                 {
@@ -3763,12 +4051,14 @@ namespace Project.Match3
                         energy = model.energy,
                         energy_max = model.energy_max,
                     });
+                    return true;
                 }
             }
             catch (Exception ex)
             {
                 Debug.LogWarning("[Match3] Race entry refund failed: " + ex.Message);
             }
+            return false;
         }
 
         private async Task CancelMatchmakerTicketAsync()
@@ -4845,31 +5135,31 @@ namespace Project.Match3
 
         private void OnPetardClicked()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             ExecuteAbility(AbilityType.Petard, -1, -1);
         }
 
         private void OnCrossClicked()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             SelectOrToggleAbility(AbilityType.Cross);
         }
 
         private void OnSquareClicked()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             SelectOrToggleAbility(AbilityType.Square);
         }
 
         private void OnShieldClicked()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             ExecuteAbility(AbilityType.Shield, -1, -1);
         }
 
         private void OnFuryClicked()
         {
-            if (!_isMyTurn || _gameEnded || _inputBlocked) return;
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput) return;
             ExecuteAbility(AbilityType.Fury, -1, -1);
         }
 

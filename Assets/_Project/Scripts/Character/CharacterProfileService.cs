@@ -51,6 +51,20 @@ namespace Project.Character
             }
         }
 
+        public static Task<CharacterGetRpcResponse> DeliverPendingLootAsync(CancellationToken ct) =>
+            RpcCharacterPayloadAsync("duel_character_loot_deliver",
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + "}", ct);
+
+        public static Task<CharacterGetRpcResponse> BuyInventorySlotAsync(int slotIndex, string requestId, CancellationToken ct)
+        {
+            if (slotIndex < 25 || slotIndex >= 50 || string.IsNullOrEmpty(requestId))
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            var escaped = requestId.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            return RpcCharacterPayloadAsync("duel_character_inventory_slot_buy",
+                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex +
+                ",\"request_id\":\"" + escaped + "\"}", ct);
+        }
+
         public static Task<CharacterGetRpcResponse> MoveInvToEquipAsync(int invIndex, int slotIndex, CancellationToken ct) =>
             RpcItemMoveAsync("{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"op\":\"inv_to_equip\",\"inv_index\":" + invIndex + ",\"slot_index\":" + slotIndex + "}", ct);
 
@@ -67,18 +81,49 @@ namespace Project.Character
             RpcCharacterPayloadAsync(RpcCharacterRecipeLearn,
                 "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"inv_index\":" + inventoryIndex + "}", ct);
 
-        public static Task<CharacterGetRpcResponse> SellInventoryItemAsync(int inventoryIndex, CancellationToken ct) =>
-            RpcCharacterPayloadAsync(RpcCharacterItemSell,
-                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
-                ",\"source\":\"inventory\",\"inv_index\":" + inventoryIndex + "}", ct);
-
-        public static Task<CharacterGetRpcResponse> SellEquipmentItemAsync(int slotIndex, CancellationToken ct)
+        [Serializable] private sealed class ConsumableRequest
         {
-            if (slotIndex < 0 || slotIndex > 7)
-                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
-            return RpcCharacterPayloadAsync(RpcCharacterItemSell,
-                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() +
-                ",\"source\":\"equipment\",\"slot_index\":" + slotIndex + "}", ct);
+            public int session_epoch, inv_index;
+            public string expected_def_id, request_id;
+            public long use_seq;
+        }
+
+        public static Task<CharacterGetRpcResponse> UseConsumableAsync(int index, string itemId, string requestId, long sequence, CancellationToken ct)
+        {
+            if (index < 0 || index >= 50 || !ConsumablePresentation.IsKnown(itemId) || string.IsNullOrEmpty(requestId) || sequence<1)
+                return Task.FromResult(new CharacterGetRpcResponse { ok=false, err="bad_consumable_request" });
+            return RpcCharacterPayloadAsync("duel_consumables_use", JsonUtility.ToJson(new ConsumableRequest {
+                session_epoch=NakamaBootstrap.GetLocalSessionEpoch(), inv_index=index, expected_def_id=itemId, request_id=requestId,use_seq=sequence
+            }),ct);
+        }
+
+        [Serializable]
+        private sealed class SaleRequest
+        {
+            public int session_epoch;
+            public string source;
+            public int inv_index = -1;
+            public int slot_index = -1;
+            public string expected_def_id;
+            public string request_id;
+        }
+
+        public static Task<CharacterGetRpcResponse> SellInventoryItemAsync(int inventoryIndex, string expectedDefId, string requestId, CancellationToken ct) =>
+            SellItemAsync("inventory", inventoryIndex, expectedDefId, requestId, ct);
+
+        public static Task<CharacterGetRpcResponse> SellEquipmentItemAsync(int slotIndex, string expectedDefId, string requestId, CancellationToken ct) =>
+            SellItemAsync("equipment", slotIndex, expectedDefId, requestId, ct);
+
+        private static Task<CharacterGetRpcResponse> SellItemAsync(string source, int index, string expectedDefId, string requestId, CancellationToken ct)
+        {
+            if (index < 0 || index >= (source == "inventory" ? 50 : 8) || string.IsNullOrEmpty(expectedDefId) || string.IsNullOrEmpty(requestId))
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_sale_request" });
+            return RpcCharacterPayloadAsync(RpcCharacterItemSell, JsonUtility.ToJson(new SaleRequest
+            {
+                session_epoch = NakamaBootstrap.GetLocalSessionEpoch(), source = source,
+                inv_index = source == "inventory" ? index : -1, slot_index = source == "equipment" ? index : -1,
+                expected_def_id = expectedDefId, request_id = requestId
+            }), ct);
         }
 
         public static Task<CharacterGetRpcResponse> WorkshopCraftStartAsync(int slotIndex, string outputDefId, CancellationToken ct)

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_purple_Shoulders
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_purple_Shoulders
-  displayName: "\u0420\u0435\u0446\u0435\u043F\u0442 _"
+  displayName: "Рецепт «Наплечники аметистового дозора»"
   colorDisplayName: {r: 0.5591068, g: 0.096226394, b: 1, a: 1}
-  description: 
+  description: "Чертёж изготовления предмета «Наплечники аметистового дозора». После изучения хранится в книге рецептов мастерской."
   kind: 2
   maxStack: 1
   tier: 1

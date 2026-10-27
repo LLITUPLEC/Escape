@@ -101,6 +101,7 @@ namespace Project.UI
             _sceneMonster.preserveAspect = true;
             var explorer = NewImage(environment.transform, "Explorer", Color.white, .06f, .06f, .28f, .66f);
             explorer.sprite = Resources.Load<Sprite>("Expedition/Art/hero"); explorer.preserveAspect = true;
+            Project.Character.UI.CharacterAppearanceImage.Bind(explorer);
             _sceneGate = NewImage(environment.transform, "EncounterGate", Color.white, .77f, .73f, .99f, .995f);
             _sceneGate.sprite = Resources.Load<Sprite>("Expedition/Art/mine-gate-v2"); _sceneGate.preserveAspect = true;
             ExpeditionLocalAtmosphere.Install(environment.transform, false);
@@ -201,6 +202,8 @@ namespace Project.UI
             Rect(_portrait.rectTransform, 0, .015f, 1, .985f);
             _sceneMonster.sprite = monster;
             _sceneMonster.enabled = !barrier && monster != null;
+            ExpeditionDifficultyAura.Set(_portrait, difficulty, !barrier && monster != null);
+            ExpeditionDifficultyAura.Set(_sceneMonster, difficulty, !barrier && monster != null);
             _sceneGate.gameObject.SetActive(barrier);
             if (dismissButton != null) Rect(dismissButton.transform as RectTransform, .035f, barrier ? .035f : .135f, barrier ? .672f : .405f, barrier ? .12f : .215f);
             if (dismissButton != null) ExpeditionUi.StyleButton(dismissButton, barrier, barrier ? 29 : 23);

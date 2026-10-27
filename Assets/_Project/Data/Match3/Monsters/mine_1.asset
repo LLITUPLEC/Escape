@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: mine_1
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_1
-  displayName: "\u041E\u0441\u0442\u0440\u044B\u0439 \u0441\u043A\u043E\u043B"
+  displayName: "Острый скол"
   floor: 1
-  icon: {fileID: 21300000, guid: d326f9857de4461468bc663f625a5679, type: 3}
+  icon: {fileID: 21300000, guid: e4b78b7e7c9e4ec5870fb31ca27ad932, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

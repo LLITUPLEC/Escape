@@ -1,0 +1,9 @@
+{
+  "runtime_sha256": "f4eef39aae3c1daec575949650010ebd49a72a8d633ff921dcf43bcd321822d3",
+  "source_scope": "Actual isolated RPC payloads. All was still incomplete because the bounded PvE fixture did not finish in time; these successful RPC cases share the final Lua bytes.",
+  "snapshots": {
+    "daily": 5,
+    "consumable": 2,
+    "cosmetic": 4
+  }
+}

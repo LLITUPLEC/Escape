@@ -3,7 +3,7 @@
 -- Execute with Lua 5.1 from the repository root; does not contact Nakama.
 package.path = "Server/nakama/?.lua;" .. package.path
 local CFG = require("modules.duel_match3_config")
-local file = assert(io.open("Server/nakama/modules/duel_match3.lua", "r"))
+local file = assert(io.open(os.getenv("INVENTORY_CORE_SOURCE") or "Server/nakama/modules/duel_match3.lua", "r"))
 local source = file:read("*a"); file:close()
 local start = assert(source:find("local function workshop_payload_arrays", 1, true))
 local finish = assert(source:find("local function sheet_has_learned", start, true))
@@ -16,6 +16,7 @@ local defs = {
 }
 local env = setmetatable({
   CFG = CFG,
+  Runtime = { Inventory = require("modules.duel_match3_inventory") },
   nk = nk,
   CharStats = { compute_character_display_stats = function() return {} end },
   character_sheet_payload_arrays = function(s) return s.equipment or {}, s.inventory, s.inventory_counts end,
@@ -31,7 +32,7 @@ local env = setmetatable({
   read_character_sheet = function(uid) assert(uid == "player"); return sheet end,
   inventory_count_def = function(s, id)
     local count = 0
-    for i = 1, 25 do
+    for i = 1, require("modules.duel_match3_inventory").capacity(s) do
       if s.inventory[i] == id then count = count + (s.inventory_counts[i] or 0) end
     end
     return count
@@ -93,4 +94,11 @@ sheet.inventory_counts = { 200, 7, 11 }
 check("multiple stacks of the same color", 218, 0)
 sheet.inventory = { "ingot_green", "tesseract" }; sheet.inventory_counts = { 2, 1 }
 check("new loot after empty balance", 2, 1)
+sheet.inventory_extra_slots = 25
+sheet.inventory[50] = "ingot_purple"; sheet.inventory_counts[50] = 7
+sheet.inventory_pending_loot = { {def_id="ingot_green",amount=100}, {def_id="tesseract",amount=20}, {def_id="recipe_green",amount=6} }
+check("paid page item included but durable pending material excluded", 9, 1)
+sheet.inventory[49] = "recipe_green"; sheet.inventory_counts[49] = 2
+local r = economy.duel_player_resources_get({user_id="player"}, "{}")
+assert(r.blueprint_green == 2, "resource HUD advertises historical/pending blueprints as available")
 print("resource payload consistency: " .. tostring(cases) .. " inventory/spend/zero cases passed through resource and character RPCs")

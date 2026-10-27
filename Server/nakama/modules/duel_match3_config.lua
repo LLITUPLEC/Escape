@@ -71,6 +71,10 @@ local CFG = {  SIZE = 6,
   OP_PEER_DISCONNECT = 18,
   --- Сколько секунд ждать переподключения ушедшего игрока в PvP, прежде чем засчитать поражение.
   RECONNECT_GRACE_SECONDS = 300,
+  -- Admission has no played result. Tournament no-shows must not hold a bracket.
+  MATCH_ADMISSION_SECONDS = 20,
+  ARENA_RECONNECT_GRACE_SECONDS = 20,
+  TURN_READY_TIMEOUT_SECONDS = 8,
   STATS_COLLECTION = "duel_match3_stats",
   STATS_KEY = "summary",
   PVE_PROGRESS_COLLECTION = "duel_match3_progress",
@@ -107,6 +111,11 @@ local CFG = {  SIZE = 6,
   BOT_USER_ID_PREFIX = "zz-bot-",
   LEVEL_XP = { 0, 100, 320, 804, 1869, 4212, 9367, 20708, 45658, 100548, 221306, 486974 },
   PVE_MAX_LEVEL = 12,
+  MINE_MONSTER_NAMES = {
+    "Острый скол", "Ржавый гвоздь", "Гнилой свищ", "Крушило",
+    "Сухой грохот", "Мёртвый плывун", "Чёрная копоть", "Забой",
+    "Слепой бурав", "Липкий ломун", "Тихий шорох", "Жила",
+  },
   --- Максимальный запас энергии (покупки, «потолок» для HUD). Реген по времени — только до PVE_ENERGY_REGEN_CAP.
   PVE_ENERGY_MAX_BASE = 20000,
   PVE_ENERGY_REGEN_CAP = 100,
@@ -199,6 +208,21 @@ function CFG.clamp_int(v, lo, hi)
   if lo ~= nil and n < lo then n = lo end
   if hi ~= nil and n > hi then n = hi end
   return n
+end
+
+-- Replace only exact names shipped by earlier catalogs. Administrative custom
+-- names remain authoritative; no storage record is rewritten by this resolver.
+local MINE_LEGACY_NAMES = {
+  "Острый скол", "Ржавый гвоздь", "Соляной клещ", "Корунд",
+  "Шлаковый червь", "Кремень", "Пыльный коготь", "Сталеплав",
+  "Липкий ломун", "Тихий шорох", "Тихий шорох", "Жила",
+}
+function CFG.mine_monster_name(floor, stored_name)
+  local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local name = type(stored_name)=="string" and stored_name or ""
+  if name~="" and not name:match("^%s*$") and name~=MINE_LEGACY_NAMES[f]
+    and name~="Монстр "..f and name~="Страж шахты "..f and name~="Шахтный монстр "..f then return name end
+  return CFG.MINE_MONSTER_NAMES[f]
 end
 
 function CFG.character_stats_base_for_level(level)

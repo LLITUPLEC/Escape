@@ -43,7 +43,10 @@ namespace Project.UI
 
         private Button _settingsButton;
         private Button _nicknameButton;
+        private Button _tutorialButton;
         private CharacterNicknameEditor _nicknameEditor;
+        private AccountGenderPicker _genderPicker;
+        private Project.Audio.AudioSettingsBlock _audioSettings;
         private GameObject _modalGo;
         private GameObject _deleteConfirmRoot;
         private bool _busy;
@@ -78,12 +81,14 @@ namespace Project.UI
             if (_settingsButton != null)
                 _settingsButton.onClick.RemoveListener(OpenModal);
             if (_nicknameButton != null) _nicknameButton.onClick.RemoveListener(OpenNicknameEditor);
+            if (_tutorialButton != null) _tutorialButton.onClick.RemoveListener(OpenTutorialReplay);
             if (_nicknameEditor != null) _nicknameEditor.CloseEditor();
             UnwireModalButtons();
         }
 
         private void OnEnable()
         {
+            Project.Character.AccountGender.Changed += UpdateRegistrationGenderPicker;
             if (_modalGo != null && _modalGo.activeSelf)
             {
                 ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
@@ -91,6 +96,8 @@ namespace Project.UI
                 _ = RefreshStatusAsync(CancellationToken.None);
             }
         }
+
+        private void OnDisable() { Project.Character.AccountGender.Changed -= UpdateRegistrationGenderPicker; }
 
         private void Update()
         {
@@ -416,6 +423,8 @@ namespace Project.UI
             if (logoutAccountButton != null) logoutAccountButton.interactable = !busy;
             if (deleteAccountButton != null) deleteAccountButton.interactable = !busy;
             if (_nicknameButton != null) _nicknameButton.interactable = !busy;
+            if (_tutorialButton != null) _tutorialButton.interactable = !busy;
+            if (_genderPicker != null) _genderPicker.SetBusy(busy);
         }
 
         private void EnsureNicknameSettingsAction()
@@ -424,20 +433,42 @@ namespace Project.UI
             if (_nicknameEditor == null) _nicknameEditor = ExpeditionUi.Ensure<CharacterNicknameEditor>(gameObject);
             if (_nicknameButton == null)
                 _nicknameButton = ExpeditionUi.Button(modalPanelRect, "NicknameButton", "Изменить имя",
-                    .065f, .805f, .935f, .89f, OpenNicknameEditor, false, 34);
+                    .065f, .835f, .935f, .905f, OpenNicknameEditor, false, 34);
             _nicknameButton.interactable = !_busy;
+            if (_tutorialButton == null)
+                _tutorialButton = ExpeditionUi.Button(modalPanelRect, "TutorialReplayButton", "Как играть · обучение", .065f, .032f, .935f, .078f, OpenTutorialReplay, false, 27);
+            _tutorialButton.interactable = !_busy;
             var title = modalPanelRect.Find("Title")?.GetComponent<TMP_Text>();
             if (title != null) title.text = "НАСТРОЙКИ";
-            if (statusText != null) ExpeditionUi.SetRect(statusText.rectTransform, .065f, .715f, .935f, .795f);
-            if (linkedEmailLineText != null) ExpeditionUi.SetRect(linkedEmailLineText.rectTransform, .065f, .635f, .935f, .705f);
-            SetSettingsRect("ExpeditionEmailCaption", .065f, .603f, .935f, .631f);
-            if (emailInputSlot != null) ExpeditionUi.SetRect(emailInputSlot, .065f, .529f, .935f, .594f);
-            SetSettingsRect("ExpeditionPasswordCaption", .065f, .493f, .935f, .521f);
-            if (passwordInputSlot != null) ExpeditionUi.SetRect(passwordInputSlot, .065f, .419f, .935f, .484f);
-            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, .065f, .322f, .935f, .395f);
-            if (loginButton != null) ExpeditionUi.SetRect(loginButton.transform as RectTransform, .065f, .228f, .935f, .301f);
-            if (logoutAccountButton != null) ExpeditionUi.SetRect(logoutAccountButton.transform as RectTransform, .065f, .134f, .935f, .207f);
-            if (deleteAccountButton != null) ExpeditionUi.SetRect(deleteAccountButton.transform as RectTransform, .065f, .040f, .935f, .103f);
+            if (_audioSettings == null) _audioSettings = ExpeditionUi.Ensure<Project.Audio.AudioSettingsBlock>(modalPanelRect.gameObject);
+            _audioSettings.Build(modalPanelRect);
+            if (statusText != null) ExpeditionUi.SetRect(statusText.rectTransform, .065f, .565f, .935f, .64f);
+            if (linkedEmailLineText != null) ExpeditionUi.SetRect(linkedEmailLineText.rectTransform, .065f, .52f, .935f, .56f);
+            if (statusText != null) { statusText.enableAutoSizing = true; statusText.fontSizeMin = 23; statusText.fontSizeMax = 30; }
+            if (linkedEmailLineText != null) { linkedEmailLineText.enableAutoSizing = true; linkedEmailLineText.fontSizeMin = 20; linkedEmailLineText.fontSizeMax = 26; }
+            SetSettingsRect("ExpeditionEmailCaption", .065f, .488f, .935f, .515f);
+            if (emailInputSlot != null) ExpeditionUi.SetRect(emailInputSlot, .065f, .415f, .935f, .48f);
+            SetSettingsRect("ExpeditionPasswordCaption", .065f, .383f, .935f, .410f);
+            if (passwordInputSlot != null) ExpeditionUi.SetRect(passwordInputSlot, .065f, .31f, .935f, .375f);
+            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, .065f, .235f, .935f, .30f);
+            if (loginButton != null) ExpeditionUi.SetRect(loginButton.transform as RectTransform, .065f, .182f, .935f, .228f);
+            if (logoutAccountButton != null) ExpeditionUi.SetRect(logoutAccountButton.transform as RectTransform, .065f, .132f, .935f, .178f);
+            if (deleteAccountButton != null) ExpeditionUi.SetRect(deleteAccountButton.transform as RectTransform, .065f, .082f, .935f, .128f);
+            UpdateRegistrationGenderPicker();
+        }
+        private void OpenTutorialReplay()
+        {
+            if (_busy) return;
+            CloseModal(); Project.Tutorial.TutorialLauncher.Open(true);
+        }
+
+        private void UpdateRegistrationGenderPicker()
+        {
+            if (modalPanelRect == null) return;
+            if (_genderPicker == null) _genderPicker = AccountGenderPicker.Create(modalPanelRect, .065f, .235f, .455f, .30f);
+            var visible = Project.Character.AccountGender.CanChoose;
+            _genderPicker.gameObject.SetActive(visible);
+            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, visible ? .48f : .065f, .235f, .935f, .30f);
         }
 
         private void SetSettingsRect(string name, float x0, float y0, float x1, float y1)
@@ -558,7 +589,9 @@ namespace Project.UI
             {
                 if (NakamaBootstrap.Instance == null) throw new InvalidOperationException("NakamaBootstrap отсутствует.");
                 await NakamaBootstrap.Instance.EnsureConnectedAsync(CancellationToken.None);
-                await NakamaBootstrap.Instance.LinkEmailAsync(email, password, CancellationToken.None);
+                var female = await MainThreadDispatcher.RunAsync(() =>
+                    _genderPicker != null && _genderPicker.gameObject.activeSelf ? (bool?)_genderPicker.SelectedFemale : null);
+                await NakamaBootstrap.Instance.LinkEmailAsync(email, password, CancellationToken.None, female);
                 await MainThreadDispatcher.RunAsync(() =>
                 {
                     PlayerPrefs.SetString(PrefKnownLinkedEmail, email);

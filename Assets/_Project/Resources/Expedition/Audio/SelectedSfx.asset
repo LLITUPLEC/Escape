@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87b88e2e65105d799f08c0c736e54a76, type: 3}
+  m_Name: SelectedSfx
+  m_EditorClassIdentifier: 
+  entries:
+  - cue: 0
+    clip: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
+  - cue: 1
+    clip: {fileID: 8300000, guid: 2c5292ba5cf254919a6b9e2b18e04f49, type: 3}
+  - cue: 2
+    clip: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
+  - cue: 3
+    clip: {fileID: 8300000, guid: b103f754fc7e6a248a65c76c889cd5fe, type: 3}
+  - cue: 4
+    clip: {fileID: 8300000, guid: 6443996cca964de0b2fd98d6b5a3f9b1, type: 3}
+  - cue: 5
+    clip: {fileID: 8300000, guid: a235d590ef2a04d1b85b61ef4c21337c, type: 3}
+  - cue: 6
+    clip: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
+  - cue: 7
+    clip: {fileID: 8300000, guid: 35fbad8cdde724f11ba6481f1e64af71, type: 3}
+  - cue: 8
+    clip: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
+  - cue: 9
+    clip: {fileID: 8300000, guid: a0ca8964c08d54c5dbebf245bdc474ca, type: 3}
+  - cue: 10
+    clip: {fileID: 8300000, guid: f69f1f585e335a20adc6e2e3df463d04, type: 3}
+  - cue: 11
+    clip: {fileID: 8300000, guid: f2ea2147359e53378e022a3cb21596db, type: 3}
+  - cue: 12
+    clip: {fileID: 8300000, guid: 6d47cb6ec5c255919691df1987bed5a3, type: 3}
+  - cue: 13
+    clip: {fileID: 8300000, guid: b0a40e0c72fd50728e367fc0d9dc88bb, type: 3}
+  - cue: 14
+    clip: {fileID: 8300000, guid: 4c6edd6839285ae0813e45e9ca9e18d6, type: 3}
+  - cue: 15
+    clip: {fileID: 8300000, guid: 3aa15b5134c15481bfd776377c14f827, type: 3}
+  - cue: 16
+    clip: {fileID: 8300000, guid: 80ebed3f1d8d5171861bad4a32b7898c, type: 3}
+  - cue: 17
+    clip: {fileID: 8300000, guid: 7c849bbcd0ff5de39c79b326f4bea823, type: 3}
+  - cue: 18
+    clip: {fileID: 8300000, guid: 2bd7cc6d5d295d21ade486f411649448, type: 3}

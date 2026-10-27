@@ -1,8 +1,0 @@
-{
-  "files": {
-    "arena_tournament.lua": "baca68c515c1aa030d16276e1a78fb058aa3ce61828fe33b7789b1d163a8fae2"
-  },
-  "runner_sha256": "a0fd04e3e2e6beac6e5a80de44fbc30979b7a24b1eab4c3f929f1ed21c902d7e",
-  "isolated_runner_sha256": "db527374c2d237b3307bfd5d242dc91214b3734589bce904d3de9a4ee56ad87a",
-  "production_sha256": "f42dd93998e33aa259a62039eeaa1715bcd069e2a191a6f515612a9677340e65"
-}

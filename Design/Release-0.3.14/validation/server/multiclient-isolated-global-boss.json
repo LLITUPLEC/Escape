@@ -1,0 +1,369 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "boss defaults use calibrated550000HP and exactly three weekly attacks, accessible to levelone"
+    },
+    {
+      "passed": true,
+      "check": "boss section receives frozen event damage armor crit no-healing and turn-limit stats"
+    },
+    {
+      "passed": true,
+      "check": "boss RPC rejects client supplied damage"
+    },
+    {
+      "passed": true,
+      "check": "boss board exposes shared HP and bounded attempt turns"
+    },
+    {
+      "passed": true,
+      "check": "isolated boss fixture equips actual eight-slot epic gear before admission"
+    },
+    {
+      "passed": true,
+      "check": "retry of current boss launch reuses same attempt without second teleport charge"
+    },
+    {
+      "passed": true,
+      "check": "another account cannot join a private boss attempt"
+    },
+    {
+      "passed": true,
+      "check": "initial boss snapshot is paused and does not replay an old passive or scream"
+    },
+    {
+      "passed": true,
+      "check": "realOP17 immediately returns a visible thirty-second wall-clock deadline"
+    },
+    {
+      "passed": true,
+      "check": "snapshot refresh does not move the authoritative boss turn deadline"
+    },
+    {
+      "passed": true,
+      "check": "real board action is accepted by global boss engine"
+    },
+    {
+      "passed": true,
+      "check": "HTTP surrender settles a boss attempt and sends the boss terminal packet"
+    },
+    {
+      "passed": true,
+      "check": "boss attempt does not award ordinary mine or PvP result counters"
+    },
+    {
+      "passed": true,
+      "check": "boss weekly attempt2 can finish without stale admission"
+    },
+    {
+      "passed": true,
+      "check": "boss weekly attempt3 can finish without stale admission"
+    },
+    {
+      "passed": true,
+      "check": "fourth weekly boss attack is rejected without charging a fourth teleport"
+    },
+    {
+      "passed": true,
+      "check": "second account launches its own arena against same global boss"
+    },
+    {
+      "passed": true,
+      "check": "third account reserves a late attempt before global death"
+    },
+    {
+      "passed": true,
+      "check": "validated player damage kills the one shared boss and marks contributor eligible"
+    },
+    {
+      "passed": true,
+      "check": "global death before first action refunds both weekly attack and teleport"
+    },
+    {
+      "passed": true,
+      "check": "actual native boss ranking contains one weekly total per owner and own position outside a bounded page"
+    },
+    {
+      "passed": true,
+      "check": "ranking exposes current display names and avatars without private receipt or reward IDs"
+    },
+    {
+      "passed": true,
+      "check": "ranking rejects oversized pages and a different weekly event"
+    },
+    {
+      "passed": true,
+      "check": "defeated global boss delivers one durable chest to offline contributor mailbox"
+    },
+    {
+      "passed": true,
+      "check": "boss chest contains one random legendary recipe, tesseract and supplies"
+    },
+    {
+      "passed": true,
+      "check": "three concurrent mailbox claims grant one exact resource and inventory reward"
+    },
+    {
+      "passed": true,
+      "check": "non-contributor cannot claim another account boss chest"
+    },
+    {
+      "passed": true,
+      "check": "globally defeated event rejects new attempts"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": [
+    {
+      "name": "boss-state",
+      "response": {
+        "abilities": [
+          {
+            "cooldown_turns": 2,
+            "id": "horrifying_scream",
+            "initial_hp_percent": 20,
+            "mana": 0,
+            "title": "\u0423\u0436\u0430\u0441\u0430\u044e\u0449\u0438\u0439 \u043a\u0440\u0438\u043a"
+          },
+          {
+            "id": "adaptation",
+            "passive": true,
+            "title": "\u0410\u0434\u0430\u043f\u0442\u0430\u0446\u0438\u044f"
+          }
+        ],
+        "attempts_left": 3,
+        "attempts_total": 3,
+        "attempts_used": 0,
+        "base_armor": 1000,
+        "base_crit": 0.05,
+        "base_damage": 3500,
+        "base_heal": 0,
+        "eligibility_progress": 0,
+        "eligibility_required": 1,
+        "ends_at": 1793566800,
+        "event_id": "week-1792962000",
+        "hp": 550000,
+        "hp_max": 550000,
+        "max_turns": 30,
+        "my_damage": 0,
+        "name": "\u0421\u0435\u0440\u0434\u0446\u0435 \u0420\u0430\u0437\u043b\u043e\u043c\u0430",
+        "no_healing": true,
+        "ok": true,
+        "qualified": false,
+        "rewards_preview": [
+          {
+            "amount": 1,
+            "def_id": "legendary_recipe_random"
+          },
+          {
+            "amount": 1,
+            "def_id": "tesseract"
+          },
+          {
+            "amount": 1,
+            "def_id": "elixir_random"
+          },
+          {
+            "amount": 1,
+            "def_id": "scroll_pve_bounty"
+          },
+          {
+            "amount": 1500,
+            "resource": "gold"
+          },
+          {
+            "amount": 2000,
+            "resource": "ore"
+          },
+          {
+            "amount": 5,
+            "resource": "matter"
+          }
+        ],
+        "server_now": 1793077375,
+        "starts_at": 1792962000,
+        "status": "active",
+        "token_count": 5,
+        "token_id": "global_boss_teleport"
+      }
+    },
+    {
+      "name": "boss-running-clock",
+      "response": {
+        "aArmorMultiplier": 1,
+        "aBaseArmor": 1310,
+        "aBaseCrit": 0.011,
+        "aBaseDamage": 1855,
+        "aBaseHeal": 921,
+        "aConsumableCritAdd": 0,
+        "aConsumableId": "",
+        "aCrossCd": 0,
+        "aDamageMultiplier": 1,
+        "aFuryBonus": 0,
+        "aFuryCd": 0,
+        "aFuryTurns": 0,
+        "aHealingMultiplier": 1,
+        "aHp": 18865,
+        "aLevel": 1,
+        "aMana": 0,
+        "aMaxHp": 18865,
+        "aMaxMana": 100,
+        "aPetardBank": 0,
+        "aPetardCd": 0,
+        "aRaceActions": 0,
+        "aShieldCd": 0,
+        "aShieldT1": 0,
+        "aShieldT2": 0,
+        "aShieldT3": 0,
+        "aSquareCd": 0,
+        "abilityX": -1,
+        "abilityY": -1,
+        "actionActorUserId": "",
+        "actionType": 0,
+        "activeUserId": "b1d0094c-4642-43dc-a640-1ee37a623ed2",
+        "animSteps": {},
+        "bArmorMultiplier": 1,
+        "bBaseArmor": 1000,
+        "bBaseCrit": 0.05,
+        "bBaseDamage": 3500,
+        "bBaseHeal": 0,
+        "bConsumableCritAdd": 0,
+        "bConsumableId": "",
+        "bCrossCd": 0,
+        "bDamageMultiplier": 1,
+        "bFuryBonus": 0,
+        "bFuryCd": 0,
+        "bFuryTurns": 0,
+        "bHealingMultiplier": 1,
+        "bHp": 550000,
+        "bLevel": 12,
+        "bMana": 0,
+        "bMaxHp": 550000,
+        "bMaxMana": 100,
+        "bPetardBank": 0,
+        "bPetardCd": 0,
+        "bRaceActions": 0,
+        "bShieldCd": 0,
+        "bShieldT1": 0,
+        "bShieldT2": 0,
+        "bShieldT3": 0,
+        "bSquareCd": 0,
+        "board": [
+          1,
+          1,
+          2,
+          4,
+          1,
+          1,
+          1,
+          4,
+          3,
+          2,
+          5,
+          3,
+          3,
+          3,
+          4,
+          3,
+          3,
+          4,
+          1,
+          2,
+          5,
+          2,
+          3,
+          4,
+          2,
+          4,
+          2,
+          5,
+          2,
+          3,
+          2,
+          3,
+          3,
+          4,
+          4,
+          3
+        ],
+        "boardPopup": "",
+        "bossActionSequence": 0,
+        "bossAdaptationTriggered": false,
+        "bossOwnTurn": 0,
+        "bossPlayerTurnsLeft": 30,
+        "bossScreamCooldown": 1,
+        "bossScreamDamage": 0,
+        "bossScreamTriggered": false,
+        "bountyEndsAt": 0,
+        "cheatRows": {},
+        "critTriggered": false,
+        "extraTurn": false,
+        "fromX": -1,
+        "fromY": -1,
+        "globalBoss": true,
+        "globalBossEventId": "week-1792962000",
+        "globalBossMyDamage": 0,
+        "globalBossQualified": false,
+        "globalBossTotalDamage": 0,
+        "manaDrain": 0,
+        "pveAffix": "",
+        "pvpRace": false,
+        "raceGoalMana": 0,
+        "raceLastTurnUserId": "",
+        "raceManaBonusEvery": 0,
+        "serverNowUnixMs": 1793077375663,
+        "toX": -1,
+        "toY": -1,
+        "turnDurationSeconds": 30,
+        "turnEndsAtUnixMs": 1793077405663,
+        "turnPaused": false
+      }
+    },
+    {
+      "name": "boss-ranking",
+      "response": {
+        "entries": [
+          {
+            "attempts_used": 1,
+            "avatar_id": "",
+            "damage": 1,
+            "display_name": "multi_652a7076cb11_1",
+            "is_self": true,
+            "rank": 1,
+            "user_id": "fe0130f6-fc06-441a-8dfb-28c68165fa49"
+          }
+        ],
+        "event_id": "week-1792962000",
+        "ok": true,
+        "self_entry": {
+          "attempts_used": 1,
+          "avatar_id": "",
+          "damage": 1,
+          "display_name": "multi_652a7076cb11_1",
+          "is_self": true,
+          "rank": 1,
+          "user_id": "fe0130f6-fc06-441a-8dfb-28c68165fa49"
+        },
+        "updating": true
+      }
+    }
+  ]
+}

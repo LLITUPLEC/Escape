@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import wave
 
 
 def sha256(path):
@@ -18,17 +19,26 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def publish(staging, validate_only=False):
+def has_absolute_reference(value):
+    if isinstance(value, str):
+        return value.startswith(("/", "\\")) or re.search(r"[A-Za-z]:[\\/]|file://|https?://", value) is not None
+    if isinstance(value, dict):
+        return any(has_absolute_reference(key) or has_absolute_reference(item) for key, item in value.items())
+    if isinstance(value, list):
+        return any(has_absolute_reference(item) for item in value)
+    return False
+
+
+def validate_bundle(staging):
+    """Pure local validation, also usable by release fixtures without deployment."""
     staging = staging.resolve(strict=True)
-    if not staging.is_relative_to(Path("/opt/escape/page-staging")):
-        raise SystemExit("Staging must be inside /opt/escape/page-staging")
     release = json.loads((staging / "release.json").read_text(encoding="utf-8-sig"))
     allowed_keys = {"version", "date", "filename", "bytes", "sha256", "url", "signature_verified", "architecture"}
     if set(release) - allowed_keys:
         raise SystemExit("Unexpected fields in the public release manifest")
     version = release["version"]
     checksum = release["sha256"]
-    if version != "0.3.5" or not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+    if version != "0.3.15" or not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
         raise SystemExit("Invalid release identity")
     if type(release["bytes"]) is not int or release["bytes"] <= 0:
         raise SystemExit("APK bytes must be a positive integer")
@@ -49,22 +59,53 @@ def publish(staging, validate_only=False):
     allowed_root = {"index.html", "release.json"}
     audio_root = staging / "audio-035"
     audio_manifest = json.loads((audio_root / "files.json").read_text(encoding="utf-8-sig"))
-    if not isinstance(audio_manifest, list) or len(audio_manifest) != 64:
-        raise SystemExit("Expected exactly 64 audition WAV files")
-    allowed_audio = {"index.html", "files.json"}
+    if not isinstance(audio_manifest, list) or len(audio_manifest) != 19:
+        raise SystemExit("Expected exactly nineteen selected WAV files")
+    selected_metadata = json.loads((audio_root / "selected-metadata.json").read_text(encoding="utf-8-sig"))
+    metadata_keys = {"audition_version", "status", "selection_sha256", "selected_count", "selected", "unselected",
+                     "protected_sha256", "protected_unchanged", "existing_battle_importers_unchanged", "resource_bank"}
+    if (not isinstance(selected_metadata, dict) or set(selected_metadata) - metadata_keys or
+            selected_metadata.get("audition_version") != "0.3.5" or selected_metadata.get("selected_count") != 19 or
+            not isinstance(selected_metadata.get("selected"), list) or len(selected_metadata["selected"]) != 19):
+        raise SystemExit("Invalid selected audio history")
+    if has_absolute_reference(selected_metadata):
+        raise SystemExit("Absolute private paths or URLs are not accepted in audio history")
+    choices_sha = selected_metadata.get("selection_sha256", "")
+    if not re.fullmatch(r"[a-f0-9]{64}", choices_sha) or sha256(audio_root / "Escape-audio-choices-0.3.5.txt") != choices_sha:
+        raise SystemExit("Audio choice history hash mismatch")
+    selected_by_file = {}
+    for entry in selected_metadata["selected"]:
+        if not isinstance(entry, dict):
+            raise SystemExit("Invalid selected audio entry")
+        identifier, rel = entry.get("id", ""), entry.get("file", "")
+        if (not isinstance(identifier, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", identifier) or
+                rel != "selected/" + identifier + ".wav" or rel in selected_by_file or entry.get("choice") not in ("A", "B") or
+                not isinstance(entry.get("sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", entry["sha256"])):
+            raise SystemExit("Unexpected selected audio identity")
+        selected_by_file[rel] = entry
+    allowed_audio = {"index.html", "files.json", "selected-metadata.json", "Escape-audio-choices-0.3.5.txt"}
     for entry in audio_manifest:
+        if not isinstance(entry, dict) or set(entry) != {"file", "bytes", "sha256"}:
+            raise SystemExit("Unexpected public audio manifest fields")
         rel = entry.get("file", "")
-        if not re.fullmatch(r"(?:A|B|pairs|montages|showcases)/[A-Za-z0-9_-]+\.wav", rel) or rel in allowed_audio:
+        if not re.fullmatch(r"selected/[a-z][a-z0-9_]*\.wav", rel) or rel in allowed_audio or rel not in selected_by_file:
             raise SystemExit("Unexpected or duplicate public audition path")
         media = audio_root / rel
         if (type(entry.get("bytes")) is not int or not 44 < entry["bytes"] < 10_000_000 or
                 media.stat().st_size != entry["bytes"] or sha256(media) != entry.get("sha256")):
             raise SystemExit("Audition WAV identity mismatch")
-        with media.open("rb") as stream:
-            magic = stream.read(12)
-        if magic[:4] != b"RIFF" or magic[8:12] != b"WAVE":
-            raise SystemExit("Audition media is not PCM WAV")
+        if entry["sha256"] != selected_by_file[rel]["sha256"]:
+            raise SystemExit("Public WAV is not the selected user choice")
+        with wave.open(str(media), "rb") as stream:
+            if stream.getparams()[:3] != (1, 2, 48000) or stream.getcomptype() != "NONE":
+                raise SystemExit("Selected media must be mono 48kHz PCM16 WAV")
         allowed_audio.add(rel)
+    audio_html = (audio_root / "index.html").read_text(encoding="utf-8-sig")
+    playable = re.findall(r'\bdata-audio=["\x27]([^"\x27]+)', audio_html)
+    if len(playable) != 19 or set(playable) != set(selected_by_file) or len(re.findall(r"<audio\b", audio_html, re.I)) != 1:
+        raise SystemExit("Selected audio page must expose exactly nineteen clips through one player")
+    if re.search(r"<audio\b[^>]*\bautoplay(?:\s|=|>)", audio_html, re.I):
+        raise SystemExit("Audio autoplay is not accepted")
     for path in staging.rglob("*"):
         if path.is_symlink():
             raise SystemExit("Symlinks are not accepted in the public bundle")
@@ -84,6 +125,15 @@ def publish(staging, validate_only=False):
     html = (staging / "index.html").read_text(encoding="utf-8-sig")
     if "{{" in html or apk_name not in html:
         raise SystemExit("Unresolved template or APK link missing")
+    return release, apk_name, apk, audio_manifest
+
+
+def publish(staging, validate_only=False):
+    staging = staging.resolve(strict=True)
+    if not staging.is_relative_to(Path("/opt/escape/page-staging")):
+        raise SystemExit("Staging must be inside /opt/escape/page-staging")
+    release, apk_name, apk, audio_manifest = validate_bundle(staging)
+    version, checksum = release["version"], release["sha256"]
     if validate_only:
         print(json.dumps({"state": "validated_only", "version": version,
                           "apk_sha256": checksum, "bytes": apk.stat().st_size,

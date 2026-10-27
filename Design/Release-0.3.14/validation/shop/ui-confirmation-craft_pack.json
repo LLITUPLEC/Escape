@@ -1,0 +1,11 @@
+{
+    "passed": true,
+    "networkOrAccountActions": false,
+    "stage": "confirmation-craft_pack",
+    "error": "",
+    "assertions": 97,
+    "products": 3,
+    "labels": 52,
+    "purchaseIntents": 0,
+    "rubAttempts": 0
+}

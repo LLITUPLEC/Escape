@@ -1,0 +1,152 @@
+[
+  {
+    "path": ".cache/android-sdk/platform-tools/adb.exe",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": ".cache/lua-test-runtime/lua.exe",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": ".local/credentials/key_meshy.txt",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "release.apk",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "release.aab",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "release.symbols.zip",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "Design/Release-0.3.15/page-bundle.tar.gz",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "Website/escape/dist/index.html",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "Website/escape/.dist-stage-1234/index.html",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "Website/escape/.dist-previous-1234/index.html",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "Server/nakama/deploy/.env",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "credentials.keystore",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": "local-private.pem",
+    "ignored": true,
+    "expected": true,
+    "passed": true
+  },
+  {
+    "path": ".env.example",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Assets/_Project/Resources/Expedition/Monsters/mine-1.png",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Assets/_Project/Resources/Expedition/Icons/shelter-mail.png",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Assets/_Project/Audio/SFX/Expedition/ui_click.wav",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Assets/_Project/Scripts/UI/ExpeditionShelterShortcut.cs",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Server/nakama/tests/cosmetics_security_test.lua",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Tools/Release/validate-apk.ps1",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Website/escape/index.template.html",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Design/Release-0.3.14/validation/server/security-report.json",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Design/Release-0.3.15/validation/native-report.json",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Design/Release-0.3.15/media/hero-stats.png",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  },
+  {
+    "path": "Docs/monstr.txt",
+    "ignored": false,
+    "expected": false,
+    "passed": true
+  }
+]

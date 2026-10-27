@@ -1,0 +1,118 @@
+[
+  {
+    "path": "Builds/Expedition",
+    "reason": "obsolete intermediate builds and native debug folders; two validated releases moved"
+  },
+  {
+    "path": "Library",
+    "reason": "reproducible Unity import/build cache"
+  },
+  {
+    "path": "Logs",
+    "reason": "old local Unity logs"
+  },
+  {
+    "path": "Design/Expedition-Implementation",
+    "reason": "obsolete implementation screenshots and checks"
+  },
+  {
+    "path": "Design/Media-2026-10-24",
+    "reason": "obsolete media checks; necessary source fixtures/provenance moved"
+  },
+  {
+    "path": "Escape-audio-choices-0.3.5.txt",
+    "reason": "identical duplicate retained under Design/Audio"
+  },
+  {
+    "path": "arena_tour_log.txt",
+    "reason": "old debug log"
+  },
+  {
+    "path": "arena_tour_log copy.txt",
+    "reason": "duplicate old debug log"
+  },
+  {
+    "path": "log8.txt",
+    "reason": "old debug log"
+  },
+  {
+    "path": "Mine3D_create_log.txt",
+    "reason": "old Unity scene creation log"
+  },
+  {
+    "path": "unity_build_modal_log.txt",
+    "reason": "old Unity build log"
+  },
+  {
+    "path": "leaderboard_build.log",
+    "reason": "old Unity build log"
+  },
+  {
+    "path": "leaderboard_dedupe.log",
+    "reason": "old leaderboard debug log"
+  },
+  {
+    "path": "UpgradeLog.htm",
+    "reason": "generated Unity upgrade log"
+  },
+  {
+    "path": "Design/Release-0.3.0",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.1",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.10",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.11",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.12",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.13",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.16",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.2",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.3",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.4",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.5",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.6",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.7",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.8",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  },
+  {
+    "path": "Design/Release-0.3.9",
+    "reason": "release outside the retained 0.3.14/0.3.15 pair"
+  }
+]

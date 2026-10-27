@@ -50,6 +50,11 @@ namespace Project.Editor
             var wasToastEnabled = toast.enabled;
             toast.enabled = false;
             var queue = Read<Queue<AchievementUnlockInfo>>(toast, "_queue");
+            var toastSeen = Read<HashSet<string>>(toast, "_seen");
+            var toastSeenSnapshot = toastSeen.ToArray();
+            var queuedAt = Read<Dictionary<string, float>>(toast, "_queuedAt");
+            var queuedAtSnapshot = new Dictionary<string, float>(queuedAt);
+            toastSeen.Remove(chain.ChainId + "|2|" + (int)AchievementNoticeKind.CriterionMetAwaitClaim);
             var group = Read<CanvasGroup>(panel, "rootCanvasGroup");
             var wasInteractable = group != null && group.interactable;
             var wasBlocking = group != null && group.blocksRaycasts;
@@ -116,6 +121,8 @@ namespace Project.Editor
                 statsField.SetValue(null, originalStats); claimsField.SetValue(null, originalClaims); revisionField.SetValue(null, originalRevision);
                 sent.Clear(); foreach (var token in sentSnapshot) sent.Add(token);
                 queue.Clear();
+                toastSeen.Clear(); foreach (var token in toastSeenSnapshot) toastSeen.Add(token);
+                queuedAt.Clear(); foreach (var entry in queuedAtSnapshot) queuedAt.Add(entry.Key, entry.Value);
                 if (hadToast) toast.enabled = wasToastEnabled;
                 else if (toast != null) UnityEngine.Object.DestroyImmediate(toast.gameObject);
                 if (group != null) { group.interactable = wasInteractable; group.blocksRaycasts = wasBlocking; }

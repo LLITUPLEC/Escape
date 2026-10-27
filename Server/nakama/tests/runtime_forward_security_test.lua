@@ -4,6 +4,8 @@ package.path = "Server/nakama/?.lua;" .. package.path
 local nk = {
   json_encode = function(v) return v end,
   logger_error = function() end, logger_warn = function() end, logger_info = function() end,
+  register_rpc = function() end,
+  register_req_before = function() end, register_req_after = function() end,
 }
 package.preload.nakama = function() return nk end
 local file = assert(io.open("Server/nakama/modules/duel_match3.lua", "r"))

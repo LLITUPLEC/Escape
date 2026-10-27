@@ -1,9 +1,0 @@
-{
-  "note": "Source bytes are not equivalent to APK savings. Podium loader removed, ranking uses shared arena world and row frames.",
-  "archived_source": "Design/ArtDirection-2026-10/SourceArt/leaderboard-backdrop.png",
-  "resources_removed": true,
-  "file": "leaderboard-backdrop.png",
-  "serialized_guid_references_found": 0,
-  "sha256": "65c120e14752d4e3ec9fa8cc217dc30693298b6ecc0523af5ec053dcfa92f72b",
-  "source_bytes": 2762012
-}

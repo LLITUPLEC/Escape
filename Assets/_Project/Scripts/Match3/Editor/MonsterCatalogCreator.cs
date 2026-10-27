@@ -26,9 +26,7 @@ namespace Project.Match3.Editor
                     def = ScriptableObject.CreateInstance<MonsterDefinition>();
                     var so = new SerializedObject(def);
                     so.FindProperty("botId").stringValue = "mine_" + floor;
-                    so.FindProperty("displayName").stringValue = floor == 4 || floor == 8 || floor == 12
-                        ? $"Страж шахты {floor}"
-                        : $"Шахтный монстр {floor}";
+                    so.FindProperty("displayName").stringValue = MonsterNames.Default(floor);
                     so.FindProperty("floor").intValue = floor;
                     so.ApplyModifiedPropertiesWithoutUndo();
                     AssetDatabase.CreateAsset(def, defPath);

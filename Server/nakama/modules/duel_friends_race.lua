@@ -1,4 +1,4 @@
--- Друзья → «Предложить Спуск». Вынесено из duel_match3.lua (лимит локалей Lua).
+-- Friend invitations share one inbox/outbox, with a server-owned race/duel kind.
 local nk = require("nakama")
 
 return function(deps)
@@ -173,7 +173,7 @@ return function(deps)
           status = "cancelled",
           by_user_id = by_user_id,
           reason = reason or "cancelled",
-          kind = "race",
+          kind = invite.kind == "duel" and "duel" or "race",
         }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
       end
       if to_id ~= "" and to_id ~= tostring(by_user_id or "") then
@@ -182,7 +182,7 @@ return function(deps)
           status = "cancelled",
           by_user_id = by_user_id,
           reason = reason or "cancelled",
-          kind = "race",
+          kind = invite.kind == "duel" and "duel" or "race",
         }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
       end
       return true
@@ -195,7 +195,7 @@ return function(deps)
         by_user_id = by_user_id,
         by_username = friends_race_username(by_user_id),
         reason = reason or "cancelled",
-        kind = "race",
+        kind = invite.kind == "duel" and "duel" or "race",
       }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
     end
     return true
@@ -220,6 +220,10 @@ return function(deps)
         if dec_ok and type(body) == "table" then p = body end
       end
       local target_id = tostring(p.target_user_id or p.user_id or "")
+      local kind = p.kind or "race" -- Old clients omit kind.
+      if kind ~= "race" and kind ~= "duel" then
+        return nk.json_encode({ ok = false, err = "invalid_invite_kind" })
+      end
       if target_id == "" then
         return nk.json_encode({ ok = false, err = "empty_target" })
       end
@@ -244,27 +248,29 @@ return function(deps)
         friends_race_clear_invite(existing_in)
       end
 
-      local costs = race_normalize_entry_costs(ContestGoals.race_entry_costs())
-      if #costs == 0 then
-        costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
-      end
-      local progress = read_pve_progress(user_id)
-      local prepaid, prepaid_err = deps.Entry.require_pending(user_id)
-      if prepaid_err == "race_entry_in_use" then return nk.json_encode({ ok = false, err = prepaid_err }) end
-      if not prepaid and progress.race_entry_pending ~= true then
-        for _, line in ipairs(costs) do
-          local have = race_progress_balance(progress, line.resource)
-          local need = math.max(0, math.floor(tonumber(line.amount) or 0))
-          if have == nil then
-            return nk.json_encode({ ok = false, err = "unsupported_entry_resource", resource = line.resource })
-          end
-          if have < need then
-            return nk.json_encode({
-              ok = false,
-              err = "not_enough_" .. tostring(line.resource),
-              required = need,
-              resource = line.resource,
-            })
+      if kind == "race" then
+        local costs = race_normalize_entry_costs(ContestGoals.race_entry_costs())
+        if #costs == 0 then
+          costs = { { resource = "matter", amount = math.max(1, math.floor(tonumber(CFG.RACE_ENTRY_MATTER) or 2)) } }
+        end
+        local progress = read_pve_progress(user_id)
+        local prepaid, prepaid_err = deps.Entry.require_pending(user_id)
+        if prepaid_err == "race_entry_in_use" then return nk.json_encode({ ok = false, err = prepaid_err }) end
+        if not prepaid and progress.race_entry_pending ~= true then
+          for _, line in ipairs(costs) do
+            local have = race_progress_balance(progress, line.resource)
+            local need = math.max(0, math.floor(tonumber(line.amount) or 0))
+            if have == nil then
+              return nk.json_encode({ ok = false, err = "unsupported_entry_resource", resource = line.resource })
+            end
+            if have < need then
+              return nk.json_encode({
+                ok = false,
+                err = "not_enough_" .. tostring(line.resource),
+                required = need,
+                resource = line.resource,
+              })
+            end
           end
         end
       end
@@ -280,7 +286,7 @@ return function(deps)
         to_username = to_name,
         created_at = now,
         expires_at = now + FRIENDS_RACE_INVITE_TTL_SEC,
-        kind = "race",
+        kind = kind,
       }
       friends_race_storage_write("id:" .. invite_id, invite, nil)
       friends_race_storage_write("out:" .. user_id, invite, nil)
@@ -291,7 +297,7 @@ return function(deps)
         from_user_id = user_id,
         from_username = from_name,
         expires_at = invite.expires_at,
-        kind = "race",
+        kind = kind,
         prep_seconds = FRIENDS_RACE_PREP_SECONDS,
       }, NOTIFY_CODE_FRIENDS_RACE_INVITE)
 
@@ -348,6 +354,7 @@ return function(deps)
       end
 
       local from_id = tostring(invite.from_user_id or "")
+      local kind = invite.kind == "duel" and "duel" or "race"
       local from_name = tostring(invite.from_username or friends_race_username(from_id))
       local to_name = tostring(invite.to_username or friends_race_username(user_id))
 
@@ -358,30 +365,35 @@ return function(deps)
           by_user_id = user_id,
           by_username = to_name,
           status = "declined",
-          kind = "race",
+          kind = kind,
         }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
         return nk.json_encode({ ok = true, status = "declined" })
       end
 
-      local ok_to, err_to, paid_to = race_ensure_entry_paid(user_id)
-      if not ok_to then
-        return nk.json_encode({ ok = false, err = err_to or "not_enough_matter" })
-      end
-      local ok_from, err_from, paid_from = race_ensure_entry_paid(from_id)
-      if not ok_from then
-        if paid_to then race_refund_entry_paid(user_id) end
-        friends_race_notify(from_id, "friends_race_failed", {
-          invite_id = invite_id,
-          status = "charge_failed",
-          err = err_from,
-          kind = "race",
-        }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
-        return nk.json_encode({ ok = false, err = "inviter_" .. tostring(err_from or "charge_failed") })
+      local paid_to, paid_from = false, false
+      if kind == "race" then
+        local ok_to, err_to
+        ok_to, err_to, paid_to = race_ensure_entry_paid(user_id)
+        if not ok_to then
+          return nk.json_encode({ ok = false, err = err_to or "not_enough_matter" })
+        end
+        local ok_from, err_from
+        ok_from, err_from, paid_from = race_ensure_entry_paid(from_id)
+        if not ok_from then
+          if paid_to then race_refund_entry_paid(user_id) end
+          friends_race_notify(from_id, "friends_race_failed", {
+            invite_id = invite_id,
+            status = "charge_failed",
+            err = err_from,
+            kind = kind,
+          }, NOTIFY_CODE_FRIENDS_RACE_UPDATE)
+          return nk.json_encode({ ok = false, err = "inviter_" .. tostring(err_from or "charge_failed") })
+        end
       end
 
       local match_id = try_match_create({
         mode = "pvp",
-        pvp_race = true,
+        pvp_race = kind == "race",
         invited = {
           { user_id = from_id },
           { user_id = user_id },
@@ -399,7 +411,7 @@ return function(deps)
         invite_id = invite_id,
         match_id = match_id,
         status = "match_ready",
-        kind = "race",
+        kind = kind,
         prep_seconds = FRIENDS_RACE_PREP_SECONDS,
         from_user_id = from_id,
         from_username = from_name,
@@ -412,6 +424,7 @@ return function(deps)
       return nk.json_encode({
         ok = true,
         status = "match_ready",
+        kind = kind,
         match_id = match_id,
         prep_seconds = FRIENDS_RACE_PREP_SECONDS,
         opponent_user_id = from_id,

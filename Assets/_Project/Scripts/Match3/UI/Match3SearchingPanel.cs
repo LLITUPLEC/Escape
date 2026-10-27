@@ -78,6 +78,9 @@ namespace Project.Match3
         private bool _expeditionStyle;
         private Button _boundCancel;
         private TMP_Text _modeText, _elapsedText, _headingText;
+        private TMP_Text _opponentCaption;
+        private Image _opponentPortrait;
+        private bool _matchReady;
         private string _modeLabel;
         private float _searchStartedAt;
         private int _lastElapsedSecond = -1;
@@ -194,11 +197,33 @@ namespace Project.Match3
                 var connecting = !string.IsNullOrEmpty(message) &&
                     (message.IndexOf("Восстановление", StringComparison.OrdinalIgnoreCase) >= 0 ||
                      message.IndexOf("подключения", StringComparison.OrdinalIgnoreCase) >= 0);
-                _headingText.text = connecting ? "ПОДКЛЮЧЕНИЕ К БОЮ" : "ПОИСК СОПЕРНИКА";
+                _headingText.text = connecting ? "ПОДКЛЮЧЕНИЕ К БОЮ" : _matchReady ? "МАТЧ ГОТОВ" : "ПОИСК СОПЕРНИКА";
             }
         }
 
         public void Hide() => gameObject.SetActive(false);
+
+        /// <summary>Replace the unknown slot only after a server match has been joined.</summary>
+        public void ShowReady(Sprite portrait, string opponentName, bool upperBody, string message)
+        {
+            if (!_expeditionStyle) UseExpeditionStyle();
+            _matchReady = true;
+            if (_opponentPortrait != null)
+            {
+                _opponentPortrait.sprite = portrait;
+                _opponentPortrait.enabled = portrait != null;
+                _opponentPortrait.color = Color.white;
+                var question = _opponentPortrait.transform.parent.Find("UnknownOpponent");
+                if (question != null) question.gameObject.SetActive(false);
+                var fit = _opponentPortrait.GetComponent<AspectRatioFitter>();
+                if (fit != null) fit.enabled = false;
+                ExpeditionUi.SetRect(_opponentPortrait.rectTransform, 0, 0, 1, 1);
+                if (upperBody) ExpeditionMatchStates.CropUpperBody(_opponentPortrait);
+            }
+            if (_opponentCaption != null)
+                _opponentCaption.text = string.IsNullOrWhiteSpace(opponentName) ? "СОПЕРНИК" : opponentName;
+            Show(message);
+        }
 
         public void SetModeLabel(string modeLabel)
         {
@@ -227,10 +252,12 @@ namespace Project.Match3
             _modeText.color = ExpeditionTheme.Muted;
             SetModeLabel(_modeLabel);
             ExpeditionMatchStates.Portrait(safe, "LocalExplorerPortrait", .075f, .455f, .39f, .73f, false, true);
-            ExpeditionMatchStates.Portrait(safe, "UnknownOpponentPortrait", .61f, .455f, .925f, .73f, true, true);
+            _opponentPortrait = ExpeditionMatchStates.Portrait(safe, "UnknownOpponentPortrait", .61f, .455f, .925f, .73f, true, true);
             var you = ExpeditionUi.Text(safe, "LocalParticipantCaption", "ВЫ", 24, .08f, .425f, .385f, .452f, TextAlignmentOptions.Center);
             you.color = ExpeditionTheme.Amber;
-            ExpeditionUi.Text(safe, "UnknownParticipantCaption", "СОПЕРНИК", 24, .615f, .425f, .92f, .452f, TextAlignmentOptions.Center);
+            _opponentCaption = ExpeditionUi.Text(safe, "UnknownParticipantCaption", "СОПЕРНИК", 24, .615f, .425f, .92f, .452f, TextAlignmentOptions.Center);
+            _opponentCaption.enableAutoSizing = true;
+            _opponentCaption.fontSizeMin = 16; _opponentCaption.fontSizeMax = 24;
             spinnerRect = ExpeditionUi.Rect(safe, "MechanicalSearchRotor", .5f, .59f, .5f, .59f);
             spinnerRect.sizeDelta = new Vector2(190, 190);
             spinnerRect.gameObject.AddComponent<ExpeditionMatchSpinner>().raycastTarget = false;

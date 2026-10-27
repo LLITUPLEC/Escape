@@ -5,6 +5,7 @@ using Nakama;
 using Project.Character;
 using Project.Nakama;
 using Project.Utils;
+using Project.Audio;
 using UnityEngine;
 
 namespace Project.Achievements
@@ -62,10 +63,12 @@ namespace Project.Achievements
                         var applied = await MainThreadDispatcher.RunAsync(() =>
                         {
                             if (!LocalAccountCacheScope.IsCurrent(scope)) return false;
+                            var alreadyClaimed = AchievementProgressStorage.IsStepClaimed(chainId, stepIndex);
                             AchievementProgressStorage.MarkStepClaimed(chainId, stepIndex);
                             AchievementUiPending.ClearAwaitToastTokenForClaimedStep(chainId, stepIndex);
                             if (resp.stats != null) AchievementLifecycle.NotifyCombatStatsUpdated(resp.stats);
                             RaiseClaimed(def, stepIndex);
+                            if (!alreadyClaimed) ExpeditionAudio.Play(ExpeditionCue.RewardClaim);
                             return true;
                         });
                         if (!applied) return false;
@@ -73,14 +76,18 @@ namespace Project.Achievements
                             await RefreshCombatStatsFromCharacterGetAsync(scope, ct).ConfigureAwait(false);
                         return true;
                     }
+                    if (!ct.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 }
+                catch (OperationCanceledException) { }
                 catch (ApiResponseException ex)
                 {
                     Debug.LogWarning("[Achievements] claim RPC: " + ex.Message);
+                    if (!ct.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 }
                 catch (Exception ex)
                 {
                     Debug.LogWarning("[Achievements] claim: " + ex.Message);
+                    if (!ct.IsCancellationRequested) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 }
                 return false;
             }

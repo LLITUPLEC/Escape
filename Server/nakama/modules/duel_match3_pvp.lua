@@ -193,23 +193,28 @@ return function(deps)
       nk.logger_error("race settlement unavailable")
       return false
     end
-    local ok, err, rewards = entry.settle(state.players_sorted, state.stats_result_id, winner, is_draw, function(progress, uid, costs)
+    local spec = state._race_recovery_spec or { win_rewards = resolve_race_reward_opts(state),
+      draw_xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200)), loss_xp = state.mode ~= "pve" and 10 or 0,
+      mode = state.mode, against_bot = against_bot,
+      finish_effects = type(deps.build_match_finish_effects) == "function" and deps.build_match_finish_effects(state, winner, is_draw) or nil }
+    local ok, err, rewards = entry.settle(state.players_sorted, state.stats_result_id, winner, is_draw, function(progress, uid, costs, frozen)
+      local policy = frozen or spec
       local flat = { xp = 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
       if is_draw then
-        flat.xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200))
+        flat.xp = policy.draw_xp
       elseif uid == winner then
-        flat = resolve_race_reward_opts(state)
-      elseif state.mode ~= "pve" then
+        flat = {}; for resource, amount in pairs(policy.win_rewards) do flat[resource] = amount end
+      else
         -- Preserve the existing human PvP loss award. Race is outside PvE,
         -- so the PvE server aura must not multiply this fixed 10 XP.
-        flat.xp = 10
+        flat.xp = policy.loss_xp
       end
-      if against_bot then
+      if policy.against_bot then
         -- Bot fallback never pays a monetary victory prize. Preserve the existing
         -- XP policy while returning this human's actual, immutable paid stake.
         flat = { xp = flat.xp or 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
       end
-      if is_draw or against_bot then
+      if is_draw or policy.against_bot then
         for _, cost in ipairs(costs) do flat[cost.resource] = (flat[cost.resource] or 0) + cost.amount end
       end
       apply_flat_rewards_to_progress(progress, flat)
@@ -222,7 +227,7 @@ return function(deps)
         reward_blueprint = flat.blueprint or "", reward_recipe_item_id = flat.recipe_item_id or "",
         level = progress.level or 1, xp = progress.xp or 0, gold = progress.gold or 0,
       }
-    end)
+    end, spec)
     if not ok then
       nk.logger_error("race settlement rejected: " .. tostring(err))
       if type(game_over_payload) == "table" then game_over_payload.rewardError = err end
@@ -237,6 +242,16 @@ return function(deps)
     if against_bot and type(game_over_payload) == "table" then game_over_payload.entryRefund = true end
     fill_game_over_reward_fields(game_over_payload, reward)
     return true
+  end
+
+  -- Internal recovery only. The caller reads this intent from a server-only
+  -- receipt; no client-supplied winner/policy can reach this function.
+  function P.resume_race_result(intent)
+    if type(intent) ~= "table" or type(intent.spec) ~= "table" or type(intent.spec.win_rewards) ~= "table"
+        or type(intent.players) ~= "table" or tostring(intent.run_id or "") == "" then return false end
+    local state = { pvp_race = true, mode = intent.spec.mode, players_sorted = intent.players,
+      stats_result_id = intent.run_id, _race_recovery_spec = intent.spec }
+    return settle_race(state, intent.winner, intent.is_draw == true, {})
   end
 
   function P.apply_game_over_rewards(state, winner, game_over_payload)

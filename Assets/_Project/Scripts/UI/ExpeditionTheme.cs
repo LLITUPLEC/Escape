@@ -167,6 +167,7 @@ namespace Project.UI
         public static void StyleButton(Button button, bool primary = false, float fontSize = 40f)
         {
             if (button == null) return;
+            Project.Audio.ExpeditionAudio.BindButton(button);
             if (ExpeditionCloseButton.IsIconClose(button)) { ExpeditionCloseButton.Apply(button); return; }
             var image = button.targetGraphic as Image;
             if (image == null) image = button.GetComponent<Image>();

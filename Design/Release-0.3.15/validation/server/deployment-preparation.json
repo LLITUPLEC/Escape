@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "runtime_before_sha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f",
+  "candidate_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "candidate_files": 64,
+  "overlay_files": 63,
+  "bootstrap_preserved_sha256": "8cc9c4b7da99b8b4c1168e96a00fa68f03ecde26db876582fcfb392be4552524",
+  "deployment_inputs_backup": "/opt/escape/backups/runtime-deployment-inputs-20261027T162155Z",
+  "previous_test_inputs": "/opt/escape/release0315-validation-fedc585b7cc2/previous-test-inputs",
+  "live_runtime_unchanged": true,
+  "deploy_helper_sha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31",
+  "security_smoke_sha256": "b29e50266d95a9eb1eb3e23017ba4583f368dd4f94d1f200bdce6e6c9b8ec85c",
+  "preflight_command": "cd /opt/escape && python3 /opt/escape/release0315-validation-fedc585b7cc2/candidate/deploy_runtime.py",
+  "apply_command_for_root": "cd /opt/escape && python3 /opt/escape/release0315-validation-fedc585b7cc2/candidate/deploy_runtime.py --apply",
+  "production_backup_on_apply": "/opt/escape/backups/runtime-release-<UTC stamp>/runtime and escape.dump; pg_restore --list verified before restart"
+}

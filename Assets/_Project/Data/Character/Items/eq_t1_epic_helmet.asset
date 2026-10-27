@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: eq_t1_epic_helmet
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_epic_helmet
-  displayName: eq_t1_epic_helmet
+  displayName: "Шлем аметистового дозора"
   colorDisplayName: {r: 0.5778619, g: 0.15300101, b: 0.93207544, a: 1}
-  description: 
+  description: "Герметичный шлем с аметистовой лампой. Часть эпического комплекта «Аметистовый дозор»."
   kind: 0
   maxStack: 1
   tier: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_rare_helmet
   craftMinutes: 180
   salePrice: 100
-  icon: {fileID: 21300000, guid: 55ac7336effd49648a62de26aa40ca34, type: 3}
+  icon: {fileID: 21300000, guid: 6699b3bcfecbe15d3d72ea4f74c02e32, type: 3}
   equippable: 1
   slot: 0
   modifiers: []

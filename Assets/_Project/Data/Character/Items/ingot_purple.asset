@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: ingot_purple
   displayName: "\u0424\u0438\u043E\u043B\u0435\u0442\u043E\u0432\u044B\u0439 \u0441\u043B\u0438\u0442\u043E\u043A"
   colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
-  description: 
+  description: "Фиолетовый сплав с минеральными включениями для изготовления эпического снаряжения в мастерской."
   kind: 1
   maxStack: 200
   tier: 1

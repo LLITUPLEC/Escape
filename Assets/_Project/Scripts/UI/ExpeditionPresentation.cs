@@ -116,6 +116,7 @@ namespace Project.UI
             if (_achievements != null) { _achievements.AttachToShell(achievementsHost); _achievements.VisibilityChanged += AchievementsVisibility; }
             if (_rating != null) { _rating.AttachToShell(ratingHost); _rating.VisibilityChanged += RatingVisibility; }
             if (_friends != null) { _friends.AttachToShell(friendsHost); _friends.VisibilityChanged += FriendsVisibility; }
+            FriendsNavigationBadge.Bind(FindButton("ExpeditionOpenFriends"), _friends);
             if (_openAchievementsAfterLoad && _achievements != null) { _openAchievementsAfterLoad = false; _achievements.Open(); }
             if (_openSettingsAfterLoad && _scene.name == "MainMenu") { _openSettingsAfterLoad = false; Invoke(FindButton("SettingsButton")); }
             _characterHost.SetAsLastSibling();
@@ -127,6 +128,7 @@ namespace Project.UI
             RefreshPageVisibility();
             foreach (var root in _scene.GetRootGameObjects()) ExpeditionCloseButton.StyleWithin(root.transform);
             if (_startupCover != null) Destroy(_startupCover);
+            if (_scene.name == "MainMenu") PlayerGuidanceCoordinator.ShelterReady();
         }
 
         private Canvas NewCanvas(string name, int order)
@@ -179,18 +181,25 @@ namespace Project.UI
 
             var hero = ExpeditionUi.Rect(_sceneBody, "ShelterHero", .43f, .465f, .60f, .635f).gameObject.AddComponent<Image>();
             hero.sprite = Resources.Load<Sprite>("Expedition/Art/hero");
+            CharacterAppearanceImage.Bind(hero);
             hero.preserveAspect = true;
             hero.raycastTarget = false;
             _world.PlaceShelterFigure(hero.rectTransform, new Vector2(.54f, .558f));
 
-            BindShortcut(ExpeditionUi.Button(_sceneBody, "ExpeditionOpenRating", "Рейтинг", .045f, .881f, .49f, .915f, () => Invoke(rating), false, 25), rating);
-            BindShortcut(ExpeditionUi.Button(_sceneBody, "ExpeditionOpenFriends", "Друзья", .51f, .881f, .955f, .915f, () => Invoke(friends), false, 25), friends);
+            BindShortcut(ExpeditionShelterShortcut.Create(_sceneBody, "ExpeditionOpenRating", "Рейтинг", "shelter-rating", .045f, .255f, () => Invoke(rating)), rating);
+            BindShortcut(ExpeditionShelterShortcut.Create(_sceneBody, "ExpeditionOpenFriends", "Друзья", "shelter-friends", .395f, .605f, () => Invoke(friends)), friends);
+            DailyShortcut("ExpeditionDailyLogin", "Награда за вход", "daily-login", .045f, .25f, false);
+            DailyShortcut("ExpeditionDailyQuests", "Задания дня", "daily-quests", .75f, .955f, true);
+            EventShortcut("ExpeditionOpenShop", "МАГАЗИН", "Expedition/Shop/0313/global_boss_teleport", .045f, .30f, () => ExpeditionShopPanel.Open());
+            EventShortcut("ExpeditionOpenGlobalBoss", "МИРОВОЙ БОСС", GlobalBossService.Art, .70f, .955f, () => ExpeditionGlobalBossPanel.Open(_modalHost));
+            var mail = ExpeditionShelterShortcut.Create(_sceneBody, "ExpeditionOpenMail", "Почта", "shelter-mail", .745f, .955f, () => ExpeditionMailPanel.Open(_modalHost));
+            ExpeditionMailBadge.Bind(mail);
             if (aura != null)
             {
                 // Keep the original controller, live timer, rotation and modal callback.
                 // The real Button is on aura_btn/border, not on aura_btn itself.
                 aura.SetParent(_sceneBody, false);
-                ExpeditionUi.SetRect(aura, .79f, .755f, .955f, .855f);
+                ExpeditionUi.SetRect(aura, .40f, .755f, .60f, .855f);
                 var auraBorder = aura.Find("border") as RectTransform;
                 if (auraBorder != null) ExpeditionUi.SetRect(auraBorder, .20f, .31f, .80f, .89f);
                 var auraTimer = aura.Find("timer") as RectTransform;
@@ -208,7 +217,7 @@ namespace Project.UI
             var online = Find("OnlinePlayersBadge");
             if (online != null)
             {
-                var status = ExpeditionUi.Rect(_sceneBody, "ExpeditionOnline", .065f, .852f, .33f, .879f);
+                var status = ExpeditionUi.Rect(_sceneBody, "ExpeditionOnline", .045f, .604f, .30f, .630f);
                 status.gameObject.AddComponent<ExpeditionOnlineStatus>().Bind(online);
             }
 
@@ -227,6 +236,28 @@ namespace Project.UI
             border.fillCenter = false;
 
             BuildNavigation();
+        }
+
+        private void DailyShortcut(string name, string title, string icon, float x0, float x1, bool quests)
+        {
+            var button = ExpeditionUi.Button(_sceneBody, name, title, x0, .755f, x1, .845f,
+                () => ExpeditionDailyPanel.Open(_modalHost, quests), false, 21);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            ExpeditionUi.SetRect(label.rectTransform, .025f, .09f, .975f, .32f);
+            label.enableAutoSizing = true; label.fontSizeMin = 17; label.fontSizeMax = 21; label.margin = Vector4.zero;
+            var image = ExpeditionUi.Rect(button.transform, "DailyIcon", .22f, .33f, .78f, .92f).gameObject.AddComponent<Image>();
+            image.sprite = Resources.Load<Sprite>("Expedition/Daily/039/" + icon); image.preserveAspect = true; image.raycastTarget = false;
+            if (quests) DailyQuestBadge.Bind(button);
+        }
+
+        private void EventShortcut(string name, string title, string resource, float x0, float x1, UnityEngine.Events.UnityAction action)
+        {
+            var button = ExpeditionUi.Button(_sceneBody, name, title, x0, .642f, x1, .735f, action, false, 20);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            ExpeditionUi.SetRect(label.rectTransform, .025f, .055f, .975f, .30f); label.fontStyle = FontStyles.Bold;
+            label.enableAutoSizing = true; label.fontSizeMin = 16; label.fontSizeMax = 20; label.margin = Vector4.zero;
+            var icon = ExpeditionUi.Rect(button.transform, "EventIcon", .15f, .31f, .85f, .97f).gameObject.AddComponent<Image>();
+            icon.sprite = Resources.Load<Sprite>(resource); icon.preserveAspect = true; icon.raycastTarget = false;
         }
 
         private void WorldSign(string name, string text, string icon, float x0, float y0, float x1, float y1, UnityEngine.Events.UnityAction action)
@@ -263,9 +294,10 @@ namespace Project.UI
                     else if (index == 1) ShowAchievements();
                     else if (index == 2) ShowCharacter();
                     else if (index == 3) Load("ArenaMenu");
-                    else Load("WorkshopScene");
+                    else if (PlayerGuidanceService.WorkshopUnlocked) Load("WorkshopScene");
                 }, false, 28);
                 _navButtons[i] = button;
+                if (i == 4) ProgressiveContentButton.Bind(button, true);
                 if (i == 1) AchievementNavigationBadge.Bind(button);
                 var text = button.GetComponentInChildren<TMP_Text>();
                 ExpeditionUi.SetRect(text.rectTransform, .01f, .105f, .99f, .37f);
@@ -424,7 +456,7 @@ namespace Project.UI
             ExpeditionUi.SetRect(mode, .035f, .265f, .965f, .704f);
             var list = ExpeditionUi.Rect(mode, "ExpeditionModeList", 0, 0, 1, 1);
             var titles = new[] { "КЛАССИКА", "PRO", "СПУСК", "ТУРНИР КУЗНЕЦА", "ТУРНИР РУДЫ", "ТУРНИР ЗОЛОТА" };
-            var notes = new[] { "Равные характеристики · решает мастерство", "Уровень и экипировка участвуют в бою", "Кто первым наберёт 200 маны", "8 участников · снаряжение и чертежи", "8 участников · ценные материалы", "8 участников · золотой приз" };
+            var notes = new[] { "Равные характеристики · решает мастерство", "Уровень и экипировка участвуют в бою", "Кто первым наберёт 200 маны", "От 10 слитков · слитки и новые рецепты", "8 участников · ценные материалы", "8 участников · золотой приз" };
             for (var i = 0; i < buttons.Length; i++)
             {
                 var button = buttons[i];
@@ -436,6 +468,9 @@ namespace Project.UI
                 foreach (var graphic in button.GetComponentsInChildren<Graphic>(true)) if (graphic.transform != button.transform) graphic.enabled = false;
                 ExpeditionUi.StyleButton(button, false, 35);
                 PaintedIcon(button.transform, "ExpeditionModeIcon", i == 0 || i == 1 ? "swords" : i == 2 ? "pickaxe" : i == 3 ? "anvil" : i == 4 ? "ore" : "gold", .045f, .46f, .24f, .89f);
+                if (i == 3) ArenaMatch8Bridge.ApplySmithTournamentButtonIcons(button.transform);
+                if (i >= 3) ProgressiveContentButton.Bind(button, false);
+                GameplayConnectionButton.Bind(button);
                 ExpeditionUi.Text(button.transform, "ExpeditionModeTitle", titles[i], i < 3 ? 38 : 29, .25f, .48f, .95f, .9f).fontStyle = FontStyles.Bold;
                 var note = ExpeditionUi.Text(button.transform, "ExpeditionModeDescription", notes[i], 28, .045f, .06f, .95f, .47f);
                 note.color = ExpeditionTheme.Muted;
@@ -623,6 +658,7 @@ namespace Project.UI
             var avatar = ExpeditionUi.Button(header.transform, "ExpeditionOpenHero", "", .004f, -.035f, .135f, 1.035f, ExpeditionPresentation.OpenCharacter);
             var portrait = ExpeditionUi.Rect(avatar.transform, "Portrait", .04f, .04f, .96f, .96f).gameObject.AddComponent<Image>();
             portrait.sprite = ExpeditionTheme.Icon("hero");
+            CharacterAppearanceImage.Bind(portrait, true);
             portrait.preserveAspect = true;
             portrait.raycastTarget = false;
             _name = ExpeditionUi.Text(header.transform, "ProfileName", "Скиталец", 26, .146f, .53f, .315f, .88f);
@@ -663,6 +699,7 @@ namespace Project.UI
                 IconOnly(settings, gear);
             }
             PlayerResourcesService.CachedResourcesChanged += Refresh;
+            CharacterAppearanceService.UnlockRewardsGranted += OnUnlockRewardsGranted;
             NicknameService.UsernameChanged += OnName;
             _accountScope = Project.Nakama.LocalAccountCacheScope.Current;
             Refresh();
@@ -734,8 +771,10 @@ namespace Project.UI
             value.enableAutoSizing = true;
             value.fontSizeMin = 23;
             value.fontSizeMax = 29;
+            value.overflowMode = TextOverflowModes.Overflow;
             var valueSize = value.gameObject.AddComponent<LayoutElement>();
             valueSize.minWidth = 0;
+            valueSize.flexibleWidth = 1;
             valueSize.minHeight = valueSize.preferredHeight = 42;
             return value;
         }
@@ -754,6 +793,10 @@ namespace Project.UI
             try { await PlayerResourcesService.GetAsync(token); }
             catch (OperationCanceledException) { }
             catch (Exception) { /* Keep the last account-scoped cached snapshot visible while offline. */ }
+        }
+        private void OnUnlockRewardsGranted(int matter)
+        {
+            if (matter > 0 && _cts != null && !_cts.IsCancellationRequested) _ = RefreshResources(_cts.Token);
         }
         private async Task RefreshProfile(CancellationToken token, string scope, int version)
         {
@@ -796,7 +839,7 @@ namespace Project.UI
                 if (_drawer != null) _drawer.text = "Загрузка запасов…";
                 return;
             }
-            _energy.text = value.energy.ToString();
+            _energy.text = Short(value.energy);
             _gold.text = Short(value.gold);
             _ore.text = Short(value.ore);
             if (_drawer != null)
@@ -806,7 +849,7 @@ namespace Project.UI
                 for (var i = 0; i < quantities.Length; i++) if (_drawerValues[i] != null) _drawerValues[i].text = Short(quantities[i]);
             }
         }
-        private static string Short(long value) => value < 10000 ? value.ToString("N0", CultureInfo.GetCultureInfo("ru-RU")) : value < 1000000 ? (value / 1000f).ToString("0.#", CultureInfo.InvariantCulture) + " тыс." : (value / 1000000f).ToString("0.#", CultureInfo.InvariantCulture) + " млн";
+        private static string Short(long value) => CompactResourceAmount.Format(value);
         private void OpenDrawer()
         {
             if (_drawerRoot == null)
@@ -846,6 +889,7 @@ namespace Project.UI
         private void OnDestroy()
         {
             PlayerResourcesService.CachedResourcesChanged -= Refresh;
+            CharacterAppearanceService.UnlockRewardsGranted -= OnUnlockRewardsGranted;
             NicknameService.UsernameChanged -= OnName;
             _profileCts?.Cancel();
             _profileCts?.Dispose();

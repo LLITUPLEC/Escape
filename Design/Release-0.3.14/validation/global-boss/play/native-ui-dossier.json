@@ -1,0 +1,139 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "width": 1080,
+    "height": 1920,
+    "error": "",
+    "checks": [
+        {
+            "name": "Native dossier/ranking text: StatsTitle",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatName-damage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatValue-damage",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatName-armor",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatValue-armor",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatName-critical",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: StatValue-critical",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: BossLimits",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: HealthKicker",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: HealthValue",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Title",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Description",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Title",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Description",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: RewardsKicker",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: LegendaryRecipeLabel",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: TesseractLabel",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: SuppliesLabel",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Kicker",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: BossName",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: EventClock",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Attempts",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Contribution",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: BossStatus",
+            "passed": true
+        },
+        {
+            "name": "Native dossier/ranking text: Label",
+            "passed": true
+        },
+        {
+            "name": "Offline GameView preview performs no account/network work",
+            "passed": true
+        }
+    ],
+    "screenshots": []
+}

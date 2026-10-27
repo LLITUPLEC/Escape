@@ -33,6 +33,7 @@ namespace Project.Match3
         {
             if (_cost == null) return;
             _cost.color = Ink;
+            _cost.fontStyle |= FontStyles.Bold;
             _cost.enableAutoSizing = true;
             _cost.fontSizeMin = 12;
             _cost.fontSizeMax = 24;

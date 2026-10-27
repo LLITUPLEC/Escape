@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace Project.Friends
 {
     /// <summary>
-    /// DDOL: входящие предложения «Спуск» от друзей.
+    /// DDOL: входящие предложения «Спуск» и «Дуэль» от друзей.
     /// Prep-таймер 5 с — уже в сцене DuelMatch3 (Match3SearchingPanel).
     /// </summary>
     public sealed class FriendsRaceInviteHost : MonoBehaviour
@@ -34,6 +34,7 @@ namespace Project.Friends
 
         private string _pendingInviteId;
         private string _pendingFromUsername;
+        private string _pendingKind = "race";
         private long _inviteExpiresAtUnix;
         private bool _busy;
         private Coroutine _inviteTickRoutine;
@@ -154,12 +155,13 @@ namespace Project.Friends
                             msg.match_id,
                             oppId,
                             oppName,
-                            msg.prep_seconds > 0 ? msg.prep_seconds : 5);
+                            msg.prep_seconds > 0 ? msg.prep_seconds : 5,
+                            msg.kind);
                     }
                     else if (string.Equals(msg.status, "declined", StringComparison.OrdinalIgnoreCase))
                     {
                         var name = string.IsNullOrWhiteSpace(msg.by_username) ? "друг" : msg.by_username;
-                        ShowBriefStatus("Спуск", $"«{name}» не хочет");
+                        ShowBriefStatus(InviteTitle(msg.kind), $"«{name}» отклонил предложение");
                     }
                     else if (string.Equals(msg.status, "cancelled", StringComparison.OrdinalIgnoreCase))
                     {
@@ -169,7 +171,7 @@ namespace Project.Friends
                             return;
                         HideInviteUi();
                         // Не спамим тостом в матче — HandleNotificationOnMain уже отсекает match scene.
-                        ShowBriefStatus("Спуск", "Предложение отменено");
+                        ShowBriefStatus(InviteTitle(msg.kind), "Предложение отменено");
                     }
                     else if (string.Equals(msg.status, "charge_failed", StringComparison.OrdinalIgnoreCase))
                     {
@@ -187,14 +189,15 @@ namespace Project.Friends
         {
             RefreshInviteCardBounds();
             _pendingInviteId = msg.invite_id;
+            _pendingKind = msg.kind == "duel" ? "duel" : "race";
             _pendingFromUsername = string.IsNullOrWhiteSpace(msg.from_username) ? "Друг" : msg.from_username.Trim();
             // long: float unix теряет точность (~128с) и мог мгновенно «протухать» TTL.
             var now = UnixNow();
             _inviteExpiresAtUnix = msg.expires_at > now ? msg.expires_at : (now + 60);
 
-            if (_inviteTitle != null) _inviteTitle.text = "Спуск";
+            if (_inviteTitle != null) _inviteTitle.text = InviteTitle(_pendingKind);
             if (_inviteBody != null)
-                _inviteBody.text = $"«{_pendingFromUsername}» предлагает матч";
+                _inviteBody.text = $"«{_pendingFromUsername}» предлагает {(_pendingKind == "duel" ? "дуэль" : "Спуск")}";
             if (_acceptBtn != null) _acceptBtn.gameObject.SetActive(true);
             if (_declineBtn != null) _declineBtn.gameObject.SetActive(true);
             if (_invitePanel != null) _invitePanel.SetActive(true);
@@ -258,10 +261,12 @@ namespace Project.Friends
         private async void OnAcceptClicked()
         {
             if (_busy || string.IsNullOrWhiteSpace(_pendingInviteId)) return;
+            if (!ServerConnectionGuard.CanPlay) { ServerConnectionGuard.ShowUnavailable(); return; }
             _busy = true;
             SetInviteButtonsInteractable(false);
             try
             {
+                await ServerConnectionGuard.RequireAsync(CancellationToken.None);
                 var result = await FriendsService.RespondRaceInviteAsync(_pendingInviteId, accept: true, CancellationToken.None);
                 if (!result.Ok)
                 {
@@ -278,7 +283,8 @@ namespace Project.Friends
                         result.MatchId,
                         result.OpponentUserId,
                         result.OpponentUsername,
-                        result.PrepSeconds > 0 ? result.PrepSeconds : 5);
+                        result.PrepSeconds > 0 ? result.PrepSeconds : 5,
+                        result.Kind ?? _pendingKind);
                 }
             }
             catch (Exception e)
@@ -313,7 +319,9 @@ namespace Project.Friends
             }
         }
 
-        private void LaunchFriendRaceMatch(string matchId, string opponentUserId, string opponentUsername, int prepSeconds)
+        private static string InviteTitle(string kind) => kind == "duel" ? "Дуэль" : "Спуск";
+
+        private void LaunchFriendRaceMatch(string matchId, string opponentUserId, string opponentUsername, int prepSeconds, string kind)
         {
             if (string.IsNullOrWhiteSpace(matchId)) return;
             if (!string.IsNullOrEmpty(_launchingMatchId)
@@ -323,7 +331,7 @@ namespace Project.Friends
             var name = string.IsNullOrWhiteSpace(opponentUsername) ? "соперник" : opponentUsername.Trim();
             Match3LaunchContext.ArmFriendRaceJoin(matchId, name, opponentUserId, prepSeconds);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
-            Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(true);
+            Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(kind != "duel");
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
             SceneManager.LoadScene("DuelMatch3");
         }

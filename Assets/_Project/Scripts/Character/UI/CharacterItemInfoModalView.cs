@@ -132,6 +132,12 @@ namespace Project.Character.UI
             if (_expeditionDialog != null) _expeditionDialog.RefreshContent();
         }
 
+        public void SetStatsCaption(string value)
+        {
+            EnsureDefaults();
+            if (_expeditionDialog != null) _expeditionDialog.SetStatsCaption(value);
+        }
+
         public void SetEquipButton(bool visible, bool interactable, string text)
         {
             if (equipToggleButton != null) equipToggleButton.gameObject.SetActive(visible);

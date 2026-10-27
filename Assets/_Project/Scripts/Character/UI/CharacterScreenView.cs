@@ -38,6 +38,12 @@ namespace Project.Character.UI
         private int[] _inventoryCounts = new int[25];
         private ItemCatalog _activeCatalog;
 
+        public const int InventoryPageSize = 25;
+        public const int InventoryMaximum = 50;
+        public int InventoryCapacity { get; private set; } = InventoryPageSize;
+        public int InventorySlotPrice { get; private set; } = 3;
+        public long PendingLootCount { get; private set; }
+        public event System.Action<int> InventorySlotUnlockRequested;
         private bool _dragConfigured;
         private CharacterExpeditionLayout _expeditionLayout;
         private Canvas _screenCanvas;
@@ -151,7 +157,14 @@ namespace Project.Character.UI
             ClearProfileLoadError();
             if (profile.stats != null)
                 SetStats(profile.stats.hp, profile.stats.damage, profile.stats.armor, profile.stats.healing, profile.stats.crit_chance);
+            var declaredCapacity = profile.inventory_capacity > 0 ? profile.inventory_capacity : profile.inventory_def_ids?.Length ?? InventoryPageSize;
+            InventoryCapacity = Mathf.Clamp(declaredCapacity, InventoryPageSize, InventoryMaximum);
+            InventorySlotPrice = profile.inventory_slot_price_matter > 0 ? profile.inventory_slot_price_matter : 3;
+            PendingLootCount = 0;
+            if (profile.pending_loot != null)
+                foreach (var row in profile.pending_loot) if (row != null && row.amount > 0) PendingLootCount += row.amount;
             BindEquipmentAndInventory(profile.equipment_def_ids, profile.inventory_def_ids, profile.inventory_counts, catalog);
+            _expeditionLayout?.SetConsumables(profile.consumables);
         }
 
         public void BindEquipmentAndInventory(string[] equipmentDefIds, string[] inventoryDefIds, ItemCatalog catalog) =>
@@ -214,14 +227,40 @@ namespace Project.Character.UI
                 _inventoryCounts[dataIdx] = cnt;
                 slotView.SetStackCount(cnt);
             }
+            foreach (var slot in _inventorySlots)
+            {
+                var handle = slot.GetComponent<CharacterDragSlotHandle>();
+                if (handle != null) handle.enabled = slot.InventorySlotIndex < InventoryCapacity;
+            }
             _expeditionLayout?.RefreshInventory();
+        }
+
+        public void RequestInventorySlotUnlock(int index)
+        {
+            if (index == InventoryCapacity && index < InventoryMaximum) InventorySlotUnlockRequested?.Invoke(index);
+        }
+
+        public void MoveDraggedItemToPage(CharacterDragSlotHandle source, int page)
+        {
+            if (source == null || page < 0 || page > 1) return;
+            if (source.Kind == CharacterDragSlotKind.Inventory && source.InventoryIndex / InventoryPageSize == page) return;
+            var start = page * InventoryPageSize;
+            var end = Mathf.Min(start + InventoryPageSize, InventoryCapacity);
+            var drag = GetComponent<CharacterSheetDragController>();
+            if (drag == null) return;
+            for (var i = start; i < end; i++)
+            {
+                if (HasInventoryItem(i)) continue;
+                drag.TryMoveFromDrop(source, _inventorySlots[i].GetComponent<CharacterDragSlotHandle>());
+                return;
+            }
         }
 
         public bool TryGetInventoryItem(int inventoryIndex, out string itemId, out ItemDefinition itemDef)
         {
             itemId = null;
             itemDef = null;
-            if (inventoryIndex < 0 || inventoryIndex >= _inventoryDefIds.Length) return false;
+            if (inventoryIndex < 0 || inventoryIndex >= InventoryCapacity || inventoryIndex >= _inventoryDefIds.Length) return false;
             itemId = _inventoryDefIds[inventoryIndex];
             if (string.IsNullOrEmpty(itemId)) return false;
             if (inventoryIndex < _inventoryCounts.Length && _inventoryCounts[inventoryIndex] < 1) return false;
@@ -243,7 +282,7 @@ namespace Project.Character.UI
 
         public bool HasInventoryItem(int inventoryIndex)
         {
-            if (inventoryIndex < 0 || inventoryIndex >= _inventoryDefIds.Length) return false;
+            if (inventoryIndex < 0 || inventoryIndex >= InventoryCapacity || inventoryIndex >= _inventoryDefIds.Length) return false;
             if (string.IsNullOrEmpty(_inventoryDefIds[inventoryIndex])) return false;
             if (inventoryIndex < _inventoryCounts.Length && _inventoryCounts[inventoryIndex] < 1) return false;
             return true;
@@ -263,7 +302,7 @@ namespace Project.Character.UI
 
         public int FindFirstEmptyInventoryIndex()
         {
-            for (var i = 0; i < _inventoryDefIds.Length; i++)
+            for (var i = 0; i < InventoryCapacity; i++)
             {
                 if (string.IsNullOrEmpty(_inventoryDefIds[i])) return i;
             }
@@ -348,6 +387,7 @@ namespace Project.Character.UI
 
         private void CollectOrBuildInventory()
         {
+            inventorySize = InventoryMaximum;
             if (inventoryRoot == null) return;
 
             _inventorySlots.Clear();
@@ -356,17 +396,17 @@ namespace Project.Character.UI
             if (_inventorySlots.Count > inventorySize)
                 _inventorySlots.RemoveRange(inventorySize, _inventorySlots.Count - inventorySize);
 
-            if (_inventorySlots.Count > 0) return;
-
-            if (inventorySlotPrefab == null) return;
-            var count = Mathf.Max(1, inventorySize);
-            for (var i = 0; i < count; i++)
+            var template = inventorySlotPrefab != null ? inventorySlotPrefab : _inventorySlots.Count > 0 ? _inventorySlots[0] : null;
+            if (template == null) return;
+            for (var i = _inventorySlots.Count; i < inventorySize; i++)
             {
-                var inst = Instantiate(inventorySlotPrefab, inventoryRoot, false);
+                var inst = Instantiate(template, inventoryRoot, false);
                 inst.name = "Cell_" + i;
-                inst.SetIcon(null);
+                inst.SetInventorySlotIndex(i);
+                inst.SetIcon(null); inst.SetStackCount(0);
                 _inventorySlots.Add(inst);
             }
+            for (var i = 0; i < _inventorySlots.Count; i++) _inventorySlots[i].SetInventorySlotIndex(i);
         }
 
         private static void SortInventorySlots(List<ItemSlotView> slots)

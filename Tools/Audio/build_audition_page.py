@@ -4,7 +4,7 @@ from html import escape
 import json
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "Design/Audio-Auditions-0.3.5"
+OUT = ROOT / "Design/Audio"
 
 
 def button(file: str, label: str, caption: str, cls: str = "") -> str:
@@ -31,6 +31,10 @@ def card(effect: dict, index: int) -> str:
 
 
 def main():
+    if not (OUT / "metadata.json").exists() and (OUT / "selected-metadata.json").exists():
+        from build_selected_archive import main as build_selected
+        build_selected()
+        return
     metadata = json.loads((OUT / "metadata.json").read_text(encoding="utf-8"))
     battle = "\n".join(card(e, i) for i, e in enumerate(metadata["effects"], 1) if e["category"] == "battle")
     world = "\n".join(card(e, i) for i, e in enumerate(metadata["effects"], 1) if e["category"] != "battle")
@@ -42,7 +46,7 @@ def main():
         template = template.replace(token, value)
     assert "{{" not in template
     (OUT / "index.html").write_text(template, encoding="utf-8")
-    print(json.dumps({"page": "Design/Audio-Auditions-0.3.5/index.html", "effect_pairs": len(metadata["effects"]), "network_dependencies": 0}))
+    print(json.dumps({"page": "Design/Audio/index.html", "effect_pairs": len(metadata["effects"]), "network_dependencies": 0}))
 
 
 if __name__ == "__main__":

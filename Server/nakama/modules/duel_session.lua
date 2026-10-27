@@ -1,6 +1,8 @@
 local nk = require("nakama")
 local rate_ok, RateLimit = pcall(require, "modules.duel_api_rate_limit")
 if not rate_ok then RateLimit = require("duel_api_rate_limit") end
+local gender_ok, AccountGender = pcall(require, "modules.duel_account_gender")
+if not gender_ok then AccountGender = require("duel_account_gender") end
 
 local SESSION_EPOCH_META_KEY = "session_epoch"
 local NOTIFY_CODE_SESSION_REPLACED = 10001
@@ -51,15 +53,16 @@ local function bump_session_epoch_and_notify(user_id)
 end
 
 --- После каждого входа по e-mail инкрементируем эпоху и шлём in-app уведомление всем сокетам этого пользователя.
-local function after_authenticate_email(ctx, logger, nkrt, session, request)
+local function after_authenticate_email(ctx, session, request)
   local user_id = ctx.user_id
   if user_id == nil or user_id == "" then
     return
   end
 
+  local gender_synced, gender_err = pcall(AccountGender.after_email, ctx, session, request)
+  if not gender_synced then nk.logger_error("duel_session account gender: " .. tostring(gender_err)) end
   local ok, err = pcall(function()
-    -- Use the built-in `nk` module here. `nkrt` passed to after-hooks is not guaranteed
-    -- to expose account_get_id/account_update_id in all Nakama versions/configs.
+    -- Lua callbacks receive only context/response/request; use the built-in nk.
     bump_session_epoch_and_notify(user_id)
   end)
 

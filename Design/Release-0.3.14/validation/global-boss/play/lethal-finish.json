@@ -1,0 +1,15 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "width": 1080,
+    "height": 1920,
+    "error": "",
+    "checks": [
+        {
+            "name": "Queued actual outcome appears after full impact hold",
+            "passed": true
+        }
+    ],
+    "screenshots": []
+}

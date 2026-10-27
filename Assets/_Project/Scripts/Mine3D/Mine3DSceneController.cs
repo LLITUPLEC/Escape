@@ -43,6 +43,8 @@ namespace Project.Mine3D
 
             var mine = Project.UI.MineSceneController.EnsureInstalled();
             mine?.NotifyMine3DWorldReady();
+            if (cameraScroller != null && Project.Match3.Match3LaunchContext.TryConsumeMineReturnFloor("MineScene3D", out var foughtFloor))
+                cameraScroller.FocusFloor(foughtFloor);
         }
 
         /// <summary>

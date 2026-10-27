@@ -14,11 +14,15 @@ namespace Project.Character
         /// <summary>8 строк в порядке EquipmentSlotId (0..7); пустая строка — пустой слот.</summary>
         public string[] equipment_def_ids;
 
-        /// <summary>25 ячеек сундука; пустая строка — пусто.</summary>
+        /// <summary>25–50 открытых ячеек сундука; пустая строка — пусто.</summary>
         public string[] inventory_def_ids;
 
-        /// <summary>25 значений: количество в ячейке (стек). 0 если ячейка пуста.</summary>
+        /// <summary>25–50 значений: количество в ячейке (стек). 0 если ячейка пуста.</summary>
         public int[] inventory_counts;
+        public int inventory_capacity;
+        public int inventory_slot_price_matter;
+        public PendingInventoryLoot[] pending_loot;
+        public ConsumableStatus consumables;
 
         /// <summary>Выученные рецепты (def_id из каталога рецептов).</summary>
         public string[] learned_recipe_ids;
@@ -28,6 +32,24 @@ namespace Project.Character
 
         /// <summary>Unix-время окончания крафта по слоту; 0 если слот свободен.</summary>
         public int[] workshop_ends_at;
+    }
+
+    [Serializable]
+    public sealed class PendingInventoryLoot
+    {
+        public string def_id;
+        public long amount;
+    }
+
+    [Serializable]
+    public sealed class ConsumableStatus
+    {
+        public int schema;
+        public long server_now, armed_at, bounty_started_at, bounty_ends_at, next_use_seq;
+        public string armed_item_id;
+        public bool bounty_active;
+        [NonSerialized] public bool localTimeKnown;
+        [NonSerialized] public float localReceivedAt;
     }
 
     [Serializable]

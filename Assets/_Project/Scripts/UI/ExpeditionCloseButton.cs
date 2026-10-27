@@ -31,6 +31,7 @@ namespace Project.UI
         public static void Apply(Button button)
         {
             if (button == null) return;
+            Project.Audio.ExpeditionAudio.BindButton(button, Project.Audio.ExpeditionCue.UiBack);
             var view = ExpeditionUi.Ensure<ExpeditionCloseButton>(button.gameObject);
             view.Configure();
         }

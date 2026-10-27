@@ -15,6 +15,7 @@ namespace Project.Match3
         private Match3BoardView _board;
         private RectTransform _content;
         private Match3GameHUD _hud;
+        private readonly System.Collections.Generic.List<ExpeditionCombatantFigure> _figures=new();
 
         public static ExpeditionBattleLayout Install(Scene scene)
         {
@@ -32,6 +33,30 @@ namespace Project.Match3
             if (!view._installed) view.Build(canvas.transform, board);
             return view;
         }
+        public static void UseGlobalBossArena(Transform canvas)
+        {
+            if (canvas==null) return;
+            var background=ExpeditionUi.Find(canvas,"ExpeditionBattleBackdrop")?.GetComponent<Image>();
+            var art=Resources.Load<Sprite>("Expedition/Boss/0314/arena-rift");
+            if(background!=null&&art!=null)
+            {
+                background.sprite=art;background.color=Color.white;background.type=Image.Type.Simple;
+                var fit=background.GetComponent<AspectRatioFitter>();if(fit!=null)fit.aspectRatio=art.rect.width/art.rect.height;
+            }
+            foreach(var figure in canvas.GetComponentsInChildren<ExpeditionCombatantFigure>(true))
+                figure.SetArenaProfile(.775f,figure.name=="ExpeditionPlayerFigure"?.102f:.15f,figure.name=="ExpeditionPlayerFigure"?.24f:.37f);
+        }
+
+        public static void SetMineDifficulty(Match3PlayerPanel opponent, string difficulty)
+        {
+            if (opponent == null) return;
+            var frame = opponent.PortraitFrame.GetComponent<Image>();
+            ExpeditionDifficultyAura.Set(frame, difficulty);
+            var canvas = opponent.GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            var figure = ExpeditionUi.Find(canvas.transform, "ExpeditionOpponentFigure")?.GetComponent<Image>();
+            ExpeditionDifficultyAura.Set(figure, difficulty);
+        }
 
         private void Build(Transform canvas, Match3BoardView board)
         {
@@ -39,7 +64,8 @@ namespace Project.Match3
             _board = board;
             var background = ExpeditionUi.Panel(canvas, "ExpeditionBattleBackdrop", 0, 0, 1, 1, ExpeditionTheme.Panel);
             background.transform.SetAsFirstSibling();
-            var art = Resources.Load<Sprite>("Expedition/Art/battle-world-v4");
+            var art = Resources.Load<Sprite>("Expedition/Art/battle-world-v5");
+            if (art == null) art = Resources.Load<Sprite>("Expedition/Art/battle-world-v4");
             if (art == null) art = Resources.Load<Sprite>("Expedition/Art/arena-backdrop");
             if (art != null)
             {
@@ -73,7 +99,10 @@ namespace Project.Match3
                     i == 0 ? .012f : .50f, .731f, i == 0 ? .50f : .988f, .917f).gameObject.AddComponent<Image>();
                 figure.preserveAspect = true;
                 figure.raycastTarget = false;
-                figure.gameObject.AddComponent<ExpeditionCombatantFigure>().Bind(player.avatarImage, i == 0);
+                var grounded=figure.gameObject.AddComponent<ExpeditionCombatantFigure>();
+                grounded.Bind(player.avatarImage,i==0);
+                grounded.GroundTo(background.rectTransform,player.transform as RectTransform,i==0?.27f:.73f);
+                _figures.Add(grounded);
             }
             // Portrait frames, status badges and stat popovers sit above the figures.
             foreach (var player in playerPanels) player.transform.SetAsLastSibling();
@@ -108,9 +137,10 @@ namespace Project.Match3
                 ExpeditionUi.StylePanel(hudImage, ExpeditionTheme.Panel);
                 hudImage.pixelsPerUnitMultiplier = 5;
                 hudImage.raycastTarget = false;
-                Put(hud.turnText, hud.transform, .04f, .61f, .96f, .97f, 27, ExpeditionTheme.Ivory);
-                Put(hud.timerText, hud.transform, .04f, .015f, .96f, .64f, 60, ExpeditionTheme.Amber);
-                Put(hud.timerPhaseText, hud.transform, .05f, .08f, .95f, .60f, 25, ExpeditionTheme.Muted);
+                Put(hud.roundText, hud.transform, .05f, .80f, .95f, .99f, 20, ExpeditionTheme.Amber);
+                Put(hud.turnText, hud.transform, .04f, .56f, .96f, .81f, 23, ExpeditionTheme.Ivory);
+                Put(hud.timerText, hud.transform, .04f, .015f, .96f, .56f, 52, ExpeditionTheme.Amber);
+                Put(hud.timerPhaseText, hud.transform, .05f, .08f, .95f, .55f, 25, ExpeditionTheme.Muted);
                 hud.BindCompactTurnSeparator(null);
                 if (hud.turnText != null)
                 {
@@ -118,7 +148,7 @@ namespace Project.Match3
                     hud.turnText.textWrappingMode = TextWrappingModes.NoWrap;
                     hud.turnText.enableAutoSizing = true;
                     hud.turnText.fontSizeMin = 17;
-                    hud.turnText.fontSizeMax = 27;
+                    hud.turnText.fontSizeMax = 23;
                 }
                 if (hud.timerText != null)
                 {
@@ -215,6 +245,8 @@ namespace Project.Match3
             var info = root.Find("ExpeditionHeaderInfo")?.GetComponent<TMP_Text>();
             if (info == null) info = ExpeditionUi.Text(root, "ExpeditionHeaderInfo", "i", 20, x1 - .065f, .73f, x1 - .005f, .94f, TextAlignmentOptions.Center);
             info.color = ExpeditionTheme.Muted;
+            info.margin = Vector4.zero; info.enableAutoSizing = true; info.fontSizeMin = 14; info.fontSizeMax = 20;
+            info.textWrappingMode = TextWrappingModes.NoWrap;
             info.gameObject.SetActive(!panel.IsRaceHudMode);
             StyleShieldBadge(panel, opponent);
             var hpTrack = ExpeditionUi.Find(root, "HpBarTrack");
@@ -255,6 +287,8 @@ namespace Project.Match3
                     StyleText(stats, 22, ExpeditionTheme.Muted);
                     StyleCombatStats(stats);
                 }
+                ExpeditionUi.Ensure<ExpeditionCombatStatIcons>(statsFrame.gameObject).Bind();
+                panel.combatStatsName.gameObject.SetActive(false);
                 ExpeditionUi.Ensure<ExpeditionCombatStatsPopover>(panel.gameObject).Bind(panel, statsFrame);
                 statsFrame.SetAsLastSibling();
             }
@@ -537,6 +571,7 @@ namespace Project.Match3
 
         internal void ResizeBoard()
         {
+            foreach(var figure in _figures)if(figure!=null)figure.RefreshGrounding();
             if (_resizing || _board == null || _board.cellContainer == null) return;
             _resizing = true;
             var boardRect = _board.transform as RectTransform;

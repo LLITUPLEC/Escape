@@ -18,8 +18,24 @@ local Guard = build_session_guard({ nk = nk, CFG = CFG })
 -- Stable dispatch table: callbacks capture this initialized table, and resolve
 -- modules/functions from its fields only after runtime initialization completes.
 local Runtime = {}
+Runtime.Rounds = runtime_lua_require("modules.duel_match3_rounds", "duel_match3_rounds")
+Runtime.Inventory = runtime_lua_require("modules.duel_match3_inventory", "duel_match3_inventory")
+Runtime.ConsumableModule = runtime_lua_require("modules.duel_consumables", "duel_consumables")
+Runtime.ConsumableEffects = Runtime.ConsumableModule.Effects
+Runtime.MineRecipes = runtime_lua_require("modules.duel_mine_recipe_drops", "duel_mine_recipe_drops")
 Runtime.RateLimit = runtime_lua_require("modules.duel_api_rate_limit", "duel_api_rate_limit")
+Runtime.StorageMaintenance = runtime_lua_require("modules.duel_storage_maintenance", "duel_storage_maintenance")
+Runtime.RateLimit.configure_maintenance(function() Runtime.StorageMaintenance.maybe_run() end)
 Runtime.Presence = runtime_lua_require("modules.duel_match3_presence", "duel_match3_presence")
+Runtime.Lifecycle = runtime_lua_require("modules.duel_match3_lifecycle", "duel_match3_lifecycle")
+Runtime.MatchLifecycle = Runtime.Lifecycle.new({guard=Guard.assert_client_epoch_matches,
+  forfeit=function(...)return Runtime.forfeit_match(...)end})
+Runtime.Cosmetics = runtime_lua_require("modules.duel_player_cosmetics", "duel_player_cosmetics")
+Runtime.Shop = runtime_lua_require("modules.duel_shop", "duel_shop")
+Runtime.Mail = runtime_lua_require("modules.duel_mail", "duel_mail")
+Runtime.GlobalBoss = runtime_lua_require("modules.duel_global_boss", "duel_global_boss")
+Runtime.GlobalBossRules = runtime_lua_require("modules.duel_global_boss_rules", "duel_global_boss_rules")
+Runtime.BossBattle = runtime_lua_require("modules.duel_global_boss_battle", "duel_global_boss_battle")
 
 Runtime.finish_arena_result = function(state, winner)
   if state.arena_mirror == nil or type(Runtime.arena_on_match_finished) ~= "function" then return true end
@@ -30,7 +46,10 @@ Runtime.finish_arena_result = function(state, winner)
     return false
   end
   state._arena_pending_result = nil
-  if type(result) == "table" then state._arena_reward_receipt = result.reward_receipt end
+  if type(result) == "table" then
+    state._arena_reward_receipt = result.reward_receipt
+    state._arena_craft_receipts = result.craft_receipts
+  end
   return true
 end
 
@@ -51,7 +70,7 @@ Runtime.apply_result_rewards = function(state, winner, is_draw, payload)
 end
 
 Runtime.emit_game_over = function(dispatcher, state, payload)
-  if state._arena_pending_result or state._race_pending_result then
+  if state._arena_pending_result or state._race_pending_result or state._pve_pending_result then
     state._pending_game_over = payload
     return false
   end
@@ -59,13 +78,40 @@ Runtime.emit_game_over = function(dispatcher, state, payload)
   if receipt and receipt.user_id == payload.winnerUserId then
     payload.rewardGold, payload.rewardOre = receipt.gold or 0, receipt.ore or 0
   end
+  if type(state._arena_craft_receipts) == "table" then
+    payload.arenaCraftRewards = {}
+    for uid, craft in pairs(state._arena_craft_receipts) do
+      local row = { userId=uid, outcome=craft.outcome, ingots=0, ingotDef="", recipeItemId="", tesseracts=0, pendingCount=0 }
+      for _, item in ipairs(craft.items or {}) do
+        if item.def_id:match("^ingot_") then row.ingots, row.ingotDef = item.amount, item.def_id
+        elseif item.def_id == "tesseract" then row.tesseracts = item.amount
+        elseif item.def_id:match("^recipe_") then row.recipeItemId = item.def_id end
+      end
+      for _, item in ipairs(craft.pending_items or {}) do row.pendingCount = row.pendingCount + item.amount end
+      payload.arenaCraftRewards[#payload.arenaCraftRewards + 1] = row
+    end
+  end
+  if not state.global_boss and Runtime.cancel_unused_journal_tickets then
+    local ok,ready=pcall(Runtime.cancel_unused_journal_tickets,state)
+    if not ok or ready~=true then state._terminal_pending=true;state._pending_game_over=payload;return false end
+  end
+  if Runtime.Lifecycle then
+    local published,ready=pcall(Runtime.Lifecycle.publish,state,payload)
+    if not published or ready~=true then
+      state._terminal_pending=true;state._pending_game_over=payload
+      return false
+    end
+  end
+  state._terminal_pending=false
+  state._terminal_delivered=true
+  state._terminal_payload=payload
   state._pending_game_over = nil
   dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(payload), nil, nil)
   return true
 end
 
 Runtime.retry_pending_results = function(dispatcher, state, tick)
-  if not state._arena_pending_result and not state._race_pending_result then return false end
+  if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result and not state._terminal_pending then return false end
   if tick >= (state._next_result_retry_tick or 0) then
     state._next_result_retry_tick = tick + CFG.TICK_RATE
     if state._arena_pending_result then Runtime.finish_arena_result(state, state._arena_pending_result.winner) end
@@ -73,11 +119,32 @@ Runtime.retry_pending_results = function(dispatcher, state, tick)
       local pending = state._race_pending_result
       Runtime.apply_result_rewards(state, pending.winner, pending.is_draw, pending.payload)
     end
-    if not state._arena_pending_result and not state._race_pending_result and state._pending_game_over then
+    if state._pve_pending_result then
+      local p = state._pve_pending_result
+      local receipt = Runtime.award_pve_victory(p.uid, p.bot_id, p.epoch, p.run, p.result_id, p.outcome, p.attempt)
+      state.last_reward = receipt
+      if receipt.intent_persisted or receipt.reward_pending ~= true then
+        state._pve_pending_result = nil
+        if state._pending_game_over then Runtime.assign_pve_reward_payload(state._pending_game_over, receipt) end
+      end
+    end
+    if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result and state._pending_game_over then
       Runtime.emit_game_over(dispatcher, state, state._pending_game_over)
     end
   end
-  return state._arena_pending_result ~= nil or state._race_pending_result ~= nil
+  return state._arena_pending_result ~= nil or state._race_pending_result ~= nil or state._pve_pending_result ~= nil or state._terminal_pending==true
+end
+
+Runtime.assign_pve_reward_payload = function(payload, receipt)
+  for client, server in pairs({ rewardXp = "reward_xp", rewardGold = "reward_gold", rewardOre = "reward_ore",
+      rewardMatter = "reward_matter", rewardIngots = "reward_ingots", rewardTesseract = "reward_tesseract",
+      rewardKeyAmount = "reward_key_amount", itemLootPendingCount = "item_loot_pending_count" }) do
+    payload[client] = receipt[server] or 0
+  end
+  payload.rewardKeyId, payload.rewardBlueprint = receipt.reward_key_id or "", receipt.reward_blueprint or ""
+  payload.rewardRecipeItemId = receipt.reward_recipe_item_id or ""
+  payload.rewardPending, payload.newLevel = receipt.reward_pending == true, receipt.level or 1
+  payload.deliveredItems, payload.pendingItems = receipt.delivered_items or {}, receipt.pending_items or {}
 end
 
 -- Board dimensions:
@@ -178,7 +245,7 @@ function build_floor_bot_entry(floor)
   local hp_bonus = math.max(0, hp - CFG.MAX_HP)
   return {
     id = mine_bot_id_for_floor(f),
-    name = boss and ("Страж шахты " .. tostring(f)) or ("Шахтный монстр " .. tostring(f)),
+    name = CFG.mine_monster_name(f),
     difficulty = f,
     floor = f,
     is_boss = boss,
@@ -471,7 +538,7 @@ end
 
 local function get_armor(st)
   local base = tonumber(st and st.base_armor) or 0
-  return math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_ARMOR_PER_STACK
+  return Runtime.ConsumableEffects.armor(math.max(0, base) + get_shield_stacks(st) * CFG.SHIELD_ARMOR_PER_STACK, st)
 end
 
 --- Один раз за ход при лечении от капсул: PvE и PvP Pro — база+экип+щит; классический PvP/арена — только бонус от щита.
@@ -511,7 +578,7 @@ local function roll_outgoing_damage(state, board, attacker, base_damage)
   local crit = false
   local baseCrit = attacker ~= nil and (tonumber(attacker.base_crit) or 0) or 0
   local furyCrit = attacker ~= nil and attacker.fury_active == true and CFG.FURY_CRIT_CHANCE or 0
-  local critChance = math.max(0, baseCrit + furyCrit)
+  local critChance = Runtime.ConsumableEffects.crit(baseCrit + furyCrit, attacker)
   if critChance > 0 and math.random() < critChance then
     dmg = dmg * 2
     crit = true
@@ -522,12 +589,15 @@ local function roll_outgoing_damage(state, board, attacker, base_damage)
     dmg = dmg * 2
   end
 
-  return dmg, crit
+  return Runtime.ConsumableEffects.damage(dmg, attacker), crit
 end
 
 local function deal_damage(state, board, attacker, target, base_damage)
   local raw, crit = roll_outgoing_damage(state, board, attacker, base_damage)
   local reduced = math.max(0, raw - get_armor(target))
+  if state.global_boss and target==state.stats[state.bot_user_id] then
+    state._global_boss_damage_raw=(tonumber(state._global_boss_damage_raw) or 0)+reduced
+  end
   target.hp = math.max(0, (target.hp or CFG.MAX_HP) - reduced)
   return crit
 end
@@ -1121,10 +1191,12 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     return out
   end
 
-  local server_now_unix_ms = math.floor(os.time() * 1000)
+  local server_now_unix_ms = math.floor(type(nk.time)=="function"and nk.time()or os.time()*1000)
   local turn_ends_at_unix_ms = 0
   if state.turn_deadline_paused then
     turn_ends_at_unix_ms = 0
+  elseif state.global_boss and state.started and not state.ended and(state.turn_deadline_unix_ms or 0)>0 then
+    turn_ends_at_unix_ms=state.turn_deadline_unix_ms
   elseif state.started and not state.ended and tick ~= nil and state.turn_deadline_tick ~= nil then
     local rem_ticks = math.max(0, (state.turn_deadline_tick or 0) - tick)
     local rem_ms = math.floor((rem_ticks * 1000) / CFG.TICK_RATE)
@@ -1147,6 +1219,11 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     aBaseArmor = tonumber(a.base_armor) or 0,
     aBaseCrit = tonumber(a.base_crit) or 0,
     aBaseHeal = tonumber(a.base_heal) or 0,
+    aConsumableId = tostring(a.consumable_id or ""),
+    aDamageMultiplier = tonumber(a.consumable_damage_mult) or 1,
+    aArmorMultiplier = tonumber(a.consumable_armor_mult) or 1,
+    aHealingMultiplier = tonumber(a.consumable_healing_mult) or 1,
+    aConsumableCritAdd = tonumber(a.consumable_crit_add) or 0,
     aShieldT1 = a.shield_t1 or 0,
     aShieldT2 = a.shield_t2 or 0,
     aShieldT3 = a.shield_t3 or 0,
@@ -1165,6 +1242,13 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     bBaseArmor = tonumber(b.base_armor) or 0,
     bBaseCrit = tonumber(b.base_crit) or 0,
     bBaseHeal = tonumber(b.base_heal) or 0,
+    bConsumableId = tostring(b.consumable_id or ""),
+    bDamageMultiplier = tonumber(b.consumable_damage_mult) or 1,
+    bArmorMultiplier = tonumber(b.consumable_armor_mult) or 1,
+    bHealingMultiplier = tonumber(b.consumable_healing_mult) or 1,
+    bConsumableCritAdd = tonumber(b.consumable_crit_add) or 0,
+    bountyEndsAt = state._consumable_bindings and state.owner_user_id and state._consumable_bindings[state.owner_user_id]
+      and state._consumable_bindings[state.owner_user_id].bounty and state._consumable_bindings[state.owner_user_id].bounty.ends_at or 0,
     bShieldT1 = b.shield_t1 or 0,
     bShieldT2 = b.shield_t2 or 0,
     bShieldT3 = b.shield_t3 or 0,
@@ -1186,9 +1270,12 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     pvpRace = is_pvp_race(state),
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
+    roundNumber = Runtime.Rounds.number(state),
     actionActorUserId = sync_action_actor_uid or "",
     serverNowUnixMs = server_now_unix_ms,
     turnEndsAtUnixMs = turn_ends_at_unix_ms,
+    turnPaused = state.turn_deadline_paused == true,
+    turnDurationSeconds = state.global_boss and 30 or turn_seconds_for_state(state),
     actionType = action and action.actionType or 0,
     fromX = action and action.fromX or -1,
     fromY = action and action.fromY or -1,
@@ -1198,6 +1285,18 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     abilityY = action and action.cy or -1,
     critTriggered = state.last_crit == true,
     pveAffix = current_affix_id(state),
+    globalBoss = state.global_boss ~= nil,
+    globalBossEventId = state.global_boss and state.global_boss.event_id or "",
+    globalBossMyDamage = state.global_boss and state.global_boss.my_damage or 0,
+    globalBossTotalDamage = state.global_boss and state.global_boss.total_damage or 0,
+    globalBossQualified = state.global_boss and state.global_boss.qualified == true or false,
+    bossOwnTurn = state.global_boss and state.global_boss.boss_own_turn or 0,
+    bossScreamCooldown = state.global_boss and Runtime.GlobalBossRules.scream_cooldown(state) or 0,
+    bossActionSequence = state.global_boss and state._boss_sequence or 0,
+    bossAdaptationTriggered = state.global_boss and sync_action_actor_uid==state.bot_user_id and state.global_boss.adaptation_triggered==true or false,
+    bossScreamTriggered = state.global_boss and sync_action_actor_uid==state.bot_user_id and state.global_boss.scream_triggered == true or false,
+    bossScreamDamage = state.global_boss and sync_action_actor_uid==state.bot_user_id and state.global_boss.scream_triggered and state.global_boss.scream_damage or 0,
+    bossPlayerTurnsLeft = state.global_boss and math.max(0,(state._boss_config and state._boss_config.max_turns or 30)-(state.global_boss.player_turns or 0)) or 0,
     animSteps = anim_steps or {},
   }
 end
@@ -1352,7 +1451,7 @@ local function try_finish_race_after_action(dispatcher, state, actor, opponent, 
     state.race_last_turn_user_id = opponent
     tick_buffs_end_turn(state.stats[actor])
     Ach.clear_five_plus_streak(state, actor)
-    state.active_user_id = opponent
+    Runtime.Rounds.set_active(state, opponent)
     tick_cooldowns(state.stats[opponent])
     -- Как обычная смена хода: ждём OP 17, затем дедлайн; для PvE сразу планируем ход бота.
     local need_ack = state.active_user_id ~= nil
@@ -1417,6 +1516,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   local sync_action_actor_uid = (action ~= nil and actor ~= nil) and actor or nil
 
   if actor ~= nil and action ~= nil then
+    if action_type == 1 then
+      state._daily_player_actions = state._daily_player_actions or {}
+      state._daily_player_actions[actor] = (state._daily_player_actions[actor] or 0) + 1
+    end
     local ask = Ach.map_action_to_stat(action.actionType)
     if ask ~= nil then
       Ach.inc_session(state, actor, ask, 1)
@@ -1470,7 +1573,23 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
           xp = progress.xp or 0,
         }
       else
-        state.last_reward = Runtime.award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch, state.pve_run)
+        local achievement_effects = Ach.build_match_finish_effects(state, winner, actor, opponent, action_type)
+        local stats_effects = Runtime.StatsApi.build_match_finish_effects(state, winner, false)
+        state._finalization_managed = state._finalization_managed or {}
+        state._finalization_managed[state.owner_user_id] = true
+        local finished_at = os.time()
+        local binding = state._consumable_bindings and state._consumable_bindings[state.owner_user_id] or {}
+        local outcome = { achievement_deltas = achievement_effects[state.owner_user_id] or {},
+          currency_gold_multiplier = Runtime.ConsumableEffects.currency_multiplier(binding.bounty, finished_at, Runtime.ServerAura.currency_multiplier(Runtime.ServerAura.get_active(), "gold")),
+          currency_ore_multiplier = Runtime.ConsumableEffects.currency_multiplier(binding.bounty, finished_at, Runtime.ServerAura.currency_multiplier(Runtime.ServerAura.get_active(), "ore")),
+          match_stats = (stats_effects[state.owner_user_id] or {}).match_stats }
+        local attempt = {}
+        state.last_reward = Runtime.award_pve_victory(state.owner_user_id, state.bot_id, state.owner_session_epoch,
+          state.pve_run, state.stats_result_id, outcome, attempt)
+        if state.last_reward.reward_pending == true and not state.last_reward.intent_persisted then
+          state._pve_pending_result = { uid = state.owner_user_id, bot_id = state.bot_id, epoch = state.owner_session_epoch,
+            run = state.pve_run, result_id = state.stats_result_id, outcome = outcome, attempt = attempt }
+        end
       end
       game_over_payload.rewardXp = state.last_reward.reward_xp or 0
       game_over_payload.rewardGold = state.last_reward.reward_gold or 0
@@ -1482,6 +1601,10 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardBlueprint = state.last_reward.reward_blueprint or ""
       game_over_payload.rewardRecipeItemId = state.last_reward.reward_recipe_item_id or ""
       game_over_payload.rewardTesseract = state.last_reward.reward_tesseract or 0
+      game_over_payload.rewardPending = state.last_reward.reward_pending == true
+      game_over_payload.itemLootPendingCount = state.last_reward.item_loot_pending_count or 0
+      game_over_payload.deliveredItems = state.last_reward.delivered_items or {}
+      game_over_payload.pendingItems = state.last_reward.pending_items or {}
       game_over_payload.newLevel = state.last_reward.level or 1
     elseif state.mode == "pve" and winner == state.bot_user_id then
       if state.pve_run ~= nil and state.pve_run.arena_suppress_all == true then
@@ -1548,7 +1671,7 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
   else
     tick_buffs_end_turn(state.stats[actor])
     Ach.clear_five_plus_streak(state, actor)
-    state.active_user_id = opponent
+    Runtime.Rounds.set_active(state, opponent)
     tick_cooldowns(state.stats[opponent])
     if state.mode == "pve" and actor == state.bot_user_id then
       state.bot_kill_plan = nil
@@ -1834,10 +1957,10 @@ local function resolve_action(state, action, actor_id, opponent_id)
   do
     local ac = tonumber(state._action_ankh_count) or 0
     state._action_ankh_count = 0
-    if ac > 0 and not is_pvp_race(state) then
+    if ac > 0 and not is_pvp_race(state) and not (state.global_boss and actor_id==state.bot_user_id) then
       local act = state.stats[actor_id]
       if act ~= nil then
-        local add = CFG.ANKH_HEAL * ac + get_turn_heal_flat_bonus(state, act)
+        local add = Runtime.ConsumableEffects.healing(CFG.ANKH_HEAL * ac + get_turn_heal_flat_bonus(state, act), act)
         act.hp = math.min(act.max_hp or CFG.MAX_HP, (act.hp or CFG.MAX_HP) + add)
       end
     end
@@ -1938,6 +2061,7 @@ local ServerAura = runtime_lua_require("modules.duel_match3_server_aura", "duel_
 })
 
 -- Цели состязаний (Спуск / future): Storage duel_match3_contest_goals.
+Runtime.ServerAura=ServerAura
 Runtime.ContestGoals = runtime_lua_require("modules.duel_match3_contest_goals", "duel_match3_contest_goals")({
   nk = nk,
   CFG = CFG,
@@ -1962,7 +2086,7 @@ local function normalize_stored_item_def(def)
   if quality == "" then quality = "normal" end
   local recipe_slot = tostring(def.recipe_slot or def.recipe_target_slot or "")
 
-  if kind == "recipe" or kind == "material" or kind == "tesseract" then
+  if kind == "recipe" or kind == "material" or kind == "tesseract" or kind == "consumable" then
     local max_stack = tonumber(def.max_stack)
     if max_stack == nil then
       if kind == "material" then max_stack = 100 else max_stack = 1 end
@@ -1975,6 +2099,7 @@ local function normalize_stored_item_def(def)
     sale_price = math.max(0, math.floor(sale_price))
     return {
       kind = kind,
+      effect_id = kind=="consumable" and tostring(def.effect_id or "") or "",
       slot = "",
       max_stack = max_stack,
       tier = tier,
@@ -2039,28 +2164,7 @@ local function item_max_stack(def)
 end
 
 local function ensure_sheet_inventory_counts(sheet)
-  if type(sheet) ~= "table" then return end
-  local inv = sheet.inventory
-  if type(inv) ~= "table" then return end
-  local ic = sheet.inventory_counts
-  if type(ic) ~= "table" then ic = {} end
-  for i = 1, 25 do
-    local id = inv[i] or ""
-    if type(id) ~= "string" then id = tostring(id) end
-    local c = tonumber(ic[i])
-    if c == nil then
-      if id ~= "" then c = 1 else c = 0 end
-    else
-      c = math.floor(c)
-    end
-    if id == "" then
-      ic[i] = 0
-    else
-      if c < 1 then c = 1 end
-      ic[i] = c
-    end
-  end
-  sheet.inventory_counts = ic
+  if type(sheet) == "table" then Runtime.Inventory.normalize(sheet) end
 end
 
 local function read_item_defs_from_storage()
@@ -2106,6 +2210,7 @@ local function get_merged_item_defs()
     ))
     from_st = {}
   end
+  Runtime.Shop.merge_defs(from_st)
   _item_defs_merged_cache = from_st
   _item_defs_merged_cache_at = now
   return from_st
@@ -2120,7 +2225,7 @@ local function normalize_stored_bot(id_key, def)
   local floor = CFG.clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, CFG.PVE_MAX_LEVEL)
   local fallback = build_floor_bot_entry(floor)
   local bid = mine_bot_id_for_floor(floor)
-  local name = tostring(def.name or fallback.name or "")
+  local name = CFG.mine_monster_name(floor, tostring(def.name or fallback.name or ""))
   if name == "" then return nil end
   local is_boss = def.is_boss == true or is_boss_floor(floor)
   local reward_ore = tonumber(def.reward_ore)
@@ -2249,7 +2354,7 @@ local function get_bot_profile(bot_id, difficulty_opt)
 end
 
 local function normalize_character_sheet(val)
-  val = val or {}
+  val = Runtime.Inventory.normalize(val or {})
   local eq = val.equipment
   if type(eq) ~= "table" then eq = {} end
   for i = 1, 8 do
@@ -2258,14 +2363,14 @@ local function normalize_character_sheet(val)
   end
   local inv = val.inventory
   if type(inv) ~= "table" then inv = {} end
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(val) do
     if inv[i] == nil or inv[i] == false then inv[i] = "" end
     if type(inv[i]) ~= "string" then inv[i] = tostring(inv[i]) end
   end
   local ic_in = val.inventory_counts
   if type(ic_in) ~= "table" then ic_in = {} end
   local inventory_counts = {}
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(val) do
     local id = inv[i] or ""
     local c = tonumber(ic_in[i])
     if c == nil then
@@ -2307,6 +2412,12 @@ local function normalize_character_sheet(val)
     equipment = eq,
     inventory = inv,
     inventory_counts = inventory_counts,
+    inventory_extra_slots = val.inventory_extra_slots,
+    inventory_pending_loot = val.inventory_pending_loot,
+    inventory_sale_receipts = val.inventory_sale_receipts,
+    inventory_slot_receipts = val.inventory_slot_receipts,
+    consumables = val.consumables,
+    first_recipe_received = val.first_recipe_received == true,
     learned_recipes = learned_recipes,
     workshop_slots = workshop_slots,
   }
@@ -2333,6 +2444,7 @@ local function read_character_sheet(user_id)
   end
   local val = decode_storage_value(rows[1]) or {}
   local sheet = normalize_character_sheet(val)
+  Runtime.Inventory.observe_recipes(sheet, get_merged_item_defs())
   sheet._storage_version = rows[1].version
   return sheet
 end
@@ -2346,6 +2458,12 @@ Runtime.build_character_sheet_write = function(user_id, sheet)
         equipment = sheet.equipment,
         inventory = sheet.inventory,
         inventory_counts = sheet.inventory_counts or {},
+        inventory_extra_slots = sheet.inventory_extra_slots or 0,
+        inventory_pending_loot = sheet.inventory_pending_loot or {},
+        inventory_sale_receipts = sheet.inventory_sale_receipts or {},
+        inventory_slot_receipts = sheet.inventory_slot_receipts or {},
+        consumables = sheet.consumables or {schema=1},
+        first_recipe_received = sheet.first_recipe_received == true,
         learned_recipes = sheet.learned_recipes or {},
         workshop_slots = sheet.workshop_slots or {},
         updated_at = os.time(),
@@ -2358,7 +2476,8 @@ end
 
 -- All inventory writers carry their read version, including match rewards.
 -- Economy operations may atomically commit their currency changes in this batch.
-local function write_character_sheet(user_id, sheet, progress, progress_version)
+Runtime.build_character_sheet_writes = function(user_id, sheet, progress, progress_version)
+  if progress ~= nil then Runtime.Inventory.sync_resource_counters(sheet, progress, get_merged_item_defs()) end
   local writes = { Runtime.build_character_sheet_write(user_id, sheet) }
   if progress ~= nil then
     progress.updated_at = os.time()
@@ -2372,7 +2491,11 @@ local function write_character_sheet(user_id, sheet, progress, progress_version)
       version = (progress_version ~= nil and progress_version ~= "") and progress_version or "*",
     }
   end
-  local acks = nk.storage_write(writes)
+  return writes
+end
+
+local function write_character_sheet(user_id, sheet, progress, progress_version)
+  local acks = nk.storage_write(Runtime.build_character_sheet_writes(user_id, sheet, progress, progress_version))
   for _, ack in ipairs(acks or {}) do
     if ack.collection == CFG.CHARACTER_SHEET_COLLECTION and ack.key == CFG.CHARACTER_SHEET_KEY then
       sheet._storage_version = ack.version
@@ -2494,7 +2617,7 @@ local function character_sheet_payload_arrays(sheet)
   local inv = {}
   local invc = {}
   for i = 1, 8 do eq[i] = sheet.equipment[i] or "" end
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(sheet) do
     inv[i] = sheet.inventory[i] or ""
     local c = tonumber(sheet.inventory_counts[i]) or 0
     if inv[i] == nil or inv[i] == "" then c = 0 end
@@ -2541,24 +2664,14 @@ end
 local function inventory_resource_totals(sheet)
   if sheet == nil then return 0, 0 end
   ensure_sheet_inventory_counts(sheet)
-  local inv = sheet.inventory or {}
-  local ic = sheet.inventory_counts or {}
-  local ingots, tesseracts = 0, 0
-  for i = 1, 25 do
-    local id = inv[i] or ""
-    local amount = math.max(0, math.floor(tonumber(ic[i]) or 0))
-    if id == "ingot_green" or id == "ingot_blue" or id == "ingot_purple" then
-      ingots = ingots + amount
-    elseif id == "tesseract" then
-      tesseracts = tesseracts + amount
-    end
-  end
-  return ingots, tesseracts
+  local totals = Runtime.Inventory.resource_totals(sheet, get_merged_item_defs())
+  return totals.ingots, totals.tesseracts
 end
 
 local function build_resource_payload(progress, user_id, sheet_opt)
   local sheet = sheet_opt or read_character_sheet(user_id)
-  local ingots, tesseracts = inventory_resource_totals(sheet)
+  local totals = Runtime.Inventory.resource_totals(sheet, get_merged_item_defs())
+  local ingots, tesseracts = totals.ingots, totals.tesseracts
   local energy_max = pve_energy_max_for_user(user_id)
   local miner_key = math.max(0, tonumber(progress.key_items and progress.key_items.miner_key) or 0)
   local dark_key = math.max(0, tonumber(progress.key_items and progress.key_items.dark_key) or 0)
@@ -2572,10 +2685,10 @@ local function build_resource_payload(progress, user_id, sheet_opt)
     ingots = ingots,
     matter = math.max(0, tonumber(progress.matter) or 0),
     keys = keys_total,
-    blueprint_green = math.max(0, tonumber(progress.blueprint_green) or 0),
-    blueprint_blue = math.max(0, tonumber(progress.blueprint_blue) or 0),
-    blueprint_purple = math.max(0, tonumber(progress.blueprint_purple) or 0),
-    blueprint_gold = math.max(0, tonumber(progress.blueprint_gold) or 0),
+    blueprint_green = totals.blueprint_green,
+    blueprint_blue = totals.blueprint_blue,
+    blueprint_purple = totals.blueprint_purple,
+    blueprint_gold = totals.blueprint_gold,
     tesseracts = tesseracts,
     miner_key = miner_key,
     dark_key = dark_key,
@@ -2617,6 +2730,7 @@ end
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
   local stats = CharStats.compute_character_display_stats(user_id)
+  progress = Runtime.readProgressSnapshot(user_id) -- Late-bound: cosmetics may credit the wallet; the local reader is defined below this closure.
   local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
   local wo, we = workshop_payload_arrays(sheet)
   local function payload_with_progression(prog_payload)
@@ -2627,6 +2741,10 @@ local function encode_character_ok_response(sheet, progress, user_id)
       equipment_def_ids = eq_arr,
       inventory_def_ids = inv_arr,
       inventory_counts = inv_cnt_arr,
+      inventory_capacity = Runtime.Inventory.capacity(sheet),
+      inventory_slot_price_matter = Runtime.Inventory.SLOT_PRICE_MATTER,
+      pending_loot = Runtime.Inventory.pending_payload(sheet),
+      consumables = Runtime.ConsumableModule.status(sheet),
       learned_recipe_ids = learned_recipes_payload(sheet),
       workshop_output_def_ids = wo,
       workshop_ends_at = we,
@@ -2681,7 +2799,7 @@ local function workshop_has_legendary_fodder(sheet, defs, slot_index, legend_tie
   if eq_id ~= "" and workshop_legend_fodder_matches(defs[eq_id], slot_name, legend_tier) then
     return true
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id ~= "" then
       local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
@@ -2701,7 +2819,7 @@ local function workshop_consume_legendary_fodder(sheet, defs, slot_index, legend
     sheet.equipment[eq_i] = ""
     return true
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id ~= "" then
       local d = defs[id]
@@ -2736,7 +2854,7 @@ local function workshop_has_quality_fodder(sheet, defs, slot_index, tier, qualit
   if eq_id ~= "" and workshop_fodder_matches_tier_slot_quality(defs[eq_id], slot_name, tier, quality_str) then
     return true
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id ~= "" then
       local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
@@ -2756,7 +2874,7 @@ local function workshop_consume_quality_fodder(sheet, defs, slot_index, tier, qu
     sheet.equipment[eq_i] = ""
     return true
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id ~= "" then
       local d = defs[id]
@@ -2785,7 +2903,7 @@ local function workshop_has_exact_item_fodder(sheet, craft_item_id)
       return true
     end
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id == craft_item_id and (tonumber(sheet.inventory_counts[inv_i]) or 0) >= 1 then
       return true
@@ -2803,7 +2921,7 @@ local function workshop_consume_exact_item_fodder(sheet, craft_item_id)
       return true
     end
   end
-  for inv_i = 1, 25 do
+  for inv_i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[inv_i] or ""
     if id == craft_item_id then
       local cnt = tonumber(sheet.inventory_counts[inv_i]) or 0
@@ -2874,7 +2992,7 @@ end
 
 local function inventory_count_def(sheet, def_id)
   local n = 0
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(sheet) do
     if sheet.inventory[i] == def_id then
       n = n + (tonumber(sheet.inventory_counts[i]) or 0)
     end
@@ -2883,35 +3001,7 @@ local function inventory_count_def(sheet, def_id)
 end
 
 local function inventory_try_add(sheet, def_id, amount)
-  amount = math.floor(tonumber(amount) or 0)
-  if amount < 1 then return true end
-  local defs = get_merged_item_defs()
-  local def = defs[def_id]
-  if def == nil then return false, "unknown_item" end
-  local max_s = item_max_stack(def)
-  for i = 1, 25 do
-    if sheet.inventory[i] == def_id then
-      local c = tonumber(sheet.inventory_counts[i]) or 0
-      if c > 0 and c < max_s then
-        local space = max_s - c
-        local add = math.min(space, amount)
-        sheet.inventory_counts[i] = c + add
-        amount = amount - add
-        if amount <= 0 then return true end
-      end
-    end
-  end
-  for i = 1, 25 do
-    local id = sheet.inventory[i] or ""
-    if id == "" then
-      local add = math.min(max_s, amount)
-      sheet.inventory[i] = def_id
-      sheet.inventory_counts[i] = add
-      amount = amount - add
-      if amount <= 0 then return true end
-    end
-  end
-  return false, "inventory_full"
+  return Runtime.Inventory.try_add(sheet, def_id, amount, get_merged_item_defs())
 end
 
 --- Цвет рецепта с монстров шахты: по **сложности** (easy → green, medium → blue, hard → purple).
@@ -2948,16 +3038,9 @@ end
 --- id предмета-рецепта: recipe_drop_t1_{цвет}_{Slot} (T1-only; цвет = сложность шахты).
 
 --- Этажи с дропом рецепта (только не-боссы): 10 нет — иначе пересечение с боссом 4/8/12; боссы рецептов не дают.
-local MINE_RECIPE_DROP_FLOORS = { 1, 2, 3, 5, 6, 7, 9, 11 }
-
 local function mine_recipe_drop_chance_for_floor(floor)
   local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
-  for i = 1, #MINE_RECIPE_DROP_FLOORS do
-    if MINE_RECIPE_DROP_FLOORS[i] == f then
-      return (50 - 5 * (i - 1)) / 100
-    end
-  end
-  return 0
+  return Runtime.MineRecipes.chance(f)
 end
 
 local function mine_floor_uses_mine_item_recipe_drop(floor, is_boss)
@@ -2965,31 +3048,11 @@ local function mine_floor_uses_mine_item_recipe_drop(floor, is_boss)
   return mine_recipe_drop_chance_for_floor(floor) > 0
 end
 
---- Один рецепт на этаж: индексы 1..8 совпадают с MINE_RECIPE_DROP_FLOORS (порядок: pool A, затем B).
-local MINE_RECIPE_FLOOR_SLOT_ORDER = {
-  "Helmet", "Chest", "Gloves", "WeaponLeft", "WeaponRight", "Legs", "Shoulders", "Feet",
-}
-
+--- Один рецепт на этаж; фактическая общая таблица находится в duel_mine_recipe_drops.
 --- def_id свитка для этажа с дропом рецепта или пусто, если этаж вне списка.
 --- Формат: recipe_drop_t1_{green|blue|purple}_{Slot} (mine_tier всегда 1).
 local function mine_recipe_item_id_for_floor_index(floor, color, mine_tier)
-  local idx = nil
-  for i = 1, #MINE_RECIPE_DROP_FLOORS do
-    if MINE_RECIPE_DROP_FLOORS[i] == floor then
-      idx = i
-      break
-    end
-  end
-  if idx == nil or MINE_RECIPE_FLOOR_SLOT_ORDER[idx] == nil then
-    return ""
-  end
-  local c = color
-  if c ~= "green" and c ~= "blue" and c ~= "purple" then
-    c = "green"
-  end
-  local t = CFG.clamp_int(tonumber(mine_tier) or 1, 1, 3)
-  local slot = MINE_RECIPE_FLOOR_SLOT_ORDER[idx]
-  return "recipe_drop_t" .. tostring(t) .. "_" .. c .. "_" .. slot
+  return Runtime.MineRecipes.recipe_id(floor, color, CFG.clamp_int(tonumber(mine_tier) or 1, 1, 3))
 end
 
 --- Возвращает: успех, def_id выданного рецепта (или пусто) — для клиентского game over. Золотые из шахты не выдаём.
@@ -3015,7 +3078,7 @@ local function inventory_remove_def_total(sheet, def_id, amount)
   if inventory_count_def(sheet, def_id) < amount then
     return false, "not_enough_items"
   end
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(sheet) do
     if amount <= 0 then break end
     if sheet.inventory[i] == def_id then
       local c = tonumber(sheet.inventory_counts[i]) or 0
@@ -3043,7 +3106,7 @@ local function inventory_can_fit(sheet, def_id, amount)
   if def == nil then return false end
   local max_s = item_max_stack(def)
   local space = 0
-  for i = 1, 25 do
+  for i = 1, Runtime.Inventory.capacity(sheet) do
     local id = sheet.inventory[i] or ""
     if id == "" then
       space = space + max_s
@@ -3299,240 +3362,62 @@ function add_blueprint(progress, rarity)
   end
 end
 
-Runtime.award_pve_victory = function(user_id, bot_id, match_epoch_snapshot, run_meta)
-  local snap = tonumber(match_epoch_snapshot) or 0
-  if Guard.is_epoch_stale_for_match(user_id, snap) then
-    nk.logger_info("award_pve_victory skipped: session_stale")
-    local progress = read_pve_progress(user_id)
-    return {
-      reward_xp = 0,
-      reward_gold = 0,
-      reward_ore = 0,
-      reward_matter = 0,
-      level = progress.level or 1,
-      xp = progress.xp or 0,
-      gold = progress.gold or 0,
-      ore = progress.ore or 0,
-      matter = progress.matter or 0,
-      session_stale = true,
-    }
-  end
-
-  local diff = normalize_mine_difficulty(run_meta and run_meta.difficulty)
-  local bot = get_bot_profile(bot_id, diff)
-  if bot == nil then
-    nk.logger_error(string.format(
-      "award_pve_victory: bot missing bot_id=%s difficulty=%s",
-      tostring(bot_id),
-      tostring(diff)
-    ))
-    local progress = read_pve_progress(user_id)
-    return {
-      reward_xp = 0,
-      reward_gold = 0,
-      reward_ore = 0,
-      reward_matter = 0,
-      level = progress.level or 1,
-      xp = progress.xp or 0,
-      gold = progress.gold or 0,
-      ore = progress.ore or 0,
-      matter = progress.matter or 0,
-      err = "bot_catalog_unavailable",
-    }
-  end
-  local floor = CFG.clamp_int((run_meta and run_meta.floor) or bot.floor or 1, 1, CFG.PVE_MAX_LEVEL)
-  local stat_mul = mine_stat_multiplier(diff)
-  local reward_mul = mine_reward_multiplier(diff)
-  local is_boss = bot.is_boss == true or is_boss_floor(floor)
-  local reward_xp = math.ceil((tonumber(bot.reward_xp) or 0) * reward_mul)
-  reward_xp = ServerAura.apply_to_pve_reward_xp(reward_xp, ServerAura.get_active())
-  local reward_gold = math.ceil((tonumber(bot.reward_gold) or 0) * reward_mul)
-  local reward_ore = math.ceil((tonumber(bot.reward_ore) or 0) * reward_mul)
-  -- Материя только из каталога бота (min/max); отдельного «рандомного» дропа с обычных нет.
-  local reward_matter = 0
-  local mmn = math.max(0, tonumber(bot.reward_matter_min) or 0)
-  local mmx = math.max(mmn, tonumber(bot.reward_matter_max) or mmn)
-  if mmn > 0 or mmx > 0 then
-    reward_matter = math.max(0, math.ceil(math.random(mmn, mmx) * reward_mul))
-  end
-  local reward_key_id = tostring(bot.reward_key_id or "")
-  local reward_key_amount = math.max(0, tonumber(bot.reward_key_amount) or 0)
-  local base_reward_ingots = math.max(0, math.ceil((tonumber(bot.reward_ingots) or 0) * reward_mul))
-  local ingot_def_id = ingot_def_for_difficulty(diff)
-  local actual_ingots = 0
-  if base_reward_ingots > 0 then
-    if is_boss then
-      actual_ingots = base_reward_ingots * 2
-    else
-      if math.random() < ingot_drop_chance_non_boss(floor) then
-        actual_ingots = base_reward_ingots
-      end
+Runtime.readProgressSnapshot=read_pve_progress
+Runtime.Journal = runtime_lua_require("modules.duel_match3_journal", "duel_match3_journal").new({
+  stats_collection = CFG.STATS_COLLECTION, stats_key = CFG.STATS_KEY,
+})
+Runtime.PveEntry = runtime_lua_require("modules.duel_match3_pve_entry", "duel_match3_pve_entry").new({
+  read_pve_progress = read_pve_progress, build_pve_progress_write = Runtime.build_pve_progress_write,
+  journal = Runtime.Journal, energy_max = pve_energy_max_for_user,
+})
+Runtime.Consumables = Runtime.ConsumableModule.new({
+  Guard=Guard,read_sheet=read_character_sheet,read_progress=read_pve_progress,get_defs=get_merged_item_defs,
+  build_sheet_write=Runtime.build_character_sheet_write,encode_character=encode_character_ok_response,
+  journal=function()return Runtime.Journal end,is_human=Ach.is_human,
+  bind_extra_writes=function(state,uid)
+    if state.mode=="pve" then return Runtime.PveEntry.consume_writes(uid,state.pve_run and state.pve_run.launch_token,state.stats_result_id) end
+    return {}
+  end,
+})
+Runtime.PveRewards = runtime_lua_require("modules.duel_match3_pve_rewards", "duel_match3_pve_rewards").new({
+  normalize_difficulty = normalize_mine_difficulty, get_bot_profile = get_bot_profile,
+  clamp_floor = function(f) return CFG.clamp_int(f, 1, CFG.PVE_MAX_LEVEL) end,
+  max_floor = CFG.PVE_MAX_LEVEL, is_boss_floor = is_boss_floor,
+  reward_multiplier = mine_reward_multiplier, stat_multiplier = mine_stat_multiplier,
+  apply_reward_xp = function(xp) return ServerAura.apply_to_pve_reward_xp(xp, ServerAura.get_active()) end,
+  ingot_drop_chance = ingot_drop_chance_non_boss, ingot_def = ingot_def_for_difficulty,
+  uses_recipe_drop = mine_floor_uses_mine_item_recipe_drop, recipe_color = mine_recipe_color_for_difficulty,
+  pick_recipe = function(uid, floor, boss, diff)
+    local chance = mine_recipe_drop_chance_for_floor(floor)
+    if not mine_floor_uses_mine_item_recipe_drop(floor, boss) or math.random() > chance then return "" end
+    local id = mine_recipe_item_id_for_floor_index(floor, mine_recipe_color_for_difficulty(diff), mine_tier_from_diff(diff))
+    if id == "" or sheet_has_learned_for_craft(read_character_sheet(uid), id) then return "" end
+    return id
+  end,
+  respawn_seconds = function(boss)
+    return ServerAura.mine_respawn_duration_seconds(boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS, ServerAura.get_active())
+  end,
+  next_affix = function(floor, fought)
+    local affix = random_affix_for_floor(floor)
+    if #CFG.MINE_AFFIX_POOL > 1 then
+      for _ = 1, 12 do if affix ~= tostring(fought or "") then break end; affix = random_affix_for_floor(floor) end
     end
-  end
-  local reward_tesseract = 0
-  local tesseract_chance = tonumber(bot.reward_tesseract_chance) or 0
-  if tesseract_chance > 0 and math.random() < tesseract_chance then
-    reward_tesseract = 1
-  end
-  local reward_recipe_item_id = ""
-  local max_retries = 5
-  local last_progress = {}
-
-  for i = 1, max_retries do
-    local progress
-    local grant_ok = true
-    reward_recipe_item_id = ""
-    local ok, err = pcall(function()
-      local version
-      progress, version = read_pve_progress(user_id)
-      last_progress = { level = progress.level, xp = progress.xp, gold = progress.gold, ore = progress.ore, matter = progress.matter }
-      progress.xp = progress.xp + reward_xp
-      progress.gold = progress.gold + reward_gold
-      progress.ore = progress.ore + reward_ore
-      progress.matter = progress.matter + reward_matter
-      progress.ingots = progress.ingots + actual_ingots
-      progress.tesseracts = (tonumber(progress.tesseracts) or 0) + reward_tesseract
-      if reward_key_id ~= "" and reward_key_amount > 0 then
-        progress.key_items = progress.key_items or empty_key_items()
-        progress.key_items[reward_key_id] = (tonumber(progress.key_items[reward_key_id]) or 0) + reward_key_amount
-      end
-      if not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
-        add_blueprint(progress, bot.reward_blueprint)
-      end
-      progress.level = current_level_from_xp(progress.xp)
-      local defeated = progress.defeated or {}
-      local current_count = tonumber(defeated[bot_id]) or 0
-      defeated[bot_id] = current_count + 1
-      progress.defeated = defeated
-      progress.mine = progress.mine or {}
-      progress.mine.current_difficulty = diff
-      progress.mine.selected_floor = floor
-      progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
-      progress.mine.floor_states = type(progress.mine.floor_states) == "table" and progress.mine.floor_states or {}
-      local state_key = make_floor_state_key(diff, floor)
-      local cur_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
-      do
-        local base_resp = is_boss and CFG.MINE_RESPAWN_BOSS_SECONDS or CFG.MINE_RESPAWN_NORMAL_SECONDS
-        local respawn_sec = ServerAura.mine_respawn_duration_seconds(base_resp, ServerAura.get_active())
-        cur_state.next_spawn_at = os.time() + respawn_sec
-      end
-      local fought_affix = tostring((run_meta and run_meta.affix) or "")
-      local next_affix = random_affix_for_floor(floor)
-      if #CFG.MINE_AFFIX_POOL > 1 then
-        local guard = 0
-        while next_affix == fought_affix and guard < 12 do
-          next_affix = random_affix_for_floor(floor)
-          guard = guard + 1
-        end
-      end
-      cur_state.last_affix = next_affix
-      cur_state.wins = (tonumber(cur_state.wins) or 0) + 1
-      progress.mine.floor_states[state_key] = cur_state
-      if floor >= CFG.PVE_MAX_LEVEL and is_boss then
-        if diff == "easy" and (progress.mine.unlocked.medium or 0) <= 0 then
-          progress.mine.unlocked.medium = 1
-        elseif diff == "medium" and (progress.mine.unlocked.hard or 0) <= 0 then
-          progress.mine.unlocked.hard = 1
-        end
-      end
-
-      -- Prepare every reward before the only commit. In particular, a blueprint
-      -- must not write an old currency snapshot after another RPC has spent gold.
-      local sheet = read_character_sheet(user_id)
-      ensure_sheet_inventory_counts(sheet)
-      if actual_ingots > 0 then
-        local ok_add = inventory_try_add(sheet, ingot_def_id, actual_ingots)
-        if ok_add ~= true then grant_ok = false end
-      end
-      if grant_ok and reward_tesseract > 0 then
-        local ok_add = inventory_try_add(sheet, "tesseract", reward_tesseract)
-        if ok_add ~= true then grant_ok = false end
-      end
-      local bp_r = tostring(bot.reward_blueprint or "")
-      local used_v43 = false
-      if grant_ok and mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
-        local ok_rec, rid = grant_mine_recipe_drop_v43(sheet, floor, is_boss, diff)
-        used_v43 = ok_rec == true
-        if rid ~= nil and rid ~= "" then
-          reward_recipe_item_id = tostring(rid)
-        end
-      end
-      if grant_ok and used_v43 then
-        local col = mine_recipe_color_for_difficulty(diff)
-        local rarity = ({ green = "green", blue = "blue", purple = "purple" })[col]
-        if rarity ~= nil then add_blueprint(progress, rarity) end
-      end
-      if grant_ok and bp_r ~= "" and not used_v43 and not mine_floor_uses_mine_item_recipe_drop(floor, is_boss) then
-        local rid = ({ green = "recipe_green", blue = "recipe_blue", purple = "recipe_purple", gold = "recipe_gold" })[bp_r]
-        if rid ~= nil then
-          local ok_add = inventory_try_add(sheet, rid, 1)
-          if ok_add ~= true then grant_ok = false end
-        end
-      end
-      if grant_ok then
-        write_character_sheet(user_id, sheet, progress, version)
-      else
-        -- Preserve the established full-inventory behavior: progression rewards
-        -- still apply while the attempted inventory changes remain uncommitted.
-        write_pve_progress(user_id, progress, version)
-      end
-    end)
-    if ok then
-      if not grant_ok then
-        nk.logger_warn("award_pve_victory: не удалось положить лут в инвентарь (сундук полон?)")
-      end
-      if tostring(bot_id or "") == "mine_2" then
-        Ach.merge_persistent_stats(user_id, { ["pve.kill.mine_2"] = 1 })
-      end
-      return {
-        reward_xp = reward_xp,
-        reward_gold = reward_gold,
-        reward_ore = reward_ore,
-        reward_matter = reward_matter,
-        reward_ingots = actual_ingots,
-        reward_tesseract = reward_tesseract,
-        reward_key_id = reward_key_id,
-        reward_key_amount = reward_key_amount,
-        reward_blueprint = tostring(bot.reward_blueprint or ""),
-        reward_recipe_item_id = reward_recipe_item_id,
-        difficulty = diff,
-        floor = floor,
-        stat_mul = stat_mul,
-        level = progress.level,
-        xp = progress.xp,
-        gold = progress.gold,
-        ore = progress.ore,
-        matter = progress.matter,
-      }
-    end
-
-    local err_text = tostring(err)
-    if string.find(err_text, "version", 1, true) == nil or i == max_retries then
-      nk.logger_error("award_pve_victory: " .. err_text)
-      break
-    end
-  end
-
-  -- The match must still send GAME_OVER if reward storage is unavailable.
-  -- Never advertise currency or loot that failed to commit.
-  return {
-    reward_xp = 0,
-    reward_gold = 0,
-    reward_ore = 0,
-    reward_matter = 0,
-    reward_ingots = 0,
-    reward_tesseract = 0,
-    reward_key_id = "",
-    reward_key_amount = 0,
-    reward_blueprint = "",
-    reward_recipe_item_id = "",
-    level = last_progress.level or 1,
-    xp = last_progress.xp or 0,
-    gold = last_progress.gold or 0,
-    ore = last_progress.ore or 0,
-    matter = last_progress.matter or 0,
-    err = "reward_storage_unavailable",
-  }
+    return affix
+  end,
+  read_progress = read_pve_progress, read_sheet = read_character_sheet, get_defs = get_merged_item_defs,
+  inventory = function() return Runtime.Inventory end,
+  build_sheet_writes = Runtime.build_character_sheet_writes,
+  consume_writes = function(uid, token, id)
+    local writes, err = Runtime.PveEntry.consume_writes(uid, token, id)
+    assert(writes, err); return writes
+  end,
+  empty_keys = empty_key_items, add_blueprint = add_blueprint, level_from_xp = current_level_from_xp,
+  normalize_unlocked = normalize_mine_unlocked, floor_key = make_floor_state_key,
+  journal = function() return Runtime.Journal end,
+  is_stale = function(uid, epoch) return Guard.is_epoch_stale_for_match(uid, tonumber(epoch) or 0) end,
+})
+Runtime.award_pve_victory = function(user_id, bot_id, epoch, run_meta, result_id, outcome, attempt)
+  return Runtime.PveRewards.award(user_id, bot_id, epoch, run_meta, result_id, outcome, attempt)
 end
 
 Runtime.award_pve_defeat = function(user_id, match_epoch_snapshot)
@@ -3611,10 +3496,12 @@ Runtime.Pvp = build_pvp({
   add_blueprint = add_blueprint,
   empty_key_items = empty_key_items,
   get_race_entry = function() return Runtime.RaceEntry end,
+  build_match_finish_effects = function(...) return Runtime.StatsApi.build_match_finish_effects(...) end,
 })
 
 -- Stats RPC / arena tournament counters: отдельный chunk (лимит 200 local).
 Runtime.StatsApi = runtime_lua_require("modules.duel_match3_stats_api", "duel_match3_stats_api")({
+  finalization_journal = Runtime.Journal,
   CFG = CFG,
   Ach = Ach,
   Guard = Guard,
@@ -3771,6 +3658,7 @@ local Arena = arena_factory({
   ensure_sheet_inventory_counts = ensure_sheet_inventory_counts,
   inventory_remove_def_total = inventory_remove_def_total,
   inventory_try_add = inventory_try_add,
+  get_item_defs = get_merged_item_defs,
   stats_inc_arena_tournament_played = Runtime.StatsApi.stats_inc_arena_tournament_played,
   achievement_merge_stats = Ach.merge_persistent_stats,
 })
@@ -3824,6 +3712,12 @@ Runtime.EconomyRpc = runtime_lua_require("modules.duel_match3_economy_rpc", "due
   empty_key_items = empty_key_items,
 })
 
+Runtime.InventoryRpc = runtime_lua_require("modules.duel_match3_inventory_rpc", "duel_match3_inventory_rpc")({
+  Guard = Guard, read_character_sheet = read_character_sheet, write_character_sheet = write_character_sheet,
+  read_pve_progress = read_pve_progress, get_merged_item_defs = get_merged_item_defs,
+  encode_character_ok_response = encode_character_ok_response,
+})
+
 function floor_respawn_left_seconds(progress, diff, floor)
   local mine = progress.mine or {}
   local floor_states = type(mine.floor_states) == "table" and mine.floor_states or {}
@@ -3836,150 +3730,86 @@ end
 
 local function duel_match3_pve_create(ctx, payload)
   local ok, result = pcall(function()
-    local user_id = ctx and ctx.user_id or ""
-    if user_id == nil or user_id == "" then
-      return nk.json_encode({ ok = false, err = "unauthorized" })
+    local uid = ctx and ctx.user_id or ""
+    if uid == "" then return nk.json_encode({ ok = false, err = "unauthorized" }) end
+    local epoch_ok, epoch_err = Guard.assert_client_epoch_matches(uid, payload)
+    if not epoch_ok then return nk.json_encode({ ok = false, err = epoch_err }) end
+    if Runtime.Recovery then
+      local recovered, err = Runtime.Recovery.maybe_recover(uid, { force = true })
+      if not recovered then return nk.json_encode({ ok = false, err = err or "recovery_pending" }) end
     end
-
-    local ok_epoch, err_epoch = Guard.assert_client_epoch_matches(user_id, payload)
-    if not ok_epoch then
-      return nk.json_encode({ ok = false, err = err_epoch })
-    end
-
-    local owner_epoch = Guard.read_metadata_epoch(user_id)
-
-    local p = {}
-    if payload ~= nil and payload ~= "" then
-      p = nk.json_decode(payload) or {}
-    end
-
-    local requested_bot_id = tostring(p.bot_id or mine_bot_id_for_floor(1))
-    local requested_diff = normalize_mine_difficulty(p.difficulty)
-    local requested_floor = CFG.clamp_int((p.floor ~= nil and p.floor or parse_floor_from_bot_id(requested_bot_id)), 1, CFG.PVE_MAX_LEVEL)
-    local bot = get_bot_profile(requested_bot_id, requested_diff)
-    if bot == nil or bot.id == nil or bot.id == "" then
-      bot = get_bot_profile(mine_bot_id_for_floor(requested_floor), requested_diff)
-    end
-    if bot == nil or bot.id == nil or bot.id == "" then
-      return nk.json_encode({
-        ok = false,
-        err = "bot_catalog_unavailable",
-        bot_id = requested_bot_id,
-        floor = requested_floor,
-        difficulty = requested_diff,
-      })
-    end
+    local epoch = Guard.read_metadata_epoch(uid)
+    local request = payload and payload ~= "" and nk.json_decode(payload) or {}
+    local requested_id = tostring(request.bot_id or mine_bot_id_for_floor(1))
+    local diff = normalize_mine_difficulty(request.difficulty)
+    local requested_floor = CFG.clamp_int(request.floor or parse_floor_from_bot_id(requested_id), 1, CFG.PVE_MAX_LEVEL)
+    local bot = get_bot_profile(requested_id, diff) or get_bot_profile(mine_bot_id_for_floor(requested_floor), diff)
+    if not bot or tostring(bot.id or "") == "" then return nk.json_encode({ ok = false, err = "bot_catalog_unavailable" }) end
     local floor = CFG.clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
-    local diff = requested_diff
-    local bot_user_id = make_bot_user_id(bot.id)
-    local max_retries = 5
-
-    for i = 1, max_retries do
-      local now = os.time()
-      local progress, version = read_pve_progress(user_id)
-      progress.mine = progress.mine or {}
-      progress.mine.current_difficulty = diff
-      progress.mine.selected_floor = floor
-      progress.mine.unlocked = normalize_mine_unlocked(progress.mine.unlocked, 1)
-      if type(progress.mine.floor_states) ~= "table" then progress.mine.floor_states = {} end
-
-      local unlocked_floor = get_unlocked_floor(progress, diff)
-      if floor > unlocked_floor then
-        return nk.json_encode({
-          ok = false,
-          err = "barrier_locked",
-          floor = floor,
-          unlocked_floor = unlocked_floor,
-          difficulty = diff,
-        })
+    local costs = PveMineCost.normalize(bot.cost_attack, PveMineCost.DEFAULT_ATTACK)
+    local metadata = { bot_id = bot.id, floor = floor, difficulty = diff,
+      request_key = tostring(bot.id) .. ":" .. diff .. ":" .. floor .. ":" .. epoch }
+    local valid_err
+    local paid, err, entry, progress = Runtime.PveEntry.reserve(uid, costs, metadata, function(fresh)
+      fresh.mine = fresh.mine or {}
+      fresh.mine.unlocked = normalize_mine_unlocked(fresh.mine.unlocked, 1)
+      if floor > get_unlocked_floor(fresh, diff) then valid_err = "barrier_locked"; return false, valid_err end
+      if floor_respawn_left_seconds(fresh, diff, floor) > 0 then valid_err = "monster_respawn_pending"; return false, valid_err end
+      fresh.mine.current_difficulty, fresh.mine.selected_floor = diff, floor
+      fresh.mine.floor_states = type(fresh.mine.floor_states) == "table" and fresh.mine.floor_states or {}
+      local key = make_floor_state_key(diff, floor)
+      local state = fresh.mine.floor_states[key] or {}
+      if tostring(state.last_affix or "") == "" then state.last_affix = random_affix_for_floor(floor) end
+      fresh.mine.floor_states[key] = state
+      metadata.affix = state.last_affix
+      return true
+    end)
+    if not paid then
+      local response = { ok = false, err = err or valid_err or "launch_failed", floor = floor, difficulty = diff }
+      if tostring(err):sub(1, 11) == "not_enough_" then
+        local fresh = read_pve_progress(uid)
+        local resource, needed = tostring(err):sub(12), 0
+        for _, cost in ipairs(costs) do if cost.resource == resource then needed = needed + cost.amount end end
+        response = PveMineCost.json_not_enough(fresh, uid, resource, needed, PveMineCost.amount(fresh, uid, resource))
+        response.ok = false
       end
-
-      local respawn_left = floor_respawn_left_seconds(progress, diff, floor)
-      if respawn_left > 0 then
-        return nk.json_encode({
-          ok = false,
-          err = "monster_respawn_pending",
-          floor = floor,
-          difficulty = diff,
-          respawn_left_seconds = respawn_left,
-        })
-      end
-
-      local energy_max = pve_energy_max_for_user(user_id)
-      local cost_list = PveMineCost.normalize(bot.cost_attack, PveMineCost.DEFAULT_ATTACK)
-      local ok_cost, miss_res, need_amt, have_amt = PveMineCost.can_afford(progress, user_id, cost_list)
-      if not ok_cost then
-        local payload = PveMineCost.json_not_enough(progress, user_id, miss_res, need_amt, have_amt)
-        payload.ok = false
-        return nk.json_encode(payload)
-      end
-
-      PveMineCost.apply_list(progress, cost_list)
-      local state_key = make_floor_state_key(diff, floor)
-      local fstate = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
-      local affix = tostring(fstate.last_affix or "")
-      if affix == "" then
-        affix = random_affix_for_floor(floor)
-        fstate.last_affix = affix
-      end
-      progress.mine.floor_states[state_key] = fstate
-
-      local write_ok, write_err = pcall(function()
-        write_pve_progress(user_id, progress, version)
-      end)
-      if not write_ok then
-        local err_text = tostring(write_err)
-        if string.find(err_text, "version", 1, true) ~= nil and i < max_retries then
-          -- retry
-        else
-          error(write_err)
-        end
-      else
-        local match_id = try_match_create({
-          mode = "pve",
-          owner_user_id = user_id,
-          bot_id = bot.id,
-          bot_user_id = bot_user_id,
-          owner_level = progress.level or 1,
-          owner_session_epoch = owner_epoch,
-          pve_run = {
-            floor = floor,
-            difficulty = diff,
-            affix = affix,
-            stat_mul = mine_stat_multiplier(diff),
-            reward_mul = mine_reward_multiplier(diff),
-          },
-        })
-        if match_id == nil or match_id == "" then
-          return nk.json_encode({ ok = false, err = "match_create_failed" })
-        end
-
-        return nk.json_encode({
-          ok = true,
-          match_id = match_id,
-          bot_id = bot.id,
-          bot_name = bot.name,
-          bot_user_id = bot_user_id,
-          floor = floor,
-          difficulty = diff,
-          affix = affix,
-          energy = progress.energy,
-          energy_max = energy_max,
-        })
-      end
+      return nk.json_encode(response)
     end
-
-    return nk.json_encode({ ok = false, err = "retry_exhausted" })
+    local meta = entry.metadata or metadata
+    local match_id = entry.status == "bound" and entry.match_id or nil
+    if not match_id or match_id == "" then
+      match_id = try_match_create({ mode = "pve", owner_user_id = uid, bot_id = bot.id,
+        bot_user_id = make_bot_user_id(bot.id), owner_level = progress.level or 1, owner_session_epoch = epoch,
+        pve_run = { floor = floor, difficulty = diff, affix = meta.affix or "",
+          stat_mul = mine_stat_multiplier(diff), reward_mul = mine_reward_multiplier(diff), launch_token = entry.token } })
+    end
+    if not match_id or match_id == "" then
+      local refunded, refund_err, receipt, updated = Runtime.PveEntry.refund_launch(uid, entry.token, "match_create_failed")
+      -- A competing create may have bound this same paid token successfully.
+      -- Return its real match rather than claiming a refund/error that did not occur.
+      local reusable = refunded and receipt and receipt.status == "bound" and tostring(receipt.match_id or "") ~= ""
+      if refunded and receipt and receipt.status == "consumed" and tostring(receipt.match_id or "") ~= "" then
+        local probed, live = pcall(nk.match_get, receipt.match_id)
+        reusable = probed and live ~= nil
+      end
+      if reusable then
+        local fresh = read_pve_progress(uid)
+        return nk.json_encode({ ok = true, match_id = receipt.match_id, bot_id = bot.id, bot_name = bot.name,
+          bot_user_id = make_bot_user_id(bot.id), floor = floor, difficulty = diff,
+          affix = receipt.metadata and receipt.metadata.affix or meta.affix or "",
+          energy = fresh.energy, energy_max = pve_energy_max_for_user(uid) })
+      end
+      return nk.json_encode({ ok = false, err = "match_create_failed", refund_pending = not refunded or (receipt and receipt.status == "refund_pending") or false,
+        refund_error = refund_err, energy = updated and updated.energy, energy_max = pve_energy_max_for_user(uid) })
+    end
+    return nk.json_encode({ ok = true, match_id = match_id, bot_id = bot.id, bot_name = bot.name,
+      bot_user_id = make_bot_user_id(bot.id), floor = floor, difficulty = diff, affix = meta.affix or "",
+      energy = progress.energy, energy_max = pve_energy_max_for_user(uid) })
   end)
-
-  if not ok then
-    nk.logger_error("duel_match3_pve_create: " .. tostring(result))
-    return nk.json_encode({ ok = false, err = "server_error" })
-  end
+  if not ok then nk.logger_error("duel_match3_pve_create: " .. tostring(result)); return nk.json_encode({ ok = false, err = "server_error" }) end
   return result
 end
 
--- Race RPC / friends invite: отдельный chunk (лимит 200 local в duel_match3).
 local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3_race_api")({
   CFG = CFG,
   ContestGoals = Runtime.ContestGoals,
@@ -3995,6 +3825,25 @@ local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3
   race_goal_mana = race_goal_mana,
 })
 Runtime.RaceEntry = RaceApi.Entry
+Runtime.Recovery = runtime_lua_require("modules.duel_match3_recovery", "duel_match3_recovery").new({
+  journal = Runtime.Journal, race_entry = Runtime.RaceEntry, pve_entry = Runtime.PveEntry,
+  handlers = { pve = function(uid, id, plan) return Runtime.PveRewards.build(uid, id, plan) end },
+  resume_race_result = Runtime.Pvp.resume_race_result,
+})
+Runtime.RateLimit.configure_maintenance(function(ctx)
+  Runtime.Recovery.maybe_recover(ctx.user_id)
+  Runtime.StorageMaintenance.maybe_run()
+end)
+Runtime.StorageMaintenance.configure({
+  recover = function(uid) return Runtime.Recovery.maybe_recover(uid, { force = true }) end,
+  can_prune_receipt = function(uid, receipt)
+    local rows = nk.storage_read({ { user_id = uid, collection = "duel_match3_journal", key = "pending" } })
+    local value = rows and rows[1] and decode_storage_value(rows[1])
+    local entries = value and value.entries or {}
+    local id = tostring(receipt.run_id or "")
+    return id == "" or not (entries[id] or entries[id .. ":pve"] or entries[id .. ":stats"])
+  end,
+})
 
 local function duel_mine_summon(ctx, payload)
   local ok, result = pcall(function()
@@ -4234,10 +4083,15 @@ function duel_mine_affix_reroll(ctx, payload)
   return result
 end
 
-local function validate_action_basic(state, sender_id, action)
+local function validate_action_basic(state, sender_id, action, tick)
   if state.ended then return false, "game_ended" end
   if not state.started then return false, "not_started" end
   if sender_id ~= state.active_user_id then return false, "not_your_turn" end
+  -- Input is processed before the loop's timeout settlement. Reject an expired
+  -- decision here, before mana/cooldowns or a five-match extra turn can change it.
+  -- Paused animation/OP17 phases do not have a running decision deadline.
+  if tick ~= nil and not state.turn_deadline_paused and state.turn_deadline_tick ~= nil
+      and tick >= state.turn_deadline_tick then return false, "turn_expired" end
   if action == nil then return false, "bad_payload" end
 
   if action.actionType == 1 then
@@ -4319,6 +4173,11 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
       base_armor = src.base_armor or 0,
       base_crit = src.base_crit or 0,
       base_heal = src.base_heal or 0,
+      consumable_id = src.consumable_id,
+      consumable_damage_mult = src.consumable_damage_mult,
+      consumable_armor_mult = src.consumable_armor_mult,
+      consumable_healing_mult = src.consumable_healing_mult,
+      consumable_crit_add = src.consumable_crit_add,
     }
   end
 
@@ -4356,6 +4215,11 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
       _sim_metrics = { extra_turn = false, red = 0, yellow = 0, green = 0, ankh = 0 },
       _sim_quality_y_min = bot_sim_quality_y_min(state),
     }
+    if state.global_boss then
+      sim_state.global_boss=state.global_boss
+      sim_state.owner_user_id=state.owner_user_id;sim_state.bot_user_id=state.bot_user_id
+      sim_state.mode="pve"
+    end
 
     if action.actionType == 2 or action.actionType == 3 or action.actionType == 4 or action.actionType == 5 or action.actionType == 6 then
       spend_ability_for_sim(state, sim_bot, action.actionType)
@@ -4466,7 +4330,7 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
     local raw = math.max(0, tonumber(raw_base) or 0)
     raw = raw + math.max(0, tonumber(attacker_stats and attacker_stats.base_damage) or 0)
     raw = raw + math.max(0, tonumber(fury_bonus) or 0)
-    return math.max(0, raw - get_armor(target_stats))
+    return math.max(0, Runtime.ConsumableEffects.damage(raw,attacker_stats) - get_armor(target_stats))
   end
 
   local stats = state.stats[bot_user_id]
@@ -4916,6 +4780,15 @@ local function choose_bot_action(state, bot_user_id, player_user_id)
   return best_action
 end
 
+Runtime.JournalAdmission = runtime_lua_require("modules.duel_match3_journal_admission", "duel_match3_journal_admission")
+Runtime.admit_journal_tickets = function(state)
+  return Runtime.JournalAdmission.admit(state,{journal=Runtime.Journal,is_human=Ach.is_human,
+    consumable_eligible=Runtime.ConsumableEffects.eligible,pve_entry=Runtime.PveEntry})
+end
+Runtime.cancel_unused_journal_tickets = function(state)
+  return Runtime.JournalAdmission.cancel_unused(state,Runtime.Journal)
+end
+
 local function match_init(context, params)
   local invited = {}
   if params and params.invited then
@@ -4928,7 +4801,7 @@ local function match_init(context, params)
   local state = {
     invited = invited,
     match_id = context and context.match_id or nil,
-    join_deadline_tick = math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5),
+    join_deadline_tick = math.floor((CFG.MATCH_ADMISSION_SECONDS or 20) * CFG.TICK_RATE + 0.5),
     stats_result_id = nk.uuid_v4(),
     mode = params and tostring(params.mode or "pvp") or "pvp",
     pvp_pro = truthy_match_param(params and params.pvp_pro),
@@ -4958,6 +4831,7 @@ local function match_init(context, params)
     bot_kill_plan = nil,
     _bot_pre_mana = nil,
     pve_run = params and params.pve_run or nil,
+    global_boss = params and params.global_boss or nil,
     arena_mirror = params and params.arena_mirror or nil,
     --- Арена человек×бот: те же базовые статы, что у классического PvP (150 HP и т.д.), без шахты.
     arena_pvp_style = truthy_match_param(params and params.arena_pvp_style),
@@ -4967,7 +4841,29 @@ local function match_init(context, params)
     player_levels = {},
   }
 
-  if state.arena_mirror ~= nil then Runtime.arena_on_match_created(state) end
+  if state.arena_mirror ~= nil then
+    -- Tournament fights use the fixed classic statistics, including a no-show.
+    -- Publish those at creation so the bracket never has a phantom zero-HP pair.
+    if state.mode=="pve" then state.players_sorted={state.owner_user_id,state.bot_user_id}
+    else for uid in pairs(state.invited) do state.players_sorted[#state.players_sorted+1]=uid end;table.sort(state.players_sorted) end
+    for _,uid in ipairs(state.players_sorted) do state.stats[uid]=new_stats() end
+    Runtime.arena_on_match_created(state)
+    Runtime.arena_mirror_commit(state)
+  end
+  if state.global_boss then
+    local bound,err=Runtime.GlobalBoss.bind_state(state,state.global_boss.spawn_nonce)
+    assert(bound,err)
+    state.global_boss.spawn_nonce=nil
+  end
+  if state.mode == "pve" and not state.global_boss and not state.pvp_race and state.arena_mirror == nil
+      and not (state.pve_run and state.pve_run.arena_suppress_all) then
+    local bound, err = Runtime.PveEntry.bind(state.owner_user_id, state.pve_run and state.pve_run.launch_token,
+      state.match_id, state.stats_result_id)
+    assert(bound, err)
+  end
+
+  local admitted,admission_err=Runtime.admit_journal_tickets(state)
+  assert(admitted,admission_err)
   return state, CFG.TICK_RATE, "mode=duel_match3"
 end
 
@@ -5000,6 +4896,7 @@ end
 
 local function match_join(context, dispatcher, tick, state, presences)
   Runtime.Presence.join(state, presences, dispatcher)
+  if state.global_boss then return Runtime.BossBattle.join(dispatcher,state,tick) end
   -- Any admitted participant gets the full state, including overlap replacement.
   if state.started and not state.ended then
     for _, p in ipairs(presences) do
@@ -5029,7 +4926,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         end
 
         if state.pvp_race == true then
-          local paid, err = RaceApi.Entry.claim({player_id}, state.stats_result_id)
+          local paid, err = RaceApi.Entry.claim({player_id}, state.stats_result_id, state.match_id,state._journal_tickets)
           if not paid then
             nk.logger_warn("Race start rejected: " .. tostring(err))
             state.ended = true
@@ -5057,7 +4954,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         nk.logger_info("duel_match3 cheat_rows_allowed (arena_pvp_style): user_id=" .. tostring(player_id) ..
           " allowed=" .. tostring(p_allowed))
 
-        state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
+        Runtime.Rounds.start(state, pick_first_actor(player_id, state.bot_user_id))
 
         if state.pvp_race == true then
           state.race_first_user_id = state.active_user_id
@@ -5160,7 +5057,7 @@ local function match_join(context, dispatcher, tick, state, presences)
       nk.logger_info("duel_match3 cheat_rows_allowed (pve): user_id=" .. tostring(player_id) ..
         " allowed=" .. tostring(p_allowed))
 
-      state.active_user_id = pick_first_actor(player_id, state.bot_user_id)
+      Runtime.Rounds.start(state, pick_first_actor(player_id, state.bot_user_id))
 
       tick_cooldowns(state.stats[state.active_user_id])
       state.turn_deadline_paused = true
@@ -5173,6 +5070,14 @@ local function match_join(context, dispatcher, tick, state, presences)
         state.bot_turn_pending = false
         state.bot_turn_ready_tick = 0
       end
+      if not state.pvp_race and state.arena_mirror == nil and not pve_run.arena_suppress_all then
+        local consumed, err = Runtime.Consumables.bind_match(state, {player_id})
+        if not consumed then
+          nk.logger_warn("PvE start deferred: " .. tostring(err))
+          state.ended = true; dispatcher.match_kick(presences); return nil
+        end
+        Runtime.Consumables.apply_match(state)
+      end
       broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
     end
     return state
@@ -5181,7 +5086,7 @@ local function match_join(context, dispatcher, tick, state, presences)
   if not state.started and count_present_players(state) == 2 then
     state.players_sorted = sorted_two_players(state.presences)
     if state.pvp_race == true then
-      local paid, err = RaceApi.Entry.claim(state.players_sorted, state.stats_result_id)
+      local paid, err = RaceApi.Entry.claim(state.players_sorted, state.stats_result_id, state.match_id,state._journal_tickets)
       if not paid then
         nk.logger_warn("Race start rejected: " .. tostring(err))
         state.ended = true
@@ -5213,7 +5118,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         " allowed=" .. tostring(allowed))
     end
 
-    state.active_user_id = pick_first_actor(state.players_sorted[1], state.players_sorted[2])
+    Runtime.Rounds.start(state, pick_first_actor(state.players_sorted[1], state.players_sorted[2]))
     if state.pvp_race == true then
       state.race_first_user_id = state.active_user_id
       state.race_last_turn_user_id = nil
@@ -5240,6 +5145,11 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.turn_deadline_paused = true
     state.turn_pause_started_tick = tick
     state.turn_deadline_tick = tick
+    local bound,bind_error = Runtime.Consumables.bind_match(state,state.players_sorted)
+    if not bound then
+      nk.logger_warn("Battle start deferred: "..tostring(bind_error));state.ended=true;dispatcher.match_kick(presences);return nil
+    end
+    Runtime.Consumables.apply_match(state)
     broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
   end
 
@@ -5289,6 +5199,7 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
   local game_over_payload = {
     winnerUserId = winner,
     isDraw = false,
+    endReason = tag,
   }
   Runtime.apply_result_rewards(state, winner, false, game_over_payload)
   local augment_ok, augment_err = pcall(augment_arena_game_over_payload, state, game_over_payload)
@@ -5297,15 +5208,49 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
   Runtime.emit_game_over(dispatcher, state, game_over_payload)
 end
 
+-- Socket OP12 and the acknowledged HTTP signal use the very same result path.
+-- Never treat an unstarted public duel as a played victory or grant a free prize.
+Runtime.forfeit_match = function(dispatcher,state,uid,reason)
+  if state.global_boss then return Runtime.BossBattle.finish(dispatcher,state,state._boss_tick or 0,reason) end
+  if state.ended then return end
+  state.ended=true
+  state.end_reason=reason
+  state.bot_turn_pending=false;state.bot_turn_ready_tick=0
+  if not state.started and state.arena_mirror==nil then
+    Runtime.emit_game_over(dispatcher,state,{winnerUserId="",isDraw=true,matchCancelled=true,
+      endReason=reason=="player_surrender" and "admission_cancelled" or "opponent_not_ready",retryAllowed=true})
+    return
+  end
+  if not state.started then
+    state.players_sorted={}
+    if state.mode=="pve" then state.players_sorted={state.owner_user_id,state.bot_user_id}
+    else for id in pairs(state.invited or {}) do state.players_sorted[#state.players_sorted+1]=id end;table.sort(state.players_sorted) end
+    for _,id in ipairs(state.players_sorted) do state.stats[id]=state.stats[id] or new_stats() end
+    state.arena_no_show_users={}
+    for _,id in ipairs(state.players_sorted) do
+      if id:sub(1,7)~="zz-bot-" and not state.presences[id] then state.arena_no_show_users[id]=true end
+    end
+  end
+  local winner=other_player_id(state,uid)
+  if not winner then return end
+  if state.mode=="pve" and state.arena_mirror==nil and not state.pvp_race then
+    state.last_reward=Runtime.award_pve_defeat(state.owner_user_id,state.owner_session_epoch)
+    Runtime.StatsApi.record_match_finish(state,winner,false)
+    Runtime.emit_game_over(dispatcher,state,{winnerUserId=winner,isDraw=false,endReason=reason,
+      rewardXp=state.last_reward.reward_xp or 0,newLevel=state.last_reward.level or 1})
+  else finalize_pvp_forfeit_win(dispatcher,state,winner,reason) end
+end
+
 local function match_leave(context, dispatcher, tick, state, presences)
   local left = Runtime.Presence.leave(state, presences, tick,
-    math.floor(CFG.RECONNECT_GRACE_SECONDS * CFG.TICK_RATE + 0.5))
+    math.floor((state.arena_mirror~=nil and (CFG.ARENA_RECONNECT_GRACE_SECONDS or 20) or CFG.RECONNECT_GRACE_SECONDS) * CFG.TICK_RATE + 0.5))
+  if state.global_boss then state._boss_disconnect_tick=tick;return state end
   if state.started and not state.ended then
     for _, uid in ipairs(left) do
       if state.mode == "pve" and uid == state.owner_user_id then
         on_pve_owner_socket_gone(state, tick)
       elseif state.mode ~= "pve" then
-        local msg = { disconnectedUserId = uid, reconnectGraceSeconds = CFG.RECONNECT_GRACE_SECONDS }
+        local msg = { disconnectedUserId = uid, reconnectGraceSeconds = state.arena_mirror~=nil and (CFG.ARENA_RECONNECT_GRACE_SECONDS or 20) or CFG.RECONNECT_GRACE_SECONDS }
         dispatcher.broadcast_message(CFG.OP_PEER_DISCONNECT, nk.json_encode(msg), nil, nil)
       end
     end
@@ -5315,6 +5260,7 @@ local function match_leave(context, dispatcher, tick, state, presences)
 end
 
 local function match_loop(context, dispatcher, tick, state, messages)
+  if state.global_boss then state._boss_tick=tick;return Runtime.BossBattle.loop(dispatcher,state,tick,messages) end
   if state.ended then
     if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
     return nil
@@ -5322,24 +5268,15 @@ local function match_loop(context, dispatcher, tick, state, messages)
 
   -- Invitations must not leave a tournament round waiting forever for a no-show.
   if not state.started and tick >= (state.join_deadline_tick or math.huge) then
-    state.ended = true
     if state.arena_mirror ~= nil then
-      state.players_sorted = {}
-      if state.mode == "pve" then
-        state.players_sorted = {state.owner_user_id, state.bot_user_id}
-      else
-        for uid in pairs(state.invited or {}) do state.players_sorted[#state.players_sorted + 1] = uid end
-        table.sort(state.players_sorted)
+      local absent=state.owner_user_id
+      if state.mode~="pve" then
+        local ids={};for uid in pairs(state.invited or {}) do ids[#ids+1]=uid end;table.sort(ids)
+        for _,uid in ipairs(ids) do if not state.presences[uid] then absent=uid;break end end
+        absent=absent or ids[1]
       end
-      if #state.players_sorted == 2 then
-        for _, uid in ipairs(state.players_sorted) do state.stats[uid] = state.stats[uid] or new_stats() end
-        local winner = state.mode == "pve" and state.bot_user_id or state.players_sorted[2]
-        for _, uid in ipairs(state.players_sorted) do
-          if state.presences[uid] ~= nil then winner = uid; break end
-        end
-        finalize_pvp_forfeit_win(dispatcher, state, winner, "join_timeout")
-      end
-    end
+      Runtime.forfeit_match(dispatcher,state,absent,"join_timeout")
+    else Runtime.forfeit_match(dispatcher,state,state.owner_user_id,"opponent_not_ready") end
     if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
     return nil
   end
@@ -5348,29 +5285,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     local expired = Runtime.Presence.expired(state, tick)
     if #expired > 0 then
       local q = expired[1]
-      state.ended = true
-      if state.mode == "pve" and state.arena_mirror == nil and not state.pvp_race then
-        local oh = state.owner_user_id
-        local st = oh ~= nil and state.stats ~= nil and state.stats[oh] or nil
-        if oh ~= nil and st ~= nil and state.bot_user_id ~= nil
-            and tonumber(st.hp or 0) > 0 then
-          state.last_reward = Runtime.award_pve_defeat(oh, state.owner_session_epoch)
-          local game_over_payload = { winnerUserId = state.bot_user_id }
-          game_over_payload.rewardXp = state.last_reward.reward_xp or 0
-          game_over_payload.rewardGold = 0
-          game_over_payload.rewardOre = 0
-          game_over_payload.rewardMatter = 0
-          game_over_payload.newLevel = state.last_reward.level or 1
-          Runtime.StatsApi.record_match_finish(state, state.bot_user_id, false)
-          dispatcher.broadcast_message(CFG.OP_GAME_OVER, nk.json_encode(game_over_payload), nil, nil)
-        end
-        return nil
-      end
-
-      local winner = other_player_id(state, q)
-      if winner ~= nil then
-        finalize_pvp_forfeit_win(dispatcher, state, winner, "reconnect_timeout")
-      end
+      Runtime.forfeit_match(dispatcher,state,q,"reconnect_timeout")
       if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
       return nil
     end
@@ -5409,11 +5324,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     if m.op_code == CFG.OP_PLAYER_LEFT and state.started and not state.ended
         and state.presences[m.sender.user_id] ~= nil
         and (state.players_sorted[1] == m.sender.user_id or state.players_sorted[2] == m.sender.user_id) then
-      local winner = other_player_id(state, m.sender.user_id)
-      state.ended = true
-      if winner then
-        finalize_pvp_forfeit_win(dispatcher, state, winner, "player_left")
-      end
+      Runtime.forfeit_match(dispatcher,state,m.sender.user_id,"player_left")
       if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
       return nil
     end
@@ -5451,7 +5362,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         send_reject(dispatcher, m.sender, "session_stale")
       else
       local action = parse_action(m.data)
-      local valid, reason = validate_action_basic(state, m.sender.user_id, action)
+      local valid, reason = validate_action_basic(state, m.sender.user_id, action, tick)
       if not valid then
         send_reject(dispatcher, m.sender, reason)
       else
@@ -5481,7 +5392,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
   end
 
   if state.started and not state.ended and state.turn_deadline_paused and state.turn_pause_started_tick
-      and tick >= state.turn_pause_started_tick + 45 * CFG.TICK_RATE then
+      and tick >= state.turn_pause_started_tick + (CFG.TURN_READY_TIMEOUT_SECONDS or 8) * CFG.TICK_RATE then
     state.turn_deadline_paused = false
     state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
     if state.mode == "pve" and state.active_user_id == state.bot_user_id then
@@ -5503,7 +5414,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
     if next_player then
       tick_buffs_end_turn(state.stats[current])
       Ach.clear_five_plus_streak(state, current)
-      state.active_user_id = next_player
+      Runtime.Rounds.set_active(state, next_player)
       tick_cooldowns(state.stats[next_player])
       local need_ack = next_player ~= nil
       if need_ack then
@@ -5545,7 +5456,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         return state
       end
       tick_buffs_end_turn(state.stats[actor_id])
-      state.active_user_id = opp_id
+      Runtime.Rounds.set_active(state, opp_id)
       tick_cooldowns(state.stats[opp_id])
       local need_ack_o = opp_id ~= nil
       if need_ack_o then
@@ -5580,7 +5491,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
           return state
         end
         tick_buffs_end_turn(state.stats[actor_id])
-        state.active_user_id = opp_id
+        Runtime.Rounds.set_active(state, opp_id)
         tick_cooldowns(state.stats[opp_id])
         local need_ack_e = opp_id ~= nil
         if need_ack_e then
@@ -5606,7 +5517,14 @@ local function match_terminate(context, dispatcher, tick, state, grace_seconds)
 end
 
 local function match_signal(context, dispatcher, tick, state, data)
-  return state, "ok"
+  if state.global_boss then
+    local ok,p=pcall(nk.json_decode,data)
+    if ok and type(p)=="table"and p.kind=="boss_resume"and p.user_id==state.owner_user_id then
+      state.owner_session_epoch=tonumber(p.session_epoch)or state.owner_session_epoch
+      return state,nk.json_encode({ok=true})
+    end
+  end
+  return Runtime.MatchLifecycle.signal(dispatcher,state,data)
 end
 
 -- Каталог предметов из Storage для отладки и синхронизации с клиентом по id/slot/статам.
@@ -5625,6 +5543,7 @@ local function duel_match3_item_catalog_get(ctx, payload)
       list[#list + 1] = {
         id = id,
         kind = d.kind or "equipment",
+        effect_id = d.effect_id or "",
         slot = d.slot or "",
         max_stack = d.max_stack or 1,
         tier = d.tier or 1,
@@ -5662,9 +5581,39 @@ CharStats.configure({
   merge_stats_with_equipment = merge_stats_with_equipment,
   is_human = Ach.is_human,
   aura_apply_to_pve_player_stats = ServerAura.apply_to_pve_player_stats,
+  cosmetics_hp_bonus = function(uid)return Runtime.Cosmetics.passive_hp_bonus(uid)end,
 })
 
+Runtime.Daily=runtime_lua_require("modules.duel_daily","duel_daily")
+Runtime.Daily.configure({read_progress=read_pve_progress,read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
+  build_sheet_write=Runtime.build_character_sheet_write,build_progress_write=Runtime.build_pve_progress_write,
+  guard_epoch=Guard.assert_client_epoch_matches})
+Runtime.Guidance=runtime_lua_require("modules.duel_player_guidance","duel_player_guidance")
+Runtime.Guidance.configure({get_defs=get_merged_item_defs,guard_epoch=Guard.assert_client_epoch_matches})
+Runtime.Shop.configure({read_progress=read_pve_progress,read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
+  build_sheet_write=Runtime.build_character_sheet_write,build_progress_write=Runtime.build_pve_progress_write,
+  guard_epoch=Guard.assert_client_epoch_matches,energy_max=pve_energy_max_for_user})
+Runtime.Mail.configure({read_progress=read_pve_progress,read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
+  build_sheet_write=Runtime.build_character_sheet_write,build_progress_write=Runtime.build_pve_progress_write,
+  guard_epoch=Guard.assert_client_epoch_matches})
+Runtime.GlobalBoss.configure({read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
+  build_sheet_write=Runtime.build_character_sheet_write,try_match_create=try_match_create,
+  guard_epoch=Guard.assert_client_epoch_matches,mail=Runtime.Mail})
+Runtime.BossBattle.configure({api=Runtime.GlobalBoss,CFG=CFG,new_stats=new_stats,new_board=init_board,
+  ensure_board=ensure_active_board_has_valid_swaps,init_cheat_rows=init_cheat_rows,ensure_queue=ensure_spawn_queue,
+  update_cheat_rows=update_cheat_rows_from_board,read_sheet=read_character_sheet,effects=Runtime.ConsumableEffects,
+  apply_player=function(actor,uid)CharStats.apply_player_combat_stats_from_sheet(actor,uid,{aura=ServerAura.get_active()})end,
+  choose=choose_bot_action,validate=validate_action_basic,resolve=resolve_action,action_cost=action_mana_cost,
+  tick_buffs=tick_buffs_end_turn,tick_cooldowns=tick_cooldowns,parse=parse_action,
+  broadcast=broadcast_sync,reject=send_reject,emit=Runtime.emit_game_over,
+  stale=function(state)return Guard.is_epoch_stale_for_match(state.owner_user_id,state.owner_session_epoch)end,
+  filter_messages=function(state,messages,tick,dispatcher)
+    return Runtime.RateLimit.filter_match_messages(state,Runtime.Presence.filter_messages(state,messages),nk.time(),
+      function(presence,reason)send_reject(dispatcher,presence,reason)end)
+  end})
+
 Ach.configure({
+  finalization_journal = Runtime.Journal,
   decode_storage_value = decode_storage_value,
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
@@ -5678,6 +5627,20 @@ AchCat.configure({
 })
 
 Runtime.RateLimit.register_rpc(Runtime.StatsApi.duel_match3_stats_get, "duel_match3_stats_get")
+Runtime.RateLimit.register_rpc(Runtime.Daily.rpc_get,"duel_daily_get")
+Runtime.RateLimit.register_rpc(Runtime.Shop.rpc_get,"duel_shop_get")
+Runtime.RateLimit.register_rpc(Runtime.Shop.rpc_buy,"duel_shop_buy")
+Runtime.RateLimit.register_rpc(Runtime.Mail.rpc_get,"duel_mail_get")
+Runtime.RateLimit.register_rpc(Runtime.Mail.rpc_claim,"duel_mail_claim")
+Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_get,"duel_global_boss_get")
+Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_enter,"duel_global_boss_enter")
+Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_leaderboard,"duel_global_boss_leaderboard_get")
+Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_get,"duel_player_guidance_get")
+Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_set,"duel_player_guidance_set")
+Runtime.RateLimit.register_rpc(Runtime.MatchLifecycle.rpc,"duel_match3_forfeit")
+Runtime.RateLimit.register_rpc(Runtime.Daily.rpc_claim,"duel_daily_claim")
+Runtime.RateLimit.register_rpc(Runtime.Consumables.rpc_get,"duel_consumables_get")
+Runtime.RateLimit.register_rpc(Runtime.Consumables.rpc_use,"duel_consumables_use")
 Runtime.RateLimit.register_rpc(Runtime.StatsApi.duel_match3_stats_record, "duel_match3_stats_record")
 Runtime.RateLimit.register_rpc(Ach.rpc_achievement_sync, "duel_match3_achievement_sync")
 Runtime.RateLimit.register_rpc(Ach.rpc_achievement_claim_step, "duel_match3_achievement_claim_step")
@@ -5695,6 +5658,8 @@ Runtime.RateLimit.register_rpc(duel_mine_summon, "duel_mine_summon")
 Runtime.RateLimit.register_rpc(duel_mine_affix_reroll, "duel_mine_affix_reroll")
 Runtime.RateLimit.register_rpc(MineBarriers.duel_mine_barrier_unlock, "duel_mine_barrier_unlock")
 Runtime.RateLimit.register_rpc(MineBarriers.duel_mine_set_difficulty, "duel_mine_set_difficulty")
+Runtime.RateLimit.register_rpc(Runtime.InventoryRpc.duel_character_inventory_slot_buy, "duel_character_inventory_slot_buy")
+Runtime.RateLimit.register_rpc(Runtime.InventoryRpc.duel_character_loot_deliver, "duel_character_loot_deliver")
 Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_get, "duel_character_get")
 Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_item_move, "duel_character_item_move")
 Runtime.RateLimit.register_rpc(Runtime.EconomyRpc.duel_character_recipe_learn, "duel_character_recipe_learn")
@@ -5714,7 +5679,17 @@ Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_leave, "duel_arena_queue_l
 Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_poll")
 Runtime.RateLimit.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet")
 
+if type(nk.run_once) == "function" then
+  nk.run_once(function()
+    Runtime.StorageMaintenance.bootstrap()
+    if Runtime.GlobalBoss and type(nk.match_create)=="function"then
+      nk.match_create("duel_global_boss_dispatcher",{bootstrap=true})
+    end
+  end)
+end
+
 return {
+  _global_boss_api=Runtime.GlobalBoss,
   match_init = match_init,
   match_join_attempt = match_join_attempt,
   match_join = match_join,

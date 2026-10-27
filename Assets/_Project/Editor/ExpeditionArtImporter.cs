@@ -31,7 +31,7 @@ namespace Project.Editor
             settings.textureShape = TextureImporterShape.Texture2D;
             settings.spritePixelsPerUnit = 100;
             importer.SetTextureSettings(settings);
-            if (assetPath.EndsWith("/battle-world-v4.png"))
+            if (assetPath.EndsWith("/battle-world-v4.png") || assetPath.EndsWith("/battle-world-v5.png"))
             {
                 importer.alphaIsTransparency = false;
                 importer.maxTextureSize = 2048;

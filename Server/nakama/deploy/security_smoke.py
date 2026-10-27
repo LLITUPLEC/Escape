@@ -232,7 +232,9 @@ def main():
               "forged result leaves trusted counters unchanged")
         for collection, key in (("duel_match3_progress", "profile"), ("duel_match3_character", "sheet"),
                                 ("duel_match3_stats", "summary"), ("duel_match3_cheat_whitelist", "emails"),
-                                ("arena_tournament", "forged")):
+                                ("arena_tournament", "forged"), ("duel_global_boss", "config"),
+                                ("duel_global_boss_player", "week-forged"), ("duel_global_boss_attempt", "attempt-forged"),
+                                ("duel_mail", "inbox"), ("duel_shop_catalog", "v1"), ("duel_shop_receipts", "v1")):
             status, _ = request("PUT", "/v2/storage", {"objects": [{"collection": collection, "key": key,
                 "value": json.dumps({"gold": 99999999, "xp": 99999999}), "permission_read": 1, "permission_write": 1}]})
             check(status == 404, "direct game storage write blocked: " + collection)

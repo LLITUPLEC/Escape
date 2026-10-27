@@ -1,0 +1,15 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "letters": 2,
+    "heroLinkClicks": 2,
+    "checks": [
+        "Actual server JSON decoded and validated",
+        "Informational unlock letter uses named paired avatar",
+        "Hero link invokes the correct server letter ID",
+        "Read letter retains Hero link and has no second reward",
+        "Malformed navigation action rejected",
+        "No network or account actions"
+    ]
+}

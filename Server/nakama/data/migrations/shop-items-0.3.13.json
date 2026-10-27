@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "migration": "shop-0.3.13",
+  "catalog_version": 5,
+  "system_collection": "duel_match3_item_defs",
+  "system_key": "catalog",
+  "system_user_id": "00000000-0000-0000-0000-000000000000",
+  "items": {
+    "global_boss_teleport": {
+      "tier": 1,
+      "sale_price": 0,
+      "kind": "material",
+      "max_stack": 99,
+      "quality": "legendary"
+    }
+  }
+}

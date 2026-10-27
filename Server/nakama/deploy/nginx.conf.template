@@ -87,6 +87,24 @@ server {
     limit_conn escape_connections 20;
     error_page 429 = @escape_console_rate_limited;
 
+    # Static editor uses the existing authenticated Console API; no admin RPC,
+    # embedded credentials or anonymous Storage mutation endpoint is added.
+    location = /escape-admin/aura {
+        return 308 /escape-admin/aura/;
+    }
+    location ^~ /escape-admin/aura/ {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ =404;
+        autoindex off;
+        add_header Cache-Control "private, no-store, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;
+    }
+
     location / {
         proxy_pass http://escape_nakama_console;
     }

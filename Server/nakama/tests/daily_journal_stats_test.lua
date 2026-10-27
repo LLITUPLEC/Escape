@@ -1,0 +1,35 @@
+package.path="Server/nakama/?.lua;Server/nakama/modules/?.lua;Server/nakama/tests/?.lua;"..package.path
+local Fixture=require("storage_fault_fixture")
+local passed=0
+local function test(name,fn)
+  local f=Fixture.new();f.install();local j=require("tests.journal_fixture_admission").wrap(require("duel_match3_journal").new({stats_collection="stats",stats_key="summary"}),f)
+  fn(f,j);passed=passed+1;print("PASS "..name)
+end
+local function plan(day,mode,won,uses,eligible) return {match_stats={mode=mode or "mine",won=won==true,daily_day=day,ability_uses=uses or 0,daily_pvp_eligible=eligible==true}} end
+local function apply(j,id,p)assert(j.prepare("alice",id,"effects",p));assert(j.deliver_effects("alice",id))end
+test("daily counters atomic with result receipt and never duplicate",function(f,j)
+  apply(j,"one",plan(100,"mine",true,5));assert(j.deliver_effects("alice","one"))
+  local d=f.get("stats","alice","summary").daily;assert(d.day==100 and d.mine_wins==1 and d.ability_uses==5 and d.pvp_played==0)
+end)
+test("new day resets old counters and delayed old result cannot erase newer day",function(f,j)
+  apply(j,"one",plan(100,"mine",true,5));apply(j,"two",plan(101,"duel",true,2,true));apply(j,"late",plan(100,"mine",true,9))
+  local d=f.get("stats","alice","summary").daily;assert(d.day==101 and d.mine_wins==0 and d.ability_uses==2 and d.pvp_played==1)
+end)
+test("instant forfeit never counts participation while valid loser does",function(f,j)
+  apply(j,"quick",plan(100,"duel",false,0,false));apply(j,"played",plan(100,"duel",false,2,true))
+  local s=f.get("stats","alice","summary");assert(s.played==2 and s.daily.pvp_played==1 and s.daily.ability_uses==2)
+end)
+test("precommit outage and ambiguous response cannot lose or multiply daily counters",function(f,j)
+  assert(j.prepare("alice","one","effects",plan(100,"mine",true,4)));f.fail_before=true;assert(not j.deliver_effects("alice","one"))
+  assert(not f.get("stats","alice","summary"));f.fail_before=false;f.fail_after=true;assert(not j.deliver_effects("alice","one"));assert(j.deliver_effects("alice","one"))
+  local s=f.get("stats","alice","summary");assert(s.daily.mine_wins==1 and s.daily.ability_uses==4)
+end)
+test("parallel effects workers commit one daily increment",function(f,j)
+  assert(j.prepare("alice","one","effects",plan(100,"race",false,3,true)))
+  f.before_write=function()assert(j.deliver_effects("alice","one"))end
+  assert(j.deliver_effects("alice","one"));assert(f.get("stats","alice","summary").daily.pvp_played==1)
+end)
+test("old journals without daily fields cannot invent historical daily progress",function(f,j)
+  apply(j,"old",{match_stats={mode="mine",won=true}});local s=f.get("stats","alice","summary");assert(s.played==1 and s.daily==nil)
+end)
+print("daily journal stats: "..passed.." passed")

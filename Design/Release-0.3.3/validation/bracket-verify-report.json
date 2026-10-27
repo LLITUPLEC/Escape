@@ -1,6 +1,0 @@
-{
-    "target": "verify",
-    "ok": true,
-    "message": "Verified 7 pairs, 12 known HP and 2 unknown HP values, bets blocked, bounds inside screen; arena menu hidden and header/navigation visible.",
-    "utc": "2026-10-23T20:23:32.8431828Z"
-}

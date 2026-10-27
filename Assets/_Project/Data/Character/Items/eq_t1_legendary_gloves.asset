@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: eq_t1_legendary_gloves
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_legendary_gloves
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "Рукавицы сердца глубин"
   colorDisplayName: {r: 1, g: 0.679736, b: 0, a: 1}
-  description: 
+  description: "Многослойные рукавицы с янтарными энергетическими вставками. Часть легендарного комплекта «Сердце глубин»."
   kind: 0
   maxStack: 1
   tier: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_epic_gloves
   craftMinutes: 300
   salePrice: 100
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: b574bd01ab9d54c91e4265f15e2adb86, type: 3}
   equippable: 1
   slot: 3
   modifiers: []

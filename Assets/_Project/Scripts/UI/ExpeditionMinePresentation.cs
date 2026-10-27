@@ -37,6 +37,7 @@ namespace Project.UI
         private Button _action, _summonButton;
         private Sprite _landingArt, _dampLandingArt, _blockedArt, _cabinArt, _gateArt;
         private int _selectedFloor = 1;
+        private string _difficulty = "easy";
         private bool _selectedInitialProgress, _built, _summonBusy;
         public int SelectedFloor => _selectedFloor;
 
@@ -129,6 +130,9 @@ namespace Project.UI
             var art = Image(room, "RockChamber", Color.white, 0, damp ? .035f : 0, 1, damp ? 1.035f : 1);
             art.sprite = damp && _dampLandingArt != null ? _dampLandingArt : _landingArt;
             if (_landingArt == null) art.color = new Color32(23, 48, 52, 255);
+            var ambient = Image(room, "DifficultyMineralLight", Color.clear, .25f, .19f, 1f, .94f);
+            ambient.sprite = ExpeditionDifficultyAura.SharedGlow;
+            ambient.enabled = false;
             // Mirrored lighting and small seeded surface details vary the fixed chambers without
             // stretching one wide shaft-and-floor picture into twelve thick repeating beams.
             if (floor % 4 == 2) art.rectTransform.localScale = new Vector3(-1, 1, 1);
@@ -168,7 +172,7 @@ namespace Project.UI
             var stateText = Text(timerPlate.transform, "WorldStatus", "", 27, Ivory, TextAnchor.MiddleCenter, .07f, .15f, .93f, .85f);
             _landings[floor - 1] = new Landing { state = new FloorState { floor = floor, boss = floor % 4 == 0 },
                 rect = rt, portrait = portrait, barrier = barrier.gameObject, cost = cost, costLabel = costLabel, number = number,
-                selectedRim = selectedRim, status = stateText, shadow = shadow, bossBanner = banner.gameObject, timerPlate = timerPlate.gameObject };
+                selectedRim = selectedRim, status = stateText, shadow = shadow, ambient = ambient, bossBanner = banner.gameObject, timerPlate = timerPlate.gameObject };
         }
 
         private void BuildLift()
@@ -181,6 +185,7 @@ namespace Project.UI
             var cabin = ExpeditionUi.Rect(_liftCarrier, "LiftCabin", .10f, .23f, .325f, .94f);
             var hero = Image(cabin, "ExplorerAtLift", Color.white, .19f, .09f, .81f, .85f);
             hero.sprite = Resources.Load<Sprite>("Expedition/Art/hero");
+            Project.Character.UI.CharacterAppearanceImage.Bind(hero);
             hero.preserveAspect = true;
             var cage = Image(cabin, "PhysicalHoistCage", Color.white, 0, 0, 1, 1);
             cage.sprite = _cabinArt;
@@ -239,6 +244,7 @@ namespace Project.UI
             row.portrait.enabled = state.hasCatalog && state.unlocked && state.portrait != null;
             row.portrait.color = state.respawnSeconds > 0 ? new Color(.56f, .65f, .63f, .22f) : Color.white;
             row.shadow.enabled = row.portrait.enabled;
+            ApplyLandingDifficulty(row);
             row.barrier.SetActive(!state.unlocked);
             row.cost.gameObject.SetActive(state.hasCatalog && !state.unlocked);
             SetText(row.costLabel, state.barrierCost);
@@ -256,7 +262,10 @@ namespace Project.UI
         {
             if (_selectedInitialProgress || !hasCatalog) return;
             _selectedInitialProgress = true;
-            SelectFloor(Mathf.Clamp(deepestOpenFloor, 1, 12), false);
+            var floor = Project.Match3.Match3LaunchContext.TryConsumeMineReturnFloor(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, out var foughtFloor)
+                ? foughtFloor : deepestOpenFloor;
+            SelectFloor(Mathf.Clamp(floor, 1, 12), false);
             SnapRouteToFloor(_selectedFloor);
         }
 
@@ -365,6 +374,7 @@ namespace Project.UI
             SetText(_selectionRewards, !state.hasCatalog ? "" : !state.unlocked ? state.barrierCost : "Награды:\n" + state.rewards);
             _selectionPortrait.sprite = state.portrait;
             _selectionPortrait.enabled = state.unlocked && state.portrait != null;
+            ExpeditionDifficultyAura.Set(_selectionPortrait, _difficulty, state.hasCatalog && state.unlocked && state.respawnSeconds <= 0);
             _selectionGate.gameObject.SetActive(state.hasCatalog && !state.unlocked);
             _action.interactable = state.hasCatalog;
             SetText(_actionLabel, !state.hasCatalog ? "ОЖИДАНИЕ…" : !state.unlocked ? "ОТКРЫТЬ ›" : "ПРОДОЛЖИТЬ ›");
@@ -378,6 +388,7 @@ namespace Project.UI
         public static void ApplyDifficultyStyle(Transform tabsRoot, string selectedDifficulty)
         {
             if (tabsRoot == null) return;
+            tabsRoot.GetComponentInParent<ExpeditionMinePresentation>()?.SetDifficulty(selectedDifficulty);
             foreach (var id in new[] { "easy", "medium", "hard" })
             {
                 var tab = tabsRoot.Find("Diff_" + id);
@@ -390,6 +401,24 @@ namespace Project.UI
                 var label = tab.GetComponentInChildren<Text>(true);
                 if (label != null) { label.font = ExpeditionTheme.LegacyFont; label.fontSize = 27; label.color = selected ? Ink : Ivory; label.fontStyle = FontStyle.Bold; }
             }
+        }
+
+        public void SetDifficulty(string difficulty)
+        {
+            _difficulty = ExpeditionDifficultyAura.Normalize(difficulty);
+            foreach (var row in _landings) if (row != null) ApplyLandingDifficulty(row);
+            RefreshSelection();
+        }
+
+        private void ApplyLandingDifficulty(Landing row)
+        {
+            var visible = row.state.hasCatalog && row.state.unlocked;
+            ExpeditionDifficultyAura.Set(row.portrait, _difficulty, visible && row.state.respawnSeconds <= 0);
+            if (row.ambient == null) return;
+            row.ambient.enabled = visible;
+            var color = ExpeditionDifficultyAura.ColorFor(_difficulty);
+            color.a = _difficulty == "hard" ? .21f : _difficulty == "medium" ? .16f : .1f;
+            row.ambient.color = color;
         }
 
         private static void StyleDifficultyTabs(Transform tabs)
@@ -443,7 +472,7 @@ namespace Project.UI
         {
             public FloorState state;
             public RectTransform rect;
-            public Image portrait, cost, selectedRim, shadow;
+            public Image portrait, cost, selectedRim, shadow, ambient;
             public GameObject barrier, bossBanner, timerPlate;
             public Text number, status, costLabel;
         }

@@ -139,6 +139,7 @@ local function claim_append(claimed_arr, tok)
 end
 
 function M.storage_read_match3_summary_val(user_id)
+  for attempt=1,5 do
   local rows = nk.storage_read({
     {
       collection = CFG.STATS_COLLECTION,
@@ -152,7 +153,20 @@ function M.storage_read_match3_summary_val(user_id)
   end
   local row = rows[1]
   local val = decode_storage(row) or {}
+  local recent=type(val.match_result_ids)=="table" and val.match_result_ids or {}
+  if #recent>4 then
+    local ids={};for i=math.max(1,#recent-3),#recent do ids[#ids+1]=recent[i] end
+    val.match_result_ids=ids
+    local ok,ack=pcall(nk.storage_write,{{collection=CFG.STATS_COLLECTION,key=CFG.STATS_KEY,user_id=user_id,
+      value=val,version=row.version,permission_read=1,permission_write=0}})
+    if ok and ack and ack[1] and ack[1].version then return val,ack[1].version end
+    -- Includes acknowledgement loss: reread the committed normalization rather
+    -- than returning a stale version that could overwrite another result.
+  else
   return val, row.version
+  end
+  end
+  error("stats_normalization_unavailable")
 end
 
 local function increment_stats_in_val(val, delta_map)
@@ -247,9 +261,12 @@ local function is_achievement_pvp_context(state)
   return false
 end
 
-function M.flush_match_finish(state, winner, actor, opponent, action_type)
+-- Pure snapshot for the durable outcome intent. Capture BEFORE committing a
+-- victory reward so a crash/achievement DB failure cannot lose these counters.
+function M.build_match_finish_effects(state, winner, actor, opponent, action_type)
+  local result = {}
   if winner == nil or winner == "" then
-    return
+    return result
   end
 
   local am = state.arena_mirror
@@ -356,8 +373,42 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
       end
 
       if next(deltas) ~= nil then
-        persistent_merge_increment(uid, deltas)
+        result[uid] = deltas
       end
+    end
+  end
+  return result
+end
+
+function M.flush_match_finish(state, winner, actor, opponent, action_type)
+  if winner == nil or winner == "" then return true end
+  local result_id = state and state.stats_result_id
+  if type(result_id) ~= "string" or result_id == "" then return false, "result_id_required" end
+  local JournalModule = runtime_lua_require_nested("modules.duel_match3_journal", "duel_match3_journal")
+  local journal = deps.finalization_journal or JournalModule.new({ stats_collection = CFG.STATS_COLLECTION, stats_key = CFG.STATS_KEY })
+  local all_ok = true
+  for uid, deltas in pairs(M.build_match_finish_effects(state, winner, actor, opponent, action_type)) do
+    if not (state._finalization_managed and state._finalization_managed[uid]) then
+    local ok, delivered = pcall(function()
+      local existing = journal.read(uid, result_id)
+      if existing then
+        -- A wallet finalization can also contain extra effects (e.g. mine_2).
+        -- Never create a second counter increment for the same server result.
+        for stat, delta in pairs(deltas) do
+          if not existing.plan or not existing.plan.achievement_deltas or existing.plan.achievement_deltas[stat] ~= delta then
+            return false, "achievement_intent_conflict"
+          end
+        end
+      else
+        local prepared = journal.prepare(uid, result_id, "effects", { achievement_deltas = deltas },journal.ticket and journal.ticket(uid,result_id))
+        if not prepared then return false end
+      end
+      return journal.deliver_effects(uid, result_id)
+    end)
+    if not ok or delivered ~= true then
+      all_ok = false
+      nk.logger_error("achievement durable outbox pending: " .. tostring(uid) .. "/" .. result_id)
+    end
     end
   end
 
@@ -373,6 +424,7 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
   if not ok_lb then
     nk.logger_error("leaderboard_flush_match_wins failed: " .. tostring(err_lb))
   end
+  return all_ok
 end
 
 local function stats_payload_for_client(user_id)

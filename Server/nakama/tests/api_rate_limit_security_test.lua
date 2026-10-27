@@ -125,6 +125,8 @@ denied(function() rpc.duel_character_item_sell({ user_id = "wrapper" }, "untrust
 assert(handled == 20)
 assert(limit.policy_for_rpc("duel_match3_race_create") == "create")
 assert(limit.policy_for_rpc("duel_match3_pve_create") == "create")
+assert(limit.policy_for_rpc("duel_account_gender_get") == "read")
+assert(limit.policy_for_rpc("duel_account_gender_register") == "mutate")
 assert(limit.policy_for_rpc("future_new_rpc") == "mutate")
 
 require("modules.duel_api_rate_guard")
@@ -161,7 +163,7 @@ assert(#limit.filter_match_messages({ presences = { alice = {} } }, {
 }, now, notice) == 0)
 
 -- All externally registered game RPCs must use the common wrapper.
-for _, filename in ipairs({ "duel_match3", "duel_session", "duel_online", "duel_friends", "duel_leaderboard", "duel_account_wipe" }) do
+for _, filename in ipairs({ "duel_match3", "duel_session", "duel_online", "duel_friends", "duel_leaderboard", "duel_account_wipe", "duel_account_gender" }) do
   local file = assert(io.open("Server/nakama/modules/" .. filename .. ".lua", "r"))
   local source = file:read("*a"); file:close()
   assert(not source:find("nk.register_rpc(", 1, true), "Unprotected RPC in " .. filename)

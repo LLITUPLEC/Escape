@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Android;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -21,7 +22,10 @@ namespace Project.Editor
         }
 
         private static readonly string ProjectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        public static string StatusPath => Path.Combine(ProjectRoot, ".utmp/expedition/android-build-status.json");
+        private static string OutputDirectory => Path.Combine(ProjectRoot, "Builds", PlayerSettings.bundleVersion);
+        public static string StatusPath => Path.Combine(OutputDirectory, "build-status.json");
+        private static string NewApkPath() => Path.Combine(OutputDirectory,
+            "Escape-Expedition-" + PlayerSettings.bundleVersion + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + ".apk");
         private static bool _pending;
 
         [MenuItem("Tools/Escape/Expedition/Build Android development APK")]
@@ -29,6 +33,25 @@ namespace Project.Editor
 
         [MenuItem("Tools/Escape/Expedition/Build Android release APK")]
         public static void BeginRelease() => BeginBuild(false);
+
+        /// <summary>Noninteractive recovery/build entry: SDK failures become errors instead of hidden Editor dialogs.</summary>
+        public static void BuildReleaseBatch()
+        {
+            if (!Application.isBatchMode || EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+                throw new InvalidOperationException("Run in Android batch mode.");
+            PlayerSettings.bundleVersion = "0.3.15";
+            PlayerSettings.Android.bundleVersionCode = Math.Max(17, PlayerSettings.Android.bundleVersionCode);
+            var args = Environment.GetCommandLineArgs();
+            var restoreIndex = Array.IndexOf(args, "-escapeRestoreAndroidSdk");
+            var restoreSdk = restoreIndex >= 0 && restoreIndex + 1 < args.Length ? args[restoreIndex + 1] : null;
+            var status = new Status
+            {
+                state = "queued", development = false, startedUtc = DateTime.UtcNow.ToString("O"),
+                output = NewApkPath()
+            };
+            Run(status, restoreSdk);
+            if (status.state != "succeeded") throw new InvalidOperationException("Release APK build failed: " + status.message);
+        }
 
         private static void BeginBuild(bool development)
         {
@@ -39,15 +62,15 @@ namespace Project.Editor
                 throw new InvalidOperationException("Select Android as the active build target first");
             if (!development)
             {
-                PlayerSettings.bundleVersion = "0.3.5";
-                PlayerSettings.Android.bundleVersionCode = Math.Max(7, PlayerSettings.Android.bundleVersionCode);
+                PlayerSettings.bundleVersion = "0.3.15";
+                PlayerSettings.Android.bundleVersionCode = Math.Max(17, PlayerSettings.Android.bundleVersionCode);
             }
             var status = new Status
             {
                 state = "queued",
                 development = development,
                 startedUtc = DateTime.UtcNow.ToString("O"),
-                output = Path.Combine(ProjectRoot, "Builds/Expedition/Escape-Expedition-" + PlayerSettings.bundleVersion + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + ".apk")
+                output = NewApkPath()
             };
             Write(status);
             _pending = true;
@@ -63,14 +86,32 @@ namespace Project.Editor
             EditorApplication.update += start;
         }
 
-        private static void Run(Status status)
+        private static void Run(Status status, string restoreSdkRoot = null)
         {
             var bundle = EditorUserBuildSettings.buildAppBundle;
             var export = EditorUserBuildSettings.exportAsGoogleAndroidProject;
+            var previousSdkRoot = restoreSdkRoot ?? AndroidExternalToolsSettings.sdkRootPath;
+            var previousTargetSdk = PlayerSettings.Android.targetSdkVersion;
+            var sdkOverridden = false;
             try
             {
                 status.state = "building";
                 Write(status);
+                // External Tools preferences are shared between Editor versions.
+                // An SDK from another installation can contain preview platforms
+                // this Editor's bundled Gradle/lint cannot parse (e.g. android-37.0).
+                // Prefer this Editor's SDK. Incomplete installations can instead
+                // use the project-scoped copy prepared by Tools/Release/prepare-android-sdk.ps1.
+                // Restore the user's selection without changing any installed SDK.
+                var bundledSdk = Path.Combine(EditorApplication.applicationContentsPath, "PlaybackEngines/AndroidPlayer/SDK");
+                var sdkManager = Path.Combine("cmdline-tools", "latest", "bin", "sdkmanager" + (Application.platform == RuntimePlatform.WindowsEditor ? ".bat" : ""));
+                if (!File.Exists(Path.Combine(bundledSdk, sdkManager)))
+                    bundledSdk = Path.Combine(ProjectRoot, ".cache/android-sdk");
+                if (!Directory.Exists(Path.Combine(bundledSdk, "platforms")) || !File.Exists(Path.Combine(bundledSdk, sdkManager)))
+                    throw new DirectoryNotFoundException("Release SDK is incomplete. Run Tools/Release/prepare-android-sdk.ps1 before building.");
+                AndroidExternalToolsSettings.sdkRootPath = bundledSdk;
+                sdkOverridden = true;
+                PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel36;
                 Directory.CreateDirectory(Path.GetDirectoryName(status.output));
                 EditorUserBuildSettings.buildAppBundle = false;
                 EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
@@ -103,6 +144,8 @@ namespace Project.Editor
             {
                 EditorUserBuildSettings.buildAppBundle = bundle;
                 EditorUserBuildSettings.exportAsGoogleAndroidProject = export;
+                PlayerSettings.Android.targetSdkVersion = previousTargetSdk;
+                if (sdkOverridden) AndroidExternalToolsSettings.sdkRootPath = previousSdkRoot;
                 _pending = false;
                 status.finishedUtc = DateTime.UtcNow.ToString("O");
                 Write(status);

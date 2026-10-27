@@ -1,0 +1,23 @@
+{
+  "branch": "main",
+  "head": "0184d8fd507bb7ce9743ff490463c3b54f42c3a9",
+  "stagedAddedModifiedFiles": 1143,
+  "indexFiles": 2577,
+  "indexTotalBytes": 560104035.0,
+  "filesAtLeast50MiB": [],
+  "filesOver100MiB": [],
+  "conflicts": [],
+  "ignoredTrackedPaths": [],
+  "unstagedPathsAlsoStaged": [],
+  "remainingUntrackedEligiblePaths": [],
+  "scannedTextFiles": 2009,
+  "reviewedNonSecretFixturePaths": [
+    "Assets/_Project/Editor/ExpeditionPolishQa.cs",
+    "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+    "Server/nakama/tests/multiclient/test_recovery_probe.py"
+  ],
+  "unreviewedLexicalFindings": [],
+  "secretValuesPrintedOrSaved": false,
+  "contentEquivalenceNote": "When unstagedPathsAlsoStaged is empty, the normalized working-tree content scanned for changed paths matches the staged index; full index blob sizes come from Git objects.",
+  "passed": true
+}

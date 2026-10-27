@@ -7138,14 +7138,14 @@ MonoBehaviour:
   recipeBlueSprite: {fileID: 21300000, guid: a54c4697d60bd4544b29b946f71c89f3, type: 3}
   recipePurpleSprite: {fileID: 21300000, guid: 7d658a37e9d3c8143945c0cf4a7f5afa, type: 3}
   recipeGoldSprite: {fileID: 21300000, guid: 2d69f9fcd6ec0a14aa6b031ce096af1f, type: 3}
-  slotHelmetSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
-  slotShouldersSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
-  slotChestSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
-  slotGlovesSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
-  slotLegsSprite: {fileID: 21300000, guid: 0382adaa7f1bc754c82ab7ea98b17dd6, type: 3}
-  slotFeetSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
-  slotWeaponLeftSprite: {fileID: 21300000, guid: 0382adaa7f1bc754c82ab7ea98b17dd6, type: 3}
-  slotWeaponRightSprite: {fileID: 21300000, guid: 753ff4b152778c141a18502cd222f977, type: 3}
+  slotHelmetSprite: {fileID: 21300000, guid: 16f254a384ea49e48a2d27a5eaf7a988, type: 3}
+  slotShouldersSprite: {fileID: 21300000, guid: ce38e74b8816fa74c96da60a657c1a5a, type: 3}
+  slotChestSprite: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  slotGlovesSprite: {fileID: 21300000, guid: c28f292166cadb04b9098d25b20956a7, type: 3}
+  slotLegsSprite: {fileID: 21300000, guid: 4ee4ac1f6c171a741b953212bb9df0e3, type: 3}
+  slotFeetSprite: {fileID: 21300000, guid: 2f47a88db2a178248a9dec7e21df0714, type: 3}
+  slotWeaponLeftSprite: {fileID: 21300000, guid: f6c9f56bbb6ef6549bc532bb5320cfaa, type: 3}
+  slotWeaponRightSprite: {fileID: 21300000, guid: 589b3e6bcdacc20419542ac0033e63be, type: 3}
   tesseractIconSprite: {fileID: 21300000, guid: 5bf4d0b3d4221c3448e19cb7dcb46915, type: 3}
   monsterModalPrefab: {fileID: 0}
   summonWhistleIconSprite: {fileID: 21300000, guid: 012c63846cd057845985e1cfa04a4f1e, type: 3}

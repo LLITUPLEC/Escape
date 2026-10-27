@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "runtime_before_sha256": "8cc33cea453c923bcde6613be5cf8cbfa8f78e2736b70292bbd212a01ab71b83",
+  "candidate_sha256": "b743c7f047ecf4d90708e9e5088eb5a9b74f42e763ad938ea9bdda185455bb4f",
+  "candidate_files": 62,
+  "overlay_files": 61,
+  "deployment_inputs_backup": "/opt/escape/backups/runtime-deployment-inputs-20261027T055459Z",
+  "live_runtime_unchanged": true,
+  "security_smoke_sha256": "b29e50266d95a9eb1eb3e23017ba4583f368dd4f94d1f200bdce6e6c9b8ec85c",
+  "existing_deploy_helper_sha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31"
+}

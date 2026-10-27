@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: eq_t1_legendary_helmet
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_legendary_helmet
-  displayName: eq_t1_legendary_helmet
+  displayName: "Шлем сердца глубин"
   colorDisplayName: {r: 1, g: 0.679736, b: 0, a: 1}
-  description: 
+  description: "Герметичный шлем с янтарным рудным светильником. Часть легендарного комплекта «Сердце глубин»."
   kind: 0
   maxStack: 1
   tier: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_epic_helmet
   craftMinutes: 300
   salePrice: 100
-  icon: {fileID: 21300000, guid: c7a292db6036cd444a90e8b2baf26334, type: 3}
+  icon: {fileID: 21300000, guid: 9df7ce85e056d7cfad7eee563a024996, type: 3}
   equippable: 1
   slot: 0
   modifiers: []

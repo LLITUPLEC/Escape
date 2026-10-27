@@ -1,0 +1,2699 @@
+{
+  "generated_utc": "2026-10-27T19:33:02.978916+00:00",
+  "read_only_audit": true,
+  "deletion_performed": false,
+  "approved_delete_scope_pending_root": true,
+  "roots": [
+    "/opt/escape",
+    "/var/www/escape"
+  ],
+  "delete": [
+    {
+      "path": "/opt/escape/.aura-admin-upload-3eb340ae8d5a",
+      "canonical": "/opt/escape/.aura-admin-upload-3eb340ae8d5a",
+      "bytes": 28672,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258555,
+      "mtime_ns": 1793080879508984279,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/.aura-login-upload-2a1426de9c7e",
+      "canonical": "/opt/escape/.aura-login-upload-2a1426de9c7e",
+      "bytes": 24576,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259500,
+      "mtime_ns": 1793117416126416928,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/__pycache__",
+      "canonical": "/opt/escape/__pycache__",
+      "bytes": 274432,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253108,
+      "mtime_ns": 1793118026390943077,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/aura-admin0314-3eb340ae8d5a",
+      "canonical": "/opt/escape/aura-admin0314-3eb340ae8d5a",
+      "bytes": 77824,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258556,
+      "mtime_ns": 1793080893736434540,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/aura-login-fix0314-2a1426de9c7e",
+      "canonical": "/opt/escape/aura-login-fix0314-2a1426de9c7e",
+      "bytes": 49152,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259503,
+      "mtime_ns": 1793117433670279002,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/deploy_resource_fix.py",
+      "canonical": "/opt/escape/deploy_resource_fix.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253296,
+      "mtime_ns": 1792697414618506272,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/live_resource_payload_test.py",
+      "canonical": "/opt/escape/live_resource_payload_test.py",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253298,
+      "mtime_ns": 1792697556163647588,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-double.json",
+      "canonical": "/opt/escape/multiclient-double.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253242,
+      "mtime_ns": 1792696986117027132,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all-runtime-errors.log",
+      "canonical": "/opt/escape/multiclient-isolated-all-runtime-errors.log",
+      "bytes": 16384,
+      "type": "file",
+      "device": 64769,
+      "inode": 255060,
+      "mtime_ns": 1793116996669777067,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all.json",
+      "canonical": "/opt/escape/multiclient-isolated-all.json",
+      "bytes": 225280,
+      "type": "file",
+      "device": 64769,
+      "inode": 259519,
+      "mtime_ns": 1793118006141339695,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-arena.json",
+      "canonical": "/opt/escape/multiclient-isolated-arena.json",
+      "bytes": 32768,
+      "type": "file",
+      "device": 64769,
+      "inode": 253057,
+      "mtime_ns": 1792831946222976382,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-consumables.json",
+      "canonical": "/opt/escape/multiclient-isolated-consumables.json",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 259334,
+      "mtime_ns": 1793117276556322252,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-cosmetics.json",
+      "canonical": "/opt/escape/multiclient-isolated-cosmetics.json",
+      "bytes": 28672,
+      "type": "file",
+      "device": 64769,
+      "inode": 254308,
+      "mtime_ns": 1792873826101720445,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-global-boss-runtime-errors.log",
+      "canonical": "/opt/escape/multiclient-isolated-global-boss-runtime-errors.log",
+      "bytes": 24576,
+      "type": "file",
+      "device": 64769,
+      "inode": 256811,
+      "mtime_ns": 1793045591732410709,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-global-boss.json",
+      "canonical": "/opt/escape/multiclient-isolated-global-boss.json",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 256810,
+      "mtime_ns": 1793077405707806460,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-lifecycle-runtime-errors.log",
+      "canonical": "/opt/escape/multiclient-isolated-lifecycle-runtime-errors.log",
+      "bytes": 20480,
+      "type": "file",
+      "device": 64769,
+      "inode": 256384,
+      "mtime_ns": 1793034803304298795,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-lifecycle.json",
+      "canonical": "/opt/escape/multiclient-isolated-lifecycle.json",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 256383,
+      "mtime_ns": 1793034803051216665,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-race-policy.json",
+      "canonical": "/opt/escape/multiclient-isolated-race-policy.json",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253516,
+      "mtime_ns": 1792785444761017122,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-race-unpaid.json",
+      "canonical": "/opt/escape/multiclient-isolated-race-unpaid.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253299,
+      "mtime_ns": 1792697638570386769,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-recovery-runtime-errors.log",
+      "canonical": "/opt/escape/multiclient-isolated-recovery-runtime-errors.log",
+      "bytes": 53248,
+      "type": "file",
+      "device": 64769,
+      "inode": 256519,
+      "mtime_ns": 1793045802960150609,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-recovery.json",
+      "canonical": "/opt/escape/multiclient-isolated-recovery.json",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 258951,
+      "mtime_ns": 1793118078723774721,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-shop.json",
+      "canonical": "/opt/escape/multiclient-isolated-shop.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 257550,
+      "mtime_ns": 1793045732209828177,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-overlap.json",
+      "canonical": "/opt/escape/multiclient-overlap.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253245,
+      "mtime_ns": 1792697019421188642,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-production-double-disconnect.json",
+      "canonical": "/opt/escape/multiclient-production-double-disconnect.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253406,
+      "mtime_ns": 1792700124012869322,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-production-overlap.json",
+      "canonical": "/opt/escape/multiclient-production-overlap.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253407,
+      "mtime_ns": 1792700139650981485,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-production-pvp.json",
+      "canonical": "/opt/escape/multiclient-production-pvp.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253404,
+      "mtime_ns": 1792700109049230007,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient-pvp.json",
+      "canonical": "/opt/escape/multiclient-pvp.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253241,
+      "mtime_ns": 1792696956711040005,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/multiclient_cleanup.py",
+      "canonical": "/opt/escape/multiclient_cleanup.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253248,
+      "mtime_ns": 1792697075257167486,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/page-staging",
+      "canonical": "/opt/escape/page-staging",
+      "bytes": 3119407104,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253408,
+      "mtime_ns": 1793118279734907127,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/production-boss-shop-mail-smoke.json",
+      "canonical": "/opt/escape/production-boss-shop-mail-smoke.json",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 258018,
+      "mtime_ns": 1793047790207680803,
+      "reason": "archived_test_report_duplicate",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/production_boss_shop_mail_smoke0313.py",
+      "canonical": "/opt/escape/production_boss_shop_mail_smoke0313.py",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 257932,
+      "mtime_ns": 1793047388161168550,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release-0.3.3-9de1ff1ef0e84ef4ac86216b4c47daf1",
+      "canonical": "/opt/escape/release-0.3.3-9de1ff1ef0e84ef4ac86216b4c47daf1",
+      "bytes": 610304,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253440,
+      "mtime_ns": 1792787160838980866,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release-0.3.4-4257ea99c3ca4eb791f84b159f0d4abf",
+      "canonical": "/opt/escape/release-0.3.4-4257ea99c3ca4eb791f84b159f0d4abf",
+      "bytes": 622592,
+      "type": "directory",
+      "device": 64769,
+      "inode": 252851,
+      "mtime_ns": 1792833695302692511,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0311-validation-3c82467e1e95",
+      "canonical": "/opt/escape/release0311-validation-3c82467e1e95",
+      "bytes": 2437120,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255928,
+      "mtime_ns": 1793026807472640478,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0311-validation-4c2484b0dc37",
+      "canonical": "/opt/escape/release0311-validation-4c2484b0dc37",
+      "bytes": 2179072,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253611,
+      "mtime_ns": 1793025786671138422,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0312-validation-681cb23d10d1",
+      "canonical": "/opt/escape/release0312-validation-681cb23d10d1",
+      "bytes": 2510848,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256328,
+      "mtime_ns": 1793036262516020390,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0312-validation-736ee4fc8dd0",
+      "canonical": "/opt/escape/release0312-validation-736ee4fc8dd0",
+      "bytes": 2228224,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256197,
+      "mtime_ns": 1793034805330955048,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0312-validation-c7bbd2f2143a",
+      "canonical": "/opt/escape/release0312-validation-c7bbd2f2143a",
+      "bytes": 4096,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255791,
+      "mtime_ns": 1793032567108342002,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-catalogs-0367c1aa43fb",
+      "canonical": "/opt/escape/release0313-catalogs-0367c1aa43fb",
+      "bytes": 77824,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257998,
+      "mtime_ns": 1793047623886697717,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-catalogs-0367c1aa43fb.tar.gz",
+      "canonical": "/opt/escape/release0313-catalogs-0367c1aa43fb.tar.gz",
+      "bytes": 16384,
+      "type": "file",
+      "device": 64769,
+      "inode": 253050,
+      "mtime_ns": 1793047595839433179,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-05c88342efee",
+      "canonical": "/opt/escape/release0313-validation-05c88342efee",
+      "bytes": 2482176,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256896,
+      "mtime_ns": 1793045084571088737,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-261194f941bc",
+      "canonical": "/opt/escape/release0313-validation-261194f941bc",
+      "bytes": 2781184,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257784,
+      "mtime_ns": 1793047163821882733,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-32b538f08255",
+      "canonical": "/opt/escape/release0313-validation-32b538f08255",
+      "bytes": 2506752,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257488,
+      "mtime_ns": 1793045960936351568,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-51d9bf66c597",
+      "canonical": "/opt/escape/release0313-validation-51d9bf66c597",
+      "bytes": 2510848,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257190,
+      "mtime_ns": 1793045592902656454,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-7543db69b664",
+      "canonical": "/opt/escape/release0313-validation-7543db69b664",
+      "bytes": 2494464,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257043,
+      "mtime_ns": 1793045432878707543,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-9a2e621d893b",
+      "canonical": "/opt/escape/release0313-validation-9a2e621d893b",
+      "bytes": 2572288,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257337,
+      "mtime_ns": 1793045804060831159,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-c29f9911c491",
+      "canonical": "/opt/escape/release0313-validation-c29f9911c491",
+      "bytes": 2633728,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257637,
+      "mtime_ns": 1793046428266610644,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-dddb99dfe8eb",
+      "canonical": "/opt/escape/release0313-validation-dddb99dfe8eb",
+      "bytes": 2478080,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256747,
+      "mtime_ns": 1793044939414589059,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0313-validation-faf8f9bc2b85",
+      "canonical": "/opt/escape/release0313-validation-faf8f9bc2b85",
+      "bytes": 2375680,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256600,
+      "mtime_ns": 1793044779917336008,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0314-validation-11a1588d5c34",
+      "canonical": "/opt/escape/release0314-validation-11a1588d5c34",
+      "bytes": 2891776,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258732,
+      "mtime_ns": 1793082747455273116,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0314-validation-4cdad9d6d7a1",
+      "canonical": "/opt/escape/release0314-validation-4cdad9d6d7a1",
+      "bytes": 2871296,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258104,
+      "mtime_ns": 1793078076715322895,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0314-validation-59ec9c476e6c",
+      "canonical": "/opt/escape/release0314-validation-59ec9c476e6c",
+      "bytes": 2580480,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253089,
+      "mtime_ns": 1793081697680706635,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0314-validation-7cddaebfd211",
+      "canonical": "/opt/escape/release0314-validation-7cddaebfd211",
+      "bytes": 2945024,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258257,
+      "mtime_ns": 1793080578437616052,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0315-validation-ca51d31fa463",
+      "canonical": "/opt/escape/release0315-validation-ca51d31fa463",
+      "bytes": 2883584,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259104,
+      "mtime_ns": 1793117212027110416,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release0315-validation-fedc585b7cc2",
+      "canonical": "/opt/escape/release0315-validation-fedc585b7cc2",
+      "bytes": 3174400,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259264,
+      "mtime_ns": 1793118115773567059,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release037-validation-5ad4df0c0efd",
+      "canonical": "/opt/escape/release037-validation-5ad4df0c0efd",
+      "bytes": 3633152,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254055,
+      "mtime_ns": 1792873792053697394,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release038-validation-a4bad35a8318",
+      "canonical": "/opt/escape/release038-validation-a4bad35a8318",
+      "bytes": 2027520,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254039,
+      "mtime_ns": 1792880121418262800,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release039-validation-877e4eacbcb5",
+      "canonical": "/opt/escape/release039-validation-877e4eacbcb5",
+      "bytes": 2412544,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255145,
+      "mtime_ns": 1792920432796697132,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release039-validation-997637624436",
+      "canonical": "/opt/escape/release039-validation-997637624436",
+      "bytes": 2256896,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254712,
+      "mtime_ns": 1792918559487774564,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release039-validation-a89b5462c6f3",
+      "canonical": "/opt/escape/release039-validation-a89b5462c6f3",
+      "bytes": 2187264,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254857,
+      "mtime_ns": 1792918988322586851,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/release039-validation-e4d568feac73",
+      "canonical": "/opt/escape/release039-validation-e4d568feac73",
+      "bytes": 2240512,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255000,
+      "mtime_ns": 1792919572696842018,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/run.py",
+      "canonical": "/opt/escape/run.py",
+      "bytes": 28672,
+      "type": "file",
+      "device": 64769,
+      "inode": 253251,
+      "mtime_ns": 1792697159049251136,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/security_smoke0313-candidate.py",
+      "canonical": "/opt/escape/security_smoke0313-candidate.py",
+      "bytes": 16384,
+      "type": "file",
+      "device": 64769,
+      "inode": 257931,
+      "mtime_ns": 1793047377948155538,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/server.tar.gz",
+      "canonical": "/opt/escape/server.tar.gz",
+      "bytes": 221184,
+      "type": "file",
+      "device": 64769,
+      "inode": 252946,
+      "mtime_ns": 1792695533905607252,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/source",
+      "canonical": "/opt/escape/source",
+      "bytes": 1486848,
+      "type": "directory",
+      "device": 64769,
+      "inode": 252951,
+      "mtime_ns": 1792695538746612301,
+      "reason": "obsolete_staging_or_one_off_helper",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/Caddyfile.before-escape",
+      "canonical": "/opt/escape/backups/Caddyfile.before-escape",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253081,
+      "mtime_ns": 1792689887928450280,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/aura-admin0314-20261027T060201-98fd92a38723",
+      "canonical": "/opt/escape/backups/aura-admin0314-20261027T060201-98fd92a38723",
+      "bytes": 20480,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258569,
+      "mtime_ns": 1793080926460041960,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/aura-login-fix0314-20261027T161051-956c06b450d9",
+      "canonical": "/opt/escape/backups/aura-login-fix0314-20261027T161051-956c06b450d9",
+      "bytes": 45056,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259509,
+      "mtime_ns": 1793117451998470800,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/before-storage-restore-20261022T192540Z.dump",
+      "canonical": "/opt/escape/backups/before-storage-restore-20261022T192540Z.dump",
+      "bytes": 61440,
+      "type": "file",
+      "device": 64769,
+      "inode": 253250,
+      "mtime_ns": 1792697140976233094,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/catalogs0313-20261026T204735Z-99352be67665",
+      "canonical": "/opt/escape/backups/catalogs0313-20261026T204735Z-99352be67665",
+      "bytes": 49152,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258008,
+      "mtime_ns": 1793047655833509627,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/compose.before-gateway.yml",
+      "canonical": "/opt/escape/backups/compose.before-gateway.yml",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253098,
+      "mtime_ns": 1792695061545455936,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/consumable-catalog-0.3.9-877e4eacbcb5.json",
+      "canonical": "/opt/escape/backups/consumable-catalog-0.3.9-877e4eacbcb5.json",
+      "bytes": 28672,
+      "type": "file",
+      "device": 64769,
+      "inode": 255580,
+      "mtime_ns": 1792920560757838509,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/duel_match3-before-resource-fix-20261022T193112Z.lua",
+      "canonical": "/opt/escape/backups/duel_match3-before-resource-fix-20261022T193112Z.lua",
+      "bytes": 229376,
+      "type": "file",
+      "device": 64769,
+      "inode": 253297,
+      "mtime_ns": 1792695063750116833,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/env.before-gateway-20261022T185101690403Z",
+      "canonical": "/opt/escape/backups/env.before-gateway-20261022T185101690403Z",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253102,
+      "mtime_ns": 1792692444063762744,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/escape-after-rate-limits.dump",
+      "canonical": "/opt/escape/backups/escape-after-rate-limits.dump",
+      "bytes": 57344,
+      "type": "file",
+      "device": 64769,
+      "inode": 253239,
+      "mtime_ns": 1792695539508613095,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/escape-before-rate-limits.dump",
+      "canonical": "/opt/escape/backups/escape-before-rate-limits.dump",
+      "bytes": 57344,
+      "type": "file",
+      "device": 64769,
+      "inode": 253103,
+      "mtime_ns": 1792695062515115545,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/escape-initial.dump",
+      "canonical": "/opt/escape/backups/escape-initial.dump",
+      "bytes": 57344,
+      "type": "file",
+      "device": 64769,
+      "inode": 252947,
+      "mtime_ns": 1792693651215611532,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/escape.caddy.20261022T185125846239Z",
+      "canonical": "/opt/escape/backups/escape.caddy.20261022T185125846239Z",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253106,
+      "mtime_ns": 1792692992249909686,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/escape.caddy.20261023T001435113814Z",
+      "canonical": "/opt/escape/backups/escape.caddy.20261023T001435113814Z",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253441,
+      "mtime_ns": 1792695085846944825,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-deployment-inputs-20261027T055459Z",
+      "canonical": "/opt/escape/backups/runtime-deployment-inputs-20261027T055459Z",
+      "bytes": 897024,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258414,
+      "mtime_ns": 1793080499461519862,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-deployment-inputs-20261027T063119Z",
+      "canonical": "/opt/escape/backups/runtime-deployment-inputs-20261027T063119Z",
+      "bytes": 901120,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258883,
+      "mtime_ns": 1793082679117753694,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-deployment-inputs-20261027T162155Z",
+      "canonical": "/opt/escape/backups/runtime-deployment-inputs-20261027T162155Z",
+      "bytes": 28672,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259426,
+      "mtime_ns": 1793118115766567045,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261022T201320Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261022T201320Z",
+      "bytes": 724992,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253308,
+      "mtime_ns": 1792700000411060834,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261023T201226Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261023T201226Z",
+      "bytes": 724992,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253537,
+      "mtime_ns": 1792786346406787670,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261024T090402Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261024T090402Z",
+      "bytes": 724992,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253624,
+      "mtime_ns": 1792832642582962701,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261024T184401Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261024T184401Z",
+      "bytes": 737280,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253902,
+      "mtime_ns": 1792867441732488102,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261024T204932Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261024T204932Z",
+      "bytes": 811008,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254262,
+      "mtime_ns": 1792874972481429804,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261024T221656Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261024T221656Z",
+      "bytes": 839680,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254538,
+      "mtime_ns": 1792880216047370833,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261025T092936Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261025T092936Z",
+      "bytes": 872448,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255581,
+      "mtime_ns": 1792920576833336181,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261026T145450Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261026T145450Z",
+      "bytes": 962560,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256057,
+      "mtime_ns": 1793026490230753967,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261026T173210Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261026T173210Z",
+      "bytes": 983040,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256461,
+      "mtime_ns": 1793035930703698889,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261026T204500Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261026T204500Z",
+      "bytes": 1007616,
+      "type": "directory",
+      "device": 64769,
+      "inode": 257933,
+      "mtime_ns": 1793047500568064595,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T055518Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261027T055518Z",
+      "bytes": 1077248,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258482,
+      "mtime_ns": 1793080550419581919,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T063132Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261027T063132Z",
+      "bytes": 1081344,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258950,
+      "mtime_ns": 1793082692890828811,
+      "reason": "older_backup",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.0-17e666a68265-20261023T001434821231Z",
+      "canonical": "/var/www/escape/releases/0.3.0-17e666a68265-20261023T001434821231Z",
+      "bytes": 117362688,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253428,
+      "mtime_ns": 1792714472603546549,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.1-ccb206869600-20261023T053113658315Z",
+      "canonical": "/var/www/escape/releases/0.3.1-ccb206869600-20261023T053113658315Z",
+      "bytes": 117190656,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253465,
+      "mtime_ns": 1792733425302508663,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.10-c86730d62226-20261025T153733645353Z",
+      "canonical": "/var/www/escape/releases/0.3.10-c86730d62226-20261025T153733645353Z",
+      "bytes": 131387392,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255754,
+      "mtime_ns": 1792942498000000000,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.11-70f138073fb8-20261026T150732810936Z",
+      "canonical": "/var/www/escape/releases/0.3.11-70f138073fb8-20261026T150732810936Z",
+      "bytes": 131842048,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256159,
+      "mtime_ns": 1793027252200014414,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.12-5f799941a9cc-20261026T173453096092Z",
+      "canonical": "/var/www/escape/releases/0.3.12-5f799941a9cc-20261026T173453096092Z",
+      "bytes": 129814528,
+      "type": "directory",
+      "device": 64769,
+      "inode": 256561,
+      "mtime_ns": 1793036092506128572,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.13-9501088bdf77-20261026T205105488416Z",
+      "canonical": "/var/www/escape/releases/0.3.13-9501088bdf77-20261026T205105488416Z",
+      "bytes": 129851392,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258059,
+      "mtime_ns": 1793047864805775817,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.2-4b85dd95f488-20261023T181134313006Z",
+      "canonical": "/var/www/escape/releases/0.3.2-4b85dd95f488-20261023T181134313006Z",
+      "bytes": 117334016,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253496,
+      "mtime_ns": 1792779063159337409,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.3-b355794e9bcc-20261023T203525548726Z",
+      "canonical": "/var/www/escape/releases/0.3.3-b355794e9bcc-20261023T203525548726Z",
+      "bytes": 118616064,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253590,
+      "mtime_ns": 1792787722246689516,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.4-45ee39a11284-20261024T092656950596Z",
+      "canonical": "/var/www/escape/releases/0.3.4-45ee39a11284-20261024T092656950596Z",
+      "bytes": 119738368,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253677,
+      "mtime_ns": 1792834014239013618,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.5-eeeee9b46779-20261024T132407594110Z",
+      "canonical": "/var/www/escape/releases/0.3.5-eeeee9b46779-20261024T132407594110Z",
+      "bytes": 134672384,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253775,
+      "mtime_ns": 1792848234974341999,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.6-35a89960b0b8-20261024T185025504271Z",
+      "canonical": "/var/www/escape/releases/0.3.6-35a89960b0b8-20261024T185025504271Z",
+      "bytes": 120684544,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254002,
+      "mtime_ns": 1792867773562223138,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.7-98be948a35df-20261024T212620679710Z",
+      "canonical": "/var/www/escape/releases/0.3.7-98be948a35df-20261024T212620679710Z",
+      "bytes": 126242816,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254375,
+      "mtime_ns": 1792877109000000000,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.8-3bd42ebecd2b-20261024T224845754135Z",
+      "canonical": "/var/www/escape/releases/0.3.8-3bd42ebecd2b-20261024T224845754135Z",
+      "bytes": 128249856,
+      "type": "directory",
+      "device": 64769,
+      "inode": 254650,
+      "mtime_ns": 1792881857000000000,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.9-4c412e13ebc2-20261025T094840863331Z",
+      "canonical": "/var/www/escape/releases/0.3.9-4c412e13ebc2-20261025T094840863331Z",
+      "bytes": 129097728,
+      "type": "directory",
+      "device": 64769,
+      "inode": 255676,
+      "mtime_ns": 1792921591000000000,
+      "reason": "web_release_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.0-17e666a68265.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.0-17e666a68265.apk",
+      "bytes": 99454976,
+      "type": "file",
+      "device": 64769,
+      "inode": 253427,
+      "mtime_ns": 1792714472301546325,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.1-ccb206869600.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.1-ccb206869600.apk",
+      "bytes": 99336192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253464,
+      "mtime_ns": 1792733424401508009,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.10-c86730d62226.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.10-c86730d62226.apk",
+      "bytes": 122372096,
+      "type": "file",
+      "device": 64769,
+      "inode": 255675,
+      "mtime_ns": 1792942407000000000,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.11-70f138073fb8.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.11-70f138073fb8.apk",
+      "bytes": 122449920,
+      "type": "file",
+      "device": 64769,
+      "inode": 255753,
+      "mtime_ns": 1793027252198253931,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.12-5f799941a9cc.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.12-5f799941a9cc.apk",
+      "bytes": 122515456,
+      "type": "file",
+      "device": 64769,
+      "inode": 256158,
+      "mtime_ns": 1793036092500802663,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.13-9501088bdf77.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.13-9501088bdf77.apk",
+      "bytes": 123322368,
+      "type": "file",
+      "device": 64769,
+      "inode": 256560,
+      "mtime_ns": 1793047864804775816,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.2-4b85dd95f488.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.2-4b85dd95f488.apk",
+      "bytes": 100212736,
+      "type": "file",
+      "device": 64769,
+      "inode": 253495,
+      "mtime_ns": 1792779062240336245,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.3-b355794e9bcc.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.3-b355794e9bcc.apk",
+      "bytes": 101208064,
+      "type": "file",
+      "device": 64769,
+      "inode": 253589,
+      "mtime_ns": 1792787721336688366,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.4-45ee39a11284.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.4-45ee39a11284.apk",
+      "bytes": 101810176,
+      "type": "file",
+      "device": 64769,
+      "inode": 253676,
+      "mtime_ns": 1792834013328012701,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.5-eeeee9b46779.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.5-eeeee9b46779.apk",
+      "bytes": 101834752,
+      "type": "file",
+      "device": 64769,
+      "inode": 253774,
+      "mtime_ns": 1792848242172350526,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.6-35a89960b0b8.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.6-35a89960b0b8.apk",
+      "bytes": 102068224,
+      "type": "file",
+      "device": 64769,
+      "inode": 254001,
+      "mtime_ns": 1792867801099254109,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.7-98be948a35df.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.7-98be948a35df.apk",
+      "bytes": 115859456,
+      "type": "file",
+      "device": 64769,
+      "inode": 254374,
+      "mtime_ns": 1792877032000000000,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.8-3bd42ebecd2b.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.8-3bd42ebecd2b.apk",
+      "bytes": 117862400,
+      "type": "file",
+      "device": 64769,
+      "inode": 254649,
+      "mtime_ns": 1792881793000000000,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.9-4c412e13ebc2.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.9-4c412e13ebc2.apk",
+      "bytes": 118669312,
+      "type": "file",
+      "device": 64769,
+      "inode": 253689,
+      "mtime_ns": 1792921513000000000,
+      "reason": "apk_older_than_0.3.14",
+      "contains_symlinks": false
+    }
+  ],
+  "retain": [
+    {
+      "path": "/opt/escape/.env",
+      "canonical": "/opt/escape/.env",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253027,
+      "mtime_ns": 1792695061691360544
+    },
+    {
+      "path": "/opt/escape/Caddyfile",
+      "canonical": "/opt/escape/Caddyfile",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253015,
+      "mtime_ns": 1792714473679547349
+    },
+    {
+      "path": "/opt/escape/RATE_LIMITS.md",
+      "canonical": "/opt/escape/RATE_LIMITS.md",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253238,
+      "mtime_ns": 1792695538754874786
+    },
+    {
+      "path": "/opt/escape/README.md",
+      "canonical": "/opt/escape/README.md",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253087,
+      "mtime_ns": 1792695538754657448
+    },
+    {
+      "path": "/opt/escape/admin",
+      "canonical": "/opt/escape/admin",
+      "bytes": 45056,
+      "type": "directory",
+      "device": 64769,
+      "inode": 258573,
+      "mtime_ns": 1793080922093036594
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T162323Z",
+      "canonical": "/opt/escape/backups/runtime-release-20261027T162323Z",
+      "bytes": 1110016,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259430,
+      "mtime_ns": 1793118203836931679
+    },
+    {
+      "path": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+      "canonical": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+      "bytes": 1658880,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259609,
+      "mtime_ns": 1793129448460821555
+    },
+    {
+      "path": "/opt/escape/compose.yml",
+      "canonical": "/opt/escape/compose.yml",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 258580,
+      "mtime_ns": 1793080922112433750
+    },
+    {
+      "path": "/opt/escape/dashboard_smoke.py",
+      "canonical": "/opt/escape/dashboard_smoke.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253099,
+      "mtime_ns": 1792695538752836100
+    },
+    {
+      "path": "/opt/escape/deploy_download_page.py",
+      "canonical": "/opt/escape/deploy_download_page.py",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 259558,
+      "mtime_ns": 1793118279735970019
+    },
+    {
+      "path": "/opt/escape/deploy_runtime.py",
+      "canonical": "/opt/escape/deploy_runtime.py",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 253405,
+      "mtime_ns": 1792867438450846193
+    },
+    {
+      "path": "/opt/escape/deploy_runtime0313-candidate.py",
+      "canonical": "/opt/escape/deploy_runtime0313-candidate.py",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 258001,
+      "mtime_ns": 1793046962598626377
+    },
+    {
+      "path": "/opt/escape/deployed-runtime-manifest.json",
+      "canonical": "/opt/escape/deployed-runtime-manifest.json",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253041,
+      "mtime_ns": 1793118216122394012
+    },
+    {
+      "path": "/opt/escape/enable_proxy.py",
+      "canonical": "/opt/escape/enable_proxy.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253078,
+      "mtime_ns": 1792695538753018362
+    },
+    {
+      "path": "/opt/escape/init_config.py",
+      "canonical": "/opt/escape/init_config.py",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253016,
+      "mtime_ns": 1792695538753211275
+    },
+    {
+      "path": "/opt/escape/isolated_runner.py",
+      "canonical": "/opt/escape/isolated_runner.py",
+      "bytes": 12288,
+      "type": "file",
+      "device": 64769,
+      "inode": 253252,
+      "mtime_ns": 1793117320707230328
+    },
+    {
+      "path": "/opt/escape/multiclient-catalog-migration",
+      "canonical": "/opt/escape/multiclient-catalog-migration",
+      "bytes": 36864,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259413,
+      "mtime_ns": 1793117320708084190
+    },
+    {
+      "path": "/opt/escape/multiclient-runtime-manifest.json",
+      "canonical": "/opt/escape/multiclient-runtime-manifest.json",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 253401,
+      "mtime_ns": 1793118115769181913
+    },
+    {
+      "path": "/opt/escape/multiclient-runtime-overlay",
+      "canonical": "/opt/escape/multiclient-runtime-overlay",
+      "bytes": 880640,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259349,
+      "mtime_ns": 1793117320705687712
+    },
+    {
+      "path": "/opt/escape/multiclient_review.py",
+      "canonical": "/opt/escape/multiclient_review.py",
+      "bytes": 151552,
+      "type": "file",
+      "device": 64769,
+      "inode": 253240,
+      "mtime_ns": 1793117320706478477
+    },
+    {
+      "path": "/opt/escape/nginx.conf.template",
+      "canonical": "/opt/escape/nginx.conf.template",
+      "bytes": 8192,
+      "type": "file",
+      "device": 64769,
+      "inode": 258579,
+      "mtime_ns": 1793080922109777325
+    },
+    {
+      "path": "/opt/escape/prepare_gateway.py",
+      "canonical": "/opt/escape/prepare_gateway.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253100,
+      "mtime_ns": 1792695538753376605
+    },
+    {
+      "path": "/opt/escape/rate_limit_smoke.py",
+      "canonical": "/opt/escape/rate_limit_smoke.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253107,
+      "mtime_ns": 1792695538753622576
+    },
+    {
+      "path": "/opt/escape/recovery-item-catalog.json",
+      "canonical": "/opt/escape/recovery-item-catalog.json",
+      "bytes": 28672,
+      "type": "file",
+      "device": 64769,
+      "inode": 253901,
+      "mtime_ns": 1793117320707608246
+    },
+    {
+      "path": "/opt/escape/recovery_probe.py",
+      "canonical": "/opt/escape/recovery_probe.py",
+      "bytes": 40960,
+      "type": "file",
+      "device": 64769,
+      "inode": 253900,
+      "mtime_ns": 1793117320707399926
+    },
+    {
+      "path": "/opt/escape/runtime",
+      "canonical": "/opt/escape/runtime",
+      "bytes": 946176,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253039,
+      "mtime_ns": 1793118205330624207
+    },
+    {
+      "path": "/opt/escape/secrets",
+      "canonical": "/opt/escape/secrets",
+      "bytes": 8192,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253017,
+      "mtime_ns": 1792692444063229418
+    },
+    {
+      "path": "/opt/escape/security_smoke.py",
+      "canonical": "/opt/escape/security_smoke.py",
+      "bytes": 16384,
+      "type": "file",
+      "device": 64769,
+      "inode": 253079,
+      "mtime_ns": 1793118115768829872
+    },
+    {
+      "path": "/opt/escape/tests",
+      "canonical": "/opt/escape/tests",
+      "bytes": 4096,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253255,
+      "mtime_ns": 1793118007858343256
+    },
+    {
+      "path": "/opt/escape/tools",
+      "canonical": "/opt/escape/tools",
+      "bytes": 57344,
+      "type": "directory",
+      "device": 64769,
+      "inode": 253243,
+      "mtime_ns": 1792697029795122144
+    },
+    {
+      "path": "/opt/escape/update_proxy.py",
+      "canonical": "/opt/escape/update_proxy.py",
+      "bytes": 4096,
+      "type": "file",
+      "device": 64769,
+      "inode": 253101,
+      "mtime_ns": 1792695538753976440
+    },
+    {
+      "path": "/var/www/escape/current",
+      "canonical": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+      "bytes": 4096,
+      "type": "symlink",
+      "device": 64769,
+      "inode": 259596,
+      "mtime_ns": 1793118280234659889
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.14-46a458ea2e41.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.14-46a458ea2e41.apk",
+      "bytes": 124211200,
+      "type": "file",
+      "device": 64769,
+      "inode": 258058,
+      "mtime_ns": 1793082215745623080
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.15-e7ac556941de.apk",
+      "canonical": "/var/www/escape/downloads/Escape-0.3.15-e7ac556941de.apk",
+      "bytes": 123576320,
+      "type": "file",
+      "device": 64769,
+      "inode": 259003,
+      "mtime_ns": 1793118279491906623
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.14-46a458ea2e41-20261027T062336412411Z",
+      "canonical": "/var/www/escape/releases/0.3.14-46a458ea2e41-20261027T062336412411Z",
+      "bytes": 130560000,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259004,
+      "mtime_ns": 1793082215748018126
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+      "canonical": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+      "bytes": 132722688,
+      "type": "directory",
+      "device": 64769,
+      "inode": 259559,
+      "mtime_ns": 1793118279493952431
+    }
+  ],
+  "estimated_reclaim_bytes": 6501818368,
+  "delete_count": 122,
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "runtime_files": 64,
+  "current_web_target": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+  "retained_apk_sha256": {
+    "/var/www/escape/downloads/Escape-0.3.15-e7ac556941de.apk": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8",
+    "/var/www/escape/downloads/Escape-0.3.14-46a458ea2e41.apk": "46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525"
+  },
+  "fresh_current_backup": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+  "rollback_0_3_14_backup": "/opt/escape/backups/runtime-release-20261027T162323Z",
+  "both_pg_dump_archives_verified": true,
+  "containers": [
+    {
+      "name": "escape-api-gateway-1",
+      "project": "escape",
+      "running": true,
+      "health": null
+    },
+    {
+      "name": "escape-nakama-1",
+      "project": "escape",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "escape-postgres-1",
+      "project": "escape",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "tolk-prototype",
+      "project": null,
+      "running": true,
+      "health": null
+    },
+    {
+      "name": "tolk-prototype-before-20261017T121536Z-admin-online-e005df5c9f8f4dca836a1588b8b92b51",
+      "project": null,
+      "running": false,
+      "health": null
+    },
+    {
+      "name": "pulse-api",
+      "project": "pulse",
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "offset-nakama-1",
+      "project": "offset",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "offset-postgres-1",
+      "project": "offset",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "elevator-v25-qa",
+      "project": null,
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "elevator-difficulty-qa",
+      "project": null,
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "elevator-nakama-1",
+      "project": "elevator",
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "elevator-accounts-qa",
+      "project": null,
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "elevator-postgres-1",
+      "project": "elevator",
+      "running": false,
+      "health": "unhealthy"
+    },
+    {
+      "name": "nakama",
+      "project": "ashfold",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "postgres",
+      "project": "ashfold",
+      "running": true,
+      "health": "healthy"
+    }
+  ],
+  "docker_objects_to_delete": [],
+  "volumes_to_delete": [],
+  "live_mount_paths": [
+    "/opt/escape/admin/aura",
+    "/opt/escape/nginx.conf.template",
+    "/opt/escape/secrets",
+    "/opt/escape/runtime",
+    "/var/lib/docker/volumes/escape_postgres-data/_data",
+    "/srv/tolk/data",
+    "/srv/tolk/deletion-records",
+    "/srv/tolk/admin-secrets/admin-auth.json",
+    "/srv/tolk/data",
+    "/srv/tolk/deletion-records",
+    "/srv/tolk/admin-secrets/admin-auth.json",
+    "/root/pulse/server-releases/20261012T214920881752Z",
+    "/root/pulse/data",
+    "/root/offset/backend/config/nakama.yml",
+    "/var/lib/docker/volumes/offset_offset_db/_data",
+    "/root/elevator/v25-qa",
+    "/root/elevator/difficulty-qa",
+    "/root/elevator/prototype/modules",
+    "/root/elevator/accounts-qa",
+    "/var/lib/docker/volumes/elevator_elevator-data/_data",
+    "/root/ashfold",
+    "/var/lib/docker/volumes/ashfold_data/_data"
+  ],
+  "top_level_inventory": {
+    "/opt/escape": [
+      {
+        "path": "/opt/escape/.aura-admin-upload-3eb340ae8d5a",
+        "canonical": "/opt/escape/.aura-admin-upload-3eb340ae8d5a",
+        "bytes": 28672,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258555,
+        "mtime_ns": 1793080879508984279
+      },
+      {
+        "path": "/opt/escape/.aura-login-upload-2a1426de9c7e",
+        "canonical": "/opt/escape/.aura-login-upload-2a1426de9c7e",
+        "bytes": 24576,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259500,
+        "mtime_ns": 1793117416126416928
+      },
+      {
+        "path": "/opt/escape/.env",
+        "canonical": "/opt/escape/.env",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253027,
+        "mtime_ns": 1792695061691360544
+      },
+      {
+        "path": "/opt/escape/Caddyfile",
+        "canonical": "/opt/escape/Caddyfile",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253015,
+        "mtime_ns": 1792714473679547349
+      },
+      {
+        "path": "/opt/escape/RATE_LIMITS.md",
+        "canonical": "/opt/escape/RATE_LIMITS.md",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253238,
+        "mtime_ns": 1792695538754874786
+      },
+      {
+        "path": "/opt/escape/README.md",
+        "canonical": "/opt/escape/README.md",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253087,
+        "mtime_ns": 1792695538754657448
+      },
+      {
+        "path": "/opt/escape/__pycache__",
+        "canonical": "/opt/escape/__pycache__",
+        "bytes": 274432,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253108,
+        "mtime_ns": 1793118026390943077
+      },
+      {
+        "path": "/opt/escape/admin",
+        "canonical": "/opt/escape/admin",
+        "bytes": 45056,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258573,
+        "mtime_ns": 1793080922093036594
+      },
+      {
+        "path": "/opt/escape/aura-admin0314-3eb340ae8d5a",
+        "canonical": "/opt/escape/aura-admin0314-3eb340ae8d5a",
+        "bytes": 77824,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258556,
+        "mtime_ns": 1793080893736434540
+      },
+      {
+        "path": "/opt/escape/aura-login-fix0314-2a1426de9c7e",
+        "canonical": "/opt/escape/aura-login-fix0314-2a1426de9c7e",
+        "bytes": 49152,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259503,
+        "mtime_ns": 1793117433670279002
+      },
+      {
+        "path": "/opt/escape/backups",
+        "canonical": "/opt/escape/backups",
+        "bytes": 15773696,
+        "type": "directory",
+        "device": 64769,
+        "inode": 252945,
+        "mtime_ns": 1793129447309562347
+      },
+      {
+        "path": "/opt/escape/compose.yml",
+        "canonical": "/opt/escape/compose.yml",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 258580,
+        "mtime_ns": 1793080922112433750
+      },
+      {
+        "path": "/opt/escape/dashboard_smoke.py",
+        "canonical": "/opt/escape/dashboard_smoke.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253099,
+        "mtime_ns": 1792695538752836100
+      },
+      {
+        "path": "/opt/escape/deploy_download_page.py",
+        "canonical": "/opt/escape/deploy_download_page.py",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 259558,
+        "mtime_ns": 1793118279735970019
+      },
+      {
+        "path": "/opt/escape/deploy_resource_fix.py",
+        "canonical": "/opt/escape/deploy_resource_fix.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253296,
+        "mtime_ns": 1792697414618506272
+      },
+      {
+        "path": "/opt/escape/deploy_runtime.py",
+        "canonical": "/opt/escape/deploy_runtime.py",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 253405,
+        "mtime_ns": 1792867438450846193
+      },
+      {
+        "path": "/opt/escape/deploy_runtime0313-candidate.py",
+        "canonical": "/opt/escape/deploy_runtime0313-candidate.py",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 258001,
+        "mtime_ns": 1793046962598626377
+      },
+      {
+        "path": "/opt/escape/deployed-runtime-manifest.json",
+        "canonical": "/opt/escape/deployed-runtime-manifest.json",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253041,
+        "mtime_ns": 1793118216122394012
+      },
+      {
+        "path": "/opt/escape/enable_proxy.py",
+        "canonical": "/opt/escape/enable_proxy.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253078,
+        "mtime_ns": 1792695538753018362
+      },
+      {
+        "path": "/opt/escape/init_config.py",
+        "canonical": "/opt/escape/init_config.py",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253016,
+        "mtime_ns": 1792695538753211275
+      },
+      {
+        "path": "/opt/escape/isolated_runner.py",
+        "canonical": "/opt/escape/isolated_runner.py",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 253252,
+        "mtime_ns": 1793117320707230328
+      },
+      {
+        "path": "/opt/escape/live_resource_payload_test.py",
+        "canonical": "/opt/escape/live_resource_payload_test.py",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253298,
+        "mtime_ns": 1792697556163647588
+      },
+      {
+        "path": "/opt/escape/multiclient-catalog-migration",
+        "canonical": "/opt/escape/multiclient-catalog-migration",
+        "bytes": 36864,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259413,
+        "mtime_ns": 1793117320708084190
+      },
+      {
+        "path": "/opt/escape/multiclient-double.json",
+        "canonical": "/opt/escape/multiclient-double.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253242,
+        "mtime_ns": 1792696986117027132
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-all-runtime-errors.log",
+        "canonical": "/opt/escape/multiclient-isolated-all-runtime-errors.log",
+        "bytes": 16384,
+        "type": "file",
+        "device": 64769,
+        "inode": 255060,
+        "mtime_ns": 1793116996669777067
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-all.json",
+        "canonical": "/opt/escape/multiclient-isolated-all.json",
+        "bytes": 225280,
+        "type": "file",
+        "device": 64769,
+        "inode": 259519,
+        "mtime_ns": 1793118006141339695
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-arena.json",
+        "canonical": "/opt/escape/multiclient-isolated-arena.json",
+        "bytes": 32768,
+        "type": "file",
+        "device": 64769,
+        "inode": 253057,
+        "mtime_ns": 1792831946222976382
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-consumables.json",
+        "canonical": "/opt/escape/multiclient-isolated-consumables.json",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 259334,
+        "mtime_ns": 1793117276556322252
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-cosmetics.json",
+        "canonical": "/opt/escape/multiclient-isolated-cosmetics.json",
+        "bytes": 28672,
+        "type": "file",
+        "device": 64769,
+        "inode": 254308,
+        "mtime_ns": 1792873826101720445
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-global-boss-runtime-errors.log",
+        "canonical": "/opt/escape/multiclient-isolated-global-boss-runtime-errors.log",
+        "bytes": 24576,
+        "type": "file",
+        "device": 64769,
+        "inode": 256811,
+        "mtime_ns": 1793045591732410709
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-global-boss.json",
+        "canonical": "/opt/escape/multiclient-isolated-global-boss.json",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 256810,
+        "mtime_ns": 1793077405707806460
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-lifecycle-runtime-errors.log",
+        "canonical": "/opt/escape/multiclient-isolated-lifecycle-runtime-errors.log",
+        "bytes": 20480,
+        "type": "file",
+        "device": 64769,
+        "inode": 256384,
+        "mtime_ns": 1793034803304298795
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-lifecycle.json",
+        "canonical": "/opt/escape/multiclient-isolated-lifecycle.json",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 256383,
+        "mtime_ns": 1793034803051216665
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-race-policy.json",
+        "canonical": "/opt/escape/multiclient-isolated-race-policy.json",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253516,
+        "mtime_ns": 1792785444761017122
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-race-unpaid.json",
+        "canonical": "/opt/escape/multiclient-isolated-race-unpaid.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253299,
+        "mtime_ns": 1792697638570386769
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-recovery-runtime-errors.log",
+        "canonical": "/opt/escape/multiclient-isolated-recovery-runtime-errors.log",
+        "bytes": 53248,
+        "type": "file",
+        "device": 64769,
+        "inode": 256519,
+        "mtime_ns": 1793045802960150609
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-recovery.json",
+        "canonical": "/opt/escape/multiclient-isolated-recovery.json",
+        "bytes": 12288,
+        "type": "file",
+        "device": 64769,
+        "inode": 258951,
+        "mtime_ns": 1793118078723774721
+      },
+      {
+        "path": "/opt/escape/multiclient-isolated-shop.json",
+        "canonical": "/opt/escape/multiclient-isolated-shop.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 257550,
+        "mtime_ns": 1793045732209828177
+      },
+      {
+        "path": "/opt/escape/multiclient-overlap.json",
+        "canonical": "/opt/escape/multiclient-overlap.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253245,
+        "mtime_ns": 1792697019421188642
+      },
+      {
+        "path": "/opt/escape/multiclient-production-double-disconnect.json",
+        "canonical": "/opt/escape/multiclient-production-double-disconnect.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253406,
+        "mtime_ns": 1792700124012869322
+      },
+      {
+        "path": "/opt/escape/multiclient-production-overlap.json",
+        "canonical": "/opt/escape/multiclient-production-overlap.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253407,
+        "mtime_ns": 1792700139650981485
+      },
+      {
+        "path": "/opt/escape/multiclient-production-pvp.json",
+        "canonical": "/opt/escape/multiclient-production-pvp.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253404,
+        "mtime_ns": 1792700109049230007
+      },
+      {
+        "path": "/opt/escape/multiclient-pvp.json",
+        "canonical": "/opt/escape/multiclient-pvp.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253241,
+        "mtime_ns": 1792696956711040005
+      },
+      {
+        "path": "/opt/escape/multiclient-runtime-manifest.json",
+        "canonical": "/opt/escape/multiclient-runtime-manifest.json",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 253401,
+        "mtime_ns": 1793118115769181913
+      },
+      {
+        "path": "/opt/escape/multiclient-runtime-overlay",
+        "canonical": "/opt/escape/multiclient-runtime-overlay",
+        "bytes": 880640,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259349,
+        "mtime_ns": 1793117320705687712
+      },
+      {
+        "path": "/opt/escape/multiclient_cleanup.py",
+        "canonical": "/opt/escape/multiclient_cleanup.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253248,
+        "mtime_ns": 1792697075257167486
+      },
+      {
+        "path": "/opt/escape/multiclient_review.py",
+        "canonical": "/opt/escape/multiclient_review.py",
+        "bytes": 151552,
+        "type": "file",
+        "device": 64769,
+        "inode": 253240,
+        "mtime_ns": 1793117320706478477
+      },
+      {
+        "path": "/opt/escape/nginx.conf.template",
+        "canonical": "/opt/escape/nginx.conf.template",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 258579,
+        "mtime_ns": 1793080922109777325
+      },
+      {
+        "path": "/opt/escape/page-staging",
+        "canonical": "/opt/escape/page-staging",
+        "bytes": 3119407104,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253408,
+        "mtime_ns": 1793118279734907127
+      },
+      {
+        "path": "/opt/escape/prepare_gateway.py",
+        "canonical": "/opt/escape/prepare_gateway.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253100,
+        "mtime_ns": 1792695538753376605
+      },
+      {
+        "path": "/opt/escape/production-boss-shop-mail-smoke.json",
+        "canonical": "/opt/escape/production-boss-shop-mail-smoke.json",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 258018,
+        "mtime_ns": 1793047790207680803
+      },
+      {
+        "path": "/opt/escape/production_boss_shop_mail_smoke0313.py",
+        "canonical": "/opt/escape/production_boss_shop_mail_smoke0313.py",
+        "bytes": 8192,
+        "type": "file",
+        "device": 64769,
+        "inode": 257932,
+        "mtime_ns": 1793047388161168550
+      },
+      {
+        "path": "/opt/escape/rate_limit_smoke.py",
+        "canonical": "/opt/escape/rate_limit_smoke.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253107,
+        "mtime_ns": 1792695538753622576
+      },
+      {
+        "path": "/opt/escape/recovery-item-catalog.json",
+        "canonical": "/opt/escape/recovery-item-catalog.json",
+        "bytes": 28672,
+        "type": "file",
+        "device": 64769,
+        "inode": 253901,
+        "mtime_ns": 1793117320707608246
+      },
+      {
+        "path": "/opt/escape/recovery_probe.py",
+        "canonical": "/opt/escape/recovery_probe.py",
+        "bytes": 40960,
+        "type": "file",
+        "device": 64769,
+        "inode": 253900,
+        "mtime_ns": 1793117320707399926
+      },
+      {
+        "path": "/opt/escape/release-0.3.3-9de1ff1ef0e84ef4ac86216b4c47daf1",
+        "canonical": "/opt/escape/release-0.3.3-9de1ff1ef0e84ef4ac86216b4c47daf1",
+        "bytes": 610304,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253440,
+        "mtime_ns": 1792787160838980866
+      },
+      {
+        "path": "/opt/escape/release-0.3.4-4257ea99c3ca4eb791f84b159f0d4abf",
+        "canonical": "/opt/escape/release-0.3.4-4257ea99c3ca4eb791f84b159f0d4abf",
+        "bytes": 622592,
+        "type": "directory",
+        "device": 64769,
+        "inode": 252851,
+        "mtime_ns": 1792833695302692511
+      },
+      {
+        "path": "/opt/escape/release0311-validation-3c82467e1e95",
+        "canonical": "/opt/escape/release0311-validation-3c82467e1e95",
+        "bytes": 2437120,
+        "type": "directory",
+        "device": 64769,
+        "inode": 255928,
+        "mtime_ns": 1793026807472640478
+      },
+      {
+        "path": "/opt/escape/release0311-validation-4c2484b0dc37",
+        "canonical": "/opt/escape/release0311-validation-4c2484b0dc37",
+        "bytes": 2179072,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253611,
+        "mtime_ns": 1793025786671138422
+      },
+      {
+        "path": "/opt/escape/release0312-validation-681cb23d10d1",
+        "canonical": "/opt/escape/release0312-validation-681cb23d10d1",
+        "bytes": 2510848,
+        "type": "directory",
+        "device": 64769,
+        "inode": 256328,
+        "mtime_ns": 1793036262516020390
+      },
+      {
+        "path": "/opt/escape/release0312-validation-736ee4fc8dd0",
+        "canonical": "/opt/escape/release0312-validation-736ee4fc8dd0",
+        "bytes": 2228224,
+        "type": "directory",
+        "device": 64769,
+        "inode": 256197,
+        "mtime_ns": 1793034805330955048
+      },
+      {
+        "path": "/opt/escape/release0312-validation-c7bbd2f2143a",
+        "canonical": "/opt/escape/release0312-validation-c7bbd2f2143a",
+        "bytes": 4096,
+        "type": "directory",
+        "device": 64769,
+        "inode": 255791,
+        "mtime_ns": 1793032567108342002
+      },
+      {
+        "path": "/opt/escape/release0313-catalogs-0367c1aa43fb",
+        "canonical": "/opt/escape/release0313-catalogs-0367c1aa43fb",
+        "bytes": 77824,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257998,
+        "mtime_ns": 1793047623886697717
+      },
+      {
+        "path": "/opt/escape/release0313-catalogs-0367c1aa43fb.tar.gz",
+        "canonical": "/opt/escape/release0313-catalogs-0367c1aa43fb.tar.gz",
+        "bytes": 16384,
+        "type": "file",
+        "device": 64769,
+        "inode": 253050,
+        "mtime_ns": 1793047595839433179
+      },
+      {
+        "path": "/opt/escape/release0313-validation-05c88342efee",
+        "canonical": "/opt/escape/release0313-validation-05c88342efee",
+        "bytes": 2482176,
+        "type": "directory",
+        "device": 64769,
+        "inode": 256896,
+        "mtime_ns": 1793045084571088737
+      },
+      {
+        "path": "/opt/escape/release0313-validation-261194f941bc",
+        "canonical": "/opt/escape/release0313-validation-261194f941bc",
+        "bytes": 2781184,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257784,
+        "mtime_ns": 1793047163821882733
+      },
+      {
+        "path": "/opt/escape/release0313-validation-32b538f08255",
+        "canonical": "/opt/escape/release0313-validation-32b538f08255",
+        "bytes": 2506752,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257488,
+        "mtime_ns": 1793045960936351568
+      },
+      {
+        "path": "/opt/escape/release0313-validation-51d9bf66c597",
+        "canonical": "/opt/escape/release0313-validation-51d9bf66c597",
+        "bytes": 2510848,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257190,
+        "mtime_ns": 1793045592902656454
+      },
+      {
+        "path": "/opt/escape/release0313-validation-7543db69b664",
+        "canonical": "/opt/escape/release0313-validation-7543db69b664",
+        "bytes": 2494464,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257043,
+        "mtime_ns": 1793045432878707543
+      },
+      {
+        "path": "/opt/escape/release0313-validation-9a2e621d893b",
+        "canonical": "/opt/escape/release0313-validation-9a2e621d893b",
+        "bytes": 2572288,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257337,
+        "mtime_ns": 1793045804060831159
+      },
+      {
+        "path": "/opt/escape/release0313-validation-c29f9911c491",
+        "canonical": "/opt/escape/release0313-validation-c29f9911c491",
+        "bytes": 2633728,
+        "type": "directory",
+        "device": 64769,
+        "inode": 257637,
+        "mtime_ns": 1793046428266610644
+      },
+      {
+        "path": "/opt/escape/release0313-validation-dddb99dfe8eb",
+        "canonical": "/opt/escape/release0313-validation-dddb99dfe8eb",
+        "bytes": 2478080,
+        "type": "directory",
+        "device": 64769,
+        "inode": 256747,
+        "mtime_ns": 1793044939414589059
+      },
+      {
+        "path": "/opt/escape/release0313-validation-faf8f9bc2b85",
+        "canonical": "/opt/escape/release0313-validation-faf8f9bc2b85",
+        "bytes": 2375680,
+        "type": "directory",
+        "device": 64769,
+        "inode": 256600,
+        "mtime_ns": 1793044779917336008
+      },
+      {
+        "path": "/opt/escape/release0314-validation-11a1588d5c34",
+        "canonical": "/opt/escape/release0314-validation-11a1588d5c34",
+        "bytes": 2891776,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258732,
+        "mtime_ns": 1793082747455273116
+      },
+      {
+        "path": "/opt/escape/release0314-validation-4cdad9d6d7a1",
+        "canonical": "/opt/escape/release0314-validation-4cdad9d6d7a1",
+        "bytes": 2871296,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258104,
+        "mtime_ns": 1793078076715322895
+      },
+      {
+        "path": "/opt/escape/release0314-validation-59ec9c476e6c",
+        "canonical": "/opt/escape/release0314-validation-59ec9c476e6c",
+        "bytes": 2580480,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253089,
+        "mtime_ns": 1793081697680706635
+      },
+      {
+        "path": "/opt/escape/release0314-validation-7cddaebfd211",
+        "canonical": "/opt/escape/release0314-validation-7cddaebfd211",
+        "bytes": 2945024,
+        "type": "directory",
+        "device": 64769,
+        "inode": 258257,
+        "mtime_ns": 1793080578437616052
+      },
+      {
+        "path": "/opt/escape/release0315-validation-ca51d31fa463",
+        "canonical": "/opt/escape/release0315-validation-ca51d31fa463",
+        "bytes": 2883584,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259104,
+        "mtime_ns": 1793117212027110416
+      },
+      {
+        "path": "/opt/escape/release0315-validation-fedc585b7cc2",
+        "canonical": "/opt/escape/release0315-validation-fedc585b7cc2",
+        "bytes": 3174400,
+        "type": "directory",
+        "device": 64769,
+        "inode": 259264,
+        "mtime_ns": 1793118115773567059
+      },
+      {
+        "path": "/opt/escape/release037-validation-5ad4df0c0efd",
+        "canonical": "/opt/escape/release037-validation-5ad4df0c0efd",
+        "bytes": 3633152,
+        "type": "directory",
+        "device": 64769,
+        "inode": 254055,
+        "mtime_ns": 1792873792053697394
+      },
+      {
+        "path": "/opt/escape/release038-validation-a4bad35a8318",
+        "canonical": "/opt/escape/release038-validation-a4bad35a8318",
+        "bytes": 2027520,
+        "type": "directory",
+        "device": 64769,
+        "inode": 254039,
+        "mtime_ns": 1792880121418262800
+      },
+      {
+        "path": "/opt/escape/release039-validation-877e4eacbcb5",
+        "canonical": "/opt/escape/release039-validation-877e4eacbcb5",
+        "bytes": 2412544,
+        "type": "directory",
+        "device": 64769,
+        "inode": 255145,
+        "mtime_ns": 1792920432796697132
+      },
+      {
+        "path": "/opt/escape/release039-validation-997637624436",
+        "canonical": "/opt/escape/release039-validation-997637624436",
+        "bytes": 2256896,
+        "type": "directory",
+        "device": 64769,
+        "inode": 254712,
+        "mtime_ns": 1792918559487774564
+      },
+      {
+        "path": "/opt/escape/release039-validation-a89b5462c6f3",
+        "canonical": "/opt/escape/release039-validation-a89b5462c6f3",
+        "bytes": 2187264,
+        "type": "directory",
+        "device": 64769,
+        "inode": 254857,
+        "mtime_ns": 1792918988322586851
+      },
+      {
+        "path": "/opt/escape/release039-validation-e4d568feac73",
+        "canonical": "/opt/escape/release039-validation-e4d568feac73",
+        "bytes": 2240512,
+        "type": "directory",
+        "device": 64769,
+        "inode": 255000,
+        "mtime_ns": 1792919572696842018
+      },
+      {
+        "path": "/opt/escape/run.py",
+        "canonical": "/opt/escape/run.py",
+        "bytes": 28672,
+        "type": "file",
+        "device": 64769,
+        "inode": 253251,
+        "mtime_ns": 1792697159049251136
+      },
+      {
+        "path": "/opt/escape/runtime",
+        "canonical": "/opt/escape/runtime",
+        "bytes": 946176,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253039,
+        "mtime_ns": 1793118205330624207
+      },
+      {
+        "path": "/opt/escape/secrets",
+        "canonical": "/opt/escape/secrets",
+        "bytes": 8192,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253017,
+        "mtime_ns": 1792692444063229418
+      },
+      {
+        "path": "/opt/escape/security_smoke.py",
+        "canonical": "/opt/escape/security_smoke.py",
+        "bytes": 16384,
+        "type": "file",
+        "device": 64769,
+        "inode": 253079,
+        "mtime_ns": 1793118115768829872
+      },
+      {
+        "path": "/opt/escape/security_smoke0313-candidate.py",
+        "canonical": "/opt/escape/security_smoke0313-candidate.py",
+        "bytes": 16384,
+        "type": "file",
+        "device": 64769,
+        "inode": 257931,
+        "mtime_ns": 1793047377948155538
+      },
+      {
+        "path": "/opt/escape/server.tar.gz",
+        "canonical": "/opt/escape/server.tar.gz",
+        "bytes": 221184,
+        "type": "file",
+        "device": 64769,
+        "inode": 252946,
+        "mtime_ns": 1792695533905607252
+      },
+      {
+        "path": "/opt/escape/source",
+        "canonical": "/opt/escape/source",
+        "bytes": 1486848,
+        "type": "directory",
+        "device": 64769,
+        "inode": 252951,
+        "mtime_ns": 1792695538746612301
+      },
+      {
+        "path": "/opt/escape/tests",
+        "canonical": "/opt/escape/tests",
+        "bytes": 4096,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253255,
+        "mtime_ns": 1793118007858343256
+      },
+      {
+        "path": "/opt/escape/tools",
+        "canonical": "/opt/escape/tools",
+        "bytes": 57344,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253243,
+        "mtime_ns": 1792697029795122144
+      },
+      {
+        "path": "/opt/escape/update_proxy.py",
+        "canonical": "/opt/escape/update_proxy.py",
+        "bytes": 4096,
+        "type": "file",
+        "device": 64769,
+        "inode": 253101,
+        "mtime_ns": 1792695538753976440
+      }
+    ],
+    "/var/www/escape": [
+      {
+        "path": "/var/www/escape/current",
+        "canonical": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+        "bytes": 4096,
+        "type": "symlink",
+        "device": 64769,
+        "inode": 259596,
+        "mtime_ns": 1793118280234659889
+      },
+      {
+        "path": "/var/www/escape/downloads",
+        "canonical": "/var/www/escape/downloads",
+        "bytes": 1796767744,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253426,
+        "mtime_ns": 1793118280098907882
+      },
+      {
+        "path": "/var/www/escape/releases",
+        "canonical": "/var/www/escape/releases",
+        "bytes": 2015371264,
+        "type": "directory",
+        "device": 64769,
+        "inode": 253425,
+        "mtime_ns": 1793118280099907884
+      }
+    ]
+  },
+  "df_before": "Filesystem       1B-blocks        Used   Available Use% Mounted on\n/dev/vda1      40424828928 25403310080 15004741632  63% /\n/dev/vda1      40424828928 25403310080 15004741632  63% /\n"
+}

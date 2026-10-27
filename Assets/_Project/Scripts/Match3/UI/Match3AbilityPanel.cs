@@ -274,6 +274,7 @@ namespace Project.Match3
             if (tmp != null)
             {
                 tmp.text = Mathf.Max(0, cost).ToString();
+                tmp.fontStyle |= FontStyles.Bold;
                 var corner = button.GetComponent<ExpeditionAbilityCostCorner>();
                 if (corner != null)
                 {

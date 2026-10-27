@@ -82,6 +82,8 @@ namespace Project.Achievements
         public static void ClearAllAwaitToastTokens() { }
         public static HashSet<string> CaptureEligibleClaimStepTokens() => new();
         public static int RaiseNewEligibleSince(HashSet<string> before) => 0;
+        public static HashSet<string> CaptureReachedUnclaimedStepTokens() => new();
+        public static int RaiseNewCompletedSince(HashSet<string> before) => 0;
     }
     public static class AchievementLifecycle { public static void NotifyDataChanged() { } }
     public static class AchievementStatKeys

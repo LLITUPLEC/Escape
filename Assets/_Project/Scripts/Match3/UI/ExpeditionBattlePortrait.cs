@@ -13,6 +13,17 @@ namespace Project.Match3
         private Sprite _lastSprite;
         private Sprite _fullBodySprite;
         private float _headCenterX = .5f;
+        private bool _localPlayer;
+
+        /// <summary>The figure retains the body sprite; its header uses the independently selected avatar.</summary>
+        public static void MarkLocalPlayer(Image source)
+        {
+            if (source == null) return;
+            var view = ExpeditionUi.Ensure<ExpeditionBattlePortrait>(source.gameObject);
+            view._localPlayer = true;
+            MarkFullBody(source);
+            view.Refresh(true);
+        }
 
         // This opt-in comes from the full-body source assignment, never from a
         // square/tall aspect-ratio guess. Unmarked portrait sprites remain intact.
@@ -48,14 +59,15 @@ namespace Project.Match3
         {
             if (_source == null || _portrait == null) return;
             _source.enabled = false;
-            var sprite = _source.sprite;
+            var selectedAvatar = _localPlayer ? Project.Character.CharacterAppearance.Avatar() : null;
+            var sprite = selectedAvatar != null ? selectedAvatar : _source.sprite;
             if (!force && sprite == _lastSprite) return;
             _lastSprite = sprite;
             _portrait.enabled = sprite != null;
             if (sprite == null) return;
             var region = sprite.textureRect;
             var crop = new Rect(.04f, .04f, .92f, .92f);
-            if (sprite == _fullBodySprite)
+            if (_localPlayer ? selectedAvatar == null : sprite == _fullBodySprite)
             {
                 const float height = .28f;
                 var width = Mathf.Min(1, height * 1.05f * region.height / region.width);

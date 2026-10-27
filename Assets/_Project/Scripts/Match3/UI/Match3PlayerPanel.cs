@@ -2,6 +2,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
+using Project.UI;
+using Project.Character;
 
 namespace Project.Match3
 {
@@ -58,7 +60,12 @@ namespace Project.Match3
         private RectTransform _raceGoalMarker;
         private Transform _raceTrack;
         private bool _expeditionStyle;
+        private Image _consumableBadge,_consumableIcon;
+        private TMP_Text _consumableName;
+        private ExpeditionCombatStatIcons _combatStatIcons;
         internal bool IsRaceHudMode => _raceHudMode;
+        public RectTransform PortraitFrame => transform.Find("ExpeditionPortraitFrame") as RectTransform
+            ?? (avatarImage != null ? avatarImage.rectTransform : transform as RectTransform);
 
         public void UseExpeditionStyle()
         {
@@ -239,7 +246,7 @@ namespace Project.Match3
             avatarLevelText.text = level < 0 ? "—" : Mathf.Max(1, level).ToString();
         }
 
-        public void UpdateCombatStats(int damageBonus, int armor, int healBonus, float critChancePercent)
+        public void UpdateCombatStats(int damageBonus, int armor, int healBonus, float critChancePercent, bool showHealing = true)
         {
             var dmg = Mathf.Max(0, damageBonus);
             var arm = Mathf.Max(0, armor);
@@ -248,8 +255,10 @@ namespace Project.Match3
 
             if (_expeditionStyle && combatStatsName != null)
             {
-                combatStatsName.fontSize = 22f;
-                combatStatsName.text = $"{dmg} УРОН  ·  {arm} БРОНЯ\n{heal} ЛЕЧ.  ·  {crit:0.#}% КРИТ";
+                if (_combatStatIcons == null) _combatStatIcons = combatStatsName.transform.parent.GetComponent<ExpeditionCombatStatIcons>();
+                if (_combatStatIcons != null) _combatStatIcons.SetValues(dmg, arm, heal, crit, showHealing);
+                combatStatsName.text = string.Empty;
+                combatStatsName.gameObject.SetActive(false);
                 if (combatStatsValue != null) combatStatsValue.gameObject.SetActive(false);
                 return;
             }
@@ -261,12 +270,12 @@ namespace Project.Match3
                 combatStatsName.text =
                     "Урон:\n" +
                     "Броня:\n" +
-                    "Лечение:\n" +
+                    (showHealing ? "Лечение:\n" : "") +
                     "Крит:";
                 combatStatsValue.text =
                     $"{dmg}\n" +
                     $"{arm}\n" +
-                    $"{heal}\n" +
+                    (showHealing ? $"{heal}\n" : "") +
                     $"{crit:0.00}%";
             }
             else if (combatStatsName != null)
@@ -275,7 +284,7 @@ namespace Project.Match3
                 combatStatsName.text =
                     $"Урон:   {dmg}\n" +
                     $"Броня:  {arm}\n" +
-                    $"Лечение: {heal}\n" +
+                    (showHealing ? $"Лечение: {heal}\n" : "") +
                     $"Крит:   {crit:0.00}%";
             }
             else return;
@@ -311,6 +320,23 @@ namespace Project.Match3
 
             if (_furyFx != null)
                 _furyFx.SetActive(active);
+        }
+
+        public void SetConsumableVisual(string id)
+        {
+            var active=ConsumablePresentation.IsKnown(id)&&id!=ConsumablePresentation.Bounty&&!_raceHudMode;
+            if(!active&&_consumableBadge==null)return;
+            if(_consumableBadge==null)
+            {
+                var opponent=transform is RectTransform rt&&rt.anchorMin.x>=.5f;
+                _consumableBadge=ExpeditionUi.Panel(transform,"ExpeditionConsumableBadge",opponent ? .005f : .505f,-.29f,opponent ? .495f : .995f,-.025f,ExpeditionTheme.Panel);
+                _consumableBadge.pixelsPerUnitMultiplier=7;_consumableBadge.raycastTarget=false;
+                _consumableIcon=ExpeditionUi.Fill(_consumableBadge.transform,"EffectIcon",.03f,.12f,.20f,.88f,Color.white);_consumableIcon.preserveAspect=true;
+                _consumableName=ExpeditionUi.Text(_consumableBadge.transform,"EffectName","",19,.22f,.08f,.96f,.92f,TextAlignmentOptions.Center);
+                _consumableName.color=ExpeditionTheme.Amber;_consumableName.enableAutoSizing=true;_consumableName.fontSizeMin=14;_consumableName.fontSizeMax=19;_consumableName.textWrappingMode=TextWrappingModes.NoWrap;
+            }
+            _consumableBadge.gameObject.SetActive(active);
+            if(active){_consumableIcon.sprite=ConsumablePresentation.Icon(id);_consumableName.text=ConsumablePresentation.Name(id);}
         }
 
         public void ShowDamagePopup(int damageAmount, bool isCrit)

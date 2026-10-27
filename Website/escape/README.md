@@ -1,103 +1,49 @@
-# Страница Escape для prokrust-play.ru/escape/
+# Страница Escape
 
-Локальный статический проект. Скрипт ничего не запускает и не публикует; он собирает готовый каталог `dist` для существующего веб-сервера.
+Опубликована **0.3.15 / Android versionCode 17**: https://prokrust-play.ru/escape/.
+APK `Escape-0.3.15-e7ac556941de.apk`, **123571699 байт**, SHA-256 `e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8`.
+Подпись совпадает с предыдущим выпуском, проверены ARMv7/ARM64 и отсутствие development/debuggable. Все 32 публичных файла прочитаны полностью по HTTPS. Итоговые свидетельства: `Design/Release-0.3.15/validation/release-completion.json`.
 
-## Входные данные
+Предыдущий выпуск **0.3.14 / code 16** сохранён: `Escape-0.3.14-46a458ea2e41.apk`, 124206651 байт, SHA-256 `46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525`.
 
-- Готовый релизный APK версии **0.3.4** после завершения проверки сборки.
-- Каталог с тремя **настоящими игровыми** скриншотами: `hub.png`, `character.png`, `mine.png`. Это должны быть итоговые кадры текущей сборки, а не концепт-арты.
-- Необязательный финальный отчёт проверки APK. Он читается только локально и **не копируется** на сайт.
+## Исходники и локальные результаты
 
-Шрифт и лицензия берутся из существующих `Assets/_Project/Fonts/PTSerif/PT_Serif-Web-Regular.ttf` и `OFL.txt`. Веб-источники находятся только в `Website/escape`.
+- `index.template.html` — шаблон страницы с историей изменений.
+- `render-release.ps1` — проверка APK и подготовка `dist/`.
+- `Design/Release-<version>/screens/` — три исходных PNG: `hub.png` (убежище), `character.png` (мастерская), `mine.png` (шахта).
+- `Design/Audio/` — утверждённые 19 WAV, плеер и история выбора звуков.
+- `Builds/<version>/` — APK, symbols и `build-status.json`.
+- `dist/`, staging и bundles — генерируемые файлы, исключённые из Git.
 
-## Собрать релиз
+Изображения публикуются без изменения пикселей. Кадры 0.3.15 получены настоящим Unity-рендерером из production-виджетов с автономными данными. Физический Android отдельно не проверялся.
 
-Из корня репозитория в PowerShell:
+## Новый выпуск
 
-```powershell
-& .\Website\escape\render-release.ps1 `
-  -ApkPath '.\Builds\Expedition\Escape-Expedition-0.3.4-20261024-091618.apk' `
-  -ScreensRoot '.\Design\Release-0.3.4\screenshots' `
-  -FinalValidationJson '.\Design\Release-0.3.4\validation\apk-validation.json'
-```
+Полное описание устойчивых инструментов: [Tools/Release/README.md](../../Tools/Release/README.md).
 
-Пути в примере заменяются на реальные, включая точное имя APK с суффиксом времени сборки, если он есть. `FinalValidationJson` можно не передавать; тогда сайт не содержит утверждения о проверенной подписи или данных об архитектурах.
-
-Если отчёт передан, сборка требует:
-
-- `build_result` строго `Succeeded`;
-- `signature_verified` — JSON boolean `true`;
-- `development_build` — JSON boolean `false`;
-- `sha256` и точный целочисленный `bytes`, совпадающие с выбранным APK;
-- `native_abis` с `arm64-v8a` и `armeabi-v7a`.
-
-`physical_device_tested=false` не блокирует упаковку; страница не заявляет о проверке на физическом устройстве. Все остальные поля отчёта игнорируются и никогда не сериализуются в публичные файлы.
-
-Скрипт проверяет PNG, наличие AndroidManifest.xml в APK и целостность скопированного файла. После всех проверок он заменяет `dist` через подготовленный соседний каталог. До этого существующий `dist` остаётся нетронутым. Старые временные каталоги удаляются только после проверки их абсолютного пути внутри `Website/escape`.
-
-## Результат
-
-```text
-dist/
-  index.html
-  release.json
-  downloads/
-    Escape-0.3.4-<первые 12 символов sha256>.apk
-  assets/
-    hub.png
-    character.png
-    mine.png
-    PTSerif-Regular.ttf
-    OFL.txt
-    mark.svg
-```
-
-Имя файла и SHA-256 используют нижний регистр хеша. `release.json` содержит `version`, `date` (`YYYY-MM-DD`), `filename`, точный `bytes`, `sha256`, `url`. При наличии прошедшего проверки отчёта добавляются только `signature_verified` и `architecture`.
-
-В HTML заменяются четыре токена: `{{APK_FILENAME}}`, `{{APK_MIB}}`, `{{APK_SHA256}}`, `{{RELEASE_DATE}}`. Размер отображается в МиБ (1 МиБ = 1 048 576 байт), с одним десятичным знаком. Текущая версия 0.3.4 задаётся в шаблоне и скрипте упаковки; при следующем релизе их нужно обновить согласованно.
-
-## Проверка и публикация
-
-Перед публикацией проверьте, что:
-
-1. На скриншотах текущая сборка и нужные экраны, без персональных данных.
-2. Контрольная сумма и размер из `release.json` совпадают с файлом в `downloads`.
-3. В `dist/index.html` не осталось `{{...}}`, а обе кнопки ведут к одному существующему APK.
-4. На мобильном и широком экране читаются текст и скриншоты; клавиатура открывает галерею и закрывает её через Escape.
-
-Размещать нужно **содержимое `dist`** в каталоге, обслуживаемом по `https://prokrust-play.ru/escape/`. README, скрипт, шаблон, отчёты проверок и любые другие исходники не публикуются. Рекомендуемые типы: `.apk` — `application/vnd.android.package-archive`, `.ttf` — `font/ttf`, `.svg` — `image/svg+xml`; HTML и JSON — UTF-8. Кэш для `index.html` и `release.json` должен позволять проверку свежести; имя APK уже зависит от содержимого.
-
-Страница работает без внешних CDN, аналитики и сетевых библиотек. JavaScript нужен только для увеличения скриншотов и форматирования даты: без него ссылки на полные изображения и скачивание работают. Учитываются `prefers-reduced-motion`, клавиатурный фокус и мобильная ширина. Шрифт PT Serif распространяется вместе с OFL.
-
-В рамках этой задачи браузерный `file://` просмотр не используется. Публикацию и проверку страницы на существующем сервере выполняет основной процесс отдельно.
-
-## Повторяемая проверка публичного релиза
-
-Постоянный скрипт находится в `Tools/Release/verify-public-release.ps1`. Он принимает версию, локальный манифест/каталог APK, адреса сайта/API, путь отчёта и обязательную ссылку на предыдущий APK. Версия предыдущего файла в коде не зашита.
-
-Подготовить отчёт **без сетевых запросов**, не объявляя релиз проверенным:
+После окончательных исходников, импорта, QA и выбора кадров создайте новый снимок; исторический снимок прошедшего выпуска не заменяйте:
 
 ```powershell
-& .\Tools\Release\verify-public-release.ps1 `
-  -ExpectedVersion '0.3.4' `
-  -PreviousApkUrl 'https://prokrust-play.ru/escape/downloads/Escape-0.3.3-b355794e9bcc.apk' `
-  -PreviousApkBytes 101203775 `
-  -PrepareOnly
+python Tools/Release/source_snapshot.py --version <version> --create
+# Unity: Project.Editor.ExpeditionAndroidBuild.BuildReleaseBatch
+./Tools/Release/validate-apk.ps1 -ExpectedVersion <version> -MinimumVersionCode <code>
+python Tools/Release/source_snapshot.py --version <version>
+./Website/escape/render-release.ps1 -ApkPath '<проверенный APK>' -ScreensRoot 'Design/Release-<version>/screens' -FinalValidationJson 'Design/Release-<version>/validation/apk-validation.json'
 ```
 
-После отдельной публикации запуск той же команды **без `-PrepareOnly`** проверяет:
+Версия и code в Unity, renderer и publisher должны соответствовать новому выпуску. Сборщик использует проверенный SDK `.cache/android-sdk`, временно выбирает API 36 и восстанавливает прежние настройки. Подпись остаётся прежней.
 
-- локальные размер и SHA-256 APK, имя с префиксом хеша и версию манифеста;
-- HTTPS-страницу и публичный манифест: статус 200, MIME, `no-cache`, поля релиза, обе ссылки скачивания и отсутствие незаменённых токенов;
-- HEAD нового APK: статус 200, точный размер, MIME Android APK и `immutable`;
-- диапазон `bytes=0-3`: статус 206, точный `Content-Range`, длину 4 и заголовок ZIP `50 4B 03 04`;
-- HEAD предыдущего APK: статус 200, MIME, непустой файл и прежний размер, если передан `PreviousApkBytes`;
-- существующий API `/healthcheck`: статус 200.
+`Tools/Release/prepare_publication.py` требует явные версию/code, SHA текущего серверного издателя и идентичность предыдущего APK. Он проверяет пакет и создаёт уникальные archive/plan в `.cache/release-work/`, не выполняя публикацию. После разрешения на публикацию загрузите файлы по точным путям плана и используйте `Tools/Release/publish_page_remote.py`; он проверяет архив, сохраняет предыдущий APK и выполняет атомарное переключение страницы.
 
-По умолчанию отчёт записывается в `Design/Release-<версия>/validation/public-release.json`. В режиме подготовки он содержит `state=not_run`, `success=null`, `network_checks_performed=false`. При реальном запуске сохраняются результат и частично выполненные проверки даже при ошибке; ошибка останавливает скрипт. Полный публичный APK не скачивается: SHA-256 проверяется локально и сверяется с публичным манифестом. HEAD/range не заменяют проверку хеша целого серверного файла или тест на телефоне.
+После установки:
 
-Версия **0.3.4 опубликована**, versionCode **6**: [страница](https://prokrust-play.ru/escape/), [APK — 97,1 МиБ](https://prokrust-play.ru/escape/downloads/Escape-0.3.4-45ee39a11284.apk). В шаблоне перечислены11 изменений этой итерации и кратко сохранена предыдущая 0.3.3; CSS и код галереи сохранены. [Release README](../../Design/Release-0.3.4/README.md), [UI QA](../../Design/Release-0.3.4/validation/ui-qa.json), [APK validation](../../Design/Release-0.3.4/validation/apk-validation.json), [публикация](../../Design/Release-0.3.4/validation/deploy-result.json), [публичные проверки](../../Design/Release-0.3.4/validation/public-release.json) и [полный серверный SHA-256](../../Design/Release-0.3.4/validation/server-apk-hash.json) подтверждают итоговую доставку. Подготовка документации сама не запускает render/deploy.
+```powershell
+./Tools/Release/verify-public-release.ps1 -ExpectedVersion <version> -PreviousApkUrl '<предыдущий APK HTTPS URL>' -PreviousApkBytes <bytes>
+python Tools/Release/verify_public_integrity.py --version <version> --version-code <code> --report 'Design/Release-<version>/validation/public-file-integrity.json'
+```
 
-[Браузерный просмотр](../../Design/Release-0.3.4/validation/browser-qa.json) блока «Что нового», версии/размера и обеих ссылок прошёл; [снимок](../../Design/Release-0.3.4/validation/public-release-browser.png) сохранён. Это desktop viewport 1265×712, без нового responsive/phone теста. Прежний [APK 0.3.3 — 96,5 МиБ](https://prokrust-play.ru/escape/downloads/Escape-0.3.3-b355794e9bcc.apk) сохранён и проверен по HTTP. [Совместимость](../../Design/Release-0.3.4/validation/update-compatibility.json): тот же сертификат, code 5 → 6; физическая установка обновления не выполнялась.
+Публикация страницы не перезапускает API/БД. Серверный runtime развёртывается отдельным проверенным процессом с manifest, проверкой простоя, backup и откатом.
 
-Физическое Android-устройство и установка обновления не тестировались, FPS/GC не измерялись. Реальные PlayOneShot и прослушивание новых звуков не выполнялись; проверялись сериализованные привязки OGG и сохранность critical sound. [Стадия разработки и приоритеты](../../Design/Release-0.3.4/development-stage.md) описаны отдельно. Отчёт публичной проверки не содержит локальных путей, ключей или тел ответов и не включается в `dist`.
+## Хранение
+
+Локально и на VPS сохранены только выпуски 0.3.15 и 0.3.14. Диагностические логи и immutable JSON отражают состояние на момент соответствующего выпуска; их старые пути не являются текущими зависимостями. Инструменты и нужные fixtures перенесены в `Tools/`, `Server/nakama/data/migrations/` и `Assets/_Project/Editor/Fixtures/`. История очистки находится в `Design/Release-0.3.15/validation/cleanup/`.

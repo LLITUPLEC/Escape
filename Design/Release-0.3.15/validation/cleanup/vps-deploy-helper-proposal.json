@@ -1,0 +1,22 @@
+{
+  "proposed_only": true,
+  "actions": [
+    {
+      "action": "replace_atomically",
+      "path": "/opt/escape/deploy_runtime.py",
+      "expected_before_sha256": "45707e11129bf7bab6a6c9ba9e13ebedd119a5751307459f9080bf9d3cd07da1",
+      "new_sha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31",
+      "source": "/opt/escape/deploy_runtime0313-candidate.py"
+    },
+    {
+      "action": "delete_file",
+      "path": "/opt/escape/deploy_runtime0313-candidate.py",
+      "expected_sha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31"
+    }
+  ],
+  "reason": "Keep the tested repository helper at its canonical path and remove the obsolete versioned duplicate. The only behavior addition is explicitly authorized test-game interruption; default guards remain enforced.",
+  "live_references_to_versioned_helper": [],
+  "both_originals_private_backup": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z/operations",
+  "runtime_db_service_changes": false,
+  "not_part_of_122_entry_manifest": true
+}

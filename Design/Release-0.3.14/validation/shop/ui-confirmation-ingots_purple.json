@@ -1,0 +1,11 @@
+{
+    "passed": true,
+    "networkOrAccountActions": false,
+    "stage": "confirmation-ingots_purple",
+    "error": "",
+    "assertions": 94,
+    "products": 6,
+    "labels": 51,
+    "purchaseIntents": 0,
+    "rubAttempts": 0
+}

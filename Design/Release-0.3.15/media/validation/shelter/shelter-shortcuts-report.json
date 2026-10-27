@@ -1,0 +1,17 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "icons": 3,
+    "preservedLegacyClicks": 2,
+    "factoryCallbackClicks": 3,
+    "checks": [
+        "Production BuildShelter creates3 exact generated icon shortcuts; legacy rating/friends callbacks and all3 factory callbacks survive.",
+        "Rating reward, trusted friends invite and actual unread mail badges remain visible; actual informational unlock inbox renders.",
+        "Offline fixture uses a neutral header and pinned shipped explorer; no profile/network/account actions."
+    ],
+    "screenshots": [
+        "Design/Media-2026-10-27/validation/shelter/shelter-generated-shortcuts.png",
+        "Design/Media-2026-10-27/validation/shelter/appearance-unlock-mail.png"
+    ]
+}

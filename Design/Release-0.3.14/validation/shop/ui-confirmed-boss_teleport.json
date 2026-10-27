@@ -1,0 +1,11 @@
+{
+    "passed": true,
+    "networkOrAccountActions": false,
+    "stage": "confirmed-boss_teleport",
+    "error": "",
+    "assertions": 86,
+    "products": 8,
+    "labels": 48,
+    "purchaseIntents": 2,
+    "rubAttempts": 0
+}

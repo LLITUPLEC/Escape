@@ -58,7 +58,7 @@ namespace Project.Editor
             }
             Frames.Clear(); _sceneArrived = false; _scene = default;
             _started = EditorApplication.timeSinceStartup;
-            _root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition"));
+            _root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge"));
             Directory.CreateDirectory(Path.Combine(_root, "screenshots"));
             for (var i = 1; i <= 3; i++)
             {
@@ -73,7 +73,7 @@ namespace Project.Editor
             EditorApplication.update += Tick;
             AssemblyReloadEvents.beforeAssemblyReload += BeforeReload;
             Save();
-            return "Armed before MainMenu load; observe .utmp/expedition/startup-qa.json. No RPC/spend/PlayerPrefs calls.";
+            return "Armed before MainMenu load; observe .cache/qa/bridge/startup-qa.json. No RPC/spend/PlayerPrefs calls.";
         }
 
         /// <summary>Arms first, then performs only ordinary MainMenu navigation.</summary>
@@ -109,7 +109,7 @@ namespace Project.Editor
                     if (Frames.Count == 3) return;
                     sample = new Frame { frame = Time.frameCount, firstCallbackMs = ElapsedMs };
                     Frames.Add(sample);
-                    sample.screenshot = ".utmp/expedition/screenshots/startup-first-" + Frames.Count.ToString("00") + ".png";
+                    sample.screenshot = ".cache/qa/bridge/screenshots/startup-first-" + Frames.Count.ToString("00") + ".png";
                     ScreenCapture.CaptureScreenshot(Path.Combine(_root, "screenshots/startup-first-" + Frames.Count.ToString("00") + ".png"));
                 }
                 sample.callbacks++; sample.lastCallbackMs = ElapsedMs;

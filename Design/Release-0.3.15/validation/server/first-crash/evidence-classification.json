@@ -1,0 +1,26 @@
+{
+  "status": "failed_diagnostic_attempt",
+  "runtime_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "observed_pass_lines": 139,
+  "last_entered_scenario": "consumables",
+  "failure": "HTTP connection ended/reset; remaining Go dump tail did not retain fatal header",
+  "root_cause": "undetermined; no runtime defect established and no runtime source changed to obtain a pass",
+  "production_runtime_changed": false,
+  "production_health": "healthy",
+  "legacy_summary_warning": "checks=671 in first network-validation-summary.json came from an inherited prior report because exceptional cleanup prevented writing a new one. This JSON is retained as failed-harness evidence only; it is not validation evidence for candidate. New harness archives prior JSON before each run and captures cleanup errors.",
+  "focused_reproduction": {
+    "scenario": "consumables",
+    "passed": 32,
+    "failed": 0,
+    "errors": 0,
+    "runtime_bytes_unchanged": true,
+    "isolation_limits_unchanged": true
+  },
+  "diagnostic_changes_only": [
+    "full protected Go log on failure",
+    "container exit/OOM state before cleanup",
+    "private Python traceback",
+    "always emit report when cleanup fails",
+    "quarantine inherited output report"
+  ]
+}

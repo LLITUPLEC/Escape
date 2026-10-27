@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_gold_Shoulders
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_gold_Shoulders
-  displayName: recipe_drop_t1_gold_Shoulders
+  displayName: "Рецепт «Наплечники сердца глубин»"
   colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
-  description: 
+  description: "Чертёж изготовления предмета «Наплечники сердца глубин». После изучения хранится в книге рецептов мастерской."
   kind: 2
   maxStack: 1
   tier: 1

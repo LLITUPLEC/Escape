@@ -1,0 +1,78 @@
+[
+  {
+    "source": "Design/Media-2026-10-27",
+    "destination": "Design/Release-0.3.15/media"
+  },
+  {
+    "source": "Design/Audio-Auditions-0.3.5",
+    "destination": "Design/Audio"
+  },
+  {
+    "source": "monstr.txt",
+    "destination": "Docs/Design/monstr.txt"
+  },
+  {
+    "source": "ach.md",
+    "destination": "Docs/Design/achievements.md"
+  },
+  {
+    "source": "eqip_stats.MD",
+    "destination": "Docs/Design/equipment-stats.md"
+  },
+  {
+    "source": "escape.md",
+    "destination": "Docs/Design/game-overview.md"
+  },
+  {
+    "source": "HZ_pravki.md",
+    "destination": "Docs/Design/change-requests.md"
+  },
+  {
+    "source": "lb.md",
+    "destination": "Docs/Design/leaderboard.md"
+  },
+  {
+    "source": "solo.md",
+    "destination": "Docs/Design/solo.md"
+  },
+  {
+    "source": "maket.png",
+    "destination": "Docs/References/interface-mockup.png"
+  },
+  {
+    "source": "Новый текстовый документ.html",
+    "destination": "Docs/References/interface-prototype.html"
+  },
+  {
+    "source": "Design/ArtDirection-2026-10",
+    "destination": "Docs/References/ArtDirection"
+  },
+  {
+    "source": "unity_git_pull.ps1",
+    "destination": "Tools/Git/pull.ps1"
+  },
+  {
+    "source": "unity_git_push.ps1",
+    "destination": "Tools/Git/push.ps1"
+  },
+  {
+    "source": "key_meshy.txt",
+    "destination": ".local/credentials/key_meshy.txt"
+  },
+  {
+    "source": "Builds/Expedition/Escape-Expedition-0.3.14-20261027-061132.apk",
+    "destination": "Builds/0.3.14/Escape-0.3.14-46a458ea2e41.apk"
+  },
+  {
+    "source": "Builds/Expedition/Escape-Expedition-0.3.14-20261027-061132-0.3.14-v16-IL2CPP.symbols.zip",
+    "destination": "Builds/0.3.14/Escape-0.3.14-46a458ea2e41.symbols.zip"
+  },
+  {
+    "source": "Builds/Expedition/Escape-Expedition-0.3.15-20261027-160650.apk",
+    "destination": "Builds/0.3.15/Escape-0.3.15-e7ac556941de.apk"
+  },
+  {
+    "source": "Builds/Expedition/Escape-Expedition-0.3.15-20261027-160650-0.3.15-v17-IL2CPP.symbols.zip",
+    "destination": "Builds/0.3.15/Escape-0.3.15-e7ac556941de.symbols.zip"
+  }
+]

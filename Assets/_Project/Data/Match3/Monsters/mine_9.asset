@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: mine_9
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_9
-  displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0439 \u043C\u043E\u043D\u0441\u0442\u0440
-    9"
+  displayName: "Слепой бурав"
   floor: 9
-  icon: {fileID: 21300000, guid: e387d9e74521d2e41a0572bff50c9b1c, type: 3}
+  icon: {fileID: 21300000, guid: a91d543982b8d6745b32b2cd79bb2ded, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

@@ -27,7 +27,7 @@ namespace Project.UI
         private const string IconIngotsPath = "Assets/_Project/img/resources_hud/ingots.png";
         private const string IconKeyPath = "Assets/_Project/img/resources_hud/key.png";
         private const string IconBlueprintPath = "Assets/_Project/img/resources_hud/blueprint.png";
-        private const string IconTesseractPath = "Assets/_Project/img/resources_hud/tesseract.png";
+        private const string IconTesseractPath = "Assets/_Project/Resources/Expedition/Items/tesseract.png";
         private const string IconEnergyPath = "Assets/_Project/img/resources_hud/energy.png";
         private const string BtnYesBgPath = "Assets/_Project/img/modals/arena_bet/arena_bet_3row.png";
         private const string BtnNoBgPath = "Assets/_Project/img/modals/arena_bet/arena_bet_1row.png";
@@ -188,9 +188,12 @@ namespace Project.UI
             _cts = null;
         }
 
-        private void GoMatch3()
+        private async void GoMatch3()
         {
             if (ArenaMatch8Bridge.IsParticipationLocked) return;
+            try { await ServerConnectionGuard.RequireAsync(_cts.Token); }
+            catch { return; }
+            if (this == null || _cts.IsCancellationRequested || ArenaMatch8Bridge.IsParticipationLocked) return;
             Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(false);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
@@ -198,9 +201,12 @@ namespace Project.UI
             SceneManager.LoadScene(match3SceneName);
         }
 
-        private void GoMatch3Pro()
+        private async void GoMatch3Pro()
         {
             if (ArenaMatch8Bridge.IsParticipationLocked) return;
+            try { await ServerConnectionGuard.RequireAsync(_cts.Token); }
+            catch { return; }
+            if (this == null || _cts.IsCancellationRequested || ArenaMatch8Bridge.IsParticipationLocked) return;
             Match3LaunchContext.SetPvpRaceForNextMultiplayerMatch(false);
             Match3LaunchContext.SetPvpProForNextMultiplayerMatch(true);
             Match3LaunchContext.SetMode(Match3LaunchMode.Multiplayer);
@@ -304,7 +310,7 @@ namespace Project.UI
                 if (NakamaBootstrap.Instance == null)
                     throw new Exception("nakama_not_initialized");
 
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
+                await ServerConnectionGuard.RequireAsync(_cts.Token);
                 if (ArenaMatch8Bridge.IsParticipationLocked) return;
                 var payload = JsonUtility.ToJson(new RaceEnterRpcRequest
                 {
@@ -733,9 +739,12 @@ namespace Project.UI
                 UnityEngine.Object.Destroy(labelLe);
         }
 
-        private void GoBots()
+        private async void GoBots()
         {
             if (_botsBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
+            try { await ServerConnectionGuard.RequireAsync(_cts.Token); }
+            catch { return; }
+            if (this == null || _cts.IsCancellationRequested || ArenaMatch8Bridge.IsParticipationLocked) return;
             _botsBusy = true;
             if (_bots != null) _bots.interactable = false;
             SetBotsButtonText("Загрузка...");

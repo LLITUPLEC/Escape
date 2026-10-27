@@ -1,0 +1,240 @@
+{
+  "gender": "female",
+  "ok": true,
+  "passive_hp_bonus_percent": 0,
+  "rewarded_matter_total": 0,
+  "selected_theme": "default",
+  "themes": [
+    {
+      "id": "dawnwarden",
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0,
+      "unlock_reward_matter": 0,
+      "unlocked": true
+    },
+    {
+      "id": "voidranger",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "deep_scout",
+          "label": "Победить 50 монстров в шахте",
+          "met": false,
+          "required": 50
+        },
+        {
+          "current": 0,
+          "id": "first_guardian",
+          "label": "Победить босса 4-го этажа: легко",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "stormforged",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "absolute_ii",
+          "label": "Достижение «Абсолют»: ранг 2",
+          "met": false,
+          "required": 2
+        },
+        {
+          "current": 0,
+          "id": "generator_guard",
+          "label": "Победить босса 8-го этажа: легко",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "emberoracle",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "pyrotechnic_iii",
+          "label": "Достижение «Пиротехник»: ранг 3",
+          "met": false,
+          "required": 3
+        },
+        {
+          "current": 0,
+          "id": "forge_champion",
+          "label": "Выиграть кузнечный турнир",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "frostwraith",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "ice_depths",
+          "label": "Победить 300 монстров в шахте",
+          "met": false,
+          "required": 300
+        },
+        {
+          "current": 0,
+          "id": "frozen_guardian",
+          "label": "Победить босса 4-го этажа: сложно",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "phoenix",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "reborn",
+          "label": "Достижение «Феникс»: ранг 1",
+          "met": false,
+          "required": 1
+        },
+        {
+          "current": 0,
+          "id": "survivor",
+          "label": "Одержать 25 побед в PvP",
+          "met": false,
+          "required": 25
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "bookmaker",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "tote_genius",
+          "label": "Достижение «Гений Тотализатора»: ранг 1",
+          "met": false,
+          "required": 1
+        },
+        {
+          "current": 0,
+          "id": "winning_eye",
+          "label": "Достижение «Шарлатан»: ранг 2",
+          "met": false,
+          "required": 2
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "railwarden",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "rail_races",
+          "label": "Одержать 20 побед в режиме «Спуск»",
+          "met": false,
+          "required": 20
+        },
+        {
+          "current": 0,
+          "id": "shaft_end",
+          "label": "Победить босса 12-го этажа: легко",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "beastbreaker",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "monster_hunter",
+          "label": "Победить 500 монстров в шахте",
+          "met": false,
+          "required": 500
+        },
+        {
+          "current": 0,
+          "id": "deepest_beast",
+          "label": "Победить босса 12-го этажа: сложно",
+          "met": false,
+          "required": 1
+        },
+        {
+          "current": 0,
+          "id": "nailer_ii",
+          "label": "Достижение «Пригвоздить»: ранг 2",
+          "met": false,
+          "required": 2
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    },
+    {
+      "id": "alchemist",
+      "requirements": [
+        {
+          "current": 0,
+          "id": "recipe_collection",
+          "label": "Изучить 16 разных рецептов",
+          "met": false,
+          "required": 16
+        },
+        {
+          "current": 0,
+          "id": "shield_ii",
+          "label": "Достижение «Железный Занавес»: ранг 2",
+          "met": false,
+          "required": 2
+        },
+        {
+          "current": 0,
+          "id": "medium_depths",
+          "label": "Победить босса 12-го этажа: средне",
+          "met": false,
+          "required": 1
+        }
+      ],
+      "reward_granted": false,
+      "unlock_reward_hp_percent": 0.5,
+      "unlock_reward_matter": 5,
+      "unlocked": false
+    }
+  ],
+  "unlock_reward_matter_granted": 0,
+  "unlock_reward_schema": 1,
+  "unlocked_prestige_count": 0
+}

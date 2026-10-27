@@ -30,9 +30,20 @@ namespace Project.Match3
         private TMP_Text _notice, _emptyRewards;
         private ExpeditionOutcomeGlow _glow;
         private Material _ghostMaterial;
+        private string _appearanceScope;
+        private bool _outcomeWon, _outcomeDraw;
 
         private void Awake() { ResolveReferences(); BindBackCallback(); }
-        private void OnEnable() { if (_expeditionStyle) RequestRewardRefresh(); }
+        private void OnEnable()
+        {
+            Project.Character.CharacterAppearance.Changed += RefreshSelectedAppearance;
+            if (_expeditionStyle) RequestRewardRefresh();
+        }
+        private void OnDisable() { Project.Character.CharacterAppearance.Changed -= RefreshSelectedAppearance; }
+        private void RefreshSelectedAppearance()
+        {
+            if (_expeditionStyle && _hero != null) RefreshOutcomePortrait(_outcomeWon, _outcomeDraw);
+        }
 
         private void ResolveReferences()
         {
@@ -114,6 +125,8 @@ namespace Project.Match3
         public void RequestRewardRefresh() { if (_expeditionStyle) _rewardLayoutPending = true; }
         private void LateUpdate()
         {
+            if (_expeditionStyle && _hero != null && _appearanceScope != Project.Nakama.LocalAccountCacheScope.Current)
+                RefreshOutcomePortrait(_outcomeWon, _outcomeDraw);
             if (!_expeditionStyle || !_rewardLayoutPending) return;
             _rewardLayoutPending = false;
             StyleRewardRows();
@@ -192,19 +205,42 @@ namespace Project.Match3
             _resetScroll = false;
         }
 
-        public void Show(bool won, string customRewardText = null, string customTitle = null)
+        public void Show(bool won, string customRewardText = null, string customTitle = null, bool cancelled = false)
         {
             if (!_expeditionStyle) UseExpeditionStyle();
             BindBackCallback();
             gameObject.SetActive(true);
-            var draw = !string.IsNullOrWhiteSpace(customTitle) && customTitle.IndexOf("Ничья", StringComparison.OrdinalIgnoreCase) >= 0;
+            var draw = cancelled || !string.IsNullOrWhiteSpace(customTitle) && customTitle.IndexOf("Ничья", StringComparison.OrdinalIgnoreCase) >= 0;
             titleText.text = !string.IsNullOrWhiteSpace(customTitle) ? customTitle : won ? "ПОБЕДА" : "ПОРАЖЕНИЕ";
             titleText.color = draw ? ExpeditionTheme.Ivory : won ? ExpeditionTheme.Amber : ExpeditionTheme.Coral;
             _headingFrame.sprite = ExpeditionArt.Frame(won) ?? ExpeditionTheme.Plate;
             _headingFrame.color = Color.white;
             _victoryWings.gameObject.SetActive(won);
-            var victoryBust = won && _victoryBustSprite != null;
-            _hero.sprite = victoryBust ? _victoryBustSprite : _explorerSprite;
+            RefreshOutcomePortrait(won, draw);
+            if (cancelled && _hero != null) _hero.material = null;
+            _glow.Celebration = won;
+            var glowColor = draw ? ExpeditionTheme.Teal : won ? ExpeditionTheme.Amber : ExpeditionTheme.Coral;
+            if (!won) glowColor.a = .35f;
+            _glow.color = glowColor;
+            rewardText.text = customRewardText ?? string.Empty;
+            rewardText.gameObject.SetActive(!string.IsNullOrWhiteSpace(rewardText.text));
+            var refund = !string.IsNullOrEmpty(customRewardText) && customRewardText.IndexOf("взнос возвращён", StringComparison.OrdinalIgnoreCase) >= 0;
+            _noticeFrame.gameObject.SetActive(refund || cancelled);
+            if (refund) _notice.text = customRewardText.Split('\n')[0].Trim();
+            if (cancelled) _notice.text = "Бой не начался. Победы и поражения не засчитаны.";
+            _resetScroll = true;
+            RequestRewardRefresh();
+        }
+
+        private void RefreshOutcomePortrait(bool won, bool draw)
+        {
+            _appearanceScope = Project.Nakama.LocalAccountCacheScope.Current;
+            _outcomeWon = won; _outcomeDraw = draw;
+            if (!Project.Character.AccountGender.IsLoaded) { _hero.sprite = null; _hero.enabled = false; return; }
+            _hero.enabled = true;
+            var selectedAvatar = Project.Character.CharacterAppearance.Avatar();
+            var victoryBust = selectedAvatar != null || won && _victoryBustSprite != null;
+            _hero.sprite = selectedAvatar != null ? selectedAvatar : victoryBust ? _victoryBustSprite : Project.Character.CharacterAppearance.Body(_explorerSprite);
             if (victoryBust)
             {
                 var fit = _hero.GetComponent<AspectRatioFitter>();
@@ -214,17 +250,6 @@ namespace Project.Match3
             else ExpeditionMatchStates.CropUpperBody(_hero, 1.4f);
             _hero.color = won ? Color.white : draw ? new Color(.83f, .91f, .92f, 1) : new Color(.75f, .65f, .65f, .90f);
             _hero.material = won ? null : _ghostMaterial;
-            _glow.Celebration = won;
-            var glowColor = draw ? ExpeditionTheme.Teal : won ? ExpeditionTheme.Amber : ExpeditionTheme.Coral;
-            if (!won) glowColor.a = .35f;
-            _glow.color = glowColor;
-            rewardText.text = customRewardText ?? string.Empty;
-            rewardText.gameObject.SetActive(!string.IsNullOrWhiteSpace(rewardText.text));
-            var refund = !string.IsNullOrEmpty(customRewardText) && customRewardText.IndexOf("взнос возвращён", StringComparison.OrdinalIgnoreCase) >= 0;
-            _noticeFrame.gameObject.SetActive(refund);
-            if (refund) _notice.text = customRewardText.Split('\n')[0].Trim();
-            _resetScroll = true;
-            RequestRewardRefresh();
         }
 
         private void BindBackCallback()

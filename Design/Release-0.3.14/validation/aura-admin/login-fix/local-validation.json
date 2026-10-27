@@ -1,0 +1,57 @@
+{
+  "version": "0.3.14",
+  "checkedUtc": "2026-10-27T16:09:25.053830+00:00",
+  "applied": false,
+  "rootCause": "Window.fetch receiver was lost when assigned as a method on AuraConsole; browser brand check rejected the request before HTTP. Default transport now binds to globalThis.",
+  "tests": [
+    {
+      "path": "Server/nakama/tests/aura_admin_test.mjs",
+      "passed": true,
+      "cases": 22,
+      "scope": "Actual JS model with explicit native-receiver regression and fake network; no real credentials or accounts."
+    },
+    {
+      "path": "Server/nakama/tests/aura_static_hotfix_test.py",
+      "passed": true,
+      "cases": 10,
+      "scope": "Actual scoped hotfix helper against disposable local files; public network mocked."
+    }
+  ],
+  "oldAssets": {
+    "index.html": "70aa071f03eb82aa3a6a3a7426c6acb4d8ac0838851ab687f223d040321659e8",
+    "aura.css": "8d1b1ec19ec7c7ac682a87ba885fc1f5b44ab66eef757c9f7aa2b4bfdc55300c",
+    "aura-model.js": "e3b90876309da19423aecc87369cad6c07b39fb523ea8b6bacfddbb175c7df5d",
+    "aura-page.js": "c891560ddee17795e87855b81c4ddf28430d349836adc79c01bd609ae1ec0208"
+  },
+  "newAssets": {
+    "index.html": "03dff5339b99ef7bcbb2370468f45a50df4bf0fa972c6f5293731ae8e60edc7a",
+    "aura.css": "8d1b1ec19ec7c7ac682a87ba885fc1f5b44ab66eef757c9f7aa2b4bfdc55300c",
+    "aura-model.js": "9a469fc2e63ef997f598c1487fba1e6cde2ff21969d18e0821658743ee565cb0",
+    "aura-page.js": "a793a4d4487b4be52a7dbfac3c72d2463692c0e48962861dabee7156581779a1"
+  },
+  "archiveSha256": "86607c06afe161c0e197121bac5d475ef1c586f18c5cea62c37ce04c51937582",
+  "bundleId": "aura-login-fix0314-2a1426de9c7e",
+  "scope": {
+    "changedFiles": [
+      "index.html",
+      "aura-model.js",
+      "aura-page.js"
+    ],
+    "cssChanged": false,
+    "directoryRename": false,
+    "serviceRestarts": 0,
+    "configChanges": 0,
+    "consoleLogins": 0,
+    "auraStorageWrites": 0
+  },
+  "files": {
+    "aura-model.js": "9a469fc2e63ef997f598c1487fba1e6cde2ff21969d18e0821658743ee565cb0",
+    "aura-page.js": "a793a4d4487b4be52a7dbfac3c72d2463692c0e48962861dabee7156581779a1",
+    "index.html": "03dff5339b99ef7bcbb2370468f45a50df4bf0fa972c6f5293731ae8e60edc7a",
+    "install_aura_static_hotfix.py": "4055737f1c7f331949f92451fe63660730e2f704d99888f92dbb553ec916dfd4"
+  },
+  "realCredentialsUsed": false,
+  "auraStorageWrites": 0,
+  "browserVerification": "Root will separately reload real HTTPS login UI and test one synthetic invalid credential; not yet claimed here.",
+  "helperPeerReview": "Independent backend review; missing/unsafe per-file rollback edge fixed and regression passed."
+}

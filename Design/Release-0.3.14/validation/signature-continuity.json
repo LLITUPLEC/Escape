@@ -1,0 +1,8 @@
+{
+  "physicalUpgradeTested": false,
+  "passed": true,
+  "certificateSha256": "a813aa59b19a728fa65298fc9fe7c921f7eed37285edee0c912852f1b2fc26b0",
+  "sameCertificate": true,
+  "version": "0.3.14",
+  "previousVersion": "0.3.13"
+}

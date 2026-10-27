@@ -66,15 +66,15 @@ namespace Project.Editor
             _last = _content.Find("Landing_12") as RectTransform;
             if (_scroll == null || _first == null || _third == null || _last == null || _lift == null)
                 throw new InvalidOperationException("Mine route geometry is incomplete");
-            _outputRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition"));
+            _outputRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge"));
             Directory.CreateDirectory(_outputRoot);
             Samples.Clear(); Checks.Clear();
             _report = new Report
             {
                 state = "running", scene = _view.gameObject.scene.name, layoutRevision = "mine-0.3.3",
                 startedUtc = DateTime.UtcNow.ToString("O"),
-                midScreenshot = ".utmp/expedition/screenshots/mine-travel-mid.png",
-                finishScreenshot = ".utmp/expedition/screenshots/mine-travel-finish.png"
+                midScreenshot = ".cache/qa/bridge/screenshots/mine-travel-mid.png",
+                finishScreenshot = ".cache/qa/bridge/screenshots/mine-travel-finish.png"
             };
             Directory.CreateDirectory(Path.Combine(_outputRoot, "screenshots"));
             foreach (var file in new[] { "mine-travel-mid.png", "mine-travel-finish.png" })
@@ -90,7 +90,7 @@ namespace Project.Editor
             AssemblyReloadEvents.beforeAssemblyReload -= StopForReload;
             AssemblyReloadEvents.beforeAssemblyReload += StopForReload;
             Save();
-            return "Started actual-frame mine travel probe; poll .utmp/expedition/mine-travel-play.json until completed. No RPC/resource actions.";
+            return "Started actual-frame mine travel probe; poll .cache/qa/bridge/mine-travel-play.json until completed. No RPC/resource actions.";
         }
 
         private static void Tick()

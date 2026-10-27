@@ -50,7 +50,22 @@ namespace Project.Character.UI
         private RectTransform _sellConfirmPanel;
         private TMP_Text _sellConfirmText;
         private bool _sellInFlight;
+        private string _sellRequestId;
+        private string _sellExpectedDefId;
         private CharacterNicknameEditor _nicknameEditor;
+        private GameObject _inventorySlotConfirm;
+        private RectTransform _inventorySlotPanel;
+        private TMP_Text _inventorySlotMessage;
+        private Button _inventorySlotBuy;
+        private int _inventorySlotIndex = -1;
+        private string _inventoryPurchaseRequest;
+        private bool _inventoryPurchaseInFlight;
+        private ConsumableUseModalView _consumableUse;
+        private string _useRequestId, _useExpectedDefId;
+        private int _useInventoryIndex=-1;
+        private long _useSequence;
+        private bool _useInFlight;
+        private string _useAccountScope;
 
         private void Awake()
         {
@@ -67,7 +82,10 @@ namespace Project.Character.UI
             _nicknameEditor = Project.UI.ExpeditionUi.Ensure<CharacterNicknameEditor>(gameObject);
             _nicknameEditor.EnsureWired();
             if (view != null)
+            {
                 view.ApplyExpeditionLayout(levelText, closeButton, _nicknameEditor.NameLabel, _nicknameEditor.EditButton);
+                view.InventorySlotUnlockRequested += ShowInventorySlotPurchase;
+            }
 
             _cts = new CancellationTokenSource();
             EnsureModalUi();
@@ -90,7 +108,11 @@ namespace Project.Character.UI
                     var overAction = _actionModal != null && _actionModal.gameObject.activeSelf && _actionModal.ContainsScreenPoint(pressPos, null);
                     var overInfo = _infoModal != null && _infoModal.gameObject.activeSelf && _infoModal.ContainsScreenPoint(pressPos, null);
                     var overSellConfirm = IsSellConfirmVisible() && ContainsSellConfirmScreenPoint(pressPos);
-                    if (!overAction && !overInfo && !overSellConfirm) HideModals();
+                    var overInventoryPurchase = _inventorySlotConfirm != null && _inventorySlotConfirm.activeSelf &&
+                        RectTransformUtility.RectangleContainsScreenPoint(_inventorySlotPanel, pressPos, null);
+                    var overConsumable=_consumableUse!=null&&_consumableUse.gameObject.activeSelf&&
+                        RectTransformUtility.RectangleContainsScreenPoint(_consumableUse.PanelRect,pressPos,null);
+                    if (!overAction && !overInfo && !overSellConfirm && !overInventoryPurchase && !overConsumable) HideModals();
                     return;
                 }
 
@@ -106,6 +128,7 @@ namespace Project.Character.UI
                 dragController.ProfileUpdated -= HandleProfileUpdated;
             }
             AchievementLifecycle.OnCombatStatsUpdated -= HandleCombatStatsUpdated;
+            if (view != null) view.InventorySlotUnlockRequested -= ShowInventorySlotPurchase;
 
             _cts?.Cancel();
             _cts?.Dispose();
@@ -159,7 +182,6 @@ namespace Project.Character.UI
             var ct = _cts != null ? _cts.Token : CancellationToken.None;
             var profile = await CharacterProfileService.GetAsync(ct).ConfigureAwait(false);
             if (ct.IsCancellationRequested) return;
-
             await RunOnMainThreadAsync(() =>
             {
                 if (this == null || ct.IsCancellationRequested || !_visible || requestVersion != _openRequestVersion) return;
@@ -220,6 +242,7 @@ namespace Project.Character.UI
             if (!_visible || view == null || handle == null) return;
             if (!TryResolveItem(handle, out _)) return;
 
+            HideSellConfirm();
             _selectedHandle = handle;
             EnsureModalUi();
             ShowActionModalNear(handle.transform as RectTransform);
@@ -231,6 +254,72 @@ namespace Project.Character.UI
             if (view != null && response != null && response.ok)
                 view.ApplyCharacterResponse(response, itemCatalog);
             if (_infoModal != null && _infoModal.gameObject.activeSelf) UpdateInfoModal();
+        }
+
+        private void ShowInventorySlotPurchase(int index)
+        {
+            if (!_visible || _inventoryPurchaseInFlight || view == null || index != view.InventoryCapacity) return;
+            CancelPointerGesture(); HideModals(true); EnsureModalUi(); EnsureInventorySlotConfirm();
+            if (_inventorySlotIndex != index || string.IsNullOrEmpty(_inventoryPurchaseRequest))
+                _inventoryPurchaseRequest = Guid.NewGuid().ToString("N");
+            _inventorySlotIndex = index;
+            _inventorySlotMessage.text = "Открыть ячейку " + (index - CharacterScreenView.InventoryPageSize + 1) +
+                " на второй странице?\nСтоимость: " + view.InventorySlotPrice + " материи.";
+            _inventorySlotBuy.interactable = true;
+            _inventorySlotConfirm.SetActive(true); _modalOverlay.SetActive(true);
+            _inventorySlotConfirm.transform.SetAsLastSibling(); _modalOpenedFrame = Time.frameCount;
+        }
+
+        private void EnsureInventorySlotConfirm()
+        {
+            if (_inventorySlotConfirm != null || _modalOverlayRect == null) return;
+            var rootRect = Project.UI.ExpeditionUi.Rect(_modalOverlayRect, "InventorySlotPurchase", 0, 0, 1, 1);
+            _inventorySlotConfirm = rootRect.gameObject;
+            _inventorySlotPanel = Project.UI.ExpeditionUi.Rect(rootRect, "Panel", .07f, .5f, .93f, .5f);
+            _inventorySlotPanel.sizeDelta = new Vector2(0, 320);
+            _inventorySlotPanel.gameObject.AddComponent<Image>();
+            var title = CreateLabel(_inventorySlotPanel, "Title", "Вторая страница", 38,
+                new Vector2(.06f, .74f), new Vector2(.94f, .94f), TextAlignmentOptions.Center);
+            _inventorySlotMessage = CreateLabel(_inventorySlotPanel, "Message", "", 30,
+                new Vector2(.06f, .32f), new Vector2(.94f, .73f), TextAlignmentOptions.Center);
+            _inventorySlotBuy = CreateRectButton(_inventorySlotPanel, "BuySlot", "Открыть", new Vector2(.07f, .08f), new Vector2(.48f, .29f));
+            var cancel = CreateRectButton(_inventorySlotPanel, "Cancel", "Отмена", new Vector2(.52f, .08f), new Vector2(.93f, .29f));
+            _inventorySlotBuy.onClick.AddListener(() => _ = PurchaseInventorySlotAsync());
+            cancel.onClick.AddListener(() => HideModals(true));
+            Project.UI.ExpeditionMetaPanels.StylePopup(rootRect);
+            Project.UI.ExpeditionUi.StyleButton(_inventorySlotBuy, true, 30);
+            _inventorySlotConfirm.SetActive(false);
+        }
+
+        private async Task PurchaseInventorySlotAsync()
+        {
+            if (_inventoryPurchaseInFlight || view == null || _inventorySlotIndex != view.InventoryCapacity) return;
+            _inventoryPurchaseInFlight = true; _inventorySlotBuy.interactable = false;
+            var ct = _cts != null ? _cts.Token : CancellationToken.None;
+            CharacterGetRpcResponse response;
+            try { response = await CharacterProfileService.BuyInventorySlotAsync(_inventorySlotIndex, _inventoryPurchaseRequest, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+            catch (Exception error) { response = new CharacterGetRpcResponse { ok = false, err = error.Message }; }
+            finally { _inventoryPurchaseInFlight = false; }
+            if (ct.IsCancellationRequested) return;
+            await RunOnMainThreadAsync(() =>
+            {
+                if (this == null || ct.IsCancellationRequested) return;
+                if (response == null || !response.ok)
+                {
+                    Project.Audio.ExpeditionAudio.Play(Project.Audio.ExpeditionCue.UiBlocked);
+                    if (_inventorySlotMessage != null) _inventorySlotMessage.text = response?.err == "not_enough_matter"
+                        ? "Недостаточно материи. Для одной ячейки нужно " + view.InventorySlotPrice + "."
+                        : "Не удалось подтвердить покупку. Повторите запрос: повторного списания за эту ячейку не будет.";
+                    if (_inventorySlotBuy != null) _inventorySlotBuy.interactable = true;
+                    return;
+                }
+                _inventoryPurchaseRequest = null;
+                HandleProfileUpdated(response);
+                if (response.progression != null) PlayerResourcesService.PatchCachedFromProgression(response.progression);
+                Project.Audio.ExpeditionAudio.Play(Project.Audio.ExpeditionCue.RewardClaim);
+                HideModals(true);
+            });
         }
 
         private void HandleCombatStatsUpdated(StatsMap stats)
@@ -379,6 +468,7 @@ namespace Project.Character.UI
 
         private void HideSellConfirm()
         {
+            _sellRequestId = _sellExpectedDefId = null;
             if (_sellConfirmRoot != null) _sellConfirmRoot.SetActive(false);
         }
 
@@ -402,6 +492,8 @@ namespace Project.Character.UI
             var name = string.IsNullOrEmpty(itemDef.DisplayName) ? itemDef.ItemId : itemDef.DisplayName;
 
             EnsureSellConfirmUi();
+            _sellRequestId = Guid.NewGuid().ToString("N");
+            _sellExpectedDefId = itemDef.ItemId;
             if (_actionModal != null) _actionModal.HideImmediate();
             if (_infoModal != null) _infoModal.HideImmediate();
             if (_sellConfirmText != null)
@@ -418,17 +510,19 @@ namespace Project.Character.UI
 
         private async Task ConfirmSellAsync()
         {
-            if (_sellInFlight || _selectedHandle == null) return;
+            if (_sellInFlight || _selectedHandle == null || string.IsNullOrEmpty(_sellRequestId) || string.IsNullOrEmpty(_sellExpectedDefId)) return;
             _sellInFlight = true;
             var handle = _selectedHandle;
+            var requestId = _sellRequestId;
+            var expectedDefId = _sellExpectedDefId;
             var ct = _cts != null ? _cts.Token : CancellationToken.None;
             CharacterGetRpcResponse resp = null;
             try
             {
                 if (handle.Kind == CharacterDragSlotKind.Inventory)
-                    resp = await CharacterProfileService.SellInventoryItemAsync(handle.InventoryIndex, ct).ConfigureAwait(false);
+                    resp = await CharacterProfileService.SellInventoryItemAsync(handle.InventoryIndex, expectedDefId, requestId, ct).ConfigureAwait(false);
                 else
-                    resp = await CharacterProfileService.SellEquipmentItemAsync((int)handle.EquipmentSlot, ct).ConfigureAwait(false);
+                    resp = await CharacterProfileService.SellEquipmentItemAsync((int)handle.EquipmentSlot, expectedDefId, requestId, ct).ConfigureAwait(false);
             }
             finally
             {
@@ -442,7 +536,12 @@ namespace Project.Character.UI
                 if (resp == null || !resp.ok)
                 {
                     Debug.LogWarning("[CharacterScreen] Sell failed: " + (resp?.err ?? "null"));
-                    HideSellConfirm();
+                    if (_sellRequestId == requestId && _sellConfirmText != null)
+                        _sellConfirmText.text = resp?.err == "item_changed"
+                            ? "Предмет в ячейке изменился. Закройте окно и откройте инвентарь заново."
+                            : "Не удалось подтвердить продажу. Повторите запрос кнопкой «Да» или отмените. Повтор не продаст другой предмет.";
+                    // Keep this confirmation and its request ID for a manual retry
+                    // after a lost acknowledgement. Cancel/new selection resets it.
                     return;
                 }
 
@@ -451,7 +550,58 @@ namespace Project.Character.UI
                     view.ApplyCharacterResponse(resp, itemCatalog);
                 if (resp.progression != null)
                     PlayerResourcesService.PatchCachedFromProgression(resp.progression);
-                HideModals(true);
+                if (_sellRequestId == requestId) HideModals(true);
+            });
+        }
+
+        private void ShowConsumableConfirmation()
+        {
+            if(_useInFlight||_selectedHandle==null||_selectedHandle.Kind!=CharacterDragSlotKind.Inventory||view==null)return;
+            if(!TryResolveItem(_selectedHandle,out var item)||item==null||item.Kind!=ItemKind.Consumable||!ConsumablePresentation.IsKnown(item.ItemId))return;
+            var scope=LocalAccountCacheScope.Current;
+            if(string.IsNullOrEmpty(_useRequestId)||_useExpectedDefId!=item.ItemId||_useInventoryIndex!=_selectedHandle.InventoryIndex||_useAccountScope!=scope)
+            {
+                _useRequestId=Guid.NewGuid().ToString("N");_useExpectedDefId=item.ItemId;
+                _useInventoryIndex=_selectedHandle.InventoryIndex;_useAccountScope=scope;
+                _useSequence=_lastProfile?.consumables?.next_use_seq??0;
+            }
+            CancelPointerGesture();
+            if(_consumableUse==null)_consumableUse=ConsumableUseModalView.Create(_modalOverlayRect);
+            _actionModal?.HideImmediate();_infoModal?.HideImmediate();HideSellConfirm();
+            _modalOverlay.SetActive(true);_modalOpenedFrame=Time.frameCount;
+            _consumableUse.Show(item,_lastProfile?.consumables,()=>{_ = ConfirmConsumableUseAsync();},()=>HideModals(true));
+        }
+
+        private async Task ConfirmConsumableUseAsync()
+        {
+            if(_useInFlight||string.IsNullOrEmpty(_useRequestId))return;
+            _useInFlight=true;
+            var request=_useRequestId;var id=_useExpectedDefId;var index=_useInventoryIndex;var scope=_useAccountScope;var sequence=_useSequence;
+            var pageVersion=_openRequestVersion;var ct=_cts!=null?_cts.Token:CancellationToken.None;
+            CharacterGetRpcResponse response;
+            try{response=await CharacterProfileService.UseConsumableAsync(index,id,request,sequence,ct).ConfigureAwait(false);}
+            catch(Exception error){response=new CharacterGetRpcResponse{ok=false,err=error.Message};}
+            finally{_useInFlight=false;}
+            if(ct.IsCancellationRequested)return;
+            await RunOnMainThreadAsync(()=>
+            {
+                if(this==null||!LocalAccountCacheScope.IsCurrent(scope))return;
+                if(response==null||!response.ok)
+                {
+                    if(response!=null&&(response.err=="bad_use_sequence"||response.err=="sequence_changed"||response.err=="request_compacted"||response.err=="request_id_reused")&&_useRequestId==request)
+                    { _useRequestId=_useExpectedDefId=null;_useInventoryIndex=-1;_useSequence=0; }
+                    // Retain this exact operation ID for an ambiguous-response retry.
+                    if(_consumableUse!=null&&_visible&&pageVersion==_openRequestVersion)
+                        _consumableUse.ShowError(response?.err??"empty_payload");
+                    return;
+                }
+                if(_visible&&pageVersion==_openRequestVersion)
+                {
+                    _lastProfile=response;view.ApplyCharacterResponse(response,itemCatalog);
+                    if(response.progression!=null)PlayerResourcesService.PatchCachedFromProgression(response.progression);
+                    if(_useRequestId==request)HideModals(true);
+                }
+                if(_useRequestId==request){_useRequestId=_useExpectedDefId=null;_useInventoryIndex=-1;}
             });
         }
 
@@ -525,6 +675,8 @@ namespace Project.Character.UI
             _infoModal.HideImmediate();
             var actionRect = _actionModal.PanelRect;
             if (actionRect == null) return;
+            if(TryResolveItem(_selectedHandle,out var actionItem))
+                _actionModal.ConfigureItem(actionItem,true,ShowConsumableConfirmation);
 
             _modalOpenedFrame = Time.frameCount;
             if (source == null)
@@ -552,16 +704,24 @@ namespace Project.Character.UI
 
             _infoModal.SetTitle(selectedItem.DisplayName, selectedItem.ColorDisplayName);
             var isRecipe = selectedItem.Kind == ItemKind.Recipe;
+            var isConsumable=selectedItem.Kind==ItemKind.Consumable;
             if (isRecipe)
                 _infoModal.SetSlot("Рецепт → " + SlotName(selectedItem.RecipeTargetSlot));
+            else if (!selectedItem.Equippable) _infoModal.SetSlot(ItemInformation.Category(selectedItem));
             else
                 _infoModal.SetSlot("Слот: " + (selectedItem.Equippable ? SlotName(selectedItem.Slot) : "Не экипируется"));
             _infoModal.SetDescription(selectedItem.Description);
+            _infoModal.SetStatsCaption(selectedItem.Equippable ? "ХАРАКТЕРИСТИКИ" : isConsumable ? "ЭФФЕКТ" : "ПРИМЕНЕНИЕ");
             _infoModal.SetStats(BuildStatsDescription(selectedItem));
             var learned = _lastProfile?.learned_recipe_ids != null &&
                           Array.Exists(_lastProfile.learned_recipe_ids, x => x == selectedItem.ItemId);
 
-            if (isRecipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
+            if(isConsumable&&_selectedHandle.Kind==CharacterDragSlotKind.Inventory)
+            {
+                _infoModal.SetLearnRecipeButton(false,false,string.Empty);
+                _infoModal.SetEquipButton(true,true,"Использовать");
+            }
+            else if (isRecipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {
                 _infoModal.SetEquipButton(false, false, string.Empty);
                 _infoModal.SetLearnRecipeButton(true, !learned, learned ? "Уже изучено" : "Изучить");
@@ -611,6 +771,7 @@ namespace Project.Character.UI
         {
             if (_selectedHandle == null || dragController == null || view == null) return;
             if (!TryResolveItem(_selectedHandle, out var selectedItem) || selectedItem == null) return;
+            if(selectedItem.Kind==ItemKind.Consumable){ShowConsumableConfirmation();return;}
 
             if (selectedItem.Kind == ItemKind.Recipe && _selectedHandle.Kind == CharacterDragSlotKind.Inventory)
             {
@@ -636,6 +797,13 @@ namespace Project.Character.UI
         private string BuildStatsDescription(ItemDefinition selectedItem)
         {
             if (selectedItem == null) return "-";
+            if(selectedItem.Kind==ItemKind.Consumable)return ConsumablePresentation.Effects(selectedItem.ItemId)+"\n\n"+ConsumablePresentation.Explanation(selectedItem.ItemId);
+            if (!selectedItem.Equippable)
+            {
+                var learned = _lastProfile?.learned_recipe_ids != null &&
+                    Array.Exists(_lastProfile.learned_recipe_ids, id => id == selectedItem.ItemId);
+                return ItemInformation.Usage(selectedItem, itemCatalog, learned);
+            }
 
             var equipped = GetEquippedInSameSlot(selectedItem, _selectedHandle);
             var showDelta = _selectedHandle == null || _selectedHandle.Kind != CharacterDragSlotKind.Equipment;
@@ -741,6 +909,8 @@ namespace Project.Character.UI
 
         private void HideModals(bool immediate = false)
         {
+            if(_consumableUse!=null)_consumableUse.gameObject.SetActive(false);
+            if (_inventorySlotConfirm != null) _inventorySlotConfirm.SetActive(false);
             _selectedHandle = null;
             if (_hideOverlayRoutine != null)
             {

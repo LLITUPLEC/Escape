@@ -1,6 +1,7 @@
 -- Lua 5.1+: tests the real character storage helpers and economy RPC module.
 -- Run from the repository root: lua Server/nakama/tests/economy_security_test.lua
 package.path = "Server/nakama/?.lua;" .. package.path
+local Inventory = require("modules.duel_match3_inventory")
 local function copy(value)
   if type(value) ~= "table" then return value end
   local result = {}
@@ -66,13 +67,14 @@ local function normalized_sheet(value)
 end
 -- Extract the actual character helpers; the complete match module has runtime
 -- initialization and match callbacks unrelated to these storage transactions.
-local file = assert(io.open("Server/nakama/modules/duel_match3.lua", "r"))
+local file = assert(io.open(os.getenv("INVENTORY_CORE_SOURCE") or "Server/nakama/modules/duel_match3.lua", "r"))
 local source = file:read("*a"); file:close()
 local start = assert(source:find("local function read_character_sheet", 1, true))
 local finish = assert(source:find("local SET_BONUS_FULL_EQUIP_STATS", start, true))
 local helpers_source = source:sub(start, finish - 1)
-local constructor = assert((loadstring or load)("return function(nk, CFG, normalize_character_sheet, decode_storage_value)\nlocal Runtime = {}\n" .. helpers_source .. "\nreturn read_character_sheet, write_character_sheet, ensure_character_sheet_initialized end"))()
-local read_sheet, write_sheet, initialize_sheet = constructor(nk, cfg, normalized_sheet, function(row) return row.value end)
+local constructor = assert((loadstring or load)("return function(nk, CFG, normalize_character_sheet, decode_storage_value, Inventory, helper_defs)\nlocal Runtime = { Inventory = Inventory }\nlocal function get_merged_item_defs() return helper_defs end\n" .. helpers_source .. "\nreturn read_character_sheet, write_character_sheet, ensure_character_sheet_initialized, Runtime.build_character_sheet_writes end"))()
+local helper_defs = { recipe = { kind = "recipe", quality = "green" }, recipe_sword = { kind = "recipe", max_stack = 1 } }
+local read_sheet, write_sheet, initialize_sheet, build_sheet_writes = constructor(nk, cfg, normalized_sheet, function(row) return row.value end, Inventory, helper_defs)
 local function read_progress()
   local row = db[progress_key]
   return copy(row.value), row.version
@@ -80,6 +82,8 @@ end
 local defs = {
   sword = { kind = "equipment", slot = "hand", tier = 1, quality = "normal", craft_recipe_id = "recipe_sword", sale_price = 100 },
   ingot = { kind = "material", sale_price = 20 },
+  recipe = { kind = "recipe", quality = "green", max_stack = 1 },
+  recipe_sword = { kind = "recipe", max_stack = 1 },
 }
 local function count_item(sheet, item)
   local count = 0
@@ -224,89 +228,124 @@ test("initialization read and write failures propagate without creating an empty
   assert(not pcall(initialize_sheet, "player") and db[sheet_key] == nil)
 end)
 
--- Load the actual progress writer and PvE reward function with controlled
--- catalog/drop dependencies, retaining their real CAS and transaction paths.
+-- Load only the actual progress serializer/writer. Reward finalization is now
+-- an explicit module contract; never extract neighboring bootstrap code.
 local function load_env(code, env)
   local fn
   if setfenv then fn = assert(loadstring(code)); setfenv(fn, env)
-  else fn = assert(load(code, "reward-helpers", "t", env)) end
+  else fn = assert(load(code, "progress-helpers", "t", env)) end
   fn()
 end
-local env = setmetatable({
-  Runtime = {},
-  nk = nk, CFG = cfg, Guard = { is_epoch_stale_for_match = function() return false end },
-  read_pve_progress = read_progress, read_character_sheet = read_sheet, write_character_sheet = write_sheet,
-  ensure_character_sheet_initialized = function() end, ensure_sheet_inventory_counts = function() end,
-  normalize_mine_difficulty = function() return "easy" end,
-  get_bot_profile = function() return { floor = 1, reward_xp = 5, reward_gold = 10, reward_ore = 2 } end,
-  mine_stat_multiplier = function() return 1 end, mine_reward_multiplier = function() return 1 end,
-  is_boss_floor = function() return false end, ingot_def_for_difficulty = function() return "ingot" end,
-  ServerAura = {
-    get_active = function() return {} end,
-    apply_to_pve_reward_xp = function(xp) return xp end,
-    mine_respawn_duration_seconds = function(seconds) return seconds end,
-  },
-  mine_floor_uses_mine_item_recipe_drop = function() return true end,
-  grant_mine_recipe_drop_v43 = function(sheet)
-    if deps.inventory_try_add(sheet, "recipe", 1) then return true, "recipe" end
-    return false, ""
-  end,
-  inventory_try_add = deps.inventory_try_add,
-  mine_recipe_color_for_difficulty = function() return "green" end,
-  current_level_from_xp = function() return 1 end,
-  normalize_mine_unlocked = function() return { easy = 1, medium = 0, hard = 0 } end,
-  make_floor_state_key = function() return "easy_1" end,
-  random_affix_for_floor = function() return "normal" end,
-  Ach = { merge_persistent_stats = function() end },
-}, { __index = _G })
+local env = setmetatable({ Runtime = {}, nk = nk, CFG = cfg }, { __index = _G })
 local progress_start = assert(source:find("Runtime.build_pve_progress_write = function", 1, true))
 local progress_end = assert(source:find("function random_affix_for_floor", progress_start, true))
 load_env(source:sub(progress_start, progress_end - 1) .. "\nexport_write_progress = write_pve_progress", env)
-env.write_pve_progress = env.export_write_progress
-local award_start = assert(source:find("function add_blueprint", 1, true))
-local award_end = assert(source:find("Runtime.award_pve_defeat = function", award_start, true))
-load_env(source:sub(award_start, award_end - 1), env)
-local function award() return env.Runtime.award_pve_victory("player", "mine_1", 0, { difficulty = "easy", floor = 1 }) end
+
+-- Exercise the production PveRewards + Journal + Inventory modules together
+-- with the real core sheet/progress CAS batch builder used above. Only the
+-- catalog, RNG-independent drops and level policy are controlled inputs.
+local journal = require("tests.journal_fixture_admission").wrap(require("modules.duel_match3_journal").new())
+local rewards = require("modules.duel_match3_pve_rewards").new({
+  normalize_difficulty = function() return "easy" end,
+  get_bot_profile = function() return { floor = 1, reward_xp = 5, reward_gold = 10, reward_ore = 2 } end,
+  clamp_floor = function(f) return cfg.clamp_int(f, 1, cfg.PVE_MAX_LEVEL) end,
+  max_floor = cfg.PVE_MAX_LEVEL, is_boss_floor = function() return false end,
+  reward_multiplier = function() return 1 end, stat_multiplier = function() return 1 end,
+  apply_reward_xp = function(xp) return xp end,
+  ingot_drop_chance = function() return 1 end, ingot_def = function() return "ingot" end,
+  uses_recipe_drop = function() return true end, recipe_color = function() return "green" end,
+  pick_recipe = function() return "recipe" end,
+  respawn_seconds = function() return 60 end, next_affix = function() return "normal" end,
+  read_progress = read_progress, read_sheet = read_sheet, get_defs = function() return defs end,
+  inventory = function() return Inventory end, build_sheet_writes = build_sheet_writes,
+  empty_keys = function() return { miner_key = 0, dark_key = 0 } end,
+  add_blueprint = function(progress, color)
+    local k = "blueprint_" .. color; progress[k] = (tonumber(progress[k]) or 0) + 1
+  end,
+  level_from_xp = function() return 1 end,
+  normalize_unlocked = function() return { easy = 1, medium = 0, hard = 0 } end,
+  floor_key = function() return "easy_1" end,
+  journal = function() return journal end, is_stale = function() return false end,
+})
+local function award() return rewards.award("player", "mine_1", 0, { difficulty = "easy", floor = 1 }, "economy-fixture") end
+local function contains(batch, collection, object_key)
+  for _, op in ipairs(batch) do if op.collection == collection and op.key == object_key then return true end end
+  return false
+end
+local journal_key = key("duel_match3_journal", "result:economy-fixture:pve")
+
 test("progression create-only CAS cannot overwrite a racing first write", function()
   local stale = copy(db[progress_key].value)
-  assert(not pcall(env.write_pve_progress, "player", stale, nil))
+  assert(not pcall(env.export_write_progress, "player", stale, nil))
   db[progress_key] = nil
-  env.write_pve_progress("player", stale, nil)
+  env.export_write_progress("player", stale, nil)
   assert(db[progress_key].value.gold == 100)
-  assert(not pcall(env.write_pve_progress, "player", stale, nil))
+  assert(not pcall(env.export_write_progress, "player", stale, nil))
 end)
-test("PvE currency blueprint and recipe share one transaction", function()
+
+test("PvE currency blueprint recipe and committed journal share one CAS transaction", function()
   local result = award()
-  assert(result.reward_gold == 10 and result.reward_recipe_item_id == "recipe")
-  assert(#batches == 1 and #batches[1] == 2)
+  assert(result.reward_gold == 10 and result.reward_recipe_item_id == "recipe" and not result.reward_pending)
+  assert(#batches == 3 and #batches[1] == 1 and #batches[2] == 3 and #batches[3] == 5)
+  assert(contains(batches[1], "duel_match3_journal", "retention_v2"))
+  assert(not contains(batches[2], cfg.PVE_PROGRESS_COLLECTION, cfg.PVE_PROGRESS_KEY))
+  assert(contains(batches[3], cfg.CHARACTER_SHEET_COLLECTION, cfg.CHARACTER_SHEET_KEY))
+  assert(contains(batches[3], cfg.PVE_PROGRESS_COLLECTION, cfg.PVE_PROGRESS_KEY))
+  assert(contains(batches[3], "duel_match3_journal", "result:economy-fixture:pve"))
   assert(db[progress_key].value.gold == 110 and db[progress_key].value.blueprint_green == 1)
-  assert(count_item(db[sheet_key].value, "recipe") == 1)
+  assert(count_item(db[sheet_key].value, "recipe") == 1 and db[journal_key].value.reward_status == "committed")
 end)
-test("PvE blueprint grant preserves concurrent wallet spend on CAS retry", function()
-  before_write = function()
-    local progress = copy(db[progress_key].value); progress.gold = progress.gold - 17; put(progress_key, progress)
+
+test("PvE blueprint grant preserves concurrent wallet spend on actual reward CAS retry", function()
+  local write, raced = nk.storage_write, false
+  nk.storage_write = function(writes)
+    if not raced and contains(writes, cfg.PVE_PROGRESS_COLLECTION, cfg.PVE_PROGRESS_KEY) then
+      raced = true
+      local progress = copy(db[progress_key].value); progress.gold = progress.gold - 17; put(progress_key, progress)
+    end
+    return write(writes)
   end
-  award()
-  assert(#batches == 2 and db[progress_key].value.gold == 93)
+  local ok, result = pcall(award)
+  nk.storage_write = write
+  assert(ok and raced and result.reward_gold == 10 and not result.reward_pending)
+  assert(#batches == 4 and #batches[3] == 5 and #batches[4] == 5 and db[progress_key].value.gold == 93)
   assert(db[progress_key].value.blueprint_green == 1 and count_item(db[sheet_key].value, "recipe") == 1)
 end)
-test("failed PvE transaction applies no currency blueprint or recipe", function()
-  fail_write = true
-  local result = award()
+
+test("failed PvE reward commit retains frozen intent and applies no currency blueprint or recipe", function()
+  local write = nk.storage_write
+  nk.storage_write = function(writes)
+    if contains(writes, cfg.PVE_PROGRESS_COLLECTION, cfg.PVE_PROGRESS_KEY) then fail_write = true end
+    return write(writes)
+  end
+  local ok, result = pcall(award)
+  nk.storage_write = write; fail_write = false
+  assert(ok and result.reward_pending and result.err == "storage_unavailable")
   assert(db[progress_key].value.gold == 100 and db[progress_key].value.blueprint_green == 0)
   assert(count_item(db[sheet_key].value, "recipe") == 0)
   assert(result.reward_xp == 0 and result.reward_gold == 0 and result.reward_recipe_item_id == "")
-  assert(result.err == "reward_storage_unavailable")
+  assert(db[journal_key].value.status == "prepared" and db[journal_key].value.plan.items[1].def_id == "recipe")
+  local retried = award()
+  assert(not retried.reward_pending and retried.reward_gold == 10 and db[progress_key].value.gold == 110)
+  assert(count_item(db[sheet_key].value, "recipe") == 1 and db[progress_key].value.blueprint_green == 1)
 end)
-test("PvE inventory read failure returns safe game-over rewards without throwing or writing", function()
-  local read = nk.storage_read
-  nk.storage_read = function() error("temporary inventory read failure") end
+
+test("PvE storage read failure returns pending zero credits without throwing or writing", function()
+  local read, before = nk.storage_read, copy(db)
+  nk.storage_read = function() error("temporary inventory/journal read failure") end
   local ok, result = pcall(award)
   nk.storage_read = read
-  assert(ok and result.err == "reward_storage_unavailable")
+  assert(ok and result.reward_pending and result.err == "storage_unavailable")
   assert(result.reward_xp == 0 and result.reward_gold == 0 and result.reward_ingots == 0)
-  assert(result.reward_blueprint == "" and result.reward_recipe_item_id == "" and result.reward_key_amount == 0)
-  assert(result.gold == db[progress_key].value.gold and #batches == 0)
-  assert(count_item(db[sheet_key].value, "recipe") == 0)
+  assert(result.reward_blueprint == "" and result.reward_recipe_item_id == "" and (result.reward_key_amount or 0) == 0)
+  assert(db[progress_key].value.gold == before[progress_key].value.gold and #batches == 0)
+  assert(count_item(db[sheet_key].value, "recipe") == 0 and db[journal_key] == nil)
+end)
+
+test("replayed committed PvE result cannot grant currency blueprint or recipe twice", function()
+  local result = award(); local count = #batches
+  assert(not result.reward_pending and award().reward_recipe_item_id == "recipe" and #batches == count)
+  assert(db[progress_key].value.gold == 110 and db[progress_key].value.blueprint_green == 1)
+  assert(count_item(db[sheet_key].value, "recipe") == 1)
 end)
 print("economy security: " .. passed .. " tests passed")

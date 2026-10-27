@@ -25,9 +25,25 @@ namespace Project.Character.UI
         private readonly List<int> _bagDataIndices = new List<int>();
         private readonly List<Image> _bagRarity = new List<Image>();
         private readonly List<TMP_Text> _bagTiers = new List<TMP_Text>();
+        private readonly List<Button> _bagLocks = new List<Button>();
+        private readonly List<TMP_Text> _bagLockLabels = new List<TMP_Text>();
+        private readonly Button[] _pages = new Button[2];
+        private readonly TMP_Text[] _pageLabels = new TMP_Text[2];
+        private TMP_Text _bagFooter;
+        private int _page;
+        public int CurrentInventoryPage => _page;
+        public void SelectInventoryPage(int page)
+        {
+            page = Mathf.Clamp(page, 0, 1);
+            if (_page == page) return;
+            if (_dragController != null) _dragController.CancelActiveDrag();
+            CancelInventoryGesture(); _page = page; _resetBagScroll = true; RefreshInventory();
+        }
         private readonly List<int> _visibleBagSlots = new List<int>();
-        private readonly Button[] _filters = new Button[3];
-        private readonly TMP_Text[] _filterLabels = new TMP_Text[3];
+        private readonly Button[] _filters = new Button[4];
+        private readonly TMP_Text[] _filterLabels = new TMP_Text[4];
+        private ConsumableStatusStrip _consumables;
+        public void SetConsumables(ConsumableStatus status){if(_consumables!=null)_consumables.Bind(status);}
         private CharacterScreenView _view;
         private CharacterSheetDragController _dragController;
         private RectTransform _screenRoot, _panel, _equipment, _stageBackdrop, _statsBar, _bag, _bagViewport, _bagContent, _bagScrollbar;
@@ -40,6 +56,24 @@ namespace Project.Character.UI
         private Vector2 _lastRootSize;
         private Vector2Int _lastScreenSize;
         private Rect _lastSafeArea;
+        private CharacterAppearancePanel _appearancePanel;
+        private readonly Button[] _heroTabs = new Button[2];
+        public int CurrentHeroTab { get; private set; }
+
+        public void SelectHeroTab(int tab)
+        {
+            if (!_built) return;
+            tab = Mathf.Clamp(tab, 0, 1);
+            if (_dragController != null) _dragController.CancelActiveDrag();
+            CancelInventoryGesture();
+            CurrentHeroTab = tab;
+            _equipment.gameObject.SetActive(tab == 0);
+            _statsBar.gameObject.SetActive(tab == 0);
+            _bag.gameObject.SetActive(tab == 0);
+            if (tab == 0) _appearancePanel.Hide(); else _appearancePanel.Show();
+            for (var i = 0; i < _heroTabs.Length; i++) ExpeditionUi.StyleButton(_heroTabs[i], i == tab, 27);
+            RefreshLayout();
+        }
 
         public void Build(RectTransform panel, RectTransform equipment, RectTransform bag,
             IReadOnlyList<EquipmentSlotView> equipmentSlots, IReadOnlyList<ItemSlotView> inventorySlots,
@@ -73,6 +107,7 @@ namespace Project.Character.UI
             _stageBackdrop.GetComponent<Image>().sprite = background.sprite;
             var hero = MakeImage("ExpeditionHero", equipment);
             hero.sprite = Resources.Load<Sprite>("Expedition/Art/hero");
+            CharacterAppearanceImage.Bind(hero);
             hero.preserveAspect = true;
             Area(hero.rectTransform, .235f, .175f, .765f, .985f);
 
@@ -178,18 +213,18 @@ namespace Project.Character.UI
             Area(bag, .018f, .011f, .982f, .393f);
             SetFrame(bag, ExpeditionTheme.Plate, Color.white, true);
             var bagTitle = Label("ExpeditionInventoryTitle", bag, "Инвентарь", 48, ExpeditionTheme.Ivory);
-            Area(bagTitle.rectTransform, .035f, .857f, .405f, .985f);
+            Area(bagTitle.rectTransform, .035f, .857f, .305f, .985f);
             bagTitle.alignment = TextAlignmentOptions.MidlineLeft;
-            var captions = new[] { "Всё", "Снаряжение", "Чертежи" };
-            for (var i = 0; i < 3; i++)
+            var captions = new[] { "Всё", "Снаряжение", "Чертежи", "Расходники" };
+            for (var i = 0; i < 4; i++)
             {
                 var index = i;
                 var rt = MakeRect("ExpeditionInventoryFilter" + i, bag);
-                Area(rt, .415f + i * .19f, .875f, .595f + i * .19f, .97f);
+                Area(rt, .32f + i * .1625f, .875f, .4725f + i * .1625f, .97f);
                 var surface = SetFrame(rt, ExpeditionTheme.Plate, Color.white, true);
                 var button = ExpeditionUi.Ensure<Button>(rt.gameObject);
                 NeutralButton(button, surface);
-                var label = Label("Label", rt, captions[i], i == 1 ? 23 : 27, ExpeditionTheme.Ivory);
+                var label = Label("Label", rt, captions[i], i==0?25:21, ExpeditionTheme.Ivory);
                 Area(label.rectTransform, .025f, .04f, .975f, .96f);
                 button.onClick.AddListener(() => SelectFilter(index));
                 _filters[i] = button; _filterLabels[i] = label;
@@ -239,14 +274,56 @@ namespace Project.Character.UI
                 var dataIndex = slot.InventorySlotIndex >= 0 ? slot.InventorySlotIndex : i;
                 _bagSlots.Add(rt); _bagDataIndices.Add(dataIndex); _bagRarity.Add(rarity); _bagTiers.Add(tier);
                 ExpeditionUi.Ensure<CharacterInventoryScrollRelay>(rt.gameObject).Configure(_bagScroll, _view, dataIndex);
+                var lockRect = MakeRect("ExpeditionInventoryLock", rt);
+                Area(lockRect, .04f, .04f, .96f, .96f);
+                var lockSurface = SetFrame(lockRect, ExpeditionTheme.Plate, new Color(.60f, .67f, .65f, 1), true);
+                var lockButton = ExpeditionUi.Ensure<Button>(lockRect.gameObject);
+                NeutralButton(lockButton, lockSurface);
+                var lockIcon = MakeImage("LockIcon", lockRect); lockIcon.sprite = ExpeditionTheme.Icon("lock");
+                lockIcon.preserveAspect = true; lockIcon.color = ExpeditionTheme.Muted;
+                Area(lockIcon.rectTransform, .34f, .57f, .66f, .86f);
+                if (lockIcon.sprite == null)
+                {
+                    lockIcon.enabled = false;
+                    // Graphic forbids a second renderer on the Image GameObject;
+                    // cover the very same icon rect with a dedicated native child.
+                    var nativeLock = MakeRect("NativeLock", lockIcon.rectTransform);
+                    Area(nativeLock, 0, 0, 1, 1);
+                    ExpeditionUi.Ensure<CanvasRenderer>(nativeLock.gameObject);
+                    var padlock = ExpeditionUi.Ensure<ExpeditionNavigationIcon>(nativeLock.gameObject);
+                    padlock.Kind = 7; padlock.color = ExpeditionTheme.Muted; padlock.raycastTarget = false;
+                }
+                var lockLabel = Label("UnlockLabel", lockRect, "", 22, ExpeditionTheme.Muted);
+                Area(lockLabel.rectTransform, .08f, .12f, .92f, .56f);
+                lockLabel.textWrappingMode = TextWrappingModes.Normal;
+                var captured = dataIndex;
+                lockButton.onClick.AddListener(() => _view.RequestInventorySlotUnlock(captured));
+                _bagLocks.Add(lockButton); _bagLockLabels.Add(lockLabel);
+            }
+            _bagFooter = Label("ExpeditionInventoryFooter", bag, "", 23, ExpeditionTheme.Muted);
+            Area(_bagFooter.rectTransform, .04f, .018f, .70f, .089f);
+            _bagFooter.alignment = TextAlignmentOptions.MidlineLeft;
+            for (var i = 0; i < 2; i++)
+            {
+                var pageIndex = i;
+                var rt = MakeRect("ExpeditionInventoryPage" + i, bag);
+                Area(rt, .73f + i * .115f, .014f, .835f + i * .115f, .10f);
+                var pageButton = ExpeditionUi.Ensure<Button>(rt.gameObject);
+                NeutralButton(pageButton, SetFrame(rt, ExpeditionTheme.Plate, Color.white, true));
+                pageButton.onClick.AddListener(() => SelectInventoryPage(pageIndex));
+                ExpeditionUi.Ensure<CharacterInventoryPageDrop>(rt.gameObject).Configure(_view, pageIndex);
+                _pages[i] = pageButton;
+                _pageLabels[i] = Label("Label", rt, (i + 1).ToString(), 30, ExpeditionTheme.Ivory);
+                Area(_pageLabels[i].rectTransform, .08f, .06f, .92f, .94f);
             }
             _emptyBag = Label("ExpeditionInventoryEmpty", _bagViewport, "", 30, ExpeditionTheme.Muted);
             Area(_emptyBag.rectTransform, .05f, .35f, .95f, .65f);
             for (var i = bag.childCount - 1; i >= 0; i--)
             {
                 var child = bag.GetChild(i);
-                if (child != _bagViewport && child != _bagScrollbar && child != bagTitle.transform && !child.name.StartsWith("ExpeditionInventoryFilter")) child.gameObject.SetActive(false);
+                if (child != _bagViewport && child != _bagScrollbar && child != bagTitle.transform && !child.name.StartsWith("ExpeditionInventoryFilter") && !child.name.StartsWith("ExpeditionInventoryPage") && child != _bagFooter.transform) child.gameObject.SetActive(false);
             }
+            _consumables=ConsumableStatusStrip.Ensure(bag);_consumables.Bind(null);
             if (profileError != null) Move(profileError.rectTransform, panel, .03f, .395f, .97f, .417f);
             for (var i = panel.childCount - 1; i >= 0; i--)
             {
@@ -254,6 +331,20 @@ namespace Project.Character.UI
                 if (child != background.transform && child != equipment && child != bag && child != stats && child != identity && child != profileError?.transform) child.gameObject.SetActive(false);
             }
             _built = true; _geometryDirty = true; _resetBagScroll = true;
+            _appearancePanel = ExpeditionUi.Ensure<CharacterAppearancePanel>(gameObject);
+            _appearancePanel.Build(panel);
+            var tabNames = new[] { "Снаряжение", "Образы" };
+            for (var i = 0; i < _heroTabs.Length; i++)
+            {
+                var index = i;
+                _heroTabs[i] = ExpeditionUi.Button(panel, "ExpeditionHeroTab" + i, tabNames[i],
+                    .025f + i * .485f, .944f, .49f + i * .485f, .996f, () => SelectHeroTab(index), i == 0, 27);
+                var tabLabel = _heroTabs[i].GetComponentInChildren<TMP_Text>();
+                tabLabel.enableAutoSizing = true; tabLabel.fontSizeMin = 18; tabLabel.fontSizeMax = 27;
+                tabLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                tabLabel.margin = Vector4.zero;
+            }
+            SelectHeroTab(0);
             RefreshEmptyEquipment(null);
             RefreshInventory();
         }
@@ -314,7 +405,17 @@ namespace Project.Character.UI
             {
                 var item = default(ItemDefinition);
                 var occupied = _view != null && _view.TryGetInventoryItem(_bagDataIndices[i], out _, out item);
-                var visible = _filter == 0 || occupied && (_filter == 1 ? item.Kind == ItemKind.Equipment : item.Kind == ItemKind.Recipe);
+                var dataIndex = _bagDataIndices[i];
+                var locked = _view != null && dataIndex >= _view.InventoryCapacity;
+                var visible = dataIndex / CharacterScreenView.InventoryPageSize == _page &&
+                    (_filter == 0 || occupied && (_filter == 1 ? item.Kind == ItemKind.Equipment : _filter==2?item.Kind==ItemKind.Recipe:item.Kind==ItemKind.Consumable));
+                _bagLocks[i].gameObject.SetActive(locked);
+                var next = locked && _view != null && dataIndex == _view.InventoryCapacity;
+                _bagLocks[i].interactable = next;
+                _bagLockLabels[i].text = next ? "Открыть\n" + _view.InventorySlotPrice + " материи" : "Закрыто";
+                _bagLockLabels[i].color = next ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
+                var padlock = _bagLocks[i].transform.Find("LockIcon/NativeLock")?.GetComponent<ExpeditionNavigationIcon>();
+                if (padlock != null) padlock.color = _bagLockLabels[i].color;
                 _bagSlots[i].gameObject.SetActive(visible);
                 _bagRarity[i].enabled = occupied;
                 if (occupied) _bagRarity[i].color = EquipmentSlotView.QualitySlotColor(item.Quality);
@@ -333,7 +434,20 @@ namespace Project.Character.UI
                 }
                 _filterLabels[i].color = selected ? new Color32(31, 26, 17, 255) : ExpeditionTheme.Ivory;
             }
-            _emptyBag.text = _filter == 1 ? "В рюкзаке нет снаряжения" : "В рюкзаке нет чертежей";
+            for (var i = 0; i < _pages.Length; i++)
+            {
+                var image = _pages[i].targetGraphic as Image;
+                image.sprite = i == _page ? ExpeditionArt.Frame(true) : ExpeditionTheme.Plate;
+                image.color = Color.white;
+                _pageLabels[i].color = i == _page ? new Color32(31, 26, 17, 255) : ExpeditionTheme.Ivory;
+            }
+            if (_view != null)
+            {
+                _bagFooter.text = _view.PendingLootCount > 0 ? "Ожидают места: " + _view.PendingLootCount
+                    : "Открыто ячеек: " + _view.InventoryCapacity + "/" + CharacterScreenView.InventoryMaximum;
+                _bagFooter.color = _view.PendingLootCount > 0 ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
+            }
+            _emptyBag.text = _filter == 1 ? "В рюкзаке нет снаряжения" : _filter==3?"В рюкзаке нет расходников":"В рюкзаке нет чертежей";
             _emptyBag.gameObject.SetActive(_visibleBagSlots.Count == 0);
             _geometryDirty = true;
         }
@@ -366,13 +480,13 @@ namespace Project.Character.UI
             var bagWidth = _panel.rect.width * .964f;
             var cell = Mathf.Max(1, (bagWidth - 74 - 12 - (columns - 1) * gap) / columns);
             var visibleRowsHeight = cell * 2 + gap + 12;
-            var bagHeight = Mathf.Min((visibleRowsHeight + 22) / .852f, panelHeight * .55f);
+            var bagHeight = Mathf.Min((visibleRowsHeight + 80) / .72f, panelHeight * .55f);
             var bagBottom = panelHeight * .011f;
             Area(_bag, .018f, bagBottom / panelHeight, .982f, (bagBottom + bagHeight) / panelHeight);
             var statsBottom = bagBottom + bagHeight + 14;
             var statsTop = statsBottom + panelHeight * .09f;
             Area(_statsBar, .025f, statsBottom / panelHeight, .975f, statsTop / panelHeight);
-            Area(_equipment, 0, (statsTop + 7) / panelHeight, 1, 1);
+            Area(_equipment, 0, (statsTop + 7) / panelHeight, 1, .936f);
             _equipment.ForceUpdateRectTransforms(); _bag.ForceUpdateRectTransforms();
             var width = _equipment.rect.width; var height = _equipment.rect.height;
             var side = Mathf.Min(width * .225f, height * .265f);
@@ -392,10 +506,10 @@ namespace Project.Character.UI
             _stageBackdrop.pivot = new Vector2(.5f, 0);
             _stageBackdrop.sizeDelta = new Vector2(width, stageImageHeight);
             _stageBackdrop.anchoredPosition = new Vector2(0, height * .18f - stageImageHeight * .48f);
-            _bagViewport.anchorMin = new Vector2(0, 0); _bagViewport.anchorMax = new Vector2(1, .852f);
-            _bagViewport.offsetMin = new Vector2(20, 18); _bagViewport.offsetMax = new Vector2(-54, -4);
-            _bagScrollbar.anchorMin = new Vector2(1, 0); _bagScrollbar.anchorMax = new Vector2(1, .852f);
-            _bagScrollbar.offsetMin = new Vector2(-42, 22); _bagScrollbar.offsetMax = new Vector2(-14, -10);
+            _bagViewport.anchorMin = new Vector2(0, 0); _bagViewport.anchorMax = new Vector2(1, .72f);
+            _bagViewport.offsetMin = new Vector2(20, 76); _bagViewport.offsetMax = new Vector2(-54, -4);
+            _bagScrollbar.anchorMin = new Vector2(1, 0); _bagScrollbar.anchorMax = new Vector2(1, .72f);
+            _bagScrollbar.offsetMin = new Vector2(-42, 80); _bagScrollbar.offsetMax = new Vector2(-14, -10);
             _bagViewport.ForceUpdateRectTransforms();
             cell = Mathf.Max(1, (_bagViewport.rect.width - 12 - (columns - 1) * gap) / columns);
             var rows = Mathf.Max(1, Mathf.CeilToInt(_visibleBagSlots.Count / (float)columns));
@@ -453,7 +567,20 @@ namespace Project.Character.UI
             rt.pivot = new Vector2(.5f, .5f); rt.offsetMin = rt.offsetMax = Vector2.zero; rt.localScale = Vector3.one;
         }
     }
-    /// <summary>Vertical drags scroll; holding an item or dragging it sideways keeps the original item transfer.</summary>
+    /// <summary>Drop onto a page number to move to its first free unlocked cell.</summary>
+    public sealed class CharacterInventoryPageDrop : MonoBehaviour, IDropHandler
+    {
+        private CharacterScreenView _view;
+        private int _page;
+        public void Configure(CharacterScreenView view, int page) { _view = view; _page = page; }
+        public void OnDrop(PointerEventData eventData)
+        {
+            if (_view == null || eventData.pointerDrag == null) return;
+            var source = eventData.pointerDrag.GetComponent<CharacterDragSlotHandle>();
+            if (source != null) _view.MoveDraggedItemToPage(source, _page);
+        }
+    }
+    /// <summary>Vertical drags scroll; holding an item or dragging it sideways keeps item transfer.</summary>
     public sealed class CharacterInventoryScrollRelay : MonoBehaviour, IPointerDownHandler
     {
         private ScrollRect _scroll;

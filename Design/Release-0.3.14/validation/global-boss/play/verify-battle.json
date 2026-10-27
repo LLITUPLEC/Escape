@@ -1,0 +1,51 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "width": 1080,
+    "height": 1920,
+    "error": "",
+    "checks": [
+        {
+            "name": "Native1080portrait play viewport",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: NameText",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: MpValue",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: GlobalBossContribution",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: ExpeditionHeaderInfo",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: AvatarTxt",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: HpValue",
+            "passed": true
+        },
+        {
+            "name": "Readable battle/outcome boss label: Label",
+            "passed": true
+        },
+        {
+            "name": "Boss has no healing characteristic",
+            "passed": true
+        },
+        {
+            "name": "No account or gameplay transport",
+            "passed": true
+        }
+    ],
+    "screenshots": []
+}

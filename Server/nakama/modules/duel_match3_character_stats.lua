@@ -65,6 +65,11 @@ local function merged_stats_for_user(user_id)
   local bonus = type(sum_equip) == "function" and sum_equip(sheet) or {}
   local stats = type(merge) == "function" and merge(base_stats, bonus) or base_stats
   CombatBon.apply_to_merged_stats(stats, read_achievement_claimed(user_id))
+  if type(deps.cosmetics_hp_bonus) == "function" then
+    local fraction = tonumber(deps.cosmetics_hp_bonus(user_id)) or 0
+    assert(fraction == fraction and fraction >= 0 and fraction <= 0.045, "invalid_cosmetics_hp_bonus")
+    stats.hp = math.max(1, math.floor((tonumber(stats.hp) or max_hp) * (1 + fraction) + 0.000000001))
+  end
   return stats
 end
 

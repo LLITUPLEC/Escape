@@ -1,0 +1,8 @@
+{
+  "scope": "Read-only four whitelisted runtime settings, no credentials or player data",
+  "leaderboard_blacklist_rank_cache": null,
+  "lua_min_count": 4,
+  "lua_max_count": 16,
+  "socket_write_timeout_ms": null,
+  "boss_native_rank_cache_not_disabled": true
+}

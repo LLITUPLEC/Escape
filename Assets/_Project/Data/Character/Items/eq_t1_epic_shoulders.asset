@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: eq_t1_epic_shoulders
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: eq_t1_epic_shoulders
-  displayName: "\u041F\u0440\u0435\u0434\u043C\u0435\u0442"
+  displayName: "Наплечники аметистового дозора"
   colorDisplayName: {r: 0.5778619, g: 0.15300101, b: 0.93207544, a: 1}
-  description: 
+  description: "Тяжёлые пластины с фиолетовыми накопителями энергии. Часть эпического комплекта «Аметистовый дозор»."
   kind: 0
   maxStack: 1
   tier: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   craftItemId: eq_t1_rare_shoulders
   craftMinutes: 180
   salePrice: 100
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1a88312dda2cf52d728913756ecd22b5, type: 3}
   equippable: 1
   slot: 1
   modifiers: []

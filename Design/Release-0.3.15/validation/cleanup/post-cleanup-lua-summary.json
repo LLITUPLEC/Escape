@@ -1,0 +1,439 @@
+{
+  "utc": "2026-10-27T20:04:13.176895+00:00",
+  "runtime": "Lupa Lua 5.1 plus documented Lua 5.4 concurrency interleaving",
+  "scope": "Actual Lua modules against local simulated Nakama storage/auth/network boundaries; no production actions.",
+  "passed": true,
+  "named_cases": 728,
+  "results": [
+    {
+      "test": "account_gender_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 15,
+      "error": null
+    },
+    {
+      "test": "account_guard_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "account_wipe_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 6,
+      "error": null
+    },
+    {
+      "test": "achievement_claim_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 11,
+      "error": null
+    },
+    {
+      "test": "achievement_outbox_recovery_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 6,
+      "error": null
+    },
+    {
+      "test": "api_rate_limit_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "arena_concurrency_audit.lua",
+      "lua_version": "5.4",
+      "passed": true,
+      "named_cases": 44,
+      "error": null
+    },
+    {
+      "test": "battle_rounds_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 116,
+      "error": null
+    },
+    {
+      "test": "character_encoder_forward_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "cheat_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "consumable_core_combat_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 9,
+      "error": null
+    },
+    {
+      "test": "consumables_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 22,
+      "error": null
+    },
+    {
+      "test": "cosmetics_hp_stats_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "cosmetics_security_test.lua",
+      "lua_version": "5.4",
+      "passed": true,
+      "named_cases": 29,
+      "error": null
+    },
+    {
+      "test": "daily_journal_stats_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 6,
+      "error": null
+    },
+    {
+      "test": "daily_rewards_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 17,
+      "error": null
+    },
+    {
+      "test": "durable_journal_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 12,
+      "error": null
+    },
+    {
+      "test": "economy_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 18,
+      "error": null
+    },
+    {
+      "test": "friends_invitation_kind_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 7,
+      "error": null
+    },
+    {
+      "test": "global_boss_engine_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 6,
+      "error": null
+    },
+    {
+      "test": "global_boss_ranking_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 19,
+      "error": null
+    },
+    {
+      "test": "global_boss_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 35,
+      "error": null
+    },
+    {
+      "test": "global_boss_timer_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 29,
+      "error": null
+    },
+    {
+      "test": "inventory_core_migration_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "inventory_delivery_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 19,
+      "error": null
+    },
+    {
+      "test": "inventory_economy_page_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 7,
+      "error": null
+    },
+    {
+      "test": "inventory_journal_integration_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 6,
+      "error": null
+    },
+    {
+      "test": "inventory_sale_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 11,
+      "error": null
+    },
+    {
+      "test": "journal_fixture_admission.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "journal_retention_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 18,
+      "error": null
+    },
+    {
+      "test": "match_lifecycle_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 15,
+      "error": null
+    },
+    {
+      "test": "mine_catalog_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "mine_monster_names_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 1,
+      "error": null
+    },
+    {
+      "test": "player_guidance_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 25,
+      "error": null
+    },
+    {
+      "test": "public_appearance_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 7,
+      "error": null
+    },
+    {
+      "test": "pve_cost_item_guard_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 5,
+      "error": null
+    },
+    {
+      "test": "pve_entry_recovery_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 15,
+      "error": null
+    },
+    {
+      "test": "pve_preintent_core_retry_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 4,
+      "error": null
+    },
+    {
+      "test": "pve_rewards_inventory_journal_integration_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 14,
+      "error": null
+    },
+    {
+      "test": "race_crash_recovery_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 14,
+      "error": null
+    },
+    {
+      "test": "race_daily_stats_integration_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 5,
+      "error": null
+    },
+    {
+      "test": "race_entry_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 37,
+      "error": null
+    },
+    {
+      "test": "reconnect_lifecycle_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "recovery_service_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 4,
+      "error": null
+    },
+    {
+      "test": "runtime_forward_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "server_aura_schedule_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 10,
+      "error": null
+    },
+    {
+      "test": "shop_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 19,
+      "error": null
+    },
+    {
+      "test": "smith_rewards_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 21,
+      "error": null
+    },
+    {
+      "test": "stats_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 13,
+      "error": null
+    },
+    {
+      "test": "storage_guard_security_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 0,
+      "error": null
+    },
+    {
+      "test": "storage_maintenance_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 21,
+      "error": null
+    },
+    {
+      "test": "turn_deadline_input_test.lua",
+      "lua_version": "5.1",
+      "passed": true,
+      "named_cases": 30,
+      "error": null
+    }
+  ],
+  "source_sha256": {
+    "arena_smith_rewards.lua": "5069788504fc809be534f2e71495ac95b70382220366d509bf4f81b6949dff38",
+    "arena_tournament.lua": "b55dba62680f5187574593ea507b2576a6d667a1fee46ab287d7bc8df518a877",
+    "duel_account_gender.lua": "afd587838d8fcf3da1465a8af90fcf779ce085196a9e334d4137891ff87f6697",
+    "duel_account_guard.lua": "a9c4770c8f74f1862ae0d00e99c36a299ac4b4fbeb4b23ba97ad0402399e4d1b",
+    "duel_account_wipe.lua": "6538893c85ab7f98f58a044d039e63f4a23305cb3ec9091fd3ae423c8d123e40",
+    "duel_api_rate_guard.lua": "02f7f857c09e3fbb21229c96bfbaac2c3b4a646eb281a3a0b8d186801400d8e6",
+    "duel_api_rate_limit.lua": "dbb407829c49724488701409cc020ee338f83230306285ca33624306494a5fef",
+    "duel_consumable_effects.lua": "9617f3276b75563c3a4c9e524c464da206773ec06b44c7968242d0823369d972",
+    "duel_consumables.lua": "e40fc026fb462059de219b07167b9e0a9fc25a6023bd82e789da22768154b329",
+    "duel_daily.lua": "620edd5b75c737d6166dfb128e6f56b8799dc165739723e8d69b4710eaccffdf",
+    "duel_fake_online.lua": "eb0c0c800e7ccb29cc8fd2fc8e33b02a3ba1d0c7798d295f9330de8c2c715585",
+    "duel_friends.lua": "a08b74e58bc67851077b790126540d1ff12dd4ae633fa65c6ea157f2cd63592d",
+    "duel_friends_race.lua": "4b028c671ebc9eba9013c09870c07cb30089129a22c0b313c0af543f60b7bf4a",
+    "duel_global_boss.lua": "4892ba7f178963c6146f9c66db2c18b1a2702fd13098f245e5af2b463b76961c",
+    "duel_global_boss_battle.lua": "427c8d10cb441ea93854c729b80e98d6712d42a28c5231443cd4c278861dcee7",
+    "duel_global_boss_dispatcher.lua": "767cf9a2d269d98306c4871ccb47c2d353c15a571cd292183fac37a9227f4d7a",
+    "duel_global_boss_rank_dispatcher.lua": "23a5df3a67a72d9039331d7e2e37a741649c6b52c60b00e537ca4012775ef2e2",
+    "duel_global_boss_ranking.lua": "0ba4ede3887b09013bca1be5ce180e466e945f61d179561f13321c4ae522bf41",
+    "duel_global_boss_rules.lua": "55ced5e657022587815cd5ace025350a8cdc90abbdd78971a708de1a37759659",
+    "duel_journal_retention.lua": "dcf73a993e6db9d17efca394d7683c6e0d102c6e404c840134ab71aab896badd",
+    "duel_keypad.lua": "84b8e8b0fbad575f45133779715decb41723eccff473721f96ca0bd515eaa78d",
+    "duel_leaderboard.lua": "16c48ee57837dfe63f55455964b2a37843f7493ccc2f67e382cb4827d0a088ec",
+    "duel_leaderboard_admin_purge.lua": "e98e45de4eb56d136690f18b88e4b4d71c37530ddb5a29972eabec9093bc4c16",
+    "duel_leaderboard_scores.lua": "0deca0672b523f507f0f1e757c904720b2c11fba8395b141386ce8fae2b37585",
+    "duel_mail.lua": "ce920807ebe9b7962870d28bf20f040e58c4c42e3e599027f96ab068d6422a39",
+    "duel_match3.lua": "e85598aa64d1c1eb7056924748aa7bfbbd92b53bc3a506cc65de47838f194a55",
+    "duel_match3_achievement_catalog.lua": "8145f8d51c6c4f36a8f2d23407f224db3e17ff8519ab4486a39c1cadfefcf43b",
+    "duel_match3_achievements.lua": "92b3be3dc6462468c538b76d5c6bbcefcea4f204656109fede1804c64266b789",
+    "duel_match3_character_stats.lua": "b87b1b5d3c6284981594a662dc2fbf89930638b4d968353d601a5c4f5a886ab4",
+    "duel_match3_combat_bonuses.lua": "6b0588d7e1b60569075ac951490b2b8ab2886e640dff5dcb7351d0d4951e369f",
+    "duel_match3_config.lua": "edf8fb0bdd424cc10ec994fda53c63b854629e1e67e65497f5a232ae1b98f652",
+    "duel_match3_contest_goals.lua": "02a93e1beef0ff6571a8258201b88d25a410ce7b033b10efaa854c26856e465b",
+    "duel_match3_economy_rpc.lua": "b4f18bc9191e881ee6cd9ec91caca9b7950687d5e005f55ecb3cb94625d796c1",
+    "duel_match3_inventory.lua": "69f565c24805a801ffd3419e4d15bc19cfdf609829d76a42f2a6aab0491e73ad",
+    "duel_match3_inventory_rpc.lua": "9f2df2130649b9a96fa22f5991a552c4645df49bddec0b4e55d07dd273493ee4",
+    "duel_match3_journal.lua": "3eda140d60be8eff2acb8d30a2978ae6f1e180c9d1b0f0409e75a6f454d53112",
+    "duel_match3_journal_admission.lua": "7583558f595da60584049b3f3a57bd564a9507939b0d7b4f8670921a7e767e1f",
+    "duel_match3_lifecycle.lua": "064ad37cb45f77522b579c53974d7aeae1f11a92911c216a832e90a0956f58e7",
+    "duel_match3_metrics.lua": "bcd6ac2944e16aa93acd8b3c68c12b748acbf8c9f5314c03e3f99ec351a59403",
+    "duel_match3_mine_barriers.lua": "c7017317919a2a591892aa709a35d947350793e1f0f3a29ed2fd2be1a825d079",
+    "duel_match3_presence.lua": "02cb3f9efe22647c80d38f24ccc95a48d22fe983897b4ad026fe75ce24439ab5",
+    "duel_match3_pve_entry.lua": "e72bf6816a6f47c003e7b58b5ea4acd65ecaa8754b533ec5baa091f400c227c0",
+    "duel_match3_pve_mine_cost.lua": "33185b5828144ff1f5455aa39da4ed36362d85c226c2a403009d9e68d8ad2849",
+    "duel_match3_pve_rewards.lua": "89b81e5ff12a7135cf7cdeb52754eb3f002067cba7b0d91f9b1d738baa987760",
+    "duel_match3_pvp.lua": "9b16f14601aac354e72e126a54e57ef588df5db9bc62a69fb0f052ebfb176ff8",
+    "duel_match3_race_api.lua": "5eefc900d396dac58a814931e846dc829b94a21ea8a9294e553d2079123e1ad9",
+    "duel_match3_race_entry.lua": "86c74b2139ae357b20a3ce8cce663d4ff6ea9164467aaf4db954d8447391e37c",
+    "duel_match3_recovery.lua": "25f36552f810b1e5c64d1f095efc736a0c15673acc7151e1250454f9cb55d303",
+    "duel_match3_rounds.lua": "9aafa1a4afc84778c7b7e5f99f095ffb8da8a8f4c6a169fade43ba62faa6934c",
+    "duel_match3_server_aura.lua": "209702079559d0a2c13a4f1bb4d7c6ff9cbc87da2234185456506ff1f583008a",
+    "duel_match3_session_guard.lua": "800705d01001b052b57ab55af53a63323b501805722dbf26550411293969f02d",
+    "duel_match3_stats_api.lua": "e820f3384b37ee59a45aac6700c75e2769b233b0660037f474c47c7e48a485ee",
+    "duel_matchmaker.lua": "c972b6eb91ec68b29e300abb6363042b3dbb1582036a5961185959a827a05805",
+    "duel_mine_recipe_drops.lua": "8785ce264db5fbf1960e3c97765bdc84a3ccdaef95b25a84eaf096c369ba2172",
+    "duel_online.lua": "7602d32f949e880c50846b585e66a94e5e60a7f6e325ff64d65c171f33cdce55",
+    "duel_player_cosmetics.lua": "eec7a20223ba031d207584d877a8eeb4cd23b203eb804e5568ac138bb11485f7",
+    "duel_player_guidance.lua": "6d141dee0bdb49b27682143551d8e70f13da25bc88b0f1fd6b59764d5a17d312",
+    "duel_public_appearance.lua": "a8a48f81c3063b84737bcaf215845c4875ae370d8d1518b550fb73c1ffac77a7",
+    "duel_relay.lua": "b0fca65ff1fa3eb468f4654742510d0b8e1f41c4ba2530bac8c7cde55c2f8f4f",
+    "duel_session.lua": "120d26870c91eba9eb50f701d3b6f760de12382f4c52f6c356813c3d0a6510f9",
+    "duel_shop.lua": "3aeb63eb928a6e83d75b4ecdf897144438f4ef13ab23e632bbd0ace685341696",
+    "duel_storage_guard.lua": "edccc372948414b2b57276a7d098a776d877749d1c5bc95369349a9ed5da8963",
+    "duel_storage_maintenance.lua": "dd2cbac70d7f2d7947e978a438ee81d9c4e939a4bb98c3b7ddfd2e37d87af8fd"
+  },
+  "sources_changed_during_run": false
+}

@@ -16,6 +16,7 @@ local CREATE = {
   duel_match3_pve_create = true, duel_match3_race_create = true,
   duel_match3_race_enter = true, duel_friends_race_respond = true,
   duel_arena_queue_join = true,
+  duel_global_boss_enter = true,
 }
 local READ = {
   duel_match3_stats_get = true, duel_match3_stats_record = true,
@@ -27,6 +28,14 @@ local READ = {
   duel_leaderboard_get = true, duel_online_ping_and_count = true,
   duel_online_list = true, duel_session_epoch_get = true,
   duel_friends_resolve_username = true,
+  duel_account_gender_get = true,
+  duel_player_cosmetics_get = true,
+  duel_public_appearance_get = true,
+  duel_daily_get = true,
+  duel_consumables_get = true,
+  duel_player_guidance_get = true,
+  duel_global_boss_get = true, duel_mail_get = true, duel_shop_get = true,
+  duel_global_boss_leaderboard_get = true,
 }
 
 local function reject(retry)
@@ -87,9 +96,15 @@ function M.register_rpc(fn, name)
   local group = M.policy_for_rpc(name)
   nk.register_rpc(function(ctx, payload)
     M.consume(ctx, group)
+    if M.maintenance then M.maintenance(ctx) end
     -- The limiter is outside handlers' pcall blocks: a limit stays a real 429.
     return fn(ctx, payload)
   end, name)
+end
+
+function M.configure_maintenance(fn)
+  assert(fn == nil or type(fn) == "function", "Invalid maintenance hook")
+  M.maintenance = fn
 end
 
 -- A match has one serialized Lua state, shared by all its incoming sockets.

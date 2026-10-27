@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "migration": "consumables-0.3.9",
+  "catalog_version": 4,
+  "existing_ids_must_remain_unchanged": true,
+  "system_collection": "duel_match3_item_defs",
+  "system_key": "catalog",
+  "system_user_id": "00000000-0000-0000-0000-000000000000",
+  "items": {
+    "elixir_assault": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_assault"
+    },
+    "elixir_stone": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "rare",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_stone"
+    },
+    "elixir_gambit": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "elixir_gambit"
+    },
+    "scroll_pve_bounty": {
+      "kind": "consumable",
+      "tier": 1,
+      "quality": "epic",
+      "max_stack": 20,
+      "sale_price": 0,
+      "effect_id": "scroll_pve_bounty"
+    }
+  }
+}

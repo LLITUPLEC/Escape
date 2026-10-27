@@ -17,7 +17,7 @@ import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "Design/Audio-Auditions-0.3.5"
+OUT = ROOT / "Design/Audio"
 RATE = 48000
 SOURCE = "Original deterministic procedural PCM synthesis; no recorded or stock samples"
 STYLES = {
@@ -315,7 +315,7 @@ def write_readme(metadata: dict):
               "В каждом элементе `metadata.json` есть точка предполагаемого события, существующий слот (если есть), длительность, peak/RMS, SHA-256 и происхождение. `inventory.json` содержит все 13 слотов, исключения и прочитанные точки исходников. `quality-checks.json` — автоматические проверки и хеши защищённых существующих файлов. Логика, расходы, громкости и обработчики игры не менялись.", "",
               "## Повторная генерация", "", "Из корня проекта с Python и NumPy:", "", "```text", "python Tools/Audio/generate_sfx_auditions.py", "```", "", "Не запускать старый `generate_expedition_sfx.py --write`: он пишет production Assets. Новый генератор допускает запись только в эту папку Design, не создаёт `.meta` и не запускает Unity. Детерминированные варианты воспроизводятся с seed 3502026. `--verify-only` проверяет уже созданные WAV/хеши без перезаписи.", ""]
     lines += ["Для обновления standalone HTML после изменения метаданных:", "", "```text", "python Tools/Audio/build_audition_page.py", "python Tools/Audio/validate_audition_page.py", "```", "",
-              "При желании открыть через локальный сервер: `python -m http.server 8765 --bind 127.0.0.1 --directory Design/Audio-Auditions-0.3.5`, затем `http://127.0.0.1:8765/`. Публикация и интеграция в игру не выполняются.", ""]
+              "При желании открыть через локальный сервер: `python -m http.server 8765 --bind 127.0.0.1 --directory Design/Audio`, затем `http://127.0.0.1:8765/`. Публикация и интеграция в игру не выполняются.", ""]
     (OUT / "README.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -342,12 +342,20 @@ def verify_existing():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify-only", action="store_true")
+    parser.add_argument("--verify-selected", action="store_true", help="Verify only the retained selected archive")
+    parser.add_argument("--rebuild-demos", action="store_true", help="Explicitly rebuild full A/B demos after archival")
     parser.add_argument("--seed", type=int, default=3502026)
     args = parser.parse_args()
     assert OUT.resolve().parent == (ROOT / "Design").resolve() and "Assets" not in OUT.parts
+    if args.verify_selected or (args.verify_only and not (OUT / "metadata.json").exists() and (OUT / "selected-metadata.json").exists()):
+        from validate_selected_archive import main as verify_selected
+        verify_selected()
+        return
     if args.verify_only:
         verify_existing()
         return
+    if (OUT / "selected-metadata.json").exists() and not (OUT / "metadata.json").exists() and not args.rebuild_demos:
+        parser.error("Selected-only archive retained. Use --verify-selected or explicitly --rebuild-demos.")
     before = protected_hashes()
     OUT.mkdir(parents=True, exist_ok=True)
     metadata = {"version": "0.3.5", "status": "audition_only_not_integrated", "source": SOURCE,

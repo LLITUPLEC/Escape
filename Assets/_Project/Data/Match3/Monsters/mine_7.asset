@@ -13,10 +13,9 @@ MonoBehaviour:
   m_Name: mine_7
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_7
-  displayName: "\u0428\u0430\u0445\u0442\u043D\u044B\u0439 \u043C\u043E\u043D\u0441\u0442\u0440
-    7"
+  displayName: "Чёрная копоть"
   floor: 7
-  icon: {fileID: 21300000, guid: e387d9e74521d2e41a0572bff50c9b1c, type: 3}
+  icon: {fileID: 21300000, guid: 2c596ed4d11afa7498be2901556eed77, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

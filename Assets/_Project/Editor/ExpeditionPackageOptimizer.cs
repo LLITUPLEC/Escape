@@ -57,7 +57,7 @@ namespace Project.Editor
         }
 
         public static string ReportPath => Path.GetFullPath(Path.Combine(Application.dataPath,
-            "../.utmp/expedition/package-optimizer-report.json"));
+            "../.cache/qa/bridge/package-optimizer-report.json"));
 
         [MenuItem("Tools/Escape/Expedition/Optimize UI font references")]
         public static void Prepare()

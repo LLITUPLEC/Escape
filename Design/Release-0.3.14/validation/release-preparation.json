@@ -1,0 +1,77 @@
+{
+  "version": "0.3.14",
+  "version_code": 16,
+  "preparedUtc": "2026-10-27T06:11:26.028352+00:00",
+  "expectedPreviousPublisherSha256": "baf1bc42b54e499c7a2647c82a8ac6c10ab021455aa0b773cba35a12e73cd723",
+  "publisherSha256": "267c14f885b01a19151a917e63c80c4e24921d7bcc633e60c5fdc65d898c47fb",
+  "softwareVersion": "0.3.14",
+  "history0313Preserved": true,
+  "pythonSyntaxPassed": true,
+  "publicScreens": {
+    "hub": {
+      "path": "Design/Release-0.3.14/screens/hub.png",
+      "role": "shopconfirmation",
+      "sha256": "1a2c6a35c3022d0cab514d484d78bacd3d62d44af3eedec466d095dee57b367c",
+      "bytes": 1117428,
+      "width": 1080,
+      "height": 1920
+    },
+    "character": {
+      "path": "Design/Release-0.3.14/screens/character.png",
+      "role": "bossdossier",
+      "sha256": "261278982495e318e46b6a38818a4c96e1b6adf339d3f8587235ee74fd568511",
+      "bytes": 1742519,
+      "width": 1080,
+      "height": 1920
+    },
+    "mine": {
+      "path": "Design/Release-0.3.14/screens/mine.png",
+      "role": "bossranking",
+      "sha256": "5277761d5e6a109e378fcd4526ec0d79e4cbcad463802285a2d8bd60486222c5",
+      "bytes": 1765999,
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "validVisibleFx": [
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/publish-0314-boss-fx-visible.png",
+      "sha256": "bf090a2c3e4e2e80cc3e4182c6f63156b37c4b75280cf7bd95a92f4fab6b947c",
+      "edited": false
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/publish-0314-lethal-cry-visible.png",
+      "sha256": "8d016df14ae3177d456a9f00e61ea53a10fbe6f6b6e9ef67354dd0c125fb236f",
+      "edited": false
+    }
+  ],
+  "thisPreparationPerformed": {
+    "sourceFreeze": false,
+    "apkBuild": false,
+    "siteBundleRender": false,
+    "uploadOrDeploy": false,
+    "network": false
+  },
+  "fileHashes": {
+    "ProjectSettings/ProjectSettings.asset": "7a81070db5b13777ca2f79dfde3102c3a37d6b88525eda1df75bd3ba8455e348",
+    "Assets/_Project/Editor/ExpeditionAndroidBuild.cs": "7c1f69219e48b780f21be76ad98c97c3aed294980bede6f19235f8a6bb61333e",
+    "Tools/Release/validate-apk.ps1": "dae1720adca1bab4a98da7c3e123a510400bf21a4a839c5fa946cc90a8de3391",
+    "Tools/Release/verify-public-release.ps1": "5d460ba09a64a5a62071dfceb964451dbb121c84074a25fa2e1296c6f4a7f464",
+    "Website/escape/render-release.ps1": "d4bd00e780d2e52de571a406318943fe84f47ee8dbf6ef9df59a2b481e4ffc2c",
+    "Website/escape/index.template.html": "9180b340fe910ecbdc1c64ee39200e9cd411ddd20627c0af32b3bb6a0cd405a0",
+    "Website/escape/README.md": "2c0ac391dfaff7aedbb3cd860b7e1b8f4e2a6171d10879dff267cb5137b32e2d",
+    "Server/nakama/deploy/deploy_download_page.py": "267c14f885b01a19151a917e63c80c4e24921d7bcc633e60c5fdc65d898c47fb",
+    ".utmp/expedition/prepare-publication-0314.py": "c3e8de2dc4ab755f9c450eac770b8d9a9677cb69eabd54f39feb08c3cea0d680",
+    ".utmp/expedition/check-client-source0314.py": "247a733513855d60f6878b8c474a60520462c18266fa55dc6adc23e1a0376ed2",
+    ".utmp/expedition/publish-page0314-remote.py": "b7a55487e08c191a9ef54f74e995934fb46b6d40355599fb3e615364634fcadc",
+    ".utmp/expedition/verify-public-integrity0314.py": "cb93465db65a0b51fc6043473b3ee81d0c62319ff5104477040ab156fce31668",
+    ".utmp/expedition/build-gallery0314.py": "b85d1a2832fc691fab42412826826265c27fd5e0cd5284a5e32577cd4e027a0b"
+  },
+  "gallery": {
+    "path": "Design/Release-0.3.14/index.html",
+    "state": "local_draft_not_published",
+    "nativePngCount": 19,
+    "excludedEarlierInvisibleFx": true
+  },
+  "independentVisualReview": "Design/Release-0.3.14/validation/release-visual-review.json"
+}

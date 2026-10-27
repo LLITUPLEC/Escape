@@ -99,24 +99,28 @@ namespace Project.Friends
             }
         }
 
-        /// <summary>Число входящих заявок (Nakama state = InviteReceived).</summary>
+        /// <summary>Число входящих заявок (Nakama state = InviteReceived); -1 when no trusted snapshot is available.</summary>
         public static async Task<int> CountIncomingInvitesAsync(CancellationToken ct)
         {
-            if (NakamaBootstrap.Instance == null)
-                return 0;
+            var bootstrap = NakamaBootstrap.Instance;
+            var ownerId = bootstrap?.Session?.UserId;
+            if (bootstrap == null || string.IsNullOrEmpty(ownerId))
+                return -1;
 
             try
             {
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
-                if (!IsClientReady())
-                    return 0;
+                await bootstrap.EnsureConnectedAsync(ct).ConfigureAwait(false);
+                var client = bootstrap.Client;
+                var session = bootstrap.Session;
+                if (!bootstrap.IsReady || client == null || session == null || !string.Equals(session.UserId, ownerId, StringComparison.Ordinal))
+                    return -1;
 
                 var total = 0;
                 string cursor = null;
                 do
                 {
-                    var page = await NakamaBootstrap.Instance.Client.ListFriendsAsync(
-                            NakamaBootstrap.Instance.Session,
+                    var page = await client.ListFriendsAsync(
+                            session,
                             state: (int)FriendRelationState.InviteReceived,
                             limit: FriendsPageLimit,
                             cursor: cursor,
@@ -125,8 +129,8 @@ namespace Project.Friends
 
                     if (page?.Friends != null)
                     {
-                        foreach (var _ in page.Friends)
-                            total++;
+                        foreach (var friend in page.Friends)
+                            if (friend?.User != null && friend.State == (int)FriendRelationState.InviteReceived) total++;
                     }
 
                     cursor = page?.Cursor;
@@ -141,7 +145,7 @@ namespace Project.Friends
             catch (Exception e)
             {
                 Debug.LogWarning("[Friends] CountIncomingInvites failed: " + e.Message);
-                return 0;
+                return -1;
             }
         }
 
@@ -236,17 +240,23 @@ namespace Project.Friends
             if (string.IsNullOrEmpty(id))
                 return FailMutation("empty_target");
 
-            if (NakamaBootstrap.Instance == null)
+            var bootstrap = NakamaBootstrap.Instance;
+            var ownerId = bootstrap?.Session?.UserId;
+            if (bootstrap == null)
                 return FailMutation("nakama_not_initialized");
+            if (string.IsNullOrEmpty(ownerId)) return FailMutation("nakama_not_ready");
 
-            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
-            if (!IsClientReady())
+            await bootstrap.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            var client = bootstrap.Client;
+            var session = bootstrap.Session;
+            if (!bootstrap.IsReady || client == null || session == null)
                 return FailMutation("nakama_not_ready");
+            if (!string.Equals(ownerId, session.UserId, StringComparison.Ordinal)) return FailMutation("stale_session");
 
             try
             {
-                await NakamaBootstrap.Instance.Client.AddFriendsAsync(
-                        NakamaBootstrap.Instance.Session,
+                await client.AddFriendsAsync(
+                        session,
                         ids: new[] { id },
                         usernames: null,
                         canceller: ct)
@@ -270,18 +280,23 @@ namespace Project.Friends
             if (string.IsNullOrWhiteSpace(userId) && string.IsNullOrWhiteSpace(username))
                 return FailMutation("empty_target");
 
-            if (NakamaBootstrap.Instance == null)
+            var bootstrap = NakamaBootstrap.Instance;
+            var ownerId = bootstrap?.Session?.UserId;
+            if (bootstrap == null)
                 return FailMutation("nakama_not_initialized");
+            if (string.IsNullOrEmpty(ownerId)) return FailMutation("nakama_not_ready");
 
-            await NakamaBootstrap.Instance.EnsureConnectedAsync(ct).ConfigureAwait(false);
-            if (!IsClientReady())
+            await bootstrap.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            var client = bootstrap.Client;
+            var session = bootstrap.Session;
+            if (!bootstrap.IsReady || client == null || session == null)
                 return FailMutation("nakama_not_ready");
+            if (!string.Equals(ownerId, session.UserId, StringComparison.Ordinal)) return FailMutation("stale_session");
 
             try
             {
                 if (DecorOnlineBots.IsDecorUserId(userId) || DecorOnlineBots.IsDecorUsername(username))
                 {
-                    var ownerId = NakamaBootstrap.Instance.Session?.UserId ?? string.Empty;
                     var key = !string.IsNullOrWhiteSpace(userId) ? userId : username;
                     await MainThreadDispatcher.RunAsync(() => DecorOnlineBots.RemoveOutgoingInvite(ownerId, key))
                         .ConfigureAwait(false);
@@ -295,8 +310,8 @@ namespace Project.Friends
                     ? null
                     : new[] { username.Trim() };
 
-                await NakamaBootstrap.Instance.Client.DeleteFriendsAsync(
-                        NakamaBootstrap.Instance.Session,
+                await client.DeleteFriendsAsync(
+                        session,
                         ids,
                         names,
                         canceller: ct)
@@ -377,7 +392,7 @@ namespace Project.Friends
             }
         }
 
-        public static async Task<FriendsRaceInviteResult> InviteRaceAsync(string targetUserId, CancellationToken ct)
+        public static async Task<FriendsRaceInviteResult> InviteRaceAsync(string targetUserId, CancellationToken ct, string kind = "race")
         {
             var id = (targetUserId ?? string.Empty).Trim();
             if (string.IsNullOrEmpty(id))
@@ -394,6 +409,7 @@ namespace Project.Friends
                 var body = JsonUtility.ToJson(new FriendsRaceInviteRpcRequest
                 {
                     target_user_id = id,
+                    kind = kind == "duel" ? "duel" : "race",
                     session_epoch = NakamaBootstrap.GetLocalSessionEpoch(),
                 });
                 var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
@@ -458,6 +474,7 @@ namespace Project.Friends
                     PrepSeconds = parsed.prep_seconds,
                     OpponentUserId = parsed.opponent_user_id,
                     OpponentUsername = parsed.opponent_username,
+                    Kind = parsed.kind,
                 };
             }
             catch (OperationCanceledException)
@@ -514,6 +531,7 @@ namespace Project.Friends
             return err switch
             {
                 "nakama_not_ready" => "Нет соединения с сервером",
+                "stale_session" => "Аккаунт изменился. Откройте список друзей заново",
                 "nakama_not_initialized" => "Сервер не инициализирован",
                 "unauthorized" => "Требуется авторизация",
                 "empty_username" => "Введите ник игрока",
@@ -521,6 +539,7 @@ namespace Project.Friends
                 "cannot_invite_self" => "Нельзя пригласить себя",
                 "empty_target" => "Игрок не выбран",
                 "empty_invite" => "Приглашение не найдено",
+                "invalid_invite_kind" => "Неизвестный режим приглашения",
                 "empty_payload" => "Пустой ответ сервера",
                 "parse_failed" => "Ошибка ответа сервера",
                 "server_error" => "Ошибка сервера",
@@ -543,6 +562,7 @@ namespace Project.Friends
         [Serializable]
         private sealed class FriendsRaceInviteRpcRequest
         {
+            public string kind;
             public string target_user_id;
             public int session_epoch;
         }

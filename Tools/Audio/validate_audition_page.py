@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 import wave
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "Design/Audio-Auditions-0.3.5"
+OUT = ROOT / "Design/Audio"
 
 
 class Page(HTMLParser):
@@ -30,6 +30,10 @@ class Page(HTMLParser):
 
 
 def main():
+    if not (OUT / "metadata.json").exists() and (OUT / "selected-metadata.json").exists():
+        from validate_selected_archive import main as verify_selected
+        verify_selected()
+        return
     source = (OUT / "index.html").read_text(encoding="utf-8")
     page = Page()
     page.feed(source)

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: recipe_drop_t1_gold_WeaponRight
   m_EditorClassIdentifier: Assembly-CSharp::Project.Character.ItemDefinition
   itemId: recipe_drop_t1_gold_WeaponRight
-  displayName: recipe_drop_t1_gold_WeaponRight
+  displayName: "Рецепт «Молот «Сердцебиение недр»»"
   colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
-  description: 
+  description: "Чертёж изготовления предмета «Молот «Сердцебиение недр»». После изучения хранится в книге рецептов мастерской."
   kind: 2
   maxStack: 1
   tier: 1

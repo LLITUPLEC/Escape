@@ -1,0 +1,248 @@
+[
+  {
+    "target": "Server/nakama/data/migrations/consumables-0.3.9.json",
+    "source": "Design/Release-0.3.9/consumable-item-defs.json",
+    "files": [
+      {
+        "path": "",
+        "sha256": "9e5446d4da5ea4bfd68744153be323ec7ba213ca4d502b3053469af8f519386c",
+        "bytes": 1051
+      }
+    ]
+  },
+  {
+    "target": "Server/nakama/data/migrations/shop-items-0.3.13.json",
+    "source": "Design/Release-0.3.13/shop-item-defs.json",
+    "files": [
+      {
+        "path": "",
+        "sha256": "7e71b8f220ead286ed40dd6b687e0249aee9db814a7e2a6c17a2a9052394e3c6",
+        "bytes": 396
+      }
+    ]
+  },
+  {
+    "target": "Server/nakama/tests/fixtures/shop-catalog-0.3.13.json",
+    "source": "Design/Release-0.3.13/shop-catalog.json",
+    "files": [
+      {
+        "path": "",
+        "sha256": "1ab3dc8386a6cf5de9cad83a58f28e819cd4450a79651e263d44e067f172622e",
+        "bytes": 10791
+      }
+    ]
+  },
+  {
+    "target": "Assets/_Project/Editor/Fixtures/appearance-server-039.json",
+    "source": "Design/Release-0.3.9/validation/appearance-server-fixtures.json",
+    "files": [
+      {
+        "path": "",
+        "sha256": "18a6121788944ba882003cf926791648b09b48cd44fb7c293175c091222cb4fd",
+        "bytes": 27993
+      }
+    ]
+  },
+  {
+    "target": "Assets/_Project/Editor/Fixtures/appearance-server-legacy.json",
+    "source": "Design/Media-2026-10-24/appearance-server-fixtures.json",
+    "files": [
+      {
+        "path": "",
+        "sha256": "5a3cafa01a9173ce512426eb19266eeb0b211fbc54d3e0b87a566a99b565dbff",
+        "bytes": 22811
+      }
+    ]
+  },
+  {
+    "target": "Assets/_Project/Editor/Fixtures/rpc-039",
+    "source": "Design/Release-0.3.9/validation/actual-rpc-json",
+    "files": [
+      {
+        "path": "bounty-active.json",
+        "sha256": "1164c8667b19aa29ca62c4ea205b8b59abb461e66dfd3ad53c75869938ca83d9",
+        "bytes": 1793
+      },
+      {
+        "path": "daily-completed.json",
+        "sha256": "bac451cc70b67b5f1bd579ed9f92228c6713b886721fcebb7da3b37c90b5fa6b",
+        "bytes": 2860
+      },
+      {
+        "path": "daily-completion-fullbag.json",
+        "sha256": "81181994835353d9098c3b156a2c4a5e145c723e3c10aff59c37e6d4eb8129c6",
+        "bytes": 3060
+      },
+      {
+        "path": "daily-fresh.json",
+        "sha256": "1542c2f99714f2b12e1de32dba099926fa5ff4f9b49317bc191e66ec7924b757",
+        "bytes": 2858
+      },
+      {
+        "path": "daily-login-currency.json",
+        "sha256": "816458ffa8186d215e3db8b1bc7dd71ddca759cd9a741b1a550fe46eb9209a18",
+        "bytes": 2951
+      },
+      {
+        "path": "daily-login-item-fullbag.json",
+        "sha256": "18211f0d791a3e98723f6c0df5aed280bae984484192ee3706146ce6d3af9e1a",
+        "bytes": 3052
+      },
+      {
+        "path": "elixir-armed.json",
+        "sha256": "c71edec15f5f1d2d30100fc20b6efac70ad814866f4b63c5dddf5989b4379d38",
+        "bytes": 1799
+      },
+      {
+        "path": "female-locked.json",
+        "sha256": "33e3113f740c91988cff49bbf7dbb9b4ef97a34ba198b1c8d464d738f1b1fb84",
+        "bytes": 6499
+      },
+      {
+        "path": "female-phoenix-earned.json",
+        "sha256": "50887129ce088fcedac6c85a071f5d592d5b72413399916511d88ded412f4074",
+        "bytes": 6498
+      },
+      {
+        "path": "male-all-rewards.json",
+        "sha256": "81244a79e80b1d9831145e2fa84aeee4f2325d3627c8d29d89e0d53992f595b5",
+        "bytes": 6482
+      },
+      {
+        "path": "male-legacy.json",
+        "sha256": "fec8f98895702677795dfb51b7c867eec3fb432f6f4378c465f7d7b58c4a806f",
+        "bytes": 6497
+      },
+      {
+        "path": "source.json",
+        "sha256": "02f4f0d322e596ea17af164e8fd1f19982a6a16b4bbac0b3ac2022d3362ba31b",
+        "bytes": 361
+      }
+    ]
+  },
+  {
+    "target": "Assets/_Project/Editor/Fixtures/arena-038",
+    "source": ".utmp/release038/contract-probe",
+    "files": [
+      {
+        "path": "gold-poll.actual.json",
+        "sha256": "60406849601318ce62d9a8184e3dd6307348cfd27a5a43112e1fd43f038adf5e",
+        "bytes": 1960
+      },
+      {
+        "path": "gold-poll.empty-array.json",
+        "sha256": "bab3ff0bbd66fb2f040c129f5a3de8d695e0560c057b27d2f60d1538fb57ae91",
+        "bytes": 2148
+      },
+      {
+        "path": "gold-poll.omitted-smith-offers.json",
+        "sha256": "3481342f84a5afb5c505283a756decc90e7601409f5039e45a7a7d29c936e624",
+        "bytes": 2128
+      },
+      {
+        "path": "smith-poll.actual.json",
+        "sha256": "4ff8cba49ddecebc77b6ca48ed61b34bbf1a2d283d7e4372d396b22e5cb1b56a",
+        "bytes": 2378
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/source_snapshot.py",
+    "source": ".utmp/expedition/check-client-source0315.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "0df7589a79f20dab7ce6851d827b862d2b60d3cd6a7c95d9e405868876bd7787",
+        "bytes": 8073
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/prepare_publication.py",
+    "source": ".utmp/expedition/prepare-publication-0315.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "e7e356059fad2cad457acf16dd7862e1d937b94e247e4bf8162bfa00d1b368d1",
+        "bytes": 4018
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/publish_page_remote.py",
+    "source": ".utmp/expedition/publish-page0315-remote.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "f24ec2d54c165185ccf48abaac6d515e84346f9433a2190c26569249d64e1237",
+        "bytes": 4691
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/verify_public_integrity.py",
+    "source": ".utmp/expedition/verify-public-integrity0315.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "0e93d2649bc6166dc479ac3bfa0c7bbe165dbe8fb8f909266b3ddf10a0446888",
+        "bytes": 5508
+      }
+    ]
+  },
+  {
+    "target": "Design/Release-0.3.15/validation/tooling/finalize_release0315.py",
+    "source": ".utmp/expedition/finalize-release0315.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "b064a3adea8eb4ac72b04e4eba4452e123e293bac07885214c34a1fd7effa457",
+        "bytes": 4485
+      }
+    ]
+  },
+  {
+    "target": "Tools/QA/run_lua.py",
+    "source": ".utmp/expedition/run-lua.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "59a95621e48ddbc9746a35b7c4a1f9686daa6ea0bfa42ade6ac8157159362380",
+        "bytes": 949
+      }
+    ]
+  },
+  {
+    "target": "Tools/QA/run_lua_suite.py",
+    "source": ".utmp/release0315-backend/run_local.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "4d61da5d9d7d25bb35a9b5cdc8cd8c80ab0b32f39e34c3169f50e4f4633b58e8",
+        "bytes": 2586
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/prepare_backend_validation.py",
+    "source": ".utmp/release0315-backend/prepare.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "fe6fc69a774ce6acc0ddd7d30dff0a9fda726b6fb601eec93ed13c2a4ff69894",
+        "bytes": 1523
+      }
+    ]
+  },
+  {
+    "target": "Tools/Release/validate_backend_remote.py",
+    "source": ".utmp/release0315-backend/validate_remote.py",
+    "files": [
+      {
+        "path": "",
+        "sha256": "cd41b628c5c390581a8ce0e962f643ebd89d99ff4e8cf25432d63ecc6a2a661e",
+        "bytes": 4913
+      }
+    ]
+  }
+]

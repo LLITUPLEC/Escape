@@ -1,0 +1,21 @@
+{
+  "branch": "main",
+  "head": "0184d8fd507bb7ce9743ff490463c3b54f42c3a9",
+  "remote": "git@github.com:LLITUPLEC/Escape.git",
+  "counts": {
+    "conflicts": 0,
+    "renamed": 0,
+    "staged": 0,
+    "modified": 257,
+    "deleted": 84,
+    "added": 0,
+    "untracked": 1509
+  },
+  "statusEntries": 1850,
+  "gitVersion": "git version 2.53.0.windows.2",
+  "lfsVersion": "git-lfs/3.7.1 (GitHub; windows amd64; go 1.25.1; git b84b3384)",
+  "upstream": "origin/main",
+  "aheadBehind": "0\t0",
+  "remoteMainLiveHead": "0184d8fd507bb7ce9743ff490463c3b54f42c3a9",
+  "remoteReadOnlySshVerified": true
+}

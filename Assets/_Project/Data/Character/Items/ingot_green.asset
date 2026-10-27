@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: ingot_green
   displayName: "\u0417\u0435\u043B\u0451\u043D\u044B\u0439 \u0441\u043B\u0438\u0442\u043E\u043A"
   colorDisplayName: {r: 1, g: 1, b: 1, a: 1}
-  description: 
+  description: "Очищенный зелёный сплав для изготовления обычного снаряжения в мастерской."
   kind: 1
   maxStack: 200
   tier: 1

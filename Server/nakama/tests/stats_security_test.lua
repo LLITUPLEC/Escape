@@ -185,8 +185,23 @@ test("deduplication history stays bounded", function()
   for i = 1, 80 do
     assert(api.record_match_finish(state({ stats_result_id = "match-" .. tostring(i) }), "alice", false))
   end
-  assert(db.alice.value.played == 80 and #db.alice.value.match_result_ids == 64)
-  assert(db.alice.value.match_result_ids[1] == "match-17")
+  assert(db.alice.value.played == 80 and #db.alice.value.match_result_ids == 4)
+  assert(db.alice.value.match_result_ids[1] == "match-77")
 end)
 
+test("daily plans use trusted completion day counters and accepted moves", function()
+  local s=state({_ach_counters={alice={["uses.cross"]=2,["uses.shield"]=3},bob={["uses.petard"]=1}},_daily_player_actions={bob=2}})
+  local a=api.build_match_finish_effects(s,"alice",false)
+  assert(a.alice.match_stats.ability_uses==5 and a.bob.match_stats.ability_uses==1)
+  assert(a.alice.match_stats.daily_pvp_eligible and not a.bob.match_stats.daily_pvp_eligible)
+  local day=a.alice.match_stats.daily_day;s._daily_player_actions.bob=3
+  local b=api.build_match_finish_effects(s,"alice",false)
+  assert(b.bob.match_stats.daily_pvp_eligible and b.alice.match_stats.daily_day==day)
+end)
+test("daily plans exclude unstarted aborted invalid and drawn matches", function()
+  for _,s in ipairs({state({started=false}),state({ended=false}),state({stats_result_id=""}),state({players_sorted={"alice","alice"}})}) do
+    assert(next(api.build_match_finish_effects(s,"alice",false))==nil)
+  end
+  assert(next(api.build_match_finish_effects(state(),"alice",true))==nil)
+end)
 print("stats security: " .. passed .. " tests passed")

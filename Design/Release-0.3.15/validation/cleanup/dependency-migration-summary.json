@@ -1,0 +1,91 @@
+{
+  "passed": true,
+  "completedUtc": "2026-10-27T19:52:40.574796+00:00",
+  "scope": "Local dependency/input/tool migrations before cleanup. Published APKs, immutable prior release reports, live storage and production runtime were not changed.",
+  "dependencies": [
+    {
+      "source": ".utmp/android-sdk-release-0310",
+      "target": ".cache/android-sdk",
+      "componentFiles": 14625,
+      "componentBytes": 469708091,
+      "sourceHashesVerified": true,
+      "copiedFiles": 0,
+      "reusedFiles": 14625,
+      "generatedMetadataPreserved": [
+        {
+          "relative": ".knownPackages",
+          "sha256": "1182e7d1ebdfc2f0e92e026d9f1c4bc8f003d38d6cb417cc693c9771c0ec1e63",
+          "bytes": 16
+        },
+        {
+          "relative": "build-tools/36.0.0/package.xml",
+          "sha256": "bb75816b1a74a840a9c226db0845796f1d2739510152a38aa8b7122e285192de",
+          "package": "build-tools;36.0.0",
+          "bytes": 1433
+        },
+        {
+          "relative": "platform-tools/package.xml",
+          "sha256": "4d622f5247b6f9c2f9fb3e75e8d5e15c0fd876b2c312ebab03303eea4b417333",
+          "package": "platform-tools",
+          "bytes": 1432
+        },
+        {
+          "relative": "platforms/android-36/package.xml",
+          "sha256": "2110f8ec9c213a77e287e4e92d89e28dd770e4377c24350758cbddebb75de9f3",
+          "package": "platforms;android-36",
+          "bytes": 1655
+        }
+      ]
+    },
+    {
+      "source": ".utmp/lua-test-runtime",
+      "target": ".cache/lua-test-runtime",
+      "package": "lupa",
+      "version": "2.8",
+      "bytes": 4189036
+    }
+  ],
+  "tests": {
+    "luaSuites": 52,
+    "luaNamedCases": 728,
+    "luaSyntaxModules": 63,
+    "catalogMigrationUnitTests": 36,
+    "priceMigrationUnitTests": 10,
+    "auraInstallerHotfixPassed": 18,
+    "auraPosixModeSkipped": 1,
+    "clientCacheChecks": 14,
+    "migrationSmokeChecks": 115,
+    "editorFixtureMetas": 21,
+    "runtimeCompilation": true,
+    "editorCompilation": true,
+    "compilationErrors": 0,
+    "preexistingCompilerWarnings": [
+      "AchievementToastPresenter.showSeconds unused",
+      "AchievementToastPresenter.slidePixels unused",
+      "NakamaBootstrap.keepOnlineHeartbeat unused"
+    ]
+  },
+  "tools": {
+    "releaseDirectory": "Tools/Release",
+    "qaDirectory": "Tools/QA",
+    "requirements": "Tools/QA/requirements.txt",
+    "workProducts": ".cache/release-work",
+    "qaProducts": ".cache/qa",
+    "apkOutput": "Builds/<PlayerSettings.bundleVersion>/",
+    "buildStatus": "Builds/<PlayerSettings.bundleVersion>/build-status.json",
+    "livePublisherHashOrPreviousApkIdentityEmbedded": false,
+    "oldRemoteStageEmbedded": false
+  },
+  "activeInputsRemainingUnderUtmp": false,
+  "bulkDeletesPerformed": false,
+  "packagesInstalled": false,
+  "unityStarted": false,
+  "serverContacted": false,
+  "uploadOrPublicationPerformed": false,
+  "notes": [
+    "The headless cache test double gained two no-op notification methods to match the current shipping AchievementTracker API; actual cache isolation/race regressions still use the real services.",
+    "SDK verification now recognizes only the exact observed package-list cache and generated package.xml locations; package identities are checked using an XML reader with DTD/external resolution disabled.",
+    "Historical source snapshots describe their built releases; no snapshot or immutable old validation report was regenerated after path cleanup.",
+    "The frozen release0.3.15 finalizer is archived in validation/tooling; reusable helpers resolve the repository from Tools/Release."
+  ]
+}

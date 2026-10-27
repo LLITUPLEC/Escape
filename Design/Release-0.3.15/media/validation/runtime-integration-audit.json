@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "production_actions": false,
+  "checks": [
+    {
+      "check": "Actual arena startup resolves public appearance and registers one read RPC",
+      "runtime_path": "Server/nakama/?.lua;",
+      "passed": true
+    },
+    {
+      "check": "Actual arena startup resolves public appearance and registers one read RPC",
+      "runtime_path": "Server/nakama/modules/?.lua;",
+      "passed": true
+    },
+    {
+      "check": "public_appearance_test.lua",
+      "passed": true,
+      "result": "public_appearance_test: 7 PASS; zero writes"
+    },
+    {
+      "check": "friends_invitation_kind_test.lua",
+      "passed": true,
+      "result": "friends_invitation_kind_test: 7 invariants passed"
+    },
+    {
+      "check": "arena_concurrency_audit.lua",
+      "passed": true,
+      "result": "arena_concurrency_audit: 44 invariants passed"
+    },
+    {
+      "check": "Main runtime eagerly loads arena factory and hence public appearance RPC",
+      "passed": true
+    }
+  ]
+}

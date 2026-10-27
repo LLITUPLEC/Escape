@@ -15,7 +15,7 @@ namespace Project.Editor
         private static DuelMatch3Manager _manager;
         private static Match3GameOverPanel _panel;
         private static GameObject _selector;
-        private static bool _enabled, _visible, _selectorActive, _refund;
+        private static bool _enabled, _visible, _selectorActive, _refund, _pending;
         private static readonly Dictionary<FieldInfo, object> Saved = new Dictionary<FieldInfo, object>();
 
         public static string Run(string target)
@@ -38,7 +38,12 @@ namespace Project.Editor
                 var viewport = (RectTransform)typeof(Match3GameOverPanel).GetField("_rewardViewport", Private).GetValue(_panel);
                 Check(rows != null && rows.gameObject.activeInHierarchy && rows.IsChildOf(viewport), "Actual manager rows are outside result viewport");
                 var values = rows.GetComponentsInChildren<TMP_Text>().Where(t => t.name == "Value").Select(t => t.text).OrderBy(s => s).ToArray();
-                var expected = (_refund ? new[] { "+2" } : new[] { "+120", "+240", "+85" }).OrderBy(s => s).ToArray();
+                var expected = (_pending ? new[] { "+120", "+240", "+85", "2\nОжидает места" } : _refund ? new[] { "+2" } : new[] { "+120", "+240", "+85" }).OrderBy(s => s).ToArray();
+                if (_pending)
+                {
+                    Check(rows.GetComponentsInChildren<TMP_Text>().Any(t => t.name == "PendingLootNotice" && t.text.Contains("Предметы сохранены: 2")), "Pending items are advertised as delivered or have no explanation.");
+                    Check(!values.Contains("+2"), "Undelivered loot is presented as a credited +2 reward.");
+                }
                 Check(values.SequenceEqual(expected), "Actual manager reward values differ: " + string.Join(",", values));
                 Check(!_panel.rewardText.gameObject.activeSelf, "Manager did not hide its fallback text");
                 if (_refund)
@@ -54,7 +59,12 @@ namespace Project.Editor
             if (_selector != null) _selector.SetActive(false);
             foreach (var field in typeof(DuelMatch3Manager).GetFields(Private).Where(f => f.Name.StartsWith("_lastReward", StringComparison.Ordinal))) Saved[field] = field.GetValue(_manager);
             Call("ClearLastPveRewards");
-            _refund = target == "refund";
+            _refund = target == "refund"; _pending = target == "pending";
+            if (_pending)
+            {
+                Write("_lastRewardItemLootPendingCount", 2L);
+                Write("_lastRewardPendingItems", new[] { new M3ItemLoot { def_id = "ingot_green", amount = 2 } });
+            }
             Write("_lastRewardXp", _refund ? 0 : 120); Write("_lastRewardGold", _refund ? 0 : 240); Write("_lastRewardOre", _refund ? 0 : 85); Write("_lastRewardMatter", _refund ? 2 : 0);
             var text = _refund ? "Бой с ботом · взнос возвращён\n+2 материи" : "+120 опыта\n+240 золота\n+85 руды";
             Write("_lastRewardText", text);

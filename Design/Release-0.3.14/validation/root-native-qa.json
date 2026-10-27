@@ -1,0 +1,162 @@
+{
+  "passed": true,
+  "reports": [
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/1920/boss0314-report.json",
+      "passed": true,
+      "checks": 626
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/2400/boss0314-report.json",
+      "passed": true,
+      "checks": 626
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/contract0314.json",
+      "passed": true,
+      "checks": 9
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/fx0314.json",
+      "passed": true,
+      "checks": 6
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/lethal-finish.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/lethal-hold.json",
+      "passed": true,
+      "checks": 8
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/native-ui-dossier.json",
+      "passed": true,
+      "checks": 32
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/native-ui-ranking.json",
+      "passed": true,
+      "checks": 118
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-paused-opponent.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-paused.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-running-delay.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-running-opponent-delay.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-running-opponent.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/timer-running.json",
+      "passed": true,
+      "checks": 1
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/verify-battle.json",
+      "passed": true,
+      "checks": 10
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/play/verify-outcome.json",
+      "passed": true,
+      "checks": 15
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/global-boss/visible-fx-pixels.json",
+      "passed": true,
+      "checks": null
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/economy-audit.json",
+      "passed": true,
+      "checks": null
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/local-validation.json",
+      "passed": true,
+      "checks": null
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/policy-console.json",
+      "passed": true,
+      "checks": 39
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/production-migration-preview.json",
+      "passed": true,
+      "checks": null
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-cancelled.json",
+      "passed": true,
+      "checks": 77
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmation-boss_teleport.json",
+      "passed": true,
+      "checks": 103
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmation-craft_pack.json",
+      "passed": true,
+      "checks": 97
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmation-ingots_purple.json",
+      "passed": true,
+      "checks": 94
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmation-rub_resources_99.json",
+      "passed": true,
+      "checks": 82
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmed-boss_teleport.json",
+      "passed": true,
+      "checks": 86
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-confirmed-craft_pack.json",
+      "passed": true,
+      "checks": 72
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-logic.json",
+      "passed": true,
+      "checks": 28
+    },
+    {
+      "path": "Design/Release-0.3.14/validation/shop/ui-payment-stub.json",
+      "passed": true,
+      "checks": 68
+    }
+  ],
+  "compiler": {
+    "runtime": true,
+    "android": true,
+    "editor": true
+  },
+  "sourceManifest": "de6d719ddcf18d8c2bee8bf037db783dd066bfe106573faf24b2e41cb20dcf2e",
+  "physicalAndroidTested": false
+}

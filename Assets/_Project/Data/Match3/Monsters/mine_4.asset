@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: mine_4
   m_EditorClassIdentifier: Assembly-CSharp::Project.Match3.MonsterDefinition
   botId: mine_4
-  displayName: "\u041A\u0440\u0443\u0448\u0438\u043B\u043E"
+  displayName: "Крушило"
   floor: 4
-  icon: {fileID: 21300000, guid: d9aa7bacbe503b9488a8857bb79e79d9, type: 3}
+  icon: {fileID: 21300000, guid: 834f0c93ce2b4671b29ea6d87514a489, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

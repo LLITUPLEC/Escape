@@ -324,7 +324,7 @@ namespace Project.Editor
         private static void Record(string target, bool passed, string details)
         {
             Checks.Add(new Check { target = target, passed = passed, details = details, utc = DateTime.UtcNow.ToString("O") });
-            var root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.utmp/expedition/validation-battle-top-v3"));
+            var root = Path.GetFullPath(Path.Combine(Application.dataPath, "../.cache/qa/bridge/validation-battle-top-v3"));
             Directory.CreateDirectory(root);
             File.WriteAllText(Path.Combine(root, "unity-fixture-report.json"), JsonUtility.ToJson(new Report { width = Screen.width, height = Screen.height, checks = Checks }, true));
         }
