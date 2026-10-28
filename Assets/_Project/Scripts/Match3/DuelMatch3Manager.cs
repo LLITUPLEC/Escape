@@ -340,8 +340,12 @@ namespace Project.Match3
             if (_pveStartButton != null) GameplayConnectionButton.Bind(_pveStartButton);
             _searchingPanel?.SetModeLabel(_isSoloBotMode ? "Экспедиция" : _pvpRaceQueue ? "Спуск" : _pvpProQueue ? "Дуэль Pro" : "Дуэль");
             // Любой вход в DuelMatch3 (поиск/PvE/друзья) снимает висящие предложения Спуска.
-            FriendsRaceInviteHost.InvalidatePendingForMatchEntry();
-            _ = LoadMyProgressionLevelAsync(_cts.Token);
+            _isGlobalBossPractice = Match3LaunchContext.PeekGlobalBoss()?.Practice == true;
+            if (!_isGlobalBossPractice)
+            {
+                FriendsRaceInviteHost.InvalidatePendingForMatchEntry();
+                _ = LoadMyProgressionLevelAsync(_cts.Token);
+            }
             EnsureAudioSource();
             TryAutoAssignSfxInEditor();
             var friendRacePending = !_isSoloBotMode && Match3LaunchContext.TryPeekFriendRaceJoin(
@@ -883,7 +887,11 @@ namespace Project.Match3
             if (boot == null)
                 throw new Exception("NakamaBootstrap отсутствует. Запустите игру с MainMenu (не с MineScene3D напрямую).");
 
-            await ServerConnectionGuard.RequireAsync(ct);
+            if (Match3LaunchContext.PeekGlobalBoss()?.Practice == true)
+            {
+                if (!boot.IsReady || !ServerConnectionGuard.CanPlay) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
+            }
+            else await ServerConnectionGuard.RequireAsync(ct);
             if (boot.Session == null || boot.Client == null)
                 throw new Exception("Нет сессии Nakama. Сначала войдите через MainMenu.");
 
@@ -3975,7 +3983,16 @@ namespace Project.Match3
             {
                 _mmTcs?.TrySetCanceled();
                 await CancelMatchmakerTicketAsync();
-                if (_match != null && !leaveConfirmed)
+                if (_isGlobalBossPractice)
+                {
+                    // A disposable practice cannot need a durable HTTP forfeit
+                    // receipt or trigger normal RPC reward-recovery maintenance.
+                    leaveConfirmed = true;
+                    var socket = NakamaBootstrap.Instance?.Socket;
+                    if (_match != null && socket?.IsConnected == true)
+                        await socket.SendMatchStateAsync(_match.Id, M3Op.PlayerLeft, Array.Empty<byte>());
+                }
+                else if (_match != null && !leaveConfirmed)
                     leaveConfirmed = await ConfirmForfeitAsync(_match.Id);
                 else if (_match == null)
                     leaveConfirmed = !_pvpRaceQueue || await RefundRaceEntryAsync();

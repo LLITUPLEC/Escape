@@ -1,0 +1,35 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "active craft quote guard rejects invalid int before recipe/access/stock checks"
+    },
+    {
+      "passed": true,
+      "check": "active craft quote guard rejects invalid str before recipe/access/stock checks"
+    },
+    {
+      "passed": true,
+      "check": "active craft quote guard rejects invalid float before recipe/access/stock checks"
+    },
+    {
+      "passed": true,
+      "check": "active craft quote guard rejects invalid bool before recipe/access/stock checks"
+    },
+    {
+      "passed": true,
+      "check": "runtime-first quote preflight changes no sheet/wallet version, inventory, resources or workshop job"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

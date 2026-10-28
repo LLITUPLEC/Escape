@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_VERSION = '0.3.15'
+DEFAULT_VERSION = '0.3.16'
 SELECTION = ('Every regular file under Assets (including runtime/editor C#, assembly definitions, '
              'plugins, all Resources artwork/data, sprites and metadata, scenes/prefabs, font sources '
              'and font assets); every ProjectSettings file; Packages manifest/lock; three final '

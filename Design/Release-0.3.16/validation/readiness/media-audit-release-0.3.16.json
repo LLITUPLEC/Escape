@@ -1,0 +1,1785 @@
+{
+  "generated_utc": "2026-10-28T04:16:13.300994+00:00",
+  "label": "release-0.3.16",
+  "enabled_build_scenes": [
+    "Assets/_Project/Scenes/MainMenu.unity",
+    "Assets/_Project/Scenes/DuelMatch3.unity",
+    "Assets/_Project/Scenes/ArenaMenu.unity",
+    "Assets/_Project/Scenes/MineScene.unity",
+    "Assets/_Project/Scenes/WorkshopScene.unity",
+    "Assets/_Project/Scenes/Tutorial.unity"
+  ],
+  "scope": "Assets/_Project serialized media; enabled-scene + Resources GUID reachability; known catalog/audio roles. Runtime dynamic strings and visual appearance still require Unity QA.",
+  "file_counts_by_extension": {
+    ".anim": 3,
+    ".controller": 4,
+    ".jpeg": 1,
+    ".jpg": 22,
+    ".ogg": 2,
+    ".png": 255,
+    ".wav": 22
+  },
+  "serialized_documents_scanned": 192,
+  "reachable_assets": 462,
+  "missing_guid_references": [],
+  "missing_media_guid_references_in_build": 0,
+  "duplicate_asset_guids": [],
+  "items": {
+    "count": 73,
+    "assigned": 73,
+    "null": 0,
+    "broken": 0,
+    "placeholders": 0,
+    "distinct_icon_paths": 45,
+    "shared_icon_groups": [
+      {
+        "path": "Assets/_Project/img/items/blprint_blue.png",
+        "ids": [
+          "recipe_drop_t1_blue_Chest",
+          "recipe_drop_t1_blue_Feet",
+          "recipe_drop_t1_blue_Gloves",
+          "recipe_drop_t1_blue_Helmet",
+          "recipe_drop_t1_blue_Legs",
+          "recipe_drop_t1_blue_Shoulders",
+          "recipe_drop_t1_blue_WeaponLeft",
+          "recipe_drop_t1_blue_WeaponRight"
+        ]
+      },
+      {
+        "path": "Assets/_Project/img/items/blueprint_gold.png",
+        "ids": [
+          "recipe_drop_t1_gold_Chest",
+          "recipe_drop_t1_gold_Feet",
+          "recipe_drop_t1_gold_Gloves",
+          "recipe_drop_t1_gold_Helmet",
+          "recipe_drop_t1_gold_Legs",
+          "recipe_drop_t1_gold_Shoulders",
+          "recipe_drop_t1_gold_WeaponLeft",
+          "recipe_drop_t1_gold_WeaponRight"
+        ]
+      },
+      {
+        "path": "Assets/_Project/img/items/blprint_green.png",
+        "ids": [
+          "recipe_drop_t1_green_Chest",
+          "recipe_drop_t1_green_Feet",
+          "recipe_drop_t1_green_Gloves",
+          "recipe_drop_t1_green_Helmet",
+          "recipe_drop_t1_green_Legs",
+          "recipe_drop_t1_green_Shoulders",
+          "recipe_drop_t1_green_WeaponLeft",
+          "recipe_drop_t1_green_WeaponRight"
+        ]
+      },
+      {
+        "path": "Assets/_Project/img/items/blprint_purple.png",
+        "ids": [
+          "recipe_drop_t1_purple_Chest",
+          "recipe_drop_t1_purple_Feet",
+          "recipe_drop_t1_purple_Gloves",
+          "recipe_drop_t1_purple_Helmet",
+          "recipe_drop_t1_purple_Legs",
+          "recipe_drop_t1_purple_Shoulders",
+          "recipe_drop_t1_purple_WeaponLeft",
+          "recipe_drop_t1_purple_WeaponRight"
+        ]
+      }
+    ],
+    "entries": [
+      {
+        "id": "elixir_assault",
+        "definition": "Assets/_Project/Data/Character/Items/elixir_assault.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "c0eb8985e4d0f164b9bc41243e08e900",
+        "icon_path": "Assets/_Project/Resources/Expedition/Daily/039/elixir_assault.png",
+        "status": "assigned",
+        "kind": "4",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "elixir_gambit",
+        "definition": "Assets/_Project/Data/Character/Items/elixir_gambit.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "b437b1a187ff6f64282a95be6386ec4a",
+        "icon_path": "Assets/_Project/Resources/Expedition/Daily/039/elixir_gambit.png",
+        "status": "assigned",
+        "kind": "4",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "elixir_stone",
+        "definition": "Assets/_Project/Data/Character/Items/elixir_stone.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7bd145813b4119f499eeceafd107560d",
+        "icon_path": "Assets/_Project/Resources/Expedition/Daily/039/elixir_stone.png",
+        "status": "assigned",
+        "kind": "4",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_chest",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "b6d27ab2ca13715d6d9c876289d3d90b",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_chest.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "2",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_feet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "878555206214ef7ee106cadc7fb95093",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_feet.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "5",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_gloves",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a00e119538577e8ff1e31fb18cbc59b7",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_gloves.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "3",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_helmet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "6699b3bcfecbe15d3d72ea4f74c02e32",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_helmet.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_legs",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "fa8464796296794e1595af84fd1ab74a",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_legs.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "4",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "1a88312dda2cf52d728913756ecd22b5",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_shoulders.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "1",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_weapon_l",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_weapon_l.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a60ac8a02697328e3fdcfae9ec3f5e16",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_weapon_l.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "6",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_epic_weapon_r",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_epic_weapon_r.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "bb0aba86ba8b3af9d845db92ee34eb79",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_epic_weapon_r.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "2",
+        "slot": "7",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_chest",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "3034ab1bcb04119a25609c300a726044",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_chest.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "2",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_feet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "56ef1c7d012bb53e7b5e96c9e9851e2b",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_feet.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "5",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_gloves",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "b574bd01ab9d54c91e4265f15e2adb86",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_gloves.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "3",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_helmet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "9df7ce85e056d7cfad7eee563a024996",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_helmet.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_legs",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "e2b2b42c841fcd9fc09ca5bb2e25d2c9",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_legs.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "4",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "13c614c7378b55561bbf3e58acc40431",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_shoulders.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "1",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_weapon_l",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_weapon_l.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2f02aff9012df7ef919677e70bde5ebf",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_weapon_l.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "6",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_legendary_weapon_r",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_legendary_weapon_r.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "d03f815a5cfe8f144306863c06959046",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/eq_t1_legendary_weapon_r.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "3",
+        "slot": "7",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_chest",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "f1e308c00b0be1649b585981af6b0bde",
+        "icon_path": "Assets/_Project/img/items/telo.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "2",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_feet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "9069d34f16f51ff49a042ea4a0097b55",
+        "icon_path": "Assets/_Project/img/items/stupni.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "5",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_gloves",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a627d089717565847936142fc4d7b354",
+        "icon_path": "Assets/_Project/img/items/ruki.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "3",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_helmet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "44e5f7051e134e24d955a6993b65aaf2",
+        "icon_path": "Assets/_Project/img/items/kaska.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_legs",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "44274f6f9e1e13544bdac0ab58f06f85",
+        "icon_path": "Assets/_Project/img/items/nogi.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "4",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a0c7d146dcac96d4abb9ec414592fda2",
+        "icon_path": "Assets/_Project/img/items/plechi.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "1",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_weapon_l",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_weapon_l.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "480446deee34b7e46b0338c18322c297",
+        "icon_path": "Assets/_Project/img/items/left.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "6",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_normal_weapon_r",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_normal_weapon_r.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "6ec3ff4f11671b64eb9a16153aa5d02a",
+        "icon_path": "Assets/_Project/img/items/right.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "0",
+        "slot": "7",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_rare_chest",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "5838efc3e9a9e514ba14d8d51f6c262f",
+        "icon_path": "Assets/_Project/img/items/telo_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "2",
+        "recipeTargetSlot": "2"
+      },
+      {
+        "id": "eq_t1_rare_feet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ffbe1d116802bec4cb1cd4e92570f48e",
+        "icon_path": "Assets/_Project/img/items/stupni_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "5",
+        "recipeTargetSlot": "5"
+      },
+      {
+        "id": "eq_t1_rare_gloves",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "3f9da4851dd4557499aca7fdf2485a7d",
+        "icon_path": "Assets/_Project/img/items/ruki_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "3",
+        "recipeTargetSlot": "3"
+      },
+      {
+        "id": "eq_t1_rare_helmet",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "921bdeaf447f49c4f971373cb7d5152f",
+        "icon_path": "Assets/_Project/img/items/kaska_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "eq_t1_rare_legs",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7aeaf281fbff98f48b65108022b0aed0",
+        "icon_path": "Assets/_Project/img/items/nogi_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "4",
+        "recipeTargetSlot": "4"
+      },
+      {
+        "id": "eq_t1_rare_shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "18bda4d3b5c8ce24abcc1194a886613e",
+        "icon_path": "Assets/_Project/img/items/plechi_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "1",
+        "recipeTargetSlot": "1"
+      },
+      {
+        "id": "eq_t1_rare_weapon_l",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_weapon_l.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "13695041f903fc24ea412cebfa7e18fa",
+        "icon_path": "Assets/_Project/img/items/left_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "6",
+        "recipeTargetSlot": "6"
+      },
+      {
+        "id": "eq_t1_rare_weapon_r",
+        "definition": "Assets/_Project/Data/Character/Items/eq_t1_rare_weapon_r.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "fe618f62a35e17d43b00c61746e57513",
+        "icon_path": "Assets/_Project/img/items/right_blue.png",
+        "status": "assigned",
+        "kind": "0",
+        "quality": "1",
+        "slot": "7",
+        "recipeTargetSlot": "7"
+      },
+      {
+        "id": "global_boss_teleport",
+        "definition": "Assets/_Project/Data/Character/Items/global_boss_teleport.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "45efbe1aa5f543c1a809209c2270595c",
+        "icon_path": "Assets/_Project/Resources/Expedition/Shop/0313/global_boss_teleport.png",
+        "status": "assigned",
+        "kind": "1",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "ingot_blue",
+        "definition": "Assets/_Project/Data/Character/Items/ingot_blue.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "f061f40478cb6c146aaa0207f03561e6",
+        "icon_path": "Assets/_Project/img/resources_hud/ignot_blue.png",
+        "status": "assigned",
+        "kind": "1",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "ingot_green",
+        "definition": "Assets/_Project/Data/Character/Items/ingot_green.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "c50b1bcaf89bae749b2037a1340c3a52",
+        "icon_path": "Assets/_Project/img/resources_hud/ignot_green.png",
+        "status": "assigned",
+        "kind": "1",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "ingot_purple",
+        "definition": "Assets/_Project/Data/Character/Items/ingot_purple.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "1f9390c45328ae44cb6b21a35aa460e5",
+        "icon_path": "Assets/_Project/img/resources_hud/ignot_purple.png",
+        "status": "assigned",
+        "kind": "1",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Chest",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "2"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Feet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "5"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Gloves",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "3"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Helmet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Legs",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "4"
+      },
+      {
+        "id": "recipe_drop_t1_blue_Shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_Shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "1"
+      },
+      {
+        "id": "recipe_drop_t1_blue_WeaponLeft",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_WeaponLeft.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "6"
+      },
+      {
+        "id": "recipe_drop_t1_blue_WeaponRight",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_blue_WeaponRight.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a54c4697d60bd4544b29b946f71c89f3",
+        "icon_path": "Assets/_Project/img/items/blprint_blue.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "1",
+        "slot": "0",
+        "recipeTargetSlot": "7"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Chest",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "2"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Feet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "5"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Gloves",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "3"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Helmet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Legs",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "4"
+      },
+      {
+        "id": "recipe_drop_t1_gold_Shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_Shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "1"
+      },
+      {
+        "id": "recipe_drop_t1_gold_WeaponLeft",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_WeaponLeft.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "6"
+      },
+      {
+        "id": "recipe_drop_t1_gold_WeaponRight",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_gold_WeaponRight.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2d69f9fcd6ec0a14aa6b031ce096af1f",
+        "icon_path": "Assets/_Project/img/items/blueprint_gold.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "7"
+      },
+      {
+        "id": "recipe_drop_t1_green_Chest",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "2"
+      },
+      {
+        "id": "recipe_drop_t1_green_Feet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "5"
+      },
+      {
+        "id": "recipe_drop_t1_green_Gloves",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "3"
+      },
+      {
+        "id": "recipe_drop_t1_green_Helmet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "recipe_drop_t1_green_Legs",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "4"
+      },
+      {
+        "id": "recipe_drop_t1_green_Shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_Shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "1"
+      },
+      {
+        "id": "recipe_drop_t1_green_WeaponLeft",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_WeaponLeft.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "6"
+      },
+      {
+        "id": "recipe_drop_t1_green_WeaponRight",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_green_WeaponRight.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ce99ab9000f77784489a4cffa7bf3876",
+        "icon_path": "Assets/_Project/img/items/blprint_green.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "0",
+        "slot": "0",
+        "recipeTargetSlot": "7"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Chest",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Chest.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "2"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Feet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Feet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "5"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Gloves",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Gloves.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "3"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Helmet",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Helmet.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Legs",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Legs.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "4"
+      },
+      {
+        "id": "recipe_drop_t1_purple_Shoulders",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_Shoulders.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "1"
+      },
+      {
+        "id": "recipe_drop_t1_purple_WeaponLeft",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_WeaponLeft.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "6"
+      },
+      {
+        "id": "recipe_drop_t1_purple_WeaponRight",
+        "definition": "Assets/_Project/Data/Character/Items/recipe_drop_t1_purple_WeaponRight.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7d658a37e9d3c8143945c0cf4a7f5afa",
+        "icon_path": "Assets/_Project/img/items/blprint_purple.png",
+        "status": "assigned",
+        "kind": "2",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "7"
+      },
+      {
+        "id": "scroll_pve_bounty",
+        "definition": "Assets/_Project/Data/Character/Items/scroll_pve_bounty.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "3a03f93f41271ab4b8ca89a7277e4b82",
+        "icon_path": "Assets/_Project/Resources/Expedition/Daily/039/scroll_pve_bounty.png",
+        "status": "assigned",
+        "kind": "4",
+        "quality": "2",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      },
+      {
+        "id": "tesseract",
+        "definition": "Assets/_Project/Data/Character/Items/tesseract.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "5bf4d0b3d4221c3448e19cb7dcb46915",
+        "icon_path": "Assets/_Project/Resources/Expedition/Items/tesseract.png",
+        "status": "assigned",
+        "kind": "3",
+        "quality": "3",
+        "slot": "0",
+        "recipeTargetSlot": "0"
+      }
+    ]
+  },
+  "monsters": {
+    "count": 12,
+    "assigned": 12,
+    "null": 0,
+    "broken": 0,
+    "placeholders": 0,
+    "distinct_icon_paths": 12,
+    "shared_icon_groups": [],
+    "entries": [
+      {
+        "id": "mine_1",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_1.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "e4b78b7e7c9e4ec5870fb31ca27ad932",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-1.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_10",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_10.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "71e96b640dca1da40a397e8e80b63da5",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-10.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_11",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_11.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "390b8a576e1b96e44947fb5bac2b4b29",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-11.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_12",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_12.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "6b3d782029dfd604db663c59dd070df1",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-12.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_2",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_2.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "e0e7697abad849d2806509e1b83be94c",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-2.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_3",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_3.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "908f54c19efd4a2e9bdd2e0b1dca9620",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-3.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_4",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_4.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "834f0c93ce2b4671b29ea6d87514a489",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-4.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_5",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_5.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "db3be28bac0fb4e48b8e2b1339214198",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-5.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_6",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_6.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "5c7279e8ac76e0e45bb69fbadb3d10b7",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-6.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_7",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_7.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2c596ed4d11afa7498be2901556eed77",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-7.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_8",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_8.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "9a1f717556f5ee249ae9beaf6d6d7ecf",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-8.png",
+        "status": "assigned"
+      },
+      {
+        "id": "mine_9",
+        "definition": "Assets/_Project/Data/Match3/Monsters/mine_9.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "a91d543982b8d6745b32b2cd79bb2ded",
+        "icon_path": "Assets/_Project/Resources/Expedition/Monsters/mine-9.png",
+        "status": "assigned"
+      }
+    ]
+  },
+  "achievements": {
+    "count": 23,
+    "assigned": 23,
+    "null": 0,
+    "broken": 0,
+    "placeholders": 0,
+    "distinct_icon_paths": 23,
+    "shared_icon_groups": [],
+    "entries": [
+      {
+        "id": "dnn.double_line",
+        "definition": "Assets/_Project/Data/Achievements/dnn.double_line.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "ff3f415835dde434e8e1e606c14f7109",
+        "icon_path": "Assets/_Project/img/Achievements/kaskad 5.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "dnn.perfect_bets",
+        "definition": "Assets/_Project/Data/Achievements/dnn.perfect_bets.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "44e57af684542cb49918802f8c89625a",
+        "icon_path": "Assets/_Project/img/Achievements/totalizator.png",
+        "status": "assigned"
+      },
+      {
+        "id": "dnn.triple_extra",
+        "definition": "Assets/_Project/Data/Achievements/dnn.triple_extra.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "e9070539c777ab94cbdc85138446ce6a",
+        "icon_path": "Assets/_Project/img/Achievements/3move.png",
+        "status": "assigned"
+      },
+      {
+        "id": "dnn.win_1hp",
+        "definition": "Assets/_Project/Data/Achievements/dnn.win_1hp.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "4beedcfd892e1f646afc42cf218e3871",
+        "icon_path": "Assets/_Project/img/Achievements/fenix.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.cross",
+        "definition": "Assets/_Project/Data/Achievements/obs.cross.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "1af68b1d027234c4099f3d26312dfa54",
+        "icon_path": "Assets/_Project/img/Achievements/krest_use.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.firework_lover",
+        "definition": "Assets/_Project/Data/Achievements/obs.firework_lover.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "dd71da4f6901e2046ac65421f7940fc4",
+        "icon_path": "Assets/_Project/img/Achievements/pirotehnik.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.fury",
+        "definition": "Assets/_Project/Data/Achievements/obs.fury.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "32f1565dd64f2c9468ca97c1c98fa352",
+        "icon_path": "Assets/_Project/img/Achievements/fury_use.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.line5",
+        "definition": "Assets/_Project/Data/Achievements/obs.line5.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "585b9c8712be93d49b0a5f8f24c1cad0",
+        "icon_path": "Assets/_Project/img/Achievements/5.png",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.line6",
+        "definition": "Assets/_Project/Data/Achievements/obs.line6.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "621096a8713d4434cb6c3a11e5a879bd",
+        "icon_path": "Assets/_Project/img/Achievements/6.png",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.nail_rusty",
+        "definition": "Assets/_Project/Data/Achievements/obs.nail_rusty.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "0f97f5685a4b99c499d77d0f568273d9",
+        "icon_path": "Assets/_Project/img/Achievements/progvozd.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.petard",
+        "definition": "Assets/_Project/Data/Achievements/obs.petard.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "d78dbf7f788f7354daab8e3919ce6c92",
+        "icon_path": "Assets/_Project/img/Achievements/petarda_use.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.shield",
+        "definition": "Assets/_Project/Data/Achievements/obs.shield.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "8b2328267ff08c742bd75a63ae2f82f8",
+        "icon_path": "Assets/_Project/img/Achievements/shield_use.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "obs.square",
+        "definition": "Assets/_Project/Data/Achievements/obs.square.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "d9b00daccbeeaec41aac17b481ad8551",
+        "icon_path": "Assets/_Project/img/Achievements/kvadrat_use.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.bets_lost",
+        "definition": "Assets/_Project/Data/Achievements/sl.bets_lost.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "7c31e3f54d96c374d9597e17779a4136",
+        "icon_path": "Assets/_Project/img/Achievements/casino.png",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.bets_placed",
+        "definition": "Assets/_Project/Data/Achievements/sl.bets_placed.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "0a61a320fd65475439f5830a1039840c",
+        "icon_path": "Assets/_Project/img/Achievements/eye.png",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.bets_won",
+        "definition": "Assets/_Project/Data/Achievements/sl.bets_won.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "92d8d7523da2f2c4f9b42d6033ec1305",
+        "icon_path": "Assets/_Project/img/Achievements/sharlaten.png",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.blacksmith",
+        "definition": "Assets/_Project/Data/Achievements/sl.blacksmith.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "d2649b97851df2a42bf1a7ebc33d730e",
+        "icon_path": "Assets/_Project/img/Achievements/tourn_kuz.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.cross_finish",
+        "definition": "Assets/_Project/Data/Achievements/sl.cross_finish.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "2597fe9ab5c28c444b5fb01c5ff19b7b",
+        "icon_path": "Assets/_Project/img/Achievements/krest.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.duel",
+        "definition": "Assets/_Project/Data/Achievements/sl.duel.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "1661704edd0f1c642b20c6aea073a920",
+        "icon_path": "Assets/_Project/img/Achievements/collect_skul.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.gold_tournament",
+        "definition": "Assets/_Project/Data/Achievements/sl.gold_tournament.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "441f43bd7293c9f4f94e40e583764c02",
+        "icon_path": "Assets/_Project/img/Achievements/midas.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.lucky_loser",
+        "definition": "Assets/_Project/Data/Achievements/sl.lucky_loser.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "f5c53f2214d28c346ad7972a796e7f77",
+        "icon_path": "Assets/_Project/img/Achievements/argent.png",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.ore_tournament",
+        "definition": "Assets/_Project/Data/Achievements/sl.ore_tournament.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "9eb7254e7d94540488d27dc39e0702ed",
+        "icon_path": "Assets/_Project/img/Achievements/tour_ore.jpg",
+        "status": "assigned"
+      },
+      {
+        "id": "sl.square_finish",
+        "definition": "Assets/_Project/Data/Achievements/sl.square_finish.asset",
+        "icon_file_id": 21300000,
+        "icon_guid": "cde07efd12a6626428b47b483e624c4d",
+        "icon_path": "Assets/_Project/img/Achievements/kvadrat.jpg",
+        "status": "assigned"
+      }
+    ]
+  },
+  "item_fallback": {
+    "file_id": 21300000,
+    "path": "Assets/_Project/Resources/Expedition/Items/supply-cache.png"
+  },
+  "reward_scene_fields": {
+    "rewardExpSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/exp.png"
+    },
+    "rewardOreSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/ore.png"
+    },
+    "rewardGoldSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/gold.png"
+    },
+    "rewardMatterSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/matter.png"
+    },
+    "rewardIngotsSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/ingots.png"
+    },
+    "rewardKeySprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/key.png"
+    },
+    "rewardBlueprintSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/resources_hud/blueprint.png"
+    },
+    "rewardTesseractSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/Resources/Expedition/Items/tesseract.png"
+    }
+  },
+  "shared_monster_frame_fields": {
+    "frameEasy": 21300000,
+    "frameMedium": 21300000,
+    "frameHard": 21300000,
+    "frameBoss": 21300000
+  },
+  "dormant_mine_equipment_slot_fields": {
+    "slotHelmetSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Helmet_green.png"
+    },
+    "slotShouldersSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Shoulders_green.png"
+    },
+    "slotChestSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Chest_green.png"
+    },
+    "slotGlovesSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Gloves_green.png"
+    },
+    "slotLegsSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Legs_green.png"
+    },
+    "slotFeetSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/Feet_green.png"
+    },
+    "slotWeaponLeftSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/WeaponLeft_green.png"
+    },
+    "slotWeaponRightSprite": {
+      "file_id": 21300000,
+      "path": "Assets/_Project/img/items/WeaponRight_green.png"
+    }
+  },
+  "affix_icons": [
+    {
+      "id": "acid",
+      "path": "Assets/_Project/img/affix/1 acid.png",
+      "exists": true
+    },
+    {
+      "id": "energy_block",
+      "path": "Assets/_Project/img/affix/2 energy_block.png",
+      "exists": true
+    },
+    {
+      "id": "regeneration",
+      "path": "Assets/_Project/img/affix/3 regeneration.png",
+      "exists": true
+    },
+    {
+      "id": "fragility",
+      "path": "Assets/_Project/img/affix/4 fragility.png",
+      "exists": true
+    },
+    {
+      "id": "stone_skin",
+      "path": "Assets/_Project/img/affix/5 stone_skin.png",
+      "exists": true
+    },
+    {
+      "id": "mana_vampire",
+      "path": "Assets/_Project/img/affix/6 mana_vampire.png",
+      "exists": true
+    },
+    {
+      "id": "frozen",
+      "path": "Assets/_Project/img/affix/7 frozen.png",
+      "exists": true
+    },
+    {
+      "id": "monster_rage",
+      "path": "Assets/_Project/img/affix/8 monster_rage.png",
+      "exists": true
+    },
+    {
+      "id": "instability",
+      "path": "Assets/_Project/img/affix/9 instability.png",
+      "exists": true
+    },
+    {
+      "id": "overload",
+      "path": "Assets/_Project/img/affix/10 overload.png",
+      "exists": true
+    },
+    {
+      "id": "bare_current",
+      "path": "Assets/_Project/img/affix/11 bare_current.png",
+      "exists": true
+    },
+    {
+      "id": "scree",
+      "path": "Assets/_Project/img/affix/12 scree.png",
+      "exists": true
+    }
+  ],
+  "ui_icons": {
+    "known_keys": [
+      "anvil",
+      "bag",
+      "blueprint",
+      "boots",
+      "chest",
+      "energy",
+      "friends",
+      "gloves",
+      "gold",
+      "healing-cross",
+      "health-red",
+      "heart",
+      "helmet",
+      "hero",
+      "home",
+      "leaderboard-bronze",
+      "leaderboard-gold",
+      "leaderboard-rank-frames",
+      "leaderboard-silver",
+      "left-hand",
+      "legs",
+      "mana-drop",
+      "ore",
+      "panel-frame",
+      "pickaxe",
+      "primary-button-v2",
+      "right-hand",
+      "settings",
+      "shelter-friends",
+      "shelter-mail",
+      "shelter-rating",
+      "shield",
+      "shoulders",
+      "swords",
+      "trophy"
+    ],
+    "required_keys": [
+      "anvil",
+      "bag",
+      "blueprint",
+      "boots",
+      "chest",
+      "energy",
+      "friends",
+      "gloves",
+      "gold",
+      "heart",
+      "helmet",
+      "hero",
+      "home",
+      "left-hand",
+      "legs",
+      "ore",
+      "pickaxe",
+      "right-hand",
+      "settings",
+      "shield",
+      "shoulders",
+      "swords",
+      "trophy"
+    ],
+    "missing_required_keys": [],
+    "intentional_mesh_fallback_keys": [
+      "lock"
+    ],
+    "limitation": "Standalone file existence does not prove ExpeditionArt runtime resolver loads it; confirm resolver/Unity QA."
+  },
+  "fury_animation_frames": [
+    {
+      "guid": "86d2ec0412898bb4cb47a028379cb48e",
+      "path": "Assets/_Project/img/Flame/f1.png"
+    },
+    {
+      "guid": "e6d45874f055f9f4689f12b3f56c7dc9",
+      "path": "Assets/_Project/img/Flame/f2.png"
+    },
+    {
+      "guid": "3e8fca8886be9b144bf272c7921f9449",
+      "path": "Assets/_Project/img/Flame/f3.png"
+    },
+    {
+      "guid": "5d36fce11fbefd64493377947ed8169c",
+      "path": "Assets/_Project/img/Flame/f4.png"
+    },
+    {
+      "guid": "3ab41922e70a53c4a9c92e1df2810775",
+      "path": "Assets/_Project/img/Flame/f5.png"
+    },
+    {
+      "guid": "7a746e94691ee1143827de62ee326120",
+      "path": "Assets/_Project/img/Flame/f6.png"
+    },
+    {
+      "guid": "230a1bf331033004abc547def623b4a3",
+      "path": "Assets/_Project/img/Flame/f7.png"
+    }
+  ],
+  "audio": {
+    "selected_bank_cues": 19,
+    "selected_bank_missing": 0,
+    "battle_clip_fields": 13,
+    "battle_clips_missing": 0,
+    "selected_cues": [
+      {
+        "cue": 0,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav",
+        "exists": true,
+        "seconds": 0.31,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 1,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav",
+        "exists": true,
+        "seconds": 0.43,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 2,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav",
+        "exists": true,
+        "seconds": 0.61,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 3,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav",
+        "exists": true,
+        "seconds": 0.57,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 4,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_petard.wav",
+        "exists": true,
+        "seconds": 0.88,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 5,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav",
+        "exists": true,
+        "seconds": 0.34,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 6,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav",
+        "exists": true,
+        "seconds": 0.66,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 7,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav",
+        "exists": true,
+        "seconds": 0.42,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 8,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_victory.wav",
+        "exists": true,
+        "seconds": 1.42,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 9,
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_defeat.wav",
+        "exists": true,
+        "seconds": 1.22,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 10,
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_click.wav",
+        "exists": true,
+        "seconds": 0.15,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 11,
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_back.wav",
+        "exists": true,
+        "seconds": 0.21,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 12,
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_blocked.wav",
+        "exists": true,
+        "seconds": 0.34,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 13,
+        "path": "Assets/_Project/Audio/SFX/Expedition/queue_enter.wav",
+        "exists": true,
+        "seconds": 0.63,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 14,
+        "path": "Assets/_Project/Audio/SFX/Expedition/match_ready.wav",
+        "exists": true,
+        "seconds": 0.81,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 15,
+        "path": "Assets/_Project/Audio/SFX/Expedition/craft_start.wav",
+        "exists": true,
+        "seconds": 0.78,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 16,
+        "path": "Assets/_Project/Audio/SFX/Expedition/craft_ready.wav",
+        "exists": true,
+        "seconds": 0.8,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 17,
+        "path": "Assets/_Project/Audio/SFX/Expedition/reward_claim.wav",
+        "exists": true,
+        "seconds": 0.68,
+        "sample_rate": 48000,
+        "channels": 1
+      },
+      {
+        "cue": 18,
+        "path": "Assets/_Project/Audio/SFX/Expedition/barrier_unlock.wav",
+        "exists": true,
+        "seconds": 1.22,
+        "sample_rate": 48000,
+        "channels": 1
+      }
+    ],
+    "battle_clips": [
+      {
+        "field": "sfxLineClear",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxAbilitySquare",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxAbilityCross",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxAbilityPetard",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_petard.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxAbilityFury",
+        "path": "Assets/_Project/Audio/SFX/Bloodlust_cast.ogg",
+        "exists": true
+      },
+      {
+        "field": "sfxAbilityShield",
+        "path": "Assets/_Project/Audio/SFX/Heroism_Cast.ogg",
+        "exists": true
+      },
+      {
+        "field": "sfxCascadeFall",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxExtraTurn",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxTimerEnd",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxDamageHit",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxDamageCrit",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxVictory",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_victory.wav",
+        "exists": true
+      },
+      {
+        "field": "sfxDefeat",
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_defeat.wav",
+        "exists": true
+      }
+    ],
+    "playback_or_subjective_listening_performed": false
+  },
+  "notes": [
+    {
+      "kind": "integration",
+      "topic": "reward_icons",
+      "resolved_in_current_scene": true,
+      "detail": "Null rewardKeySprite/Blueprint/Tesseract scene fields cannot load img/ resources in a Player via the editor-only AssetDatabase helper; bind existing icons in scene or use runtime Resources."
+    },
+    {
+      "kind": "integration",
+      "topic": "monster_difficulty_frames",
+      "resolved_in_current_catalog": true,
+      "detail": "Four dedicated shared difficulty frames are assigned by the completed media importer. Per-monster overrides may remain null because the shared catalog supplies them."
+    },
+    {
+      "kind": "content_expansion",
+      "topic": "music_and_ambience",
+      "detail": "Current sound design contains event SFX; no background music or continuous mine/forge ambience system was found in project scripts. These are additional production work, not broken clips."
+    },
+    {
+      "kind": "content_expansion",
+      "topic": "elevator_sound",
+      "detail": "The travelling mine lift has visual animation but no dedicated mechanical playback/clip in the current Expedition presenter or audio bank. Preserve the existing selected-audio scope unless adding new sound design is requested."
+    },
+    {
+      "kind": "content_expansion",
+      "topic": "character_animation",
+      "detail": "Heroes/monsters use static illustrations with UI movement and effects. Dedicated idle/attack/hurt/death frame sets are absent; no missing rig/clip is inferred from that design."
+    },
+    {
+      "kind": "feature_limit",
+      "topic": "remote_avatars",
+      "detail": "Skin unlocks and selection now persist in protected server storage and the paired avatar is derived from the skin. Remote friends/leaderboard/battle opponent views still need a public profile integration to fetch other players' cosmetic IDs."
+    },
+    {
+      "kind": "intentional",
+      "topic": "procedural_graphics",
+      "detail": "Null Image sprites for fills, lines, transparent hit targets, locks, borders, particles and empty equipment slots are intentional; do not count them as media gaps."
+    },
+    {
+      "kind": "legacy",
+      "topic": "editor_ability_fallback_paths",
+      "detail": "DuelMatch3Manager editor auto-assignment still mentions petarda/cross/square/shield/fury.png names absent from img/butt_spells, but shipped scene has all five real ability sprite refs; this is stale tooling, not missing shipped artwork."
+    },
+    {
+      "kind": "legacy",
+      "topic": "unused_mine_equipment_slot_fields",
+      "detail": "MineScene slot sprite fields originally pointed to repair.png/arena.png. GetEquipmentSlotSprite has no callers in current source; these dormant old fields do not represent visible missing sprites. The real Hero slot ghosts use Expedition UI icons."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "migration_manifest": {
+    "old": "Design/Release-0.3.14/shop-price-migration.json",
+    "new": "Server/nakama/data/migrations/shop-price-0.3.14.json",
+    "byte_identical": true,
+    "sha256": "02bfefde17382f631149362b0649d3908bbe9df0e6365e573fc92e915cb4e624"
+  },
+  "boss_fixture": {
+    "path": "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json",
+    "responses": [
+      "boss-ranking",
+      "boss-running-clock",
+      "boss-state"
+    ],
+    "responses_equal_to_original": true,
+    "source_sha256": "2459dd0686ef22d31901c8491f63f62272df697e5fb0fa090c246d5f178fa92d",
+    "sha256": "e36ca50db9570a615906f3b09b26b976afddf53cfa04c21b94f223825a979e2c"
+  },
+  "historical_audit": "Explicit --snapshot and --output required; archived reports unchanged."
+}

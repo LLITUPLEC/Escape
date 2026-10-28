@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 15420
   craftGold: 11410
   craftIngotDef: ingot_purple
-  craftIngotN: 270
+  craftIngotN: 740
   craftTesseractN: 0
   craftItemId: eq_t1_rare_feet
   craftMinutes: 180

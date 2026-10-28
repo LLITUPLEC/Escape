@@ -16,7 +16,7 @@ local defs = {
 }
 local env = setmetatable({
   CFG = CFG,
-  Runtime = { Inventory = require("modules.duel_match3_inventory") },
+  Runtime = { Inventory = require("modules.duel_match3_inventory"), ConsumableModule = {status=function()return{}end} },
   nk = nk,
   CharStats = { compute_character_display_stats = function() return {} end },
   character_sheet_payload_arrays = function(s) return s.equipment or {}, s.inventory, s.inventory_counts end,
@@ -48,6 +48,7 @@ local progress = {
   energy = 37, ingots = 1000, tesseracts = 900, -- Deliberately stale lifetime counters.
   key_items = { miner_key = 2, dark_key = 3 },
 }
+env.Runtime.readProgressSnapshot = function() return progress end
 local economy = require("modules.duel_match3_economy_rpc")({
   CFG = CFG, read_pve_progress = function() return progress end,
   read_character_sheet = function(uid) assert(uid == "player"); return sheet end,

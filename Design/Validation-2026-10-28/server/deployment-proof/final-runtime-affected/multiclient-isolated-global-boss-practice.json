@@ -1,0 +1,91 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "practice rejects forged damage and stale session without durable admission"
+    },
+    {
+      "passed": true,
+      "check": "practice launches without a paid admission or token, run1"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice starts both sides at full HP and zero personal damage, run1"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice resets round, adaptation, scream, mana and ability cooldown, run1"
+    },
+    {
+      "passed": true,
+      "check": "ordinary practice action resolves only against private full-HP boss state"
+    },
+    {
+      "passed": true,
+      "check": "practice terminal keeps actual personal damage/full initial HP denominator and no eligibility/refund"
+    },
+    {
+      "passed": true,
+      "check": "practice damage percentage has the full initial HP denominator"
+    },
+    {
+      "passed": true,
+      "check": "practice admission/action/terminal/reset perform zero durable writes, including rate budget and maintenance lease"
+    },
+    {
+      "passed": true,
+      "check": "practice launches without a paid admission or token, run2"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice starts both sides at full HP and zero personal damage, run2"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice resets round, adaptation, scream, mana and ability cooldown, run2"
+    },
+    {
+      "passed": true,
+      "check": "ordinary practice action resolves only against private full-HP boss state"
+    },
+    {
+      "passed": true,
+      "check": "practice terminal keeps actual personal damage/full initial HP denominator and no eligibility/refund"
+    },
+    {
+      "passed": true,
+      "check": "practice damage percentage has the full initial HP denominator"
+    },
+    {
+      "passed": true,
+      "check": "practice admission/action/terminal/reset perform zero durable writes, including rate budget and maintenance lease"
+    },
+    {
+      "passed": true,
+      "check": "normal paid entry still requires and spends a teleport after practice"
+    },
+    {
+      "passed": true,
+      "check": "normal paid battle retains actual depleted shared HP instead of practice full HP"
+    },
+    {
+      "passed": true,
+      "check": "normal paid terminal preserves one real weekly attempt and exactly one token debit"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

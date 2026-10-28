@@ -12,8 +12,8 @@ import urllib.request
 
 root = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--version', default='0.3.15')
-parser.add_argument('--version-code', type=int, default=17)
+parser.add_argument('--version', default='0.3.16')
+parser.add_argument('--version-code', type=int, default=18)
 parser.add_argument('--dist', type=Path, default=root / 'Website/escape/dist')
 parser.add_argument('--validation-dir', type=Path)
 parser.add_argument('--report', type=Path)

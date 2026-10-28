@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-27T22:45:16.954339+00:00",
+  "tests": {
+    "Server/nakama/tests/deploy_runtime_guard_test.py": {
+      "passed": true,
+      "exitCode": 0,
+      "sourceSha256": "4be707af782abaec53ae3c414cb4e30f0b192a155c2fb0c28f0a96bf71697fa4",
+      "output": "Idle check: matches=1, tournaments=1, queued=1, connected_sessions=2\nIdle check: matches=1, tournaments=1, queued=1, connected_sessions=2\nExplicit test-game interruption authorized: Escape Nakama may restart while test games are active\n.....\n----------------------------------------------------------------------\nRan 5 tests in 0.006s\n\nOK\n"
+    },
+    "Server/nakama/tests/equipment_ingot_migration_test.py": {
+      "passed": true,
+      "exitCode": 0,
+      "sourceSha256": "396a7fe2cfc7a39516848f530ef49e50de93192f25c59b41d1d4dcaa46e8e9dd",
+      "output": ".........\n----------------------------------------------------------------------\nRan 9 tests in 0.049s\n\nOK\n"
+    },
+    "Server/nakama/tests/multiclient/harness_equipment_practice_test.py": {
+      "passed": true,
+      "exitCode": 0,
+      "sourceSha256": "0b9a73d1422a96f161b2c2ccce8d81576a3d28604d54cf0f066debb392059cf8",
+      "output": "EVIDENCE practice changed collections/keys=[\"duel_api_rate_limits/v1\"]\n........\n----------------------------------------------------------------------\nRan 8 tests in 0.001s\n\nOK\n"
+    }
+  }
+}

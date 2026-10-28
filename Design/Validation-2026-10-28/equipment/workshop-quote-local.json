@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "scope": "Actual RPC/cost/quote modules, simulated Storage/auth only; no network",
+  "network_actions": false,
+  "cases": 11,
+  "source_sha256": {
+    "Server/nakama/modules/duel_workshop_quote.lua": "1dc4e4ac19b1d31443a65d7ffc77fd9ff8a53f7355a5100c9c12480943d335f3",
+    "Server/nakama/modules/duel_match3_economy_rpc.lua": "bfb4eaf70284295fc2ae6067d2616cdb9c09a8d1a9563d143f1cba9e2d70cb74"
+  },
+  "output": [
+    "PASS Server/nakama/tests/workshop_quote_test.lua",
+    "PASS all eight changed epic prices reject legacy with readable text and no debit or job",
+    "PASS known old epic price remains available to the published unquoted client before migration",
+    "PASS unchanged green blue legendary and administrative IDs keep legacy behavior",
+    "PASS matching displayed quote allows actual new560 price with one atomic debit and job",
+    "PASS wrong quote returns actual replacement quote without touching resources or job",
+    "PASS invalid numeric and typed quotes fail before access initialization or sheet reads",
+    "PASS authentication and epoch precede all quote preflight processing",
+    "PASS zero ingot quote is valid for a recipe with a different material budget",
+    "PASS failed quoted write persists no wallet material or job mutation",
+    "PASS legacy existing changed-price job can still be claimed without a quote",
+    "PASS legacy existing changed-price job can still be rushed without an ingot quote",
+    "Workshop quote safety: 11 actual RPC/cost cases passed"
+  ],
+  "stderr": []
+}

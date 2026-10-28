@@ -38,7 +38,7 @@ def validate_bundle(staging):
         raise SystemExit("Unexpected fields in the public release manifest")
     version = release["version"]
     checksum = release["sha256"]
-    if version != "0.3.15" or not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+    if version != "0.3.16" or not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
         raise SystemExit("Invalid release identity")
     if type(release["bytes"]) is not int or release["bytes"] <= 0:
         raise SystemExit("APK bytes must be a positive integer")

@@ -1,0 +1,128 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-28T04:49:48.685196+00:00",
+  "mode": "Exact staged blobs; additions/modifications/rename targets, with deletion inventory checked separately.",
+  "index_entries_sha256": "d6a9734be9649d401c279f40fe8b46e9ed71f89ead6826f10945b621dddb1133",
+  "head": "4762d1ee332cfe321c3d25acd3fc9bf0ecb0a6a9",
+  "branch": "main",
+  "staged_path_count": 360,
+  "staged_status_counts": {
+    "A": 164,
+    "M": 74,
+    "D": 106,
+    "R": 16
+  },
+  "scanned_blob_count": 254,
+  "scanned_bytes": 36491446,
+  "raw_inventory_sha256": "5ebe8221265efafab54f9a170ccec1de0a7f120108fe6a757bc77c76670daeaa",
+  "confirmed_sensitive_findings": 0,
+  "qualified_findings": [
+    {
+      "path": "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+      "line": 69,
+      "kind": "literal-secret-assignment",
+      "matched_characters": 42,
+      "classification": "false-positive: constant PlayerPrefs key identifier, not a password or credential value",
+      "exact_staged_file_sha256": "289996b96217cc48276ecc877a873a6079774c56c8d5a7d052d86402af3dcc88"
+    }
+  ],
+  "large_files_50_MiB": [],
+  "private_named_files": [],
+  "generated_candidates": [],
+  "archive_bundle_candidates": [],
+  "conflicted_paths": [],
+  "ignored_tracked": [],
+  "unstaged_paths_at_audit": [],
+  "untracked_eligible_at_audit": [],
+  "expected_removed_release_paths": 106,
+  "unexpected_deleted_paths": [],
+  "remaining_staged_old_release_paths": [],
+  "whitespace": {
+    "blocking": false,
+    "warnings": [
+      {
+        "path": "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json.meta",
+        "line": 5,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json.meta",
+        "line": 6,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json.meta",
+        "line": 7,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 126,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 132,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 139,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 141,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 142,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png.meta",
+        "line": 143,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 126,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 132,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 139,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 141,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 142,
+        "kind": "trailing whitespace."
+      },
+      {
+        "path": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png.meta",
+        "line": 143,
+        "kind": "trailing whitespace."
+      }
+    ],
+    "qualification": "Unity .meta empty YAML fields retain conventional trailing spaces. Frozen imported assets were not changed."
+  },
+  "remote": {
+    "cached_origin_relation": "0\t0",
+    "refreshed_by_this_audit": false,
+    "note": "Release owner handles GitHub connectivity/fetch separately."
+  },
+  "index_was_modified_by_audit": false,
+  "post_audit_allowed_addition": "This sanitized report only; raw inventory/scanner remain ignored under .cache/qa/release-readiness-0.3.16."
+}

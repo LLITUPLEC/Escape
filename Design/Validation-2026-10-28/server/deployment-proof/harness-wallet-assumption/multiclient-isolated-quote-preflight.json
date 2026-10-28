@@ -1,0 +1,17 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [
+    "quote-preflight: RuntimeError: Quote preflight requires initialized empty-account sheet and wallet"
+  ],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

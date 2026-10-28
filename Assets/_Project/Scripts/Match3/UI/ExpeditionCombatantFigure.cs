@@ -23,6 +23,8 @@ namespace Project.Match3
         private Sprite _explorer;
         public Vector2 GroundLocal { get; private set; }
         public bool HasOpaqueMetadata => _footprint!=null;
+        /// <summary>One tiny soft ellipse shared by battle figures and the Shelter explorer.</summary>
+        public static Sprite ContactShadow => ShadowSprite();
         public Vector3 FootWorld => _rect!=null?_rect.TransformPoint(Vector3.zero):transform.position;
 #if UNITY_EDITOR
         private Sprite _previewSprite;

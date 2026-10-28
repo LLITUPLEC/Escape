@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "applied": true,
+  "utc": "2026-10-28T04:45:21.6343912Z",
+  "workspace": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape",
+  "targets": [
+    {
+      "path": "Builds/0.3.14",
+      "files": 4,
+      "bytes": 173879594,
+      "deleted": true
+    },
+    {
+      "path": "Design/Release-0.3.14",
+      "files": 185,
+      "bytes": 29653914,
+      "deleted": true
+    }
+  ],
+  "retainedVersions": [
+    "0.3.16",
+    "0.3.15"
+  ],
+  "gitHistoryRewritten": false,
+  "retainedApks": [
+    {
+      "version": "0.3.15",
+      "file": "Escape-0.3.15-e7ac556941de.apk",
+      "bytes": 123571699,
+      "sha256": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8"
+    },
+    {
+      "version": "0.3.16",
+      "file": "Escape-0.3.16-3f40a293713f.apk",
+      "bytes": 124355967,
+      "sha256": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847"
+    }
+  ]
+}

@@ -9,18 +9,17 @@ namespace Project.UI
     public static class ExpeditionShelterShortcut
     {
         public static Button Create(Transform parent, string name, string caption, string resource,
-            float left, float right, UnityAction action)
+            float left, float right, UnityAction action, float bottom = .712f, float top = .768f)
         {
-            var root = ExpeditionUi.Rect(parent, name, left, .845f, right, .920f);
-            var hit = root.gameObject.AddComponent<Image>();
-            hit.color = Color.clear;
+            var root = ExpeditionUi.Rect(parent, name, left, bottom, right, top);
+            var hit = ExpeditionShelterStyle.ThinFrame(ExpeditionUi.StylePanel(root.gameObject.AddComponent<Image>(), Color.white));
             hit.raycastTarget = true;
-            var icon = ExpeditionUi.Fill(root, "ShortcutIcon", .12f, .25f, .88f, 1, Color.white);
+            var icon = ExpeditionUi.Fill(root, "ShortcutIcon", .035f, .10f, .31f, .90f, Color.white);
             icon.sprite = Resources.Load<Sprite>("Expedition/Icons/" + resource);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             var button = root.gameObject.AddComponent<Button>();
-            button.targetGraphic = icon;
+            button.targetGraphic = hit;
             button.transition = Selectable.Transition.ColorTint;
             var colors = button.colors;
             colors.normalColor = Color.white;
@@ -30,11 +29,11 @@ namespace Project.UI
             colors.fadeDuration = .08f;
             button.colors = colors;
             if (action != null) button.onClick.AddListener(action);
-            var label = ExpeditionUi.Text(root, "Caption", caption, 24, 0, 0, 1, .25f, TextAlignmentOptions.Center);
+            var label = ExpeditionUi.Text(root, "Caption", caption, 34, .335f, .10f, .96f, .90f, TextAlignmentOptions.MidlineLeft);
             label.color = ExpeditionTheme.Ivory;
             label.enableAutoSizing = true;
-            label.fontSizeMin = 19;
-            label.fontSizeMax = 24;
+            label.fontSizeMin = 26;
+            label.fontSizeMax = 34;
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.margin = Vector4.zero;
             label.raycastTarget = false;

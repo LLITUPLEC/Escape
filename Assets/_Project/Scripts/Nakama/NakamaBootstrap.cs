@@ -95,6 +95,9 @@ namespace Project.Nakama
         private volatile bool _skipOnlineHeartbeat;
         private bool _sessionReplacedFlowActive;
         private string _socketBoundAuthToken;
+        private bool _initialSetupRunning, _initialSetupCompleted, _initialSetupFailed;
+        public bool InitialSetupCompleted => _initialSetupCompleted;
+        public bool InitialSetupFailed => _initialSetupFailed;
 
         [Serializable]
         private sealed class OnlinePingRpcResponse
@@ -149,6 +152,7 @@ namespace Project.Nakama
             if (config == null)
             {
                 Debug.LogError("NakamaConnectionConfig не найден. Создайте asset и положите в Resources.");
+                _initialSetupFailed = true;
                 return;
             }
 
@@ -165,16 +169,39 @@ namespace Project.Nakama
                 if (PlayerPrefs.GetInt(PrefForceEmailSetup, 0) != 0)
                     AchievementProgressStorage.ClearAllLocalProgress();
 
-                await EnsureConnectedAsync(_cts.Token);
-                await MaybeShowEmailSetupGateAsync(_cts.Token).ConfigureAwait(true);
-                _ = AchievementCatalogService.RefreshOnLoginAsync(_cts.Token);
+                await CompleteInitialSetupAsync(_cts.Token);
                 // ServerConnectionGuard sends the same presence/session heartbeat over
                 // the actual game WebSocket, with a bounded response timeout.
             }
             catch (Exception e)
             {
+                _initialSetupFailed = true;
+                AuthSetupGate.HideBlockingOverlayIfAny();
                 Debug.LogException(e);
             }
+        }
+
+        /// <summary>Retry the initial auth gate after a genuine connection failure, without opening duplicate forms.</summary>
+        internal async Task CompleteInitialSetupAsync(CancellationToken ct)
+        {
+            if (_initialSetupCompleted || _initialSetupRunning) return;
+            _initialSetupRunning = true;
+            _initialSetupFailed = false;
+            try
+            {
+                await EnsureConnectedAsync(ct);
+                await MaybeShowEmailSetupGateAsync(ct).ConfigureAwait(true);
+                _initialSetupCompleted = true;
+                _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch
+            {
+                _initialSetupFailed = true;
+                await MainThreadDispatcher.RunAsync(AuthSetupGate.HideBlockingOverlayIfAny);
+                throw;
+            }
+            finally { _initialSetupRunning = false; }
         }
 
         private async Task OnlineHeartbeatLoopAsync(CancellationToken ct)
@@ -526,22 +553,14 @@ namespace Project.Nakama
                 {
                     if (config != null && config.verboseLogging)
                         Debug.LogWarning("[Nakama] GetAccount (email gate) after recover: " + e2.Message);
-                    if (!force)
-                    {
-                        AuthSetupGate.HideBlockingOverlayIfAny();
-                        return;
-                    }
+                    throw;
                 }
             }
             catch (Exception e)
             {
                 if (config != null && config.verboseLogging)
                     Debug.LogWarning("[Nakama] GetAccount (email gate): " + e.Message);
-                if (!force)
-                {
-                    AuthSetupGate.HideBlockingOverlayIfAny();
-                    return;
-                }
+                throw;
             }
 
             if (!force && hasEmail)

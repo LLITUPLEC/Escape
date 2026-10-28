@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ExpectedVersion = '0.3.15',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ExpectedVersion = '0.3.16',
     [string]$ManifestPath,
     [string]$ApkDirectory,
     [string]$ReportPath,

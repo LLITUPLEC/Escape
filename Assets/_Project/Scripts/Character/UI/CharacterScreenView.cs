@@ -190,6 +190,7 @@ namespace Project.Character.UI
                 _equipmentDefIds[i] = id;
             }
             _expeditionLayout?.RefreshEmptyEquipment(_equipmentDefIds);
+            _expeditionLayout?.SetEquipmentSet(EquipmentSetBonus.Evaluate(_equipmentDefIds, catalog));
 
             if (_inventoryDefIds.Length != inventorySize)
                 _inventoryDefIds = new string[inventorySize];

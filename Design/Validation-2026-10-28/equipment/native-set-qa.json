@@ -1,0 +1,18 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "equipmentDefinitions": 32,
+    "setQualities": 4,
+    "activationCount": 1,
+    "checks": [
+        "All32 definitions/four qualities: eight correct slots activate; seven parts/duplicates do not; cards identify equipment-only25% and excluded critical chance.",
+        "Actual Hero binder immediately shows authoritative7/8 and8/8 values, activation deduplicates repeated responses, finite pulse preserves quality rims, unequip clears badge; actual item-card writer includes compact set rule."
+    ],
+    "screenshots": [
+        "Design/Validation-2026-10-28/equipment/hero-set-seven.png",
+        "Design/Validation-2026-10-28/equipment/hero-set-activation.png",
+        "Design/Validation-2026-10-28/equipment/hero-set-active.png",
+        "Design/Validation-2026-10-28/equipment/equipment-set-card.png"
+    ]
+}

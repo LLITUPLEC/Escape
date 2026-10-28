@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 11410
   craftGold: 8870
   craftIngotDef: ingot_purple
-  craftIngotN: 150
+  craftIngotN: 510
   craftTesseractN: 0
   craftItemId: eq_t1_rare_weapon_r
   craftMinutes: 180

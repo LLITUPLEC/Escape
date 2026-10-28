@@ -1,0 +1,52 @@
+{
+  "readOnlyPreflightPassed": true,
+  "runtimeDrift": false,
+  "liveRuntime": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "candidateRuntime": "8cf98718b4f4b3bff2204a2a04c33f88760162ae4b66abcd27325f0895f4794e",
+  "candidateFiles": 65,
+  "changedRuntime": [
+    "duel_api_rate_guard.lua",
+    "duel_api_rate_limit.lua",
+    "duel_global_boss.lua",
+    "duel_global_boss_battle.lua",
+    "duel_global_boss_practice.lua",
+    "duel_match3.lua",
+    "duel_match3_character_stats.lua",
+    "duel_player_cosmetics.lua"
+  ],
+  "catalogChangedIds": [
+    "eq_t1_epic_chest",
+    "eq_t1_epic_feet",
+    "eq_t1_epic_gloves",
+    "eq_t1_epic_helmet",
+    "eq_t1_epic_legs",
+    "eq_t1_epic_shoulders",
+    "eq_t1_epic_weapon_l",
+    "eq_t1_epic_weapon_r"
+  ],
+  "unknownCatalogFieldsPreserved": true,
+  "epicOld": {
+    "eq_t1_epic_chest": 25,
+    "eq_t1_epic_feet": 270,
+    "eq_t1_epic_gloves": 50,
+    "eq_t1_epic_helmet": 8,
+    "eq_t1_epic_legs": 180,
+    "eq_t1_epic_shoulders": 220,
+    "eq_t1_epic_weapon_l": 125,
+    "eq_t1_epic_weapon_r": 150
+  },
+  "epicNew": {
+    "eq_t1_epic_chest": 270,
+    "eq_t1_epic_feet": 740,
+    "eq_t1_epic_gloves": 350,
+    "eq_t1_epic_helmet": 110,
+    "eq_t1_epic_legs": 560,
+    "eq_t1_epic_shoulders": 670,
+    "eq_t1_epic_weapon_l": 460,
+    "eq_t1_epic_weapon_r": 510
+  },
+  "activeMatches": 0,
+  "connectedSessions": 0,
+  "preservedSeed": "8cc9c4b7da99b8b4c1168e96a00fa68f03ecde26db876582fcfb392be4552524",
+  "siteAndApksCaptured": true
+}

@@ -1,0 +1,7 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "kind": "mana stat icon",
+  "installed": "Assets/_Project/Resources/Expedition/Icons/mana-drop.png",
+  "transparentBackground": true,
+  "prompt": "Use case: stylized-concept, production UI sprite. Create ONE small-stat icon for MANA in a dark steampunk mining RPG: a vivid sapphire/cyan-blue aether drop or simple teardrop-shaped blue glass crystal with a restrained aged brass rim, clean readable silhouette, subtle internal blue light, high contrast against dark teal panels. Painterly sculpted game-item art, matching detailed bronze/steel fantasy equipment UI but very simple at 32 pixels. A single coherent teardrop, front view, centered, fills 85 percent of a square canvas. No bottle, no text, no numbers, no additional symbols, no lightning bolt (critical chance already uses a yellow bolt), no decorative border/panel, no ground, no contact shadow outside the object. Actual transparent background, isolated icon, no checkerboard."
+}

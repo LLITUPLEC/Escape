@@ -81,9 +81,21 @@ namespace Project.Editor
                 panel.ShowReady(art, "Друг", true, "Через 2…");
                 var opponent = unknown.parent.Find("Portrait").GetComponent<Image>();
                 Check(!unknown.gameObject.activeSelf && opponent.sprite == art && opponent.enabled && opponent.color == Color.white, "Ready slot reveals portrait");
-                panel.ShowReady(art, "Монстр", false, "Через 1…");
-                Check(opponent.rectTransform.anchorMin == Vector2.zero && opponent.rectTransform.anchorMax == Vector2.one && !opponent.GetComponent<AspectRatioFitter>().enabled, "Monster uses full-body slot");
-                report.checks.Add("Unknown opponent becomes named visible portrait; human crop resets for monster body");
+                var monster = AssetDatabase.LoadAssetAtPath<MonsterDefinition>("Assets/_Project/Data/Match3/Monsters/mine_5.asset");
+                Check(monster != null && monster.Icon != null, "Shipped monster exists");
+                panel.ShowReady(monster.Icon, monster.DisplayName, false, "Через 1…");
+                Canvas.ForceUpdateCanvases();
+                var fill = opponent.GetComponent<ExpeditionMatchPortraitFill>();
+                Check(fill != null && fill.enabled && !opponent.GetComponent<AspectRatioFitter>().enabled, "Monster uses solid-bounds portrait fill");
+                fill.Refresh();
+                Check(ExpeditionCombatantGrounding.TryGet(monster.Icon, out var footprint), "Monster has baked solid bounds");
+                var parent = opponent.transform.parent as RectTransform; var imageRect = opponent.rectTransform.rect; var solid = footprint.SolidBounds;
+                Vector2 SolidPoint(float x, float y) => parent.InverseTransformPoint(opponent.rectTransform.TransformPoint(new Vector2(imageRect.xMin + imageRect.width * x, imageRect.yMin + imageRect.height * y)));
+                var lower = SolidPoint(solid.xMin, solid.yMin); var upper = SolidPoint(solid.xMax, solid.yMax);
+                Check(parent.rect.width > 0 && parent.rect.height > 0 && lower.x <= parent.rect.xMin + .1f && lower.y <= parent.rect.yMin + .1f && upper.x >= parent.rect.xMax - .1f && upper.y >= parent.rect.yMax - .1f, "Monster opaque bounds cover the entire masked matchup slot");
+                panel.ShowReady(art, "Друг", true, "Через 1…");
+                Check(!fill.enabled && opponent.GetComponent<AspectRatioFitter>().enabled && opponent.rectTransform.pivot.y == 1, "Human crop is restored after monster fill");
+                report.checks.Add("Unknown opponent reveals actual named art; solid monster bounds cover the card and human crop restores afterwards");
 
                 var managerRoot = new GameObject("QaDisabledBattleManager"); managerRoot.SetActive(false);
                 var manager = managerRoot.AddComponent<DuelMatch3Manager>(); manager.enabled = false;
@@ -101,7 +113,7 @@ namespace Project.Editor
                 Check(report.revealWaits == 2 && !(bool)Get(manager, "_matchRevealPending") && !panel.gameObject.activeSelf, "Two countdown waits finish before battle overlay hides");
                 report.checks.Add("Production reveal coroutine waits twice, blocks queued snapshots/turn-ready, then releases battle");
                 report.passed = true;
-                var path = "Design/Release-0.3.15/media/validation/battle-entry-qa.json";
+                var path = ".cache/qa/battle-entry/battle-entry-qa.json";
                 Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
                 return JsonUtility.ToJson(report);
             }
@@ -120,8 +132,6 @@ namespace Project.Editor
             // Unity refuses to combine with an additive editor QA scene.
             EditorSceneManager.OpenScene("Assets/_Project/Scenes/MainMenu.unity", OpenSceneMode.Single);
             Debug.Log(Run());
-            ExpeditionArenaBracketQa.RunAvatarsBatch();
-            Debug.Log(ExpeditionItemInformationQa.Run());
         }
         private static void ValidateMonsterNames()
         {

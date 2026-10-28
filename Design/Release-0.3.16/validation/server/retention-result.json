@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T04:46:19.035921+00:00",
+  "version": "0.3.16",
+  "versionCode": 18,
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "seedPreserved": true,
+  "catalogsUnchanged": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "nakamaPostgresIdentitiesAndStartTimesUnchanged": true,
+  "noApiDatabaseRestart": true,
+  "nakamaHealth": "healthy",
+  "currentTarget": "/var/www/escape/releases/0.3.16-3f40a293713f-20261028T044411350269Z",
+  "fullHttpsFiles": 32,
+  "fullHttpsApkVerified": true,
+  "previous015WebAndApkPreserved": true,
+  "freshAadBackup": "/opt/escape/backups/pre-publication-0.3.16-20261028T044329Z",
+  "freshBackupManifestSha256": "cefa39770eb42f64ec72d62500f1e37f6dafc4f2b900de78b5442e1c05ded066",
+  "freshBackupPgRestoreListVerified": true,
+  "previousC3BackupPreserved": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "publisherSha256": "e858fd15c8d6e4f02cdb30cb7097e78f5ff10596f931278d36e60f17e2131df0",
+  "retentionApplied": true,
+  "removed": [
+    {
+      "path": "/var/www/escape/releases/0.3.14-46a458ea2e41-20261027T062336412411Z",
+      "files": 32
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.14-46a458ea2e41.apk",
+      "sha256": "46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525"
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T162323Z",
+      "files": 63
+    }
+  ],
+  "ownedStagePathsRemoved": [
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b.tar.gz",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-publisher.py",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-plan.json",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-installer.py",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-run-publication.py",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-publication.log",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-publication-exit.json",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-previous-publisher.py",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-full-integrity.json",
+    "/opt/escape/page-staging/escape0316-192a13dbfff44b3882e1f924c8b7402b-public-smoke.json"
+  ],
+  "ownedPublisherBytecodeRemoved": [],
+  "retainedReleaseVersions": [
+    "0.3.16",
+    "0.3.15"
+  ],
+  "retainedBackups": [
+    "/opt/escape/backups/pre-publication-0.3.16-20261028T044329Z",
+    "/opt/escape/backups/runtime-release-20261027T223730Z"
+  ],
+  "backupCount": 2
+}

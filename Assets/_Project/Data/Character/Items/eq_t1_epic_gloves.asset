@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 9000
   craftGold: 7350
   craftIngotDef: ingot_purple
-  craftIngotN: 50
+  craftIngotN: 350
   craftTesseractN: 0
   craftItemId: eq_t1_rare_gloves
   craftMinutes: 180

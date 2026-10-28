@@ -1,0 +1,23 @@
+{
+  "build_seconds": 673.189806,
+  "build_errors": 0,
+  "development_build": false,
+  "unity_data_entries": 10,
+  "bytes": 124355967,
+  "manifest_parsed": true,
+  "version_code": 18,
+  "debuggable_attribute_present": false,
+  "version": "0.3.16",
+  "debuggable": false,
+  "build_result": "Succeeded",
+  "apk": "Escape-0.3.16-3f40a293713f.apk",
+  "physical_device_tested": false,
+  "date": "2026-10-28T07:41:09+03:00",
+  "native_abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "sha256": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847",
+  "signature_verified": true,
+  "build_warnings": 21
+}

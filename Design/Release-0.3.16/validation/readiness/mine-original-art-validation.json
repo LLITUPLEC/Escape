@@ -1,0 +1,264 @@
+{
+  "ok": true,
+  "mode": "built-in image_gen",
+  "pngPixelsModified": false,
+  "checks": [
+    "15 unique transparent original PNGs",
+    "12 floor-specific names and sprite GUIDs",
+    "12 regenerated grounding footprints",
+    "Both obsolete tesseract PNGs removed",
+    "Single retained tesseract GUID and item reference"
+  ],
+  "assets": [
+    {
+      "id": "mine-01",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        67,
+        10,
+        1198,
+        1236
+      ],
+      "transparentPixels": 994180,
+      "sourceBytes": 1616579,
+      "sha256": "e00e61a82478997abb0be738d5d10b90f7caecbd94045c5f2ded90642cac2d51"
+    },
+    {
+      "id": "mine-02",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        90,
+        20,
+        1169,
+        1233
+      ],
+      "transparentPixels": 775469,
+      "sourceBytes": 2121449,
+      "sha256": "875f8821a9d23716a0632d2c635302748b5011c493f87b65813dcf46fd96aa61"
+    },
+    {
+      "id": "mine-03",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        63,
+        37,
+        1195,
+        1218
+      ],
+      "transparentPixels": 690089,
+      "sourceBytes": 2094637,
+      "sha256": "4446e09e71a6cb2d5dc0cd7d040681920bb003cd4b1f37914f719704e3482f49"
+    },
+    {
+      "id": "mine-04",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        13,
+        43,
+        1239,
+        1207
+      ],
+      "transparentPixels": 679142,
+      "sourceBytes": 2466129,
+      "sha256": "0209cc56ee5bf7a34e0b02bcdeec2585e1c4536decc638083f3f74200af8dfe7"
+    },
+    {
+      "id": "mine-05",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        185,
+        5,
+        1086,
+        1248
+      ],
+      "transparentPixels": 1133946,
+      "sourceBytes": 1234546,
+      "sha256": "6997d9dd1d35af455808026ba4b3ff4a27b5a70c040fff97fdc0bc57bac27ef6"
+    },
+    {
+      "id": "mine-06",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        71,
+        27,
+        1226,
+        1223
+      ],
+      "transparentPixels": 584488,
+      "sourceBytes": 3011249,
+      "sha256": "569887b7bcf9ef89aa4772866ad1e8c9996f4d7563fb8f3debb74a6ed19c6b69"
+    },
+    {
+      "id": "mine-07",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        191,
+        17,
+        1085,
+        1234
+      ],
+      "transparentPixels": 854293,
+      "sourceBytes": 1662322,
+      "sha256": "8375fb48aec7049d32c4f054f26819f4c68f63c2b4665b1dee714f6ea4a3118c"
+    },
+    {
+      "id": "mine-08",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        33,
+        30,
+        1233,
+        1222
+      ],
+      "transparentPixels": 539659,
+      "sourceBytes": 2804986,
+      "sha256": "87e753efb882ec5c167d89fee5184074494f13f36db1ffe0c0f516271ae86b43"
+    },
+    {
+      "id": "mine-09",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        56,
+        71,
+        1239,
+        1175
+      ],
+      "transparentPixels": 664757,
+      "sourceBytes": 2355901,
+      "sha256": "bd038d5b467059d1e4b14e7e96cdd6ed638e43d55fbc62d7979e0f34e1316551"
+    },
+    {
+      "id": "mine-10",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        63,
+        12,
+        1201,
+        1241
+      ],
+      "transparentPixels": 812536,
+      "sourceBytes": 2018694,
+      "sha256": "dd225a12ec12794ee1a0432cf8417c53450e032f91d947abec7f7b6d825b198b"
+    },
+    {
+      "id": "mine-11",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        39,
+        148,
+        1213,
+        1170
+      ],
+      "transparentPixels": 1004008,
+      "sourceBytes": 1543057,
+      "sha256": "f30f1b12ff3241b57c43f5d5238ccc7af300570c31c24df73c818d9a21ffde8c"
+    },
+    {
+      "id": "mine-12",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        14,
+        6,
+        1243,
+        1229
+      ],
+      "transparentPixels": 568732,
+      "sourceBytes": 2798174,
+      "sha256": "3b966c887fcc8da1939414eb89684164233921fb91be9ef31670ccc496ce2fc9"
+    },
+    {
+      "id": "tesseract",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        94,
+        38,
+        1172,
+        1214
+      ],
+      "transparentPixels": 857778,
+      "sourceBytes": 2081808,
+      "sha256": "960d4b5a46b4ccccc9b80b63325f3affc37e0aab6a235fe37f77cf561c72a6e0"
+    },
+    {
+      "id": "health-red",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        56,
+        99,
+        1197,
+        1162
+      ],
+      "transparentPixels": 744019,
+      "sourceBytes": 1794351,
+      "sha256": "7b0d867eec3965e499e47e5914c702f43298f75284797b0f3c0a8fc106da5c53"
+    },
+    {
+      "id": "healing-cross",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "solidBounds": [
+        70,
+        74,
+        1186,
+        1185
+      ],
+      "transparentPixels": 758638,
+      "sourceBytes": 1871023,
+      "sha256": "56402316ab0e3d19cfb0a752c8baa7ce9745eb49d554acc502e5a0dbc846cacf"
+    }
+  ],
+  "sourcePngBytes": 31474905,
+  "footprintEstimate": {
+    "format": "ASTC6x6",
+    "importedMonsterSize": 1024,
+    "mipmaps": false,
+    "monsters12Bytes": 5614272,
+    "alternative36Bytes": 16842816,
+    "savedBytesBySharedDifficulty": 11228544,
+    "note": "Texture payload estimate; total APK size requires a release build."
+  }
+}

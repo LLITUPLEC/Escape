@@ -819,7 +819,8 @@ namespace Project.Character.UI
                 lines.Add(FormatStatLine(statId, selectedValue, delta, showDelta));
             }
 
-            return lines.Count == 0 ? "Нет характеристик" : string.Join("\n", lines);
+            var stats = lines.Count == 0 ? "Нет характеристик" : string.Join("\n", lines);
+            return stats + "\n\n" + EquipmentSetBonus.CardText(selectedItem, _lastProfile?.equipment_def_ids, itemCatalog);
         }
 
         private ItemDefinition GetEquippedInSameSlot(ItemDefinition selectedItem, CharacterDragSlotHandle selectedHandle)

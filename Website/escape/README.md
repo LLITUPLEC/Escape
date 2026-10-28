@@ -1,10 +1,12 @@
 # Страница Escape
 
-Опубликована **0.3.15 / Android versionCode 17**: https://prokrust-play.ru/escape/.
-APK `Escape-0.3.15-e7ac556941de.apk`, **123571699 байт**, SHA-256 `e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8`.
-Подпись совпадает с предыдущим выпуском, проверены ARMv7/ARM64 и отсутствие development/debuggable. Все 32 публичных файла прочитаны полностью по HTTPS. Итоговые свидетельства: `Design/Release-0.3.15/validation/release-completion.json`.
+Опубликована **0.3.16 / Android versionCode 18**: https://prokrust-play.ru/escape/.
+APK `Escape-0.3.16-3f40a293713f.apk`, **124355967 байт**, SHA-256 `3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847`.
+Публикация выполнена 28 октября 2026 года в 04:44:11 UTC. Все 32 публичных файла, включая полный APK и 19 выбранных WAV, прочитаны по HTTPS; размеры и SHA совпали с локальным пакетом. Отчёт: `Design/Release-0.3.16/validation/public-file-integrity.json`.
 
-Предыдущий выпуск **0.3.14 / code 16** сохранён: `Escape-0.3.14-46a458ea2e41.apk`, 124206651 байт, SHA-256 `46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525`.
+Сборка и подпись проверены, присутствуют ARMv7/ARM64, development/debuggable отключены. Финальный client snapshot совпадает со всеми 2059 файлами. Физический Android отдельно не проверялся. Свидетельства сборки: `Design/Release-0.3.16/validation/`.
+
+Предыдущий выпуск **0.3.15 / Android versionCode 17** сохранён: `Escape-0.3.15-e7ac556941de.apk`, **123571699 байт**, SHA-256 `e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8`. Его исторические свидетельства: `Design/Release-0.3.15/validation/release-completion.json`.
 
 ## Исходники и локальные результаты
 
@@ -15,7 +17,9 @@ APK `Escape-0.3.15-e7ac556941de.apk`, **123571699 байт**, SHA-256 `e7ac55694
 - `Builds/<version>/` — APK, symbols и `build-status.json`.
 - `dist/`, staging и bundles — генерируемые файлы, исключённые из Git.
 
-Изображения публикуются без изменения пикселей. Кадры 0.3.15 получены настоящим Unity-рендерером из production-виджетов с автономными данными. Физический Android отдельно не проверялся.
+Изображения публикуются без изменения пикселей. Кадры 0.3.16 получены настоящим Unity-рендерером из production-виджетов с автономными данными: выбранное убежище C, требования эпического рецепта в мастерской и заполненное досье монстра. Имена `character.png` и `mine.png` сохраняют контракт renderer; подпись `character.png` — «Мастерская». Источники и SHA фиксируются в `Design/Release-0.3.16/screens/provenance.json`. Физический Android отдельно не проверялся.
+
+Выпуск включает загрузку профиля без фиктивных значений, комплекты 8/8, проверку цены крафта перед расходом ресурсов, пробный бой с мировым боссом, крупные боевые показатели и сокращённый турнирный блок.
 
 ## Новый выпуск
 
@@ -46,4 +50,4 @@ python Tools/Release/verify_public_integrity.py --version <version> --version-co
 
 ## Хранение
 
-Локально и на VPS сохранены только выпуски 0.3.15 и 0.3.14. Диагностические логи и immutable JSON отражают состояние на момент соответствующего выпуска; их старые пути не являются текущими зависимостями. Инструменты и нужные fixtures перенесены в `Tools/`, `Server/nakama/data/migrations/` и `Assets/_Project/Editor/Fixtures/`. История очистки находится в `Design/Release-0.3.15/validation/cleanup/`.
+Пара для хранения локально и на VPS — текущий выпуск 0.3.16 и предыдущий 0.3.15. Более старый выпуск 0.3.14 удалён после успешной публикации и проверок. Диагностические логи и immutable JSON отражают состояние на момент соответствующего выпуска; их старые пути не являются текущими зависимостями. Инструменты и нужные fixtures перенесены в `Tools/`, `Server/nakama/data/migrations/` и `Assets/_Project/Editor/Fixtures/`. Отчёты текущей очистки: `Design/Release-0.3.16/validation/local-retention-result.json` и `Design/Release-0.3.16/validation/server/retention-result.json`.

@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "templateOnly": true,
+  "utc": "2026-10-28T04:30:03.169727+00:00",
+  "version": "0.3.16",
+  "versionCode": 18,
+  "previous": "0.3.15",
+  "galleryScreens": 3,
+  "staticImageElements": 4,
+  "lightboxReady": true,
+  "templateSha256": "1df73984ab8662db588c31338dd79ee4c84fe5bd6664bcc66ca132475b93d7e7",
+  "checks": [
+    "Current metadata/schema/download labels use0.3.16",
+    "0.3.15 release notes retained as previous version",
+    "Gallery labels identify Shelter/workshop/monster dossier",
+    "All3 source PNGs supplied at1080x1920",
+    "Only approved APK/date tokens remain",
+    "No replacement characters or duplicate element IDs"
+  ],
+  "networkActions": false
+}

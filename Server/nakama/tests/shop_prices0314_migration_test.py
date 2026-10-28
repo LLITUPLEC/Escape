@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "Server/nakama/tools"))
 import merge_shop_prices0314 as migration
 from storage_admin import AdminError, SYSTEM_USER_ID
 
-MANIFEST = json.loads((ROOT / "Design/Release-0.3.14/shop-price-migration.json").read_text(encoding="utf-8"))
+MANIFEST = json.loads(migration.DEFAULT.read_text(encoding="utf-8"))
 OLD = json.loads((ROOT / "Server/nakama/tests/fixtures/shop-catalog-0.3.13.json").read_text(encoding="utf-8"))
 NEW = json.loads((ROOT / "Server/nakama/data/duel_shop_catalog.json").read_text(encoding="utf-8"))
 DEFS = json.loads((ROOT / "Server/nakama/data/duel_match3_item_defs.json").read_text(encoding="utf-8"))["items"]

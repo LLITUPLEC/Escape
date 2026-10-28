@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T04:45:21.700789+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "method": "In-app browser reload, accessibility tree and visual screenshot inspection",
+  "displayedVersion": "0.3.16",
+  "downloadFilename": "Escape-0.3.16-3f40a293713f.apk",
+  "displayedSize": "118.6 MiB",
+  "releaseDate": "28 October 2026",
+  "currentShelterScreenshotVisible": true,
+  "releaseNotesAndThreeGalleryLinksPresent": true,
+  "horizontalOverflowVisible": false,
+  "websiteMutationThroughBrowser": false
+}

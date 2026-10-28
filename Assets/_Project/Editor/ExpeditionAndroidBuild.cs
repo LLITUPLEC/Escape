@@ -39,8 +39,7 @@ namespace Project.Editor
         {
             if (!Application.isBatchMode || EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
                 throw new InvalidOperationException("Run in Android batch mode.");
-            PlayerSettings.bundleVersion = "0.3.15";
-            PlayerSettings.Android.bundleVersionCode = Math.Max(17, PlayerSettings.Android.bundleVersionCode);
+            ValidateReleaseSettings();
             var args = Environment.GetCommandLineArgs();
             var restoreIndex = Array.IndexOf(args, "-escapeRestoreAndroidSdk");
             var restoreSdk = restoreIndex >= 0 && restoreIndex + 1 < args.Length ? args[restoreIndex + 1] : null;
@@ -62,8 +61,7 @@ namespace Project.Editor
                 throw new InvalidOperationException("Select Android as the active build target first");
             if (!development)
             {
-                PlayerSettings.bundleVersion = "0.3.15";
-                PlayerSettings.Android.bundleVersionCode = Math.Max(17, PlayerSettings.Android.bundleVersionCode);
+                ValidateReleaseSettings();
             }
             var status = new Status
             {
@@ -84,6 +82,13 @@ namespace Project.Editor
                 Run(status);
             };
             EditorApplication.update += start;
+        }
+
+        private static void ValidateReleaseSettings()
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(PlayerSettings.bundleVersion ?? "", @"^\d+\.\d+\.\d+$") ||
+                PlayerSettings.Android.bundleVersionCode < 1)
+                throw new InvalidOperationException("Set a numeric release version and a positive Android version code in PlayerSettings before building.");
         }
 
         private static void Run(Status status, string restoreSdkRoot = null)

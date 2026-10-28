@@ -107,15 +107,15 @@ namespace Project.UI
             ExpeditionLocalAtmosphere.Install(environment.transform, false);
             // The painted frame has a translucent centre. An independent solid backing must be
             // rendered behind it so the selected-floor controls can never bleed through the sheet.
-            var backing = NewImage(safe, "DossierOpaqueBacking", new Color32(8, 24, 29, 255), .02f, .115f, .98f, .572f);
+            var backing = NewImage(safe, "DossierOpaqueBacking", new Color32(8, 24, 29, 255), .02f, .115f, .98f, .653f);
             backing.raycastTarget = true;
             _sheet = backgroundImage != null ? backgroundImage.rectTransform : ExpeditionUi.Rect(safe, "DossierSheet", .015f, .112f, .985f, .574f);
             _sheet.SetParent(safe, false);
-            Rect(_sheet, .015f, .112f, .985f, .574f);
+            Rect(_sheet, .015f, .112f, .985f, .655f);
             if (backgroundImage == null) backgroundImage = _sheet.gameObject.AddComponent<Image>();
             ExpeditionUi.StylePanel(backgroundImage, ExpeditionTheme.Panel);
             backgroundImage.raycastTarget = true;
-            var portraitFrame = ExpeditionUi.Panel(_sheet, "MonsterPortraitFrame", .035f, .49f, .405f, .945f);
+            var portraitFrame = ExpeditionUi.Panel(_sheet, "MonsterPortraitFrame", .035f, .60f, .405f, .945f);
             // Clip to the inner well, rather than the outer bevel: even a tall original sprite
             // must stay behind the frame and may never cover its bottom edge with its feet.
             var portraitWell = ExpeditionUi.Rect(portraitFrame.transform, "PortraitWell", .065f, .055f, .935f, .945f);
@@ -137,25 +137,28 @@ namespace Project.UI
             var monster = monsterContentRoot != null ? monsterContentRoot.transform : _sheet;
             if (characteristicsSectionTitle != null) characteristicsSectionTitle.gameObject.SetActive(false);
             if (anomalySectionTitle != null) anomalySectionTitle.gameObject.SetActive(false);
+            var statsFrame = ExpeditionUi.Panel(monster, "MonsterStatsFrame", .435f, .60f, .965f, .805f);
+            var statKeys = new[] { "stat-health", "stat-damage", "stat-armor", "stat-critical", "stat-mana" };
             for (var i = 0; i < statTexts.Length; i++)
             {
                 if (statTexts[i] == null) continue;
-                if (i < 3)
+                if (i < 5)
                 {
-                    var x = .43f + i * .181f;
-                    var plate = ExpeditionUi.Panel(monster, "StatChip_" + i, x, .69f, x + .171f, .81f);
-                    var icon = NewImage(plate.transform, "StatIcon", Color.white, .09f, .25f, .255f, .75f);
-                    icon.sprite = ExpeditionTheme.Icon(i == 0 ? "heart" : i == 1 ? "swords" : "shield");
+                    var bottom = .065f + (4 - i) * .174f;
+                    var row = ExpeditionUi.Rect(statsFrame.transform, "MonsterStatRow_" + i, .06f, bottom, .94f, bottom + .174f);
+                    var icon = NewImage(row, "StatIcon", Color.white, .08f, .05f, .24f, .95f);
+                    icon.sprite = ExpeditionArt.Icon(statKeys[i]);
                     icon.preserveAspect = true;
-                    Place(statTexts[i], plate.transform, .32f, .18f, .9f, .82f, 21, ExpeditionTheme.Ivory);
+                    Place(statTexts[i], row, .34f, 0, .91f, 1, 32, ExpeditionTheme.Ivory);
+                    statTexts[i].horizontalOverflow = HorizontalWrapMode.Overflow;
                 }
                 else
                 {
-                    var x = .43f + (i - 3) * .181f;
-                    Place(statTexts[i], monster, x, .637f, x + .175f, .683f, 21, ExpeditionTheme.Muted);
+                    Place(statTexts[i], monster, .05f, .535f, .405f, .59f, 23, ExpeditionTheme.Muted);
+                    statTexts[i].alignment = TextAnchor.MiddleCenter;
                 }
             }
-            var affix = ExpeditionUi.Panel(monster, "AnomalyCard", .43f, .46f, .965f, .63f);
+            var affix = ExpeditionUi.Panel(monster, "AnomalyCard", .435f, .445f, .965f, .585f);
             Place(affixIcon, affix.transform, .055f, .22f, .20f, .78f);
             Place(affixTitleText, affix.transform, .245f, .65f, .935f, .88f, 24, ExpeditionTheme.Amber);
             _affixDescriptionScroll = BuildScrollingDescription(affix.transform, affixDescriptionText);
@@ -164,8 +167,8 @@ namespace Project.UI
                 affixDescriptionText.fontStyle = FontStyle.Normal;
                 affixDescriptionText.alignment = TextAnchor.UpperLeft;
             }
-            Place(rewardsSectionTitle, monster, .05f, .412f, .95f, .458f, 28, ExpeditionTheme.Ivory);
-            BuildScrollingValues(monster, rewardsDynamicRoot, "RewardsViewport", .05f, .23f, .95f, .405f);
+            Place(rewardsSectionTitle, monster, .05f, .395f, .95f, .438f, 28, ExpeditionTheme.Ivory);
+            BuildScrollingValues(monster, rewardsDynamicRoot, "RewardsViewport", .05f, .23f, .95f, .385f);
             var barrier = barrierContentRoot != null ? barrierContentRoot.transform : _sheet;
             if (barrierSectionTitle != null) barrierSectionTitle.gameObject.SetActive(false);
             Place(barrierInfoText, barrier, .435f, .723f, .95f, .803f, 23, ExpeditionTheme.Muted);

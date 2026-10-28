@@ -1,4 +1,9 @@
-"""Offline audit using actual Lua loot/craft functions and read-only production exports."""
+"""Historical offline audit; requires an explicit archived snapshot and output directory.
+
+The original assertions describe the 0.3.14 economy. A later catalog rebalance can
+legitimately fail its equality checks; use the current recipe audit for release QA.
+"""
+import argparse
 from collections import defaultdict
 from datetime import datetime, timezone
 import hashlib
@@ -23,7 +28,11 @@ def plain(value):
 
 
 def main():
-    out = ROOT / "Design/Release-0.3.14/validation/shop"; out.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--snapshot", type=Path, required=True, help="Archived production-static-catalogs.json input")
+    parser.add_argument("--output", type=Path, required=True, help="New output directory; historical reports are never selected implicitly")
+    args = parser.parse_args()
+    out = args.output.resolve(); out.mkdir(parents=True, exist_ok=True)
     core_path = "Server/nakama/modules/duel_match3.lua"
     core = (ROOT / core_path).read_text(encoding="utf-8-sig")
     lua = LuaRuntime(unpack_returned_tuples=True)
@@ -36,7 +45,7 @@ def main():
     prices = read("Server/nakama/data/duel_shop_catalog.json")
     assert plain(lua.globals().Shop.DEFAULT_CATALOG) == prices, "Lua fallback differs from editable canonical price catalog"
     defs = read("Server/nakama/data/duel_match3_item_defs.json")["items"]
-    static_path = "Design/Release-0.3.14/validation/economy/production-static-catalogs.json"
+    static_path = str(args.snapshot.resolve())
     production = read(static_path)
     assert production["items"]["value"]["items"] == defs, "Live item definitions differ"
     monsters = []

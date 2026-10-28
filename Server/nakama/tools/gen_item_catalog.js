@@ -42,29 +42,9 @@ const QUAL = ["normal", "rare", "epic", "legendary"];
 const QUAL_MUL = { normal: 1.0, rare: 1.45, epic: 1.95, legendary: 2.6 };
 
 const DATA_DIR = path.join(__dirname, "..", "data");
-
-/** reward_ore / reward_gold / reward_ingots с того же этажа, что и рецепт (easy — эталон экономики UI). */
-let _easyBotsByFloor = null;
-function easyBotsByFloor() {
-  if (_easyBotsByFloor) return _easyBotsByFloor;
-  const p = path.join(DATA_DIR, "duel_match3_bots_catalog_easy.json");
-  const j = JSON.parse(fs.readFileSync(p, "utf8"));
-  _easyBotsByFloor = {};
-  for (const bot of Object.values(j.bots || {})) {
-    const fl = Number(bot.floor);
-    if (Number.isFinite(fl) && fl >= 1) _easyBotsByFloor[fl] = bot;
-  }
-  return _easyBotsByFloor;
-}
-
-function easyMineRewardOnFloor(floor) {
-  const b = easyBotsByFloor()[floor] || {};
-  return {
-    ore: Math.max(1, Number(b.reward_ore) || 51),
-    gold: Math.max(1, Number(b.reward_gold) || 55),
-    ingots: Math.max(1, Number(b.reward_ingots) || 1),
-  };
-}
+// Current ingot budgets are explicit: keep green/blue, epic costs >=25% more
+// floor-10 wins after 12/20/28 rewards. Never derive them from the ore/gold curve.
+const INGOT_POLICY = require("../data/equipment_ingot_policy.json");
 
 /**
  * Этаж выдачи рецепта (§4.3) ↔ слот — как MINE_RECIPE_DROP_FLOORS + MINE_RECIPE_FLOOR_SLOT_ORDER в duel_match3.lua.
@@ -86,19 +66,6 @@ function craftOreGoldGreenForRecipeFloor(floor) {
   const ore = Math.round(350 + (f - 1) * 38);
   const gold = Math.round(300 + (f - 1) * 24);
   return { ore, gold };
-}
-
-/**
- * Зелёные слитки: шлем = 4 (тяжёлый фарм на 1 этаже). Дальше ceil(reward_ingots × mult(f)),
- * mult плавно падает с этажом — чтобы при росте reward_ingots не копить огромный профицит
- * (босс ×2 к награде в рантайме сюда не входит — только номинал из JSON).
- */
-function greenIngotCraftCountForRecipeFloor(floor) {
-  const f = Math.max(1, Math.min(12, Math.floor(Number(floor)) || 1));
-  if (f <= 1) return 4;
-  const ingR = easyMineRewardOnFloor(f).ingots;
-  const mult = Math.max(2.15, Math.min(4, 3.35 - 0.14 * (f - 1)));
-  return Math.max(5, Math.ceil(ingR * mult));
 }
 
 /** База персонажа 12 ур. (duel_match3.lua). */
@@ -212,12 +179,11 @@ function logEquipVerify(label, refBot, arr) {
 function craftFor(quality, slotName) {
   const rf = MINE_RECIPE_FLOOR_BY_SLOT[slotName] || 1;
   const og = craftOreGoldGreenForRecipeFloor(rf);
-  const ingN0 = greenIngotCraftCountForRecipeFloor(rf);
-  const base = { ore: og.ore, gold: og.gold, ingot_def: "ingot_green", ingot_n: ingN0 };
+  const base = { ore: og.ore, gold: og.gold, ingot_def: "ingot_green" };
   const qm = Math.pow(QUAL_MUL[quality], 1.12);
   let ore = Math.round(base.ore * qm);
   let gold = Math.round(base.gold * qm);
-  let ingot_n = Math.max(1, Math.round(base.ingot_n * qm));
+  let ingot_n = INGOT_POLICY.slots[slotName][quality] || 0;
   let ingot_def = base.ingot_def;
   if (quality === "rare") ingot_def = "ingot_blue";
   if (quality === "epic") ingot_def = "ingot_purple";

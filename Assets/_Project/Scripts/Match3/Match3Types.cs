@@ -53,7 +53,7 @@ namespace Project.Match3
     [Serializable]
     public class M3BoardSyncMsg
     {
-        public bool globalBoss, globalBossQualified, bossScreamTriggered, bossAdaptationTriggered;
+        public bool globalBoss, globalBossPractice, globalBossQualified, bossScreamTriggered, bossAdaptationTriggered;
         public bool turnPaused;
         public int turnDurationSeconds;
         public long bossActionSequence;
@@ -149,7 +149,7 @@ namespace Project.Match3
     [Serializable]
     public class M3GameOverMsg
     {
-        public bool globalBoss, bossAttemptFinished, bossQualified, bossAttemptRefunded;
+        public bool globalBoss, globalBossPractice, bossAttemptFinished, bossQualified, bossAttemptRefunded;
         public long bossGlobalHp, bossGlobalMaxHp, bossMyDamage, bossTotalDamage;
         public string winnerUserId;
         public bool isDraw;

@@ -18,7 +18,7 @@ from urllib.parse import quote, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, build_opener
 
 IMAGE = "registry.heroiclabs.com/heroiclabs/nakama:3.37.0"
-CANONICAL_ITEM_CATALOG_SHA256 = "b704eb8519ff12d734d10603c3496da886f2cdee392cd93f825bd5ee5752acc1"
+CANONICAL_ITEM_CATALOG_SHA256 = "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1"
 COLLECTIONS = {"duel_match3_character", "duel_match3_progress", "duel_match3_journal", "duel_match3_stats",
  "duel_global_boss", "duel_global_boss_player", "duel_global_boss_attempt", "duel_mail"}
 

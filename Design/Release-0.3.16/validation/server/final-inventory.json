@@ -1,0 +1,110 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T04:47:10.797941+00:00",
+  "publishedVersion": "0.3.16",
+  "versionCode": 18,
+  "currentTarget": "/var/www/escape/releases/0.3.16-3f40a293713f-20261028T044411350269Z",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "seedSha256": "8cc9c4b7da99b8b4c1168e96a00fa68f03ecde26db876582fcfb392be4552524",
+  "runtimeAndCatalogsUnchanged": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "protectedHashes": {
+    ".env": "09ad82a090ea6502c1d6309194d1295bb36690b66865cc8cad862e9db2d0ae69",
+    "compose.yml": "e283eb5021739b59a7d72311fafa8d4d544905bbb02917a32f66dc860a69823b",
+    "nginx.conf.template": "70378641afe9c52ba0ad4167a2dba120d8d09d592a580c165894ae9c01f0b70c",
+    "Caddyfile": "8480c142287c94fd6b064c1b63639bcdd196a2b18b2185ee941e8d736d687d38",
+    "secrets/server.yml": "af14f362edb1f4494aceadcb0b2415b1297232e700c9ed65e62a54707aec921e",
+    "admin": {
+      "files": 4,
+      "treeSha256": "83cf4e59cbfa5680113a1a66a90b1c7fbf8ab9958e69e03896018a82087831be"
+    }
+  },
+  "catalogs": {
+    "duel_match3_item_defs/catalog": {
+      "version": "da280feeee977bd520e1cc464a3fb937",
+      "valueSha256": "040dc60a1e4cf67eb97725244773f983d91adddceeaacaf7e4926d9fc673fbde"
+    },
+    "duel_global_boss/config": {
+      "version": "b18dfda297c7a7d0f8edf1a7de30a4ca",
+      "valueSha256": "f1f8e82b3fc0cf1f8785f85da175a9241f49687f2304bba4d47feb4ecf8dfa78"
+    },
+    "duel_shop_catalog/v1": {
+      "version": "9e356ecec2ea141e3470e7690cb27661",
+      "valueSha256": "8abf0f562a0bf6998c14d3fd6813ced5b936496144cedd359124e4ad674ea974"
+    },
+    "duel_match3_server_aura/active": {
+      "version": "8c1646eabe49c13aacf6e4a27fcc8ef9",
+      "valueSha256": "5c85e0c6dc128cc68d2dcdda8833e4fedbe936678218678d061099b232b7f069"
+    }
+  },
+  "publisherSha256": "e858fd15c8d6e4f02cdb30cb7097e78f5ff10596f931278d36e60f17e2131df0",
+  "releases": {
+    "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z": {
+      "version": "0.3.15",
+      "files": 32,
+      "treeSha256": "5381fef86fdfa504d0270a8856980589cff5bb9f292166dbaa309e6da515e4db",
+      "current": false
+    },
+    "/var/www/escape/releases/0.3.16-3f40a293713f-20261028T044411350269Z": {
+      "version": "0.3.16",
+      "files": 32,
+      "treeSha256": "fbe80c200229be2e1086fe962896be49147b9f7e7f06b8414e6ce3a38a63e2b2",
+      "current": true
+    }
+  },
+  "apks": {
+    "Escape-0.3.15-e7ac556941de.apk": {
+      "bytes": 123571699,
+      "sha256": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8"
+    },
+    "Escape-0.3.16-3f40a293713f.apk": {
+      "bytes": 124355967,
+      "sha256": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847"
+    }
+  },
+  "backups": {
+    "/opt/escape/backups/pre-publication-0.3.16-20261028T044329Z": {
+      "files": 94,
+      "manifestSha256": "cefa39770eb42f64ec72d62500f1e37f6dafc4f2b900de78b5442e1c05ded066",
+      "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+      "runtimeFiles": 66,
+      "dumpBytes": 193318,
+      "dumpSha256": "0b77d53c93ded9bd3cf0195cc6a1800aebcf9d456d2e6cc87e845f24b8e22d2a",
+      "manifestVerified": true,
+      "pgRestoreListVerified": true
+    },
+    "/opt/escape/backups/runtime-release-20261027T223730Z": {
+      "files": 82,
+      "manifestSha256": "e27402a251de0a22b5c5d1c03bdc9a57e0ebd9f349dd6480e6d29474333d11f9",
+      "runtimeSha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+      "runtimeFiles": 64,
+      "dumpBytes": 190055,
+      "dumpSha256": "94a20e997ea1d8ff63184a0be1ce939038b14bbbbc12d5325d0277a9cb273a91",
+      "manifestVerified": true,
+      "pgRestoreListVerified": true
+    }
+  },
+  "backupCount": 2,
+  "containers": [
+    {
+      "name": "escape-nakama-1",
+      "id": "9f979dd842442cc5eb516b8de672a519422dd49c6193d2a5ecd03289ed778e2b",
+      "startedAt": "2026-10-27T22:37:33.497209432Z",
+      "restartCount": 0,
+      "health": "healthy"
+    },
+    {
+      "name": "escape-postgres-1",
+      "id": "6816d7898927e032eb5cc0b0f8312c5f4a68d5b332760147e76ab3899432ed68",
+      "startedAt": "2026-10-22T18:14:38.863810708Z",
+      "restartCount": 0,
+      "health": "healthy"
+    }
+  ],
+  "noApiOrDatabaseRestart": true,
+  "nakamaHealth": "healthy",
+  "pageStaging": [],
+  "old014ArtifactsRemoved": true,
+  "otherProjectsAndDockerVolumesUntouched": true
+}

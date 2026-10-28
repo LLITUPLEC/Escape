@@ -217,8 +217,11 @@ namespace Project.Match3
                 if (question != null) question.gameObject.SetActive(false);
                 var fit = _opponentPortrait.GetComponent<AspectRatioFitter>();
                 if (fit != null) fit.enabled = false;
+                var monsterFill = _opponentPortrait.GetComponent<ExpeditionMatchPortraitFill>();
+                if (monsterFill != null) monsterFill.enabled = false;
                 ExpeditionUi.SetRect(_opponentPortrait.rectTransform, 0, 0, 1, 1);
                 if (upperBody) ExpeditionMatchStates.CropUpperBody(_opponentPortrait);
+                else if (portrait != null) ExpeditionUi.Ensure<ExpeditionMatchPortraitFill>(_opponentPortrait.gameObject).Bind(_opponentPortrait);
             }
             if (_opponentCaption != null)
                 _opponentCaption.text = string.IsNullOrWhiteSpace(opponentName) ? "СОПЕРНИК" : opponentName;

@@ -8,6 +8,7 @@ local Mail=load("duel_mail")
 local CFG=load("duel_match3_config")
 local Shop=load("duel_shop")
 local Ranking=load("duel_global_boss_ranking")
+local Practice=load("duel_global_boss_practice")
 local M={COLLECTION="duel_global_boss",PLAYER_COLLECTION="duel_global_boss_player",ATTEMPT_COLLECTION="duel_global_boss_attempt"}
 local SYSTEM="00000000-0000-0000-0000-000000000000"
 local DAY,WEEK=86400,604800
@@ -124,6 +125,7 @@ function M.refund(uid,attempt_id,why)
   end)
 end
 function M.bind_state(state,nonce)
+  if state.global_boss.practice==true then return Practice.bind(state)end
   local uid=state.owner_user_id;local id=state.global_boss.attempt_id
   return retry(function()
     local a,av=read(uid,M.ATTEMPT_COLLECTION,id)
@@ -134,6 +136,21 @@ function M.bind_state(state,nonce)
     nk.storage_write({op(uid,M.ATTEMPT_COLLECTION,id,a,av)})
     return a
   end)
+end
+function M.practice_api(state)return Practice.api(state)end
+function M.practice_label(uid)return Practice.label(uid)end
+-- Practice reads the initial weekly configuration, never the depleted HP or
+-- a previous battle snapshot. No event/admission/token record is created.
+function M.practice_enter(uid,epoch)
+  local current=read(SYSTEM,M.COLLECTION,week(os.time()))
+  local cfg=copy(current and current.config or M.config())
+  local id="practice-"..nk.uuid_v4();local attempt=nk.uuid_v4();local bot="zz-bot-global-"..id
+  local ok,mid=pcall(deps.try_match_create,{mode="pve",owner_user_id=uid,owner_session_epoch=epoch,
+    bot_id="global_boss",bot_user_id=bot,global_boss={practice=true,event_id=id,attempt_id=attempt,practice_config=cfg},
+    pve_run={affix="",difficulty="easy",arena_suppress_all=true}})
+  if not ok or not mid then return{ok=false,err="match_create_failed"}end
+  return{ok=true,is_global_boss=true,practice=true,event_id=id,attempt_id=attempt,match_id=mid,
+    bot_id="global_boss",bot_user_id=bot,bot_name=cfg.name,spent_token=false,resumed=false}
 end
 function M.enter(uid,request_id,epoch,expected_event)
   local e,err=M.event();if not e then return{ok=false,err=err}end
@@ -294,6 +311,17 @@ local function rpc(ctx,payload,mutate)
 end
 function M.rpc_get(ctx,payload)return rpc(ctx,payload,false)end
 function M.rpc_enter(ctx,payload)return rpc(ctx,payload,true)end
+function M.rpc_practice(ctx,payload)
+  local uid=ctx and ctx.user_id;if type(uid)~="string"or uid==""then return nk.json_encode({ok=false,err="unauthorized"})end
+  local p=payload or{}
+  if type(p)=="string"then if#p>128 then return nk.json_encode({ok=false,err="bad_payload"})end;local ok,v=pcall(nk.json_decode,p);p=ok and v or nil end
+  if type(p)~="table"then return nk.json_encode({ok=false,err="bad_payload"})end
+  for k in pairs(p)do if k~="session_epoch"then return nk.json_encode({ok=false,err="bad_payload"})end end
+  local yes,err=deps.guard_epoch(uid,payload);if not yes then return nk.json_encode({ok=false,err=err})end
+  local ok,result=pcall(M.practice_enter,uid,p.session_epoch)
+  if not ok then nk.logger_error("boss practice unavailable: "..tostring(result));result={ok=false,err="boss_unavailable"}end
+  return nk.json_encode(result)
+end
 function M.rpc_leaderboard(ctx,payload)
   local uid=ctx and ctx.user_id
   if type(uid)~="string"or uid==""then return nk.json_encode({ok=false,err="unauthorized"})end

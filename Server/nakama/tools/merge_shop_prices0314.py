@@ -13,7 +13,7 @@ import sys
 from storage_admin import AdminError, Console, SYSTEM_USER_ID, read_json, write_json_new
 
 COLLECTION, KEY = "duel_shop_catalog", "v1"
-DEFAULT = Path(__file__).resolve().parents[3] / "Design/Release-0.3.14/shop-price-migration.json"
+DEFAULT = Path(__file__).resolve().parents[3] / "Server/nakama/data/migrations/shop-price-0.3.14.json"
 FINGERPRINTS = {
     "ingots_green": ("205d44474b400601ccc79b7e36550333e8d3090be9ccb7d7fd4492432a523513", "c3a20b97f7b0f2b7ac2651da984aa3442b5643065bf8064c5484cbb14a1bd58b"),
     "ingots_blue": ("372b9b8062732a83b21cc61ab3be7a5ccf051cb48fc141fe65bbc808799504f1", "7ac68ee2c0aa85a172eec88e7f624e39ed3561a90ee779e2a578d6733e0e8fda"),

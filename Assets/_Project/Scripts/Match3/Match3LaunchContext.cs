@@ -42,14 +42,15 @@ namespace Project.Match3
         public sealed class GlobalBossJoin
         {
             public string MatchId, EventId, AttemptId, BotUserId, Name, OwnerScope;
+            public bool Practice;
         }
         private static GlobalBossJoin _bossJoin;
-        public static void ArmGlobalBoss(string matchId, string eventId, string attemptId, string botUserId, string name)
+        public static void ArmGlobalBoss(string matchId, string eventId, string attemptId, string botUserId, string name, bool practice = false)
         {
             ClearArenaJoinArm(); ClearFriendRaceJoinArm();
             _nextPvpPro = _nextPvpRace = false;
             SetSoloMine("global_boss", 0, "hard", false, "MainMenu");
-            _bossJoin = new GlobalBossJoin { MatchId = matchId, EventId = eventId, AttemptId = attemptId, BotUserId = botUserId, Name = name, OwnerScope = Project.Nakama.LocalAccountCacheScope.Current };
+            _bossJoin = new GlobalBossJoin { MatchId = matchId, EventId = eventId, AttemptId = attemptId, BotUserId = botUserId, Name = name, Practice = practice, OwnerScope = Project.Nakama.LocalAccountCacheScope.Current };
         }
         public static GlobalBossJoin PeekGlobalBoss()
         {

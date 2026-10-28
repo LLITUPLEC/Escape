@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse, hashlib, json, re, tarfile, uuid
 ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--version',default='0.3.15')
+parser.add_argument('--version',default='0.3.16')
 parser.add_argument('--output-dir',type=Path,default=ROOT/'.cache/release-work/backend')
 args=parser.parse_args()
 assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',args.version)
@@ -20,6 +20,7 @@ inputs.update({
  'migration/merge_consumable_catalog.py':ROOT/'Server/nakama/tools/merge_consumable_catalog.py',
  'migration/storage_admin.py':ROOT/'Server/nakama/tools/storage_admin.py',
  'migration/consumable-item-defs.json':ROOT/'Server/nakama/data/migrations/consumables-0.3.9.json',
+ 'migration/merge_equipment_ingots.py':ROOT/'Server/nakama/tools/merge_equipment_ingots.py',
  'security_smoke.py':ROOT/'Server/nakama/deploy/security_smoke.py',
  'deploy_runtime.py':ROOT/'Server/nakama/deploy/deploy_runtime.py',
 })

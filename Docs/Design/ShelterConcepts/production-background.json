@@ -1,0 +1,9 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "kind": "approved-concept-C clean environment background",
+  "reference": "Docs/Design/ShelterConcepts/option-c-mine-light.png",
+  "installed": "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png",
+  "prompt": "Use case: precise-object-edit / background-extraction. This is the approved mobile steampunk refuge screen concept. Create ONLY its clean continuous portrait 9:16 ENVIRONMENT BACKGROUND for the actual game UI to be overlaid later. Remove EVERY interface element: all top profile panels/avatar/nickname/XP, all resource strips and numbers, all left buttons, both reward/task pills, shop and boss buttons, mine card and every bottom navigation tab, every label/icon/frame/counter. ALSO REMOVE the hooded explorer character entirely; the live game's selected character will be placed separately. Seamlessly reconstruct the environment behind all removed UI and the figure. Preserve exactly the approved room's camera/composition, dark teal mine architecture, warm amber central elevator light shaft, right-side rocky wall with pipework/banner/lamps, quiet left-side darkness, and warm stone/metal floor with the hero standing surface at around 65% down the image. Keep the area behind the former left buttons dark and calm, the upper quarter dark and calm for UI, the floor at the former character's feet naturally continuous with a subtle warm light pool, and the lower quarter dark/coherent for cards. No new figures, creatures, objects acting as buttons, lettering, symbols, icons, decorative frames, logos or interface anywhere. The result must be a complete beautiful high-quality painted steampunk scene ready to act as a Unity mobile screen background, NOT a screenshot with UI blurred or partially erased. No transparent background.",
+  "containsUi": false,
+  "containsCharacter": false
+}

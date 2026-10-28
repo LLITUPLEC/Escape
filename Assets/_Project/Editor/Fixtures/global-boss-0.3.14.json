@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source": "Design/Release-0.3.14/validation/server/multiclient-isolated-global-boss.json",
+    "source_sha256": "2459dd0686ef22d31901c8491f63f62272df697e5fb0fa090c246d5f178fa92d",
+    "extraction": "Only the three captured server responses consumed by ExpeditionGlobalBossQa0314; response fields unchanged."
+  },
+  "boss_ui_snapshots": [
+    {
+      "name": "boss-state",
+      "response": {
+        "abilities": [
+          {
+            "cooldown_turns": 2,
+            "id": "horrifying_scream",
+            "initial_hp_percent": 20,
+            "mana": 0,
+            "title": "Ужасающий крик"
+          },
+          {
+            "id": "adaptation",
+            "passive": true,
+            "title": "Адаптация"
+          }
+        ],
+        "attempts_left": 3,
+        "attempts_total": 3,
+        "attempts_used": 0,
+        "base_armor": 1000,
+        "base_crit": 0.05,
+        "base_damage": 3500,
+        "base_heal": 0,
+        "eligibility_progress": 0,
+        "eligibility_required": 1,
+        "ends_at": 1793566800,
+        "event_id": "week-1792962000",
+        "hp": 550000,
+        "hp_max": 550000,
+        "max_turns": 30,
+        "my_damage": 0,
+        "name": "Сердце Разлома",
+        "no_healing": true,
+        "ok": true,
+        "qualified": false,
+        "rewards_preview": [
+          {
+            "amount": 1,
+            "def_id": "legendary_recipe_random"
+          },
+          {
+            "amount": 1,
+            "def_id": "tesseract"
+          },
+          {
+            "amount": 1,
+            "def_id": "elixir_random"
+          },
+          {
+            "amount": 1,
+            "def_id": "scroll_pve_bounty"
+          },
+          {
+            "amount": 1500,
+            "resource": "gold"
+          },
+          {
+            "amount": 2000,
+            "resource": "ore"
+          },
+          {
+            "amount": 5,
+            "resource": "matter"
+          }
+        ],
+        "server_now": 1793077375,
+        "starts_at": 1792962000,
+        "status": "active",
+        "token_count": 5,
+        "token_id": "global_boss_teleport"
+      }
+    },
+    {
+      "name": "boss-running-clock",
+      "response": {
+        "aArmorMultiplier": 1,
+        "aBaseArmor": 1310,
+        "aBaseCrit": 0.011,
+        "aBaseDamage": 1855,
+        "aBaseHeal": 921,
+        "aConsumableCritAdd": 0,
+        "aConsumableId": "",
+        "aCrossCd": 0,
+        "aDamageMultiplier": 1,
+        "aFuryBonus": 0,
+        "aFuryCd": 0,
+        "aFuryTurns": 0,
+        "aHealingMultiplier": 1,
+        "aHp": 18865,
+        "aLevel": 1,
+        "aMana": 0,
+        "aMaxHp": 18865,
+        "aMaxMana": 100,
+        "aPetardBank": 0,
+        "aPetardCd": 0,
+        "aRaceActions": 0,
+        "aShieldCd": 0,
+        "aShieldT1": 0,
+        "aShieldT2": 0,
+        "aShieldT3": 0,
+        "aSquareCd": 0,
+        "abilityX": -1,
+        "abilityY": -1,
+        "actionActorUserId": "",
+        "actionType": 0,
+        "activeUserId": "b1d0094c-4642-43dc-a640-1ee37a623ed2",
+        "animSteps": {},
+        "bArmorMultiplier": 1,
+        "bBaseArmor": 1000,
+        "bBaseCrit": 0.05,
+        "bBaseDamage": 3500,
+        "bBaseHeal": 0,
+        "bConsumableCritAdd": 0,
+        "bConsumableId": "",
+        "bCrossCd": 0,
+        "bDamageMultiplier": 1,
+        "bFuryBonus": 0,
+        "bFuryCd": 0,
+        "bFuryTurns": 0,
+        "bHealingMultiplier": 1,
+        "bHp": 550000,
+        "bLevel": 12,
+        "bMana": 0,
+        "bMaxHp": 550000,
+        "bMaxMana": 100,
+        "bPetardBank": 0,
+        "bPetardCd": 0,
+        "bRaceActions": 0,
+        "bShieldCd": 0,
+        "bShieldT1": 0,
+        "bShieldT2": 0,
+        "bShieldT3": 0,
+        "bSquareCd": 0,
+        "board": [
+          1,
+          1,
+          2,
+          4,
+          1,
+          1,
+          1,
+          4,
+          3,
+          2,
+          5,
+          3,
+          3,
+          3,
+          4,
+          3,
+          3,
+          4,
+          1,
+          2,
+          5,
+          2,
+          3,
+          4,
+          2,
+          4,
+          2,
+          5,
+          2,
+          3,
+          2,
+          3,
+          3,
+          4,
+          4,
+          3
+        ],
+        "boardPopup": "",
+        "bossActionSequence": 0,
+        "bossAdaptationTriggered": false,
+        "bossOwnTurn": 0,
+        "bossPlayerTurnsLeft": 30,
+        "bossScreamCooldown": 1,
+        "bossScreamDamage": 0,
+        "bossScreamTriggered": false,
+        "bountyEndsAt": 0,
+        "cheatRows": {},
+        "critTriggered": false,
+        "extraTurn": false,
+        "fromX": -1,
+        "fromY": -1,
+        "globalBoss": true,
+        "globalBossEventId": "week-1792962000",
+        "globalBossMyDamage": 0,
+        "globalBossQualified": false,
+        "globalBossTotalDamage": 0,
+        "manaDrain": 0,
+        "pveAffix": "",
+        "pvpRace": false,
+        "raceGoalMana": 0,
+        "raceLastTurnUserId": "",
+        "raceManaBonusEvery": 0,
+        "serverNowUnixMs": 1793077375663,
+        "toX": -1,
+        "toY": -1,
+        "turnDurationSeconds": 30,
+        "turnEndsAtUnixMs": 1793077405663,
+        "turnPaused": false
+      }
+    },
+    {
+      "name": "boss-ranking",
+      "response": {
+        "entries": [
+          {
+            "attempts_used": 1,
+            "avatar_id": "",
+            "damage": 1,
+            "display_name": "multi_652a7076cb11_1",
+            "is_self": true,
+            "rank": 1,
+            "user_id": "fe0130f6-fc06-441a-8dfb-28c68165fa49"
+          }
+        ],
+        "event_id": "week-1792962000",
+        "ok": true,
+        "self_entry": {
+          "attempts_used": 1,
+          "avatar_id": "",
+          "damage": 1,
+          "display_name": "multi_652a7076cb11_1",
+          "is_self": true,
+          "rank": 1,
+          "user_id": "fe0130f6-fc06-441a-8dfb-28c68165fa49"
+        },
+        "updating": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "version": "0.3.16",
+  "versionCode": 18,
+  "selectedUtc": "2026-10-28T04:27:17.840136+00:00",
+  "renderer": "Unity6000.3.9f1 native editor render of production components",
+  "data": "Local autonomous profile/catalog examples; no live account or network actions",
+  "physicalAndroidCapture": false,
+  "screenCount": 3,
+  "screens": [
+    {
+      "file": "hub.png",
+      "caption": "Убежище C",
+      "source": "Design/Validation-2026-10-28/shelter-concept-c/shelter-c-1080x1920.png",
+      "sourceReport": "Design/Validation-2026-10-28/shelter-concept-c/shelter-c-report.json",
+      "sourceSha256": "66c086267d69575512e536f85f71b5c5588f99a9b33ccce63d4176baa396a46c",
+      "sha256": "66c086267d69575512e536f85f71b5c5588f99a9b33ccce63d4176baa396a46c",
+      "bytes": 3329833,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false
+    },
+    {
+      "file": "character.png",
+      "caption": "Мастерская: эпический рецепт и требования",
+      "source": ".cache/qa/publication-screens/0.3.16/workshop.png",
+      "sourceReport": ".cache/qa/publication-screens/0.3.16/capture-report.json",
+      "sourceSha256": "3817726b4b91032a4358985ae3a70d3b22fd49cea810ad998e67d320438cad5e",
+      "sha256": "3817726b4b91032a4358985ae3a70d3b22fd49cea810ad998e67d320438cad5e",
+      "bytes": 2698500,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false
+    },
+    {
+      "file": "mine.png",
+      "caption": "Шахта: заполненное досье монстра",
+      "source": ".cache/qa/publication-screens/0.3.16/mine.png",
+      "sourceReport": ".cache/qa/publication-screens/0.3.16/capture-report.json",
+      "sourceSha256": "82645974b3b30732345c29362f9aed853651ff83f0a9acc379b581a51ab95d1c",
+      "sha256": "82645974b3b30732345c29362f9aed853651ff83f0a9acc379b581a51ab95d1c",
+      "bytes": 2261762,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false
+    }
+  ]
+}

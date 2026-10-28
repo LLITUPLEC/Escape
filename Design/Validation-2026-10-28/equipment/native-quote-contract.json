@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "networkActions": false,
+  "accountWrites": false,
+  "preferenceWrites": false,
+  "checks": [
+    "Disabled identity provides a scope without initializing a network client",
+    "Initial displayed requirements and enough-material gating use the selected item price; profile=True;shown=560;asset=560;button=True;detail=РўСЂРµР±РѕРІР°РЅРёСЏ:\r\nР СѓРґР° Г— 12210, Р·РѕР»РѕС‚Рѕ Г— 9380\r\nР¤РёРѕР»РµС‚РѕРІС‹Р№ СЃР»РёС‚РѕРє Г— 560\r\nРџРѕРіР»РѕС‰РµРЅРёРµ: <color=#176AEA>Р‘СЂСЋРєРё РџСЂРѕС…РѕРґС‡РёРєР°</color>.\r\nР’СЂРµРјСЏ: 3 С‡",
+    "Actual Create click sends exactly the displayed selected-item price and slot through production service JSON",
+    "Quote continuation settles synchronously on its owning Unity context",
+    "Changed quote updates visible requirements and insufficient-material gating, preserves the asset and requires another explicit click",
+    "Updated price enables Create only after enough material exists",
+    "A second explicit click sends the revised visible price without an automatic retry",
+    "Quote continuation settles synchronously on its owning Unity context",
+    "Quote continuation settles synchronously on its owning Unity context",
+    "Late recipe-A quote cannot rewrite selected recipe B, replace its hint, or leave current controls locked",
+    "Quote continuation settles synchronously on its owning Unity context",
+    "A superseded generation cannot publish quote data even for the same account and recipe; its own lock still releases",
+    "Quote continuation settles synchronously on its owning Unity context",
+    "Account/generation switch discards late quote data and clears only its own in-flight lock",
+    "Delayed transport exception settles on its owner context",
+    "Late old-account transport errors cannot overwrite the new account hint or leave it locked",
+    "Client rejects an invalid displayed price before its transport boundary",
+    "All quote checks ran without network, account writes or enabled gameplay controllers"
+  ]
+}

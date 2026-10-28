@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "cleanedUtc": "2026-10-27T22:41:58.729399+00:00",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "proofArchiveSha256": "a4f4504d55c07cabac3749aa58f3e33d7d9d4cb159665b85bbe634453fc86ce1",
+  "proofArchivedAndLocallyHashVerified": true,
+  "removed": [
+    {
+      "path": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z",
+      "files": 98,
+      "bytes": 1412581,
+      "treeSha256": "c445c953106f7f911854b9bd7499bb1b1f58cbcec467f0ddb98902dea611fc7b"
+    },
+    {
+      "path": "/opt/escape/multiclient-runtime-overlay",
+      "files": 65,
+      "bytes": 766206,
+      "treeSha256": "165ece681e1360fa85daf02b101a566cf1a07acb452e1c00a32fe18e6611f78f"
+    },
+    {
+      "path": "/opt/escape/multiclient-catalog-migration",
+      "files": 4,
+      "bytes": 31888,
+      "treeSha256": "33fe33adba3e1a559bdacdaed05ba4e68d8643a3310b808cefacd66bb25b00ff"
+    },
+    {
+      "path": "/opt/escape/release0315-validation-9f20fca7e4de",
+      "files": 159,
+      "bytes": 2750511,
+      "treeSha256": "fb28d4be5a303efd03f6188b34eed00637bee42d9ff491725651aa358a45a53e"
+    },
+    {
+      "path": "/opt/escape/release0315-validation-c135615aa25c",
+      "files": 183,
+      "bytes": 3052172,
+      "treeSha256": "02a9c506b3199c00fb432083446fb0589fadb3578a30c6f94143ba6f2b7e8789"
+    },
+    {
+      "path": "/opt/escape/release0315-validation-bb506a1cbca8",
+      "files": 169,
+      "bytes": 2559619,
+      "treeSha256": "c436eea5bf25df3791ec440133f20e11fa4507088fd68f76c3f5ff3669134e46"
+    },
+    {
+      "path": "/opt/escape/release0315-validation-ea932cbaaca2",
+      "files": 177,
+      "bytes": 2870595,
+      "treeSha256": "4403df1b72718ead602bb26676c4097313f20f60d79be37ebd4995d2e6164398"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all-container-state.json",
+      "files": 1,
+      "bytes": 228,
+      "sha256": "ca324bea29dca299761f33ec078ffb42fcca475be2dc0751243db73b6663855b"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all-runtime-errors.log",
+      "files": 1,
+      "bytes": 12489,
+      "sha256": "cddba1cbeb8470492ab143cfb91467fface968aea12acf77d6b3b7394df7b441"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all-traceback.log",
+      "files": 1,
+      "bytes": 3235,
+      "sha256": "7202ab2950af42a559656dbd18bd2c22eebbe9e06c3d7c614ee835b492592bd7"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-all.json",
+      "files": 1,
+      "bytes": 233475,
+      "sha256": "e52309b9749b8957a4ba47937c31acd01894a1ae40579f97cadce5f1c7b5edfd"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-equipment-sets.json",
+      "files": 1,
+      "bytes": 11302,
+      "sha256": "0bc5b61fc476756ba3e42801f479a52bc7fb19258ebf22a05a54be192fc78812"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-global-boss-practice.json",
+      "files": 1,
+      "bytes": 2801,
+      "sha256": "f5e349a7cc7edda7096c652b97da959f90e1110a51e924a1e858e4a323c9a87a"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-lifecycle.json",
+      "files": 1,
+      "bytes": 8591,
+      "sha256": "e1cb4af047ce571e247904f5afa038ff2ad21fde88b743132702c9a2af1df2d5"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-quote-preflight-container-state.json",
+      "files": 1,
+      "bytes": 228,
+      "sha256": "6035d3631031aa521e1e9b221555bdf9e4619ff82ba6f90cbdd48d8da913ca1d"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-quote-preflight-runtime-errors.log",
+      "files": 1,
+      "bytes": 8518,
+      "sha256": "65795ce59ad7092623244a0a9f773d3c8efdade133ffe5fdcfd495ae96397031"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-quote-preflight-traceback.log",
+      "files": 1,
+      "bytes": 528,
+      "sha256": "1b9e0061ca313ec805959d92f21f412a24f457fc24da9bce2cd10f4174734b7a"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-quote-preflight.json",
+      "files": 1,
+      "bytes": 998,
+      "sha256": "65784511961b2ac2a8b9c2b9a394d4e44896946f14794dad5b1c3b987b6b82ef"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-recovery-container-state.json",
+      "files": 1,
+      "bytes": 228,
+      "sha256": "d074f566ac93d069db05aee1a741372a9b5940aa00969657a1f9c662498c1578"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-recovery-runtime-errors.log",
+      "files": 1,
+      "bytes": 841,
+      "sha256": "cb95f855fbf72d5430f5372b6eda1e45192aaa1b8dab17a32f4d39c56f51f7b3"
+    },
+    {
+      "path": "/opt/escape/multiclient-isolated-recovery.json",
+      "files": 1,
+      "bytes": 11110,
+      "sha256": "08a3d369d635d2b4d695d462ca51778132ac317db29ac00636f35fd9925ab94c"
+    }
+  ],
+  "retainedBackups": [
+    "/opt/escape/backups/runtime-release-20261027T162323Z",
+    "/opt/escape/backups/runtime-release-20261027T223730Z"
+  ],
+  "backupCount": 2,
+  "rollback014Preserved": true,
+  "newPrechangeBackupVerified": true,
+  "ownCandidateStagesRemaining": [],
+  "disposableDocker": {
+    "containers": [],
+    "volumes": [],
+    "networks": []
+  },
+  "temporaryAccountsRemoved": true,
+  "nakamaHealth": "healthy",
+  "reusableServerHelpersPreserved": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "websiteAndPublishedApksUntouched": true
+}

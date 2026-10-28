@@ -26,7 +26,7 @@ namespace Project.Editor
             public bool passed, networkActions, accountWrites; public int width = 1080, height; public string error;
             public List<Check> checks = new(); public List<string> screenshots = new();
         }
-        private const string ServerFixture = "Design/Release-0.3.14/validation/server/multiclient-isolated-global-boss.json";
+        private const string ServerFixture = "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json";
         [Serializable] private sealed class StateShot { public string name; public GlobalBossService.State response; }
         [Serializable] private sealed class StateShots { public StateShot[] boss_ui_snapshots; }
         [Serializable] private sealed class BoardShot { public string name; public M3BoardSyncMsg response; }

@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "previousVersion": "0.3.15",
+  "version": "0.3.16",
+  "package": "com.UnityTechnologies.com.unity.template.urpblank",
+  "samePackage": true,
+  "signerCertificateSha256": "a813aa59b19a728fa65298fc9fe7c921f7eed37285edee0c912852f1b2fc26b0",
+  "sameSignerCertificate": true,
+  "versionCodeIncreasedFrom": 17,
+  "versionCodeIncreasedTo": 18
+}

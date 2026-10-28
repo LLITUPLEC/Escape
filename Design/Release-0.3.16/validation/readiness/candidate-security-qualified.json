@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-28T04:17:19.153721+00:00",
+  "mode": "working-tree-candidate",
+  "files": 197,
+  "total_candidate_bytes": 27587626,
+  "confirmed_sensitive_findings": 0,
+  "qualified_findings": [
+    {
+      "path": "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+      "line": 69,
+      "kind": "literal-secret-assignment",
+      "matched_characters": 42,
+      "classification": "false-positive: PlayerPrefs key identifier; no credential value",
+      "source_sha256": "b18c482ac6daef05d0aa04242ee26bfca1b83e02310e4a06acff2574889bdfbd"
+    }
+  ],
+  "large_files_50_MiB": [],
+  "private_named_files": [],
+  "generated_candidates": [],
+  "conflicted_paths": [],
+  "ignored_tracked": [],
+  "git": {
+    "branch": "main",
+    "head": "4762d1ee332cfe321c3d25acd3fc9bf0ecb0a6a9",
+    "cached_origin_relation": "0\t0",
+    "remote_refreshed": false
+  },
+  "final_exact_index_audit_pending": true
+}

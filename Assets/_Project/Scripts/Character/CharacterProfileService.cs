@@ -126,15 +126,29 @@ namespace Project.Character
             }), ct);
         }
 
-        public static Task<CharacterGetRpcResponse> WorkshopCraftStartAsync(int slotIndex, string outputDefId, CancellationToken ct)
+#if UNITY_EDITOR
+        internal static Func<string, CancellationToken, Task<CharacterGetRpcResponse>> EditorCraftStartTransportOverride;
+#endif
+        public static Task<CharacterGetRpcResponse> WorkshopCraftStartAsync(int slotIndex, string outputDefId, int expectedIngotN, CancellationToken ct)
         {
             if (string.IsNullOrEmpty(outputDefId))
                 return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "empty_output_def_id" });
             if (slotIndex < 0 || slotIndex > 7)
                 return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "bad_slot_index" });
+            if (expectedIngotN < 0 || expectedIngotN > 1000000000)
+                return Task.FromResult(new CharacterGetRpcResponse { ok = false, err = "invalid_craft_quote" });
+            var payload = BuildCraftStartPayload(slotIndex, outputDefId, expectedIngotN, NakamaBootstrap.GetLocalSessionEpoch());
+#if UNITY_EDITOR
+            if (EditorCraftStartTransportOverride != null) return EditorCraftStartTransportOverride(payload, ct);
+#endif
+            return RpcCharacterPayloadAsync(RpcWorkshopCraftStart, payload, ct);
+        }
+
+        internal static string BuildCraftStartPayload(int slotIndex, string outputDefId, int expectedIngotN, int epoch)
+        {
             var escaped = outputDefId.Replace("\\", "\\\\").Replace("\"", "\\\"");
-            return RpcCharacterPayloadAsync(RpcWorkshopCraftStart,
-                "{\"session_epoch\":" + NakamaBootstrap.GetLocalSessionEpoch() + ",\"slot_index\":" + slotIndex + ",\"output_def_id\":\"" + escaped + "\"}", ct);
+            return "{\"session_epoch\":" + epoch + ",\"slot_index\":" + slotIndex + ",\"output_def_id\":\"" + escaped +
+                "\",\"expected_ingot_n\":" + expectedIngotN + "}";
         }
 
         public static Task<CharacterGetRpcResponse> WorkshopCraftClaimAsync(int slotIndex, CancellationToken ct)

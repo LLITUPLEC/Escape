@@ -1,0 +1,299 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "normal: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "normal: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "normal: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "normal: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "normal: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "rare: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "rare: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "epic: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "epic: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "legendary: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "legendary: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "eight occupied slots with mixed quality do not activate a set"
+    },
+    {
+      "passed": true,
+      "check": "canonical backend exposes all32 equipment recipe costs"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "published unquoted client can still craft unchanged common recipes"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

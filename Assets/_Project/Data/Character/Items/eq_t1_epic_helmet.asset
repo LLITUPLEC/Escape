@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 7390
   craftGold: 6340
   craftIngotDef: ingot_purple
-  craftIngotN: 8
+  craftIngotN: 110
   craftTesseractN: 0
   craftItemId: eq_t1_rare_helmet
   craftMinutes: 180

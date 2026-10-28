@@ -1,0 +1,6 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "checks": 12
+}

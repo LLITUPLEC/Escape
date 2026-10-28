@@ -13,6 +13,7 @@ local function copy(v)if type(v)~='table'then return v end;local o={};for k,x in
 local function snapshot(s)local v={};for _,k in ipairs(FIELDS)do v[k]=copy(s[k])end;return v end
 local function restore(s,v)for _,k in ipairs(FIELDS)do s[k]=copy(v[k])end end
 function M.configure(deps)d=deps end
+local function api(s)return s.global_boss.practice==true and d.api.practice_api(s)or d.api end
 local function reject(dispatcher,p,why)d.reject(dispatcher,p,why)end
 local function deadline(s,tick)
  s.turn_deadline_paused=true;s.turn_pause_started_tick=tick;s.turn_deadline_tick=tick
@@ -41,46 +42,49 @@ local function sync(dispatcher,s,tick,action,extra,steps,actor)
  d.broadcast(dispatcher,s,action,extra,steps,tick,actor)
 end
 local function terminal(dispatcher,s,tick,result,reason,visual)
- local e=result.event or d.api.get_event(s.global_boss.event_id)
+ local e=result.event or api(s).get_event(s.global_boss.event_id)
  if e and s.stats[s.bot_user_id]then s.stats[s.bot_user_id].hp=e.hp end
  s.ended=true;s.global_boss.my_damage=result.attempt and result.attempt.actual_damage or s.global_boss.my_damage or 0
  s.global_boss.total_damage=result.my_damage or s.global_boss.total_damage or 0
  s.global_boss.qualified=result.qualified==true or s.global_boss.qualified==true
- local payload={globalBoss=true,bossAttemptFinished=true,endReason=reason or(result.attempt and result.attempt.end_reason)or'finished',
+ local payload={globalBoss=true,globalBossPractice=s.global_boss.practice==true,bossAttemptFinished=true,endReason=reason or(result.attempt and result.attempt.end_reason)or'finished',
   winnerUserId=e and e.hp<=0 and s.owner_user_id or s.bot_user_id,isDraw=false,
   bossGlobalHp=e and e.hp or 0,bossGlobalMaxHp=e and e.max_hp or 0,bossMyDamage=s.global_boss.my_damage,bossTotalDamage=s.global_boss.total_damage,
   bossQualified=s.global_boss.qualified,bossAttemptRefunded=result.refunded==true}
  if s.started then sync(dispatcher,s,tick,visual and visual.action,visual and visual.extra or false,visual and visual.steps,visual and visual.actor or'')end
  s._boss_terminal=payload;d.emit(dispatcher,s,payload)
- if e and e.hp<=0 then local ok,ready=pcall(d.api.ensure_worker,e.id);s._boss_mail_pending=not(ok and ready)end
+ if e and e.hp<=0 and not s.global_boss.practice then local ok,ready=pcall(d.api.ensure_worker,e.id);s._boss_mail_pending=not(ok and ready)end
 end
 function M.finish(dispatcher,s,tick,why)
  if s.ended then if s._boss_terminal and not s._terminal_delivered then d.emit(dispatcher,s,s._boss_terminal)end;return end
  -- A frozen action must settle before surrender; otherwise its accepted HP
  -- change could be silently discarded on a storage outage.
  if s._boss_pending then return false,'action_pending' end
- local result,err=d.api.finish(s.owner_user_id,s.global_boss.attempt_id,why,s.started and snapshot(s)or nil)
+ local result,err=api(s).finish(s.owner_user_id,s.global_boss.attempt_id,why,s.started and snapshot(s)or nil)
  if not result then s._boss_pending_finish=why;return false,err end
  s._boss_pending_finish=nil;terminal(dispatcher,s,tick,result,why);return true
 end
 function M.join(dispatcher,s,tick)
  if s.started then sync(dispatcher,s,tick,nil,false,nil,'');return s end
- local a=d.api.get_attempt(s.owner_user_id,s.global_boss.attempt_id)
- local e=d.api.get_event(s.global_boss.event_id);s._boss_config=e.config
+ local a=api(s).get_attempt(s.owner_user_id,s.global_boss.attempt_id)
+ local e=api(s).get_event(s.global_boss.event_id);s._boss_config=e.config
  if e.hp<=0 or os.time()>=e.ends_at then M.finish(dispatcher,s,tick,e.hp<=0 and'boss_defeated'or'event_expired');return s end
  s.players_sorted={s.owner_user_id,s.bot_user_id};s.player_levels=s.player_levels or{};s.player_levels[s.bot_user_id]=12
  if a.snapshot then restore(s,a.snapshot);Rounds.restore(s,s.owner_user_id)
  else
-  s.stats[s.owner_user_id]=d.new_stats();d.apply_player(s.stats[s.owner_user_id],s.owner_user_id)
+  s.stats[s.owner_user_id]=d.new_stats();d.apply_player(s.stats[s.owner_user_id],s.owner_user_id,s.global_boss.practice==true)
   local b=d.new_stats();b.hp=e.hp;b.initial_hp=e.max_hp;b.max_hp=e.max_hp;b.base_damage=e.config.base_damage
   b.base_armor=e.config.base_armor;b.base_crit=e.config.base_crit;b.base_heal=0;s.stats[s.bot_user_id]=b
   s.board=d.new_board();d.ensure_board(s);s.cheat_rows=d.init_cheat_rows();s.spawn_queues={}
   for x=0,d.CFG.SIZE-1 do d.ensure_queue(s,x)end;d.update_cheat_rows(s)
   Rounds.start(s,s.owner_user_id);s.global_boss.boss_own_turn=0;s.global_boss.next_scream_turn=1;s.global_boss.player_turns=0
-  local sheet=d.read_sheet(s.owner_user_id);local effects=d.effects.normalize(sheet);local receipt=copy(effects.armed or{})
-  receipt.bounty=copy(effects.bounty);effects.armed=nil;sheet.consumables=effects
-  d.effects.apply(s.stats[s.owner_user_id],receipt);s._consumable_bindings={[s.owner_user_id]=receipt}
-  local started,err=d.api.start(s.owner_user_id,a.id,snapshot(s),receipt,sheet)
+  local sheet,receipt
+  if not s.global_boss.practice then
+   sheet=d.read_sheet(s.owner_user_id);local effects=d.effects.normalize(sheet);receipt=copy(effects.armed or{})
+   receipt.bounty=copy(effects.bounty);effects.armed=nil;sheet.consumables=effects
+   d.effects.apply(s.stats[s.owner_user_id],receipt);s._consumable_bindings={[s.owner_user_id]=receipt}
+  end
+  local started,err=api(s).start(s.owner_user_id,a.id,snapshot(s),receipt,sheet)
   if not started then
    if err=='boss_defeated'then M.finish(dispatcher,s,tick,'boss_defeated')else s._boss_join_pending=true end
    return s
@@ -88,11 +92,11 @@ function M.join(dispatcher,s,tick)
   a=started;restore(s,a.snapshot)
  end
  s._boss_sequence=a.sequence or 0;s._boss_join_pending=nil;s.started=true;s.cheat_rows_allowed={}
- local p=d.api.get_player(s.owner_user_id,e.id)or{};s.global_boss.my_damage=a.actual_damage or 0;s.global_boss.total_damage=p.total_damage or 0;s.global_boss.qualified=p.qualified==true
+ local p=api(s).get_player(s.owner_user_id,e.id)or{};s.global_boss.my_damage=a.actual_damage or 0;s.global_boss.total_damage=p.total_damage or 0;s.global_boss.qualified=p.qualified==true
  s.stats[s.bot_user_id].hp=e.hp;deadline(s,tick);sync(dispatcher,s,tick,nil,false,nil,'');return s
 end
 local function persist(dispatcher,s,tick,pending)
- local r,err=d.api.commit(s.owner_user_id,s.global_boss.attempt_id,pending.sequence,pending.damage,pending.snapshot,pending.player_action,pending.reason)
+ local r,err=api(s).commit(s.owner_user_id,s.global_boss.attempt_id,pending.sequence,pending.damage,pending.snapshot,pending.player_action,pending.reason)
  if not r then
   if err=='boss_defeated'or err=='event_expired'then
    s._boss_pending=nil;restore(s,pending.before);M.finish(dispatcher,s,tick,err);return true
@@ -101,7 +105,7 @@ local function persist(dispatcher,s,tick,pending)
  end
  s._boss_pending=nil;s._boss_sequence=r.attempt.sequence;restore(s,r.attempt.snapshot)
  s.stats[s.bot_user_id].hp=r.event.hp
- local p=d.api.get_player(s.owner_user_id,r.event.id)or{};s.global_boss.my_damage=r.attempt.actual_damage or 0;s.global_boss.total_damage=p.total_damage or 0;s.global_boss.qualified=p.qualified==true
+ local p=api(s).get_player(s.owner_user_id,r.event.id)or{};s.global_boss.my_damage=r.attempt.actual_damage or 0;s.global_boss.total_damage=p.total_damage or 0;s.global_boss.qualified=p.qualified==true
  if r.attempt.status=='finished'then terminal(dispatcher,s,tick,{event=r.event,attempt=r.attempt,my_damage=p.total_damage,qualified=p.qualified},r.attempt.end_reason,pending)
  else
   if not pending.keep then deadline(s,tick)
@@ -112,7 +116,7 @@ local function persist(dispatcher,s,tick,pending)
 end
 local function action(dispatcher,s,tick,a,actor,pass)
  local before=snapshot(s);local boss=actor==s.bot_user_id;local opp=boss and s.owner_user_id or s.bot_user_id
- local e=d.api.get_event(s.global_boss.event_id)
+ local e=api(s).get_event(s.global_boss.event_id)
  if e.hp<=0 or os.time()>=e.ends_at then M.finish(dispatcher,s,tick,e.hp<=0 and'boss_defeated'or'event_expired');return end
  s.stats[s.bot_user_id].hp=e.hp;s._global_boss_damage_raw=0
  s.global_boss.scream_triggered=false;s.global_boss.scream_damage=0;s.global_boss.adaptation_triggered=false
@@ -169,7 +173,7 @@ function M.loop(dispatcher,s,tick,messages)
   return s
  end
  s._boss_disconnect_tick=nil
- local e=d.api.get_event(s.global_boss.event_id)
+ local e=api(s).get_event(s.global_boss.event_id)
  if e.hp<=0 or os.time()>=e.ends_at then M.finish(dispatcher,s,tick,e.hp<=0 and'boss_defeated'or'event_expired');return s end
  if s.stats[s.bot_user_id].hp~=e.hp then s.stats[s.bot_user_id].hp=e.hp;sync(dispatcher,s,tick,nil,false,nil,'')end
  messages=d.filter_messages(s,messages,tick,dispatcher)

@@ -76,9 +76,7 @@ namespace Project.UI
                 shade.transform.SetSiblingIndex(1);
                 var footerPanel = ExpeditionUi.Panel(root, "ExpeditionTournamentFooter", .025f, .015f, .975f, .205f, ExpeditionTheme.Panel);
                 footerPanel.raycastTarget = false;
-                var portrait = ExpeditionUi.Fill(footerPanel.transform, "Portrait", .025f, .12f, .17f, .88f, Color.white);
-                portrait.sprite = ExpeditionTheme.Icon("hero"); portrait.preserveAspect = true; portrait.raycastTarget = false;
-                ExpeditionUi.Text(root, "ExpeditionTournamentSummary", "Ожидаем участников", 26, .20f, .095f, .94f, .19f, TextAlignmentOptions.MidlineLeft);
+                ExpeditionUi.Text(root, "ExpeditionTournamentSummary", "", 26, .20f, .095f, .94f, .19f, TextAlignmentOptions.MidlineLeft).gameObject.SetActive(false);
                 var countdownPlate = ExpeditionUi.Fill(root, "ExpeditionCountdownPlate", .055f, .855f, .945f, .937f, new Color32(8, 23, 27, 250));
                 countdownPlate.raycastTarget = false;
                 if (root.parent != null)
@@ -109,11 +107,13 @@ namespace Project.UI
             {
                 DisableLayout(rows as RectTransform);
             }
-            Place(root, "PrizeFooter", .20f, .025f, .94f, .095f);
+            Place(root, "PrizeFooter", .06f, .035f, .94f, .185f);
             var footer = root.Find("PrizeFooter")?.GetComponent<TMP_Text>();
             if (footer != null)
             {
-                StyleText(footer, 20, ExpeditionTheme.Ivory);
+                StyleText(footer, 30, ExpeditionTheme.Ivory);
+                footer.alignment = TextAlignmentOptions.MidlineLeft;
+                footer.fontSizeMin = 24;
                 footer.transform.SetAsLastSibling();
             }
             ExpeditionPresentation.SetTournamentVisible(root.gameObject.activeInHierarchy);

@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "originalPixelsUnchanged": true,
+  "generationMode": "built-in image_gen",
+  "assets": [
+    {
+      "id": "shelter-rating",
+      "path": "Assets/_Project/Resources/Expedition/Icons/shelter-rating.png",
+      "sha256": "e8c5c25417383d0bb45a857b034c79658a1cc9150f5c4f9e02913f841c5c7757",
+      "bytes": 2302324,
+      "dimensions": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "id": "shelter-friends",
+      "path": "Assets/_Project/Resources/Expedition/Icons/shelter-friends.png",
+      "sha256": "9f00957dc472b762cda2426e74b760932a41cbde58ff3314639ce68e2550a489",
+      "bytes": 2326992,
+      "dimensions": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "id": "shelter-mail",
+      "path": "Assets/_Project/Resources/Expedition/Icons/shelter-mail.png",
+      "sha256": "7460e914a430a4fdcdcc39bff86433459c8cf9b82da91b48519d3aa90e6d0fe5",
+      "bytes": 2378717,
+      "dimensions": [
+        1254,
+        1254
+      ]
+    }
+  ]
+}

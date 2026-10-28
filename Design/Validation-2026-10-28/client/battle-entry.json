@@ -1,0 +1,14 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "checkedMineReturns": 36,
+    "revealWaits": 2,
+    "checks": [
+        "All 36 mine floor/difficulty returns survive consumed launch payload and repeated catalog refresh",
+        "3D destination and account ownership are respected",
+        "All 12 mine names follow monstr.txt; legacy server defaults migrate and administrative names survive",
+        "Unknown opponent reveals actual named art; solid monster bounds cover the card and human crop restores afterwards",
+        "Production reveal coroutine waits twice, blocks queued snapshots/turn-ready, then releases battle"
+    ]
+}

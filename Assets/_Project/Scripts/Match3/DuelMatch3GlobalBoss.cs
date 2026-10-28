@@ -12,6 +12,7 @@ namespace Project.Match3
     public sealed partial class DuelMatch3Manager
     {
         private bool _isGlobalBoss;
+        private bool _isGlobalBossPractice;
         private M3GameOverMsg _bossGameOver;
         private TMP_Text _bossBattleStatus;
         private int _lastScreamTurn = -1;
@@ -24,7 +25,7 @@ namespace Project.Match3
             var boot = Project.Nakama.NakamaBootstrap.Instance;
             var session = boot?.Session; var socket = boot?.Socket;
             if (session == null || socket == null || string.IsNullOrEmpty(join.MatchId) || string.IsNullOrEmpty(join.AttemptId) || string.IsNullOrEmpty(join.EventId) || !Project.Nakama.LocalAccountCacheScope.IsCurrent(join.OwnerScope)) throw new OperationCanceledException("Boss entry belongs to another account.", ct);
-            _isGlobalBoss = true; _pveProgress = new PveProgressInfo();
+            _isGlobalBoss = true; _isGlobalBossPractice = join.Practice; _pveProgress = new PveProgressInfo();
             _activePveBotFloor = 0; _opponentIsServerBot = true;
             _opUserId = string.IsNullOrWhiteSpace(join.BotUserId) ? "zz-bot-global_boss" : join.BotUserId;
             _opDisplayName = string.IsNullOrWhiteSpace(join.Name) ? "Сердце Разлома" : join.Name;
@@ -46,7 +47,7 @@ namespace Project.Match3
             if (safe == null || _bossBattleStatus != null) return;
             ExpeditionBattleLayout.UseGlobalBossArena(canvas.transform);
             var caption = ExpeditionUi.Find(safe, "ExpeditionBattleCaption"); if (caption != null) caption.gameObject.SetActive(false);
-            _bossBattleStatus = ExpeditionUi.Text(safe, "GlobalBossContribution", "МИРОВОЙ БОСС · ВКЛАД: 0", 20, .035f, .006f, .79f, .042f, TextAlignmentOptions.Center);
+            _bossBattleStatus = ExpeditionUi.Text(safe, "GlobalBossContribution", _isGlobalBossPractice ? "ПРОБНЫЙ БОЙ · БЕЗ НАГРАД И ЗАТРАТ" : "МИРОВОЙ БОСС · ВКЛАД: 0", 20, .035f, .006f, .79f, .042f, TextAlignmentOptions.Center);
             _bossBattleStatus.enableAutoSizing = true; _bossBattleStatus.fontSizeMin = 15; _bossBattleStatus.fontSizeMax = 20;
             ExpeditionUi.Button(safe, "GlobalBossRules", "БОСС", .035f, .665f, .155f, .712f, () => ShowBossRules(safe), false, 19);
         }
@@ -59,7 +60,8 @@ namespace Project.Match3
         private void UpdateGlobalBossPresentation(M3BoardSyncMsg msg, bool animate)
         {
             _isGlobalBoss = true;
-            if (_bossBattleStatus != null) _bossBattleStatus.text = $"ВКЛАД: {ExpeditionGlobalBossPanel.Number(msg.globalBossMyDamage)}  ·  ОСТАЛОСЬ ХОДОВ: {Math.Max(0, msg.bossPlayerTurnsLeft)}";
+            _isGlobalBossPractice = msg.globalBossPractice;
+            if (_bossBattleStatus != null) _bossBattleStatus.text = $"{(_isGlobalBossPractice ? "ПРОБНЫЙ БОЙ · УРОН" : "ВКЛАД")}: {ExpeditionGlobalBossPanel.Number(msg.globalBossMyDamage)}  ·  ОСТАЛОСЬ ХОДОВ: {Math.Max(0, msg.bossPlayerTurnsLeft)}";
             if (animate && msg.bossScreamTriggered && msg.bossOwnTurn > _lastScreamTurn)
             {
                 _lastScreamTurn = msg.bossOwnTurn;
@@ -97,16 +99,19 @@ namespace Project.Match3
             var safe = ExpeditionUi.Rect(overlay, "SafeArea", 0, 0, 1, 1); safe.gameObject.AddComponent<ExpeditionSafeArea>();
             ExpeditionUi.Fill(safe, "Shade", 0, 0, 1, 1, new Color(0, 0, 0, .93f)).raycastTarget = true;
             var result = _bossGameOver; var defeated = result != null && result.bossGlobalHp <= 0; var refund = result != null && result.bossAttemptRefunded;
-            var title = refund ? "ПОПЫТКА ВОЗВРАЩЕНА" : defeated ? "ОБЩАЯ ПОБЕДА!" : "ВКЛАД СОХРАНЁН";
+            var practice = _isGlobalBossPractice || result?.globalBossPractice == true;
+            var title = practice ? "ПРОБНЫЙ БОЙ ЗАВЕРШЁН" : refund ? "ПОПЫТКА ВОЗВРАЩЕНА" : defeated ? "ОБЩАЯ ПОБЕДА!" : "ВКЛАД СОХРАНЁН";
             ExpeditionUi.Text(safe, "Title", title, 48, .06f, .81f, .94f, .90f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
             var art = ExpeditionUi.Rect(safe, "BossArt", .16f, .46f, .84f, .80f).gameObject.AddComponent<Image>(); art.sprite = Resources.Load<Sprite>(GlobalBossService.Art); art.preserveAspect = true; art.raycastTarget = false;
             var card = ExpeditionUi.Panel(safe, "ContributionCard", .08f, .255f, .92f, .46f);
             ExpeditionUi.Text(card.transform, "Damage", "ВАШ УРОН: " + ExpeditionGlobalBossPanel.Number(result?.bossMyDamage ?? 0), 37, .045f, .66f, .955f, .94f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
             var percent = result != null && result.bossGlobalMaxHp > 0 ? 100.0 * result.bossMyDamage / result.bossGlobalMaxHp : 0;
-            ExpeditionUi.Text(card.transform, "Percent", percent.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("ru-RU")) + "% общего здоровья босса", 27, .06f, .48f, .94f, .66f, TextAlignmentOptions.Center);
+            ExpeditionUi.Text(card.transform, "Percent", (practice ? "ЭТО БЫЛО БЫ " : "") + percent.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("ru-RU")) + "% " + (practice ? "полного HP босса" : "общего здоровья босса"), 27, .06f, .48f, .94f, .66f, TextAlignmentOptions.Center);
             var notice = refund ? "Жетон и попытка возвращены. Можно попробовать снова." : defeated ? result?.bossQualified == true ? "Босс повержен всеми участниками! Награды доставляются в игровую почту." : "Общая победа! Личная награда доступна тем, кто успел нанести боссу урон." : result?.bossQualified == true ? "Вы участвуете в награде. Письмо придёт после общей победы над боссом." : "Для участия в награде нужно нанести боссу урон. Новое событие — новые попытки.";
+            if (practice) notice = "Тренировка без ограничений. Урон не засчитан в событие, наград и затрат нет. Следующий бой — с полным здоровьем и исходными характеристиками.";
             ExpeditionUi.Text(card.transform, "RewardNotice", notice, 25, .065f, .06f, .935f, .46f, TextAlignmentOptions.Center);
-            ExpeditionUi.Button(safe, "ReturnShelter", "В УБЕЖИЩЕ", .18f, .14f, .82f, .215f, ReturnFromGameOver, true, 36);
+            if (practice) ExpeditionUi.Button(safe, "RetryPractice", "ЕЩЁ ПРОБНЫЙ БОЙ", .18f, .185f, .82f, .245f, () => { _ = GlobalBossService.PracticeAsync(_cts.Token); }, false, 27);
+            ExpeditionUi.Button(safe, "ReturnShelter", "В УБЕЖИЩЕ", .18f, practice ? .105f : .14f, .82f, practice ? .170f : .215f, ReturnFromGameOver, true, 36);
         }
     }
 }

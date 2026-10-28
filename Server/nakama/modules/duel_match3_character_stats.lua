@@ -21,9 +21,11 @@ local function cfg()
   return deps.CFG or {}
 end
 
-local function read_achievement_claimed(user_id)
+local function read_achievement_claimed(user_id, read_only)
   if user_id == nil or user_id == "" then return {} end
-  local fn = deps.storage_read_match3_summary_val
+  local fn
+  if read_only then fn = assert(type(deps.read_stats_snapshot) == "function" and deps.read_stats_snapshot, "missing_readonly_stats_snapshot")
+  else fn = deps.storage_read_match3_summary_val end
   if type(fn) ~= "function" then return {} end
   local val, _ = fn(user_id)
   if type(val.achievement_claimed) == "table" then
@@ -32,14 +34,16 @@ local function read_achievement_claimed(user_id)
   return {}
 end
 
-local function merged_stats_for_user(user_id)
+local function merged_stats_for_user(user_id, read_only, accepted_sheet)
   local CFG = cfg()
   local max_hp = tonumber(CFG.MAX_HP) or 150
   if user_id == nil or user_id == "" then
     return { hp = max_hp, damage = 0, armor = 0, healing = 0, crit_chance = 0 }
   end
   local ensure_sheet = deps.ensure_character_sheet_initialized
-  local read_progress = deps.read_pve_progress
+  local read_progress
+  if read_only then read_progress = assert(type(deps.read_progress_snapshot) == "function" and deps.read_progress_snapshot, "missing_readonly_progress_snapshot")
+  else read_progress = deps.read_pve_progress end
   local read_sheet = deps.read_character_sheet
   local ensure_counts = deps.ensure_sheet_inventory_counts
   local sum_equip = deps.sum_equipment_bonuses
@@ -48,7 +52,7 @@ local function merged_stats_for_user(user_id)
   local clamp_int = CFG.clamp_int
   local max_level = CFG.PVE_MAX_LEVEL or 12
 
-  if type(ensure_sheet) == "function" then ensure_sheet(user_id) end
+  if not read_only and type(ensure_sheet) == "function" then ensure_sheet(user_id) end
   local progress = {}
   if type(read_progress) == "function" then
     progress, _ = read_progress(user_id)
@@ -59,14 +63,19 @@ local function merged_stats_for_user(user_id)
   else
     level = math.max(1, math.min(max_level, tonumber(progress.level) or 1))
   end
-  local sheet = type(read_sheet) == "function" and read_sheet(user_id) or {}
+  -- Equip RPCs have already accepted and persisted this sheet. Use that exact snapshot
+  -- for their response instead of reading a second, potentially older storage version.
+  local sheet = type(accepted_sheet) == "table" and accepted_sheet or (type(read_sheet) == "function" and read_sheet(user_id) or {})
   if type(ensure_counts) == "function" then ensure_counts(sheet) end
   local base_stats = type(base_for_level) == "function" and base_for_level(level) or { hp = max_hp, damage = 0, armor = 0, healing = 0, crit_chance = 0 }
   local bonus = type(sum_equip) == "function" and sum_equip(sheet) or {}
   local stats = type(merge) == "function" and merge(base_stats, bonus) or base_stats
-  CombatBon.apply_to_merged_stats(stats, read_achievement_claimed(user_id))
-  if type(deps.cosmetics_hp_bonus) == "function" then
-    local fraction = tonumber(deps.cosmetics_hp_bonus(user_id)) or 0
+  CombatBon.apply_to_merged_stats(stats, read_achievement_claimed(user_id, read_only))
+  local cosmetics
+  if read_only then cosmetics = assert(type(deps.cosmetics_hp_bonus_read_only) == "function" and deps.cosmetics_hp_bonus_read_only, "missing_readonly_cosmetics_snapshot")
+  else cosmetics = deps.cosmetics_hp_bonus end
+  if type(cosmetics) == "function" then
+    local fraction = tonumber(cosmetics(user_id)) or 0
     assert(fraction == fraction and fraction >= 0 and fraction <= 0.045, "invalid_cosmetics_hp_bonus")
     stats.hp = math.max(1, math.floor((tonumber(stats.hp) or max_hp) * (1 + fraction) + 0.000000001))
   end
@@ -74,8 +83,12 @@ local function merged_stats_for_user(user_id)
 end
 
 --- Итоговые статы для экрана персонажа / RPC (без боевой ауры PvE).
-function M.compute_character_display_stats(user_id)
-  return merged_stats_for_user(user_id)
+function M.compute_character_display_stats(user_id, accepted_sheet)
+  local stats = merged_stats_for_user(user_id, false, accepted_sheet)
+  -- Match actor application and the client's integer fields, including fractional set bonuses.
+  stats.hp = math.max(1, math.floor(tonumber(stats.hp) or tonumber(cfg().MAX_HP) or 150))
+  for _, key in ipairs({"damage", "armor", "healing"}) do stats[key] = math.max(0, math.floor(tonumber(stats[key]) or 0)) end
+  return stats
 end
 
 function M.apply_merged_combat_stats_to_actor(actor, merged)
@@ -96,7 +109,7 @@ function M.apply_player_combat_stats_from_sheet(actor, user_id, opts)
   if actor == nil or user_id == nil or user_id == "" then return end
   local is_human = deps.is_human
   if type(is_human) == "function" and not is_human(user_id) then return end
-  local merged = merged_stats_for_user(user_id)
+  local merged = merged_stats_for_user(user_id, opts and opts.read_only==true)
   M.apply_merged_combat_stats_to_actor(actor, merged)
   if opts ~= nil and opts.aura ~= nil then
     local aura_fn = deps.aura_apply_to_pve_player_stats

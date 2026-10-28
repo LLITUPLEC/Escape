@@ -4,6 +4,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import socket
@@ -1503,6 +1504,291 @@ class Suite:
         self.check(not self.rpc(a,'duel_global_boss_enter',{'event_id':event,'request_id':'dead-'+self.run_id}).get('ok'),
             'globally defeated event rejects new attempts')
 
+    def storage_snapshot(self, uid):
+        """Read all rows including versions, so a same-value rewrite is still detected."""
+        rows, cursor = {}, ""
+        for _ in range(20):
+            query = {"user_id": uid, "limit": 100}
+            if cursor:
+                query["cursor"] = cursor
+            code, page = self.console("GET", "/storage?" + urlencode(query))
+            if code != 200:
+                raise RuntimeError("Read-only test Storage snapshot failed: HTTP " + str(code))
+            for row in page.get("objects", []):
+                owner = row.get("user_id", row.get("userId"))
+                if owner != uid:
+                    raise RuntimeError("Console Storage owner filter was not respected")
+                key = (row["collection"], row["key"])
+                rows[key] = {name: row.get(name) for name in ("version", "value", "permission_read", "permission_write")}
+            cursor = page.get("next_cursor", page.get("cursor", ""))
+            if not cursor:
+                return rows
+        raise RuntimeError("Test Storage snapshot exceeded its bounded pagination")
+
+    def practice_smoke(self):
+        """Production-safe: temporary account, Console GET only, no paid boss admission."""
+        p = self.player(); self.rpc(p, "duel_character_get")
+        original = self.console
+        def get_only(method, path, payload=None):
+            if method != "GET":
+                raise RuntimeError("Production practice smoke refused a Console write")
+            return original(method, path, payload)
+        self.console = get_only
+        try:
+            self._practice_trace(p, self.connect(p), rounds=2, require_positive_damage=False)
+        finally:
+            self.console = original # Existing finally cleanup removes this temporary account only.
+
+    def quote_preflight(self):
+        """Harmless runtime-first proof: invalid quotes on one empty temporary account."""
+        p = self.player(); self.rpc(p, "duel_character_get")
+        original = self.console
+        def get_only(method, path, payload=None):
+            if method != "GET": raise RuntimeError("Quote preflight refused a Console write")
+            return original(method, path, payload)
+        self.console = get_only
+        watched = {("duel_match3_character", "sheet"), ("duel_match3_progress", "profile")}
+        try:
+            baseline = self.storage_snapshot(p["uid"])
+            before = {key: baseline.get(key) for key in watched}
+            if before[("duel_match3_character", "sheet")] is None:
+                raise RuntimeError("Quote preflight requires an initialized empty-account character sheet")
+            for value in (-1, "0", .5, False):
+                reply = self.rpc(p, "duel_workshop_craft_start", {"slot_index": 4, "output_def_id": "eq_t1_epic_legs", "expected_ingot_n": value})
+                self.check(reply.get("ok") is False and reply.get("err") == "invalid_craft_quote",
+                    "active craft quote guard rejects invalid " + type(value).__name__ + " before recipe/access/stock checks")
+            current = self.storage_snapshot(p["uid"])
+            after = {key: current.get(key) for key in watched}
+            self.check(after == before, "runtime-first quote preflight changes no sheet/wallet version, inventory, resources or workshop job")
+        finally:
+            self.console = original
+
+    def _practice_trace(self, p, ws, rounds, require_positive_damage):
+        system = "00000000-0000-0000-0000-000000000000"
+        day, week = 86400, 604800
+        event_id = "week-" + str(math.floor((time.time() + 10800 + 3 * day) / week) * week - 3 * day - 10800)
+        event = self.storage("duel_global_boss", event_id, system)
+        config = event.get("config") or self.storage("duel_global_boss", "config", system)
+        full_hp = math.ceil(max(1, min(1_000_000_000, int(config.get("max_hp", 550000)))) / 50000) * 50000
+        baseline = self.storage_snapshot(p["uid"])
+        # The system maintenance lease and shared boss state must also be untouched.
+        watched_system = {("duel_storage_maintenance", "v1"), ("duel_global_boss", event_id), ("duel_global_boss", "index"), ("duel_global_boss", "config")}
+        system_before = {key: value for key, value in self.storage_snapshot(system).items() if key in watched_system}
+        forged = self.rpc(p, "duel_global_boss_practice", {"damage": 999999})
+        stale = self.rpc(p, "duel_global_boss_practice", {"session_epoch": p["epoch"] + 1})
+        self.check(forged.get("err") == "bad_payload" and not stale.get("ok"), "practice rejects forged damage and stale session without durable admission")
+        for index in range(rounds):
+            entry = self.rpc(p, "duel_global_boss_practice")
+            self.check(entry.get("ok") and entry.get("practice") and not entry.get("spent_token"), "practice launches without a paid admission or token, run" + str(index + 1))
+            if not entry.get("match_id"):
+                raise RuntimeError("Practice did not return a private match")
+            mid = entry["match_id"]
+            joined = ws.command("match_join", {"match_id": mid})
+            if "match" not in joined:
+                raise RuntimeError("Practice match join rejected")
+            board = ws.event(mid, 10)
+            self.check(board.get("globalBossPractice") and board.get("bHp") == board.get("bMaxHp") == full_hp
+                and board.get("aHp") == board.get("aMaxHp") and board.get("globalBossMyDamage", 0) == 0,
+                "fresh practice starts both sides at full HP and zero personal damage, run" + str(index + 1))
+            self.check(board.get("roundNumber") == 1 and board.get("bossActionSequence", 0) == 0
+                and board.get("bossOwnTurn", 0) == 0 and not board.get("bossAdaptationTriggered") and not board.get("bossScreamTriggered")
+                and board.get("aPetardCd", 0) == 0 and board.get("aMana", 0) == 0,
+                "fresh practice resets round, adaptation, scream, mana and ability cooldown, run" + str(index + 1))
+            accepted = 0
+            for _ in range(12 if require_positive_damage else 1):
+                # Let a response turn resolve only after the preceding animation ACK.
+                while board.get("activeUserId") != p["uid"]:
+                    previous = board.get("bossActionSequence", 0); ws.match_data(mid, 17)
+                    def next_action(message):
+                        data = message.get("match_data", {})
+                        if data.get("match_id") != mid or str(data.get("op_code")) not in ("10", "11"):
+                            return False
+                        value = json.loads(base64.b64decode(data.get("data", "")))
+                        return str(data["op_code"]) == "11" or value.get("bossActionSequence", 0) > previous
+                    wire = ws.await_message(next_action, timeout=15)
+                    board = json.loads(base64.b64decode(wire["match_data"]["data"]))
+                    if str(wire["match_data"]["op_code"]) == "11":
+                        raise RuntimeError("Practice ended before its bounded own action")
+                sequence = board.get("bossActionSequence", 0)
+                ws.match_data(mid, 17)
+                if board.get("turnPaused"):
+                    def running(message):
+                        data = message.get("match_data", {})
+                        if data.get("match_id") != mid or str(data.get("op_code")) != "10":
+                            return False
+                        value = json.loads(base64.b64decode(data.get("data", "")))
+                        return value.get("bossActionSequence", 0) == sequence and not value.get("turnPaused") and not value.get("actionActorUserId")
+                    ws.await_message(running, timeout=8)
+                ws.match_data(mid, 13, valid_swap(board["board"]))
+                def own_action(message):
+                    data = message.get("match_data", {})
+                    if data.get("match_id") != mid or str(data.get("op_code")) not in ("10", "11", "14"):
+                        return False
+                    value = json.loads(base64.b64decode(data.get("data", "")))
+                    return str(data["op_code"]) in ("11", "14") or (value.get("actionActorUserId") == p["uid"] and value.get("bossActionSequence", 0) > sequence)
+                wire = ws.await_message(own_action, timeout=15)
+                board = json.loads(base64.b64decode(wire["match_data"]["data"]))
+                if str(wire["match_data"]["op_code"]) != "10":
+                    raise RuntimeError("Practice did not acknowledge an ordinary nonlethal board action")
+                accepted += 1
+                if board.get("globalBossMyDamage", 0) > 0 or not require_positive_damage:
+                    break
+            damage = board.get("globalBossMyDamage", 0)
+            self.check(accepted > 0 and (damage > 0 or not require_positive_damage)
+                and damage == full_hp - board.get("bHp", full_hp), "ordinary practice action resolves only against private full-HP boss state")
+            # OP12 is the real socket surrender. An ordinary HTTP forfeit RPC would
+            # legitimately update its own generic durable RPC budget, obscuring this check.
+            ws.match_data(mid, 12); terminal = ws.event(mid, 11)
+            self.check(terminal.get("globalBossPractice") and terminal.get("bossAttemptFinished")
+                and not terminal.get("bossQualified") and not terminal.get("bossAttemptRefunded")
+                and terminal.get("bossGlobalMaxHp") == full_hp and terminal.get("bossMyDamage") == damage
+                and terminal.get("bossGlobalHp") == full_hp - damage,
+                "practice terminal keeps actual personal damage/full initial HP denominator and no eligibility/refund")
+            percent = 100 * terminal.get("bossMyDamage", 0) / full_hp
+            self.check(0 <= percent <= 100, "practice damage percentage has the full initial HP denominator")
+            after = self.storage_snapshot(p["uid"])
+            system_after = {key: value for key, value in self.storage_snapshot(system).items() if key in watched_system}
+            changed = sorted(key[0] + "/" + key[1] for key in set(after) | set(baseline) if after.get(key) != baseline.get(key))
+            self.check(not changed and system_after == system_before,
+                "practice admission/action/terminal/reset perform zero durable writes, including rate budget and maintenance lease")
+            if changed:
+                print("EVIDENCE practice changed collections/keys=" + json.dumps(changed), flush=True)
+
+    def global_boss_practice(self):
+        self.isolated_only("Unpaid global boss practice regression")
+        system = "00000000-0000-0000-0000-000000000000"
+        p = self.player(); self.rpc(p, "duel_character_get")
+        catalog = self.storage("duel_match3_item_defs", "catalog", system)["items"]
+        info = self.rpc(p, "duel_global_boss_get"); event_id = info["event_id"]
+        def put(collection, key, uid, value):
+            path = "/storage/" + quote(collection, safe="") + "/" + quote(key, safe="") + "/" + uid
+            code, row = self.console("GET", path)
+            code, _ = self.console("PUT", path, {"value": json.dumps(value), "version": row.get("version", "*") if code == 200 else "*", "permission_read": 0, "permission_write": 0})
+            if code != 200:
+                raise RuntimeError("Isolated practice fixture CAS failed")
+        self.seed_money(p, energy=0)
+        sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+        sheet.update(equipment=["eq_t1_legendary_" + slot for slot in ("helmet", "shoulders", "chest", "gloves", "legs", "feet", "weapon_l", "weapon_r")],
+            inventory=["eq_t1_normal_helmet"] * 25, inventory_counts=[1] * 25,
+            inventory_pending_loot=[{"def_id": "ingot_green", "amount": 3}],
+            consumables={"schema": 1, "armed": {"item_id": "elixir_assault", "activation_id": "practice-fixture", "armed_at": int(time.time())},
+                         "bounty": {"started_at": int(time.time()), "ends_at": int(time.time()) + 3600}})
+        put("duel_match3_character", "sheet", p["uid"], sheet)
+        shared = self.storage("duel_global_boss", event_id, system); shared["hp"] = 1; shared["status"] = "active"
+        put("duel_global_boss", event_id, system, shared)
+        put("duel_global_boss_player", event_id, p["uid"], {"schema": 1, "event_id": event_id, "attempts_used": 3, "total_damage": 123, "qualified": False, "requests": {}})
+        self._practice_trace(p, self.connect(p), rounds=2, require_positive_damage=True)
+        # The ordinary paid path is validated on a different disposable account.
+        paid = self.player(); self.rpc(paid, "duel_character_get"); self.seed_sheet(paid, ["global_boss_teleport"], [2])
+        paid_entry = self.rpc(paid, "duel_global_boss_enter", {"event_id": event_id, "request_id": "paid-after-practice-" + self.run_id})
+        self.check(paid_entry.get("ok") and paid_entry.get("spent_token") and not paid_entry.get("practice"), "normal paid entry still requires and spends a teleport after practice")
+        paid_ws = self.connect(paid); paid_ws.command("match_join", {"match_id": paid_entry["match_id"]}); board = paid_ws.event(paid_entry["match_id"], 10)
+        self.check(not board.get("globalBossPractice") and board.get("bHp") == 1, "normal paid battle retains actual depleted shared HP instead of practice full HP")
+        paid_ws.match_data(paid_entry["match_id"], 12); over = paid_ws.event(paid_entry["match_id"], 11)
+        saved = self.storage("duel_global_boss_player", event_id, paid["uid"])
+        token_sheet = self.storage("duel_match3_character", "sheet", paid["uid"])
+        tokens = sum(n for item, n in zip(token_sheet.get("inventory", []), token_sheet.get("inventory_counts", [])) if item == "global_boss_teleport")
+        self.check(not over.get("globalBossPractice") and tokens == 1 and saved.get("attempts_used") == 1,
+            "normal paid terminal preserves one real weekly attempt and exactly one token debit")
+
+    def equipment_sets(self):
+        self.isolated_only("Actual equipment set and32 recipe costs")
+        system = "00000000-0000-0000-0000-000000000000"
+        items = self.storage("duel_match3_item_defs", "catalog", system)["items"]
+        p = self.player(); self.rpc(p, "duel_character_get")
+        ws = self.connect(p)
+        slots = ("helmet", "shoulders", "chest", "gloves", "legs", "feet", "weapon_l", "weapon_r")
+        slot_names = ("Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight")
+        def sheet_put(**updates):
+            path = "/storage/duel_match3_character/sheet/" + p["uid"]
+            code, row = self.console("GET", path)
+            value = json.loads(row["value"]); value.update(updates)
+            code, _ = self.console("PUT", path, {"value": json.dumps(value), "version": row["version"], "permission_read": 1, "permission_write": 0})
+            if code != 200: raise RuntimeError("Equipment fixture CAS failed")
+        sheet_put(equipment=[""] * 8)
+        base = self.rpc(p, "duel_character_get")["stats"]
+        def expected(ids, multiplier):
+            result = {}
+            for stat in ("hp", "damage", "armor", "healing", "crit_chance"):
+                extra = sum(items.get(item, {}).get(stat, 0) for item in ids if item)
+                result[stat] = base[stat] + extra * (1 if stat == "crit_chance" else multiplier)
+                if stat != "crit_chance": result[stat] = math.floor(result[stat] + .5)
+            return result
+        def equal_stats(actual, wanted):
+            return all(abs(actual.get(stat, -1) - value) < 1e-6 for stat, value in wanted.items())
+        for quality in ("normal", "rare", "epic", "legendary"):
+            full = ["eq_t1_" + quality + "_" + slot for slot in slots]; seven = full[:-1] + [""]
+            sheet_put(equipment=seven, inventory=[full[7]] + [""] * 24, inventory_counts=[1] + [0] * 24)
+            before = self.rpc(p, "duel_character_get")
+            self.check(equal_stats(before["stats"], expected(seven, 1)), quality + ": actual seven-piece profile has no set multiplier")
+            complete = self.rpc(p, "duel_character_item_move", {"op": "inv_to_equip", "inv_index": 0, "slot_index": 7})
+            self.check(complete.get("ok") and complete.get("equipment_def_ids") == full and equal_stats(complete.get("stats", {}), expected(full, 1.25)),
+                quality + ": eighth item RPC immediately returns correct full-set stats, critical chance unchanged")
+            entry = self.rpc(p, "duel_global_boss_practice")
+            joined = ws.command("match_join", {"match_id": entry["match_id"]})
+            if "match" not in joined: raise RuntimeError("Set actor validation could not join its practice fixture")
+            combat = ws.event(entry["match_id"], 10); stats = complete["stats"]
+            self.check(combat.get("aMaxHp") == stats["hp"] and combat.get("aBaseDamage") == stats["damage"]
+                and combat.get("aBaseArmor") == stats["armor"] and combat.get("aBaseHeal") == stats["healing"]
+                and abs(combat.get("aBaseCrit", -1) - stats["crit_chance"]) < 1e-6,
+                quality + ": actual battle actor and immediate character response use identical complete-set stats")
+            ws.match_data(entry["match_id"], 12); ws.event(entry["match_id"], 11)
+            again = self.rpc(p, "duel_character_get")
+            self.check(again.get("stats") == complete.get("stats"), quality + ": repeated profile read does not compound the set multiplier")
+            removed = self.rpc(p, "duel_character_item_move", {"op": "equip_to_inv", "inv_index": 0, "slot_index": 7})
+            self.check(removed.get("ok") and equal_stats(removed.get("stats", {}), expected(seven, 1)), quality + ": unequip RPC immediately removes the set multiplier")
+        mixed = ["eq_t1_epic_" + slot for slot in slots[:-1]] + ["eq_t1_rare_weapon_r"]
+        sheet_put(equipment=mixed, inventory=[""] * 25, inventory_counts=[0] * 25)
+        self.check(equal_stats(self.rpc(p, "duel_character_get")["stats"], expected(mixed, 1)), "eight occupied slots with mixed quality do not activate a set")
+        recipes = sorted((key, item) for key, item in items.items() if key.startswith("eq_t1_") and item.get("kind") == "equipment")
+        self.check(len(recipes) == 32, "canonical backend exposes all32 equipment recipe costs")
+        for item_id, item in recipes:
+            inventory, counts = [], []
+            def add(item, amount):
+                while amount > 0:
+                    count = min(amount, 200 if item.startswith("ingot_") else 1)
+                    inventory.append(item); counts.append(count); amount -= count
+            ingot_n = item.get("craft_ingot_n", 0); tess = item.get("craft_tesseract_n", 0)
+            if ingot_n: add(item["craft_ingot_def"], ingot_n + 3)
+            if tess: add("tesseract", tess + 1)
+            if item.get("craft_item_id"): add(item["craft_item_id"], 1)
+            inventory += [""] * (25 - len(inventory)); counts += [0] * (25 - len(counts))
+            def prepare():
+                sheet_put(equipment=[""] * 8, inventory=inventory, inventory_counts=counts, learned_recipes=[item["craft_recipe_id"]],
+                    first_recipe_received=True, inventory_pending_loot=[], workshop_slots=[{"output_def_id": "", "ends_at": 0} for _ in range(8)])
+                self.seed_money(p, ore=100000, gold=100000)
+            prepare()
+            index = slot_names.index(item["slot"])
+            old_epic = {"helmet": 8, "chest": 25, "gloves": 50, "weapon_l": 125, "weapon_r": 150, "legs": 180, "shoulders": 220, "feet": 270}
+            if item_id.startswith("eq_t1_epic_"):
+                before_sheet = self.storage("duel_match3_character", "sheet", p["uid"])
+                before_wallet = self.storage("duel_match3_progress", "profile", p["uid"])
+                legacy = self.rpc(p, "duel_workshop_craft_start", {"slot_index": index, "output_def_id": item_id})
+                self.check(not legacy.get("ok") and legacy.get("err") == "Рецепт обновлён. Для изготовления этой вещи обновите клиент игры."
+                    and self.storage("duel_match3_character", "sheet", p["uid"]) == before_sheet
+                    and self.storage("duel_match3_progress", "profile", p["uid"]) == before_wallet,
+                    item_id + ": published unquoted client receives readable update notice with zero resource/fodder/job mutation")
+                mismatch = self.rpc(p, "duel_workshop_craft_start", {"slot_index": index, "output_def_id": item_id,
+                    "expected_ingot_n": old_epic[item_id.removeprefix("eq_t1_epic_")]})
+                self.check(mismatch.get("err") == "craft_quote_changed" and mismatch.get("craft_quote") == {"schema": 1, "output_def_id": item_id, "ingot_n": ingot_n}
+                    and self.storage("duel_match3_character", "sheet", p["uid"]) == before_sheet
+                    and self.storage("duel_match3_progress", "profile", p["uid"]) == before_wallet,
+                    item_id + ": stale displayed quote returns the actual ingot price without charging or creating a job")
+            elif item_id == "eq_t1_normal_helmet":
+                legacy = self.rpc(p, "duel_workshop_craft_start", {"slot_index": index, "output_def_id": item_id})
+                self.check(legacy.get("ok") and legacy.get("workshop_output_def_ids", [""] * 8)[index] == item_id,
+                    "published unquoted client can still craft unchanged common recipes")
+                prepare()
+            response = self.rpc(p, "duel_workshop_craft_start", {"slot_index": index, "output_def_id": item_id, "expected_ingot_n": ingot_n})
+            saved = self.storage("duel_match3_character", "sheet", p["uid"])
+            wallet = self.storage("duel_match3_progress", "profile", p["uid"])
+            remaining = lambda item_id: sum(n for item, n in zip(saved.get("inventory", []), saved.get("inventory_counts", [])) if item == item_id)
+            self.check(response.get("ok") and wallet.get("ore") == 100000 - item["craft_ore"] and wallet.get("gold") == 100000 - item["craft_gold"]
+                and (not ingot_n or remaining(item["craft_ingot_def"]) == 3) and (not tess or remaining("tesseract") == 1)
+                and (not item.get("craft_item_id") or remaining(item["craft_item_id"]) == 0)
+                and saved["workshop_slots"][index].get("output_def_id") == item_id,
+                item_id + ": actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot")
+
     def seed_money(self, p, **money):
         self.isolated_only("Test-only profile seeding")
         path = "/storage/duel_match3_progress/profile/" + p["uid"]
@@ -1986,7 +2272,7 @@ def main():
     parser.add_argument("--url", default="https://prokrust-play.ru")
     parser.add_argument("--console-url", default="http://127.0.0.1:27351")
     parser.add_argument("--config", type=Path, default=Path("secrets/server.yml"))
-    parser.add_argument("--scenario", choices=("probe", "friends", "lifecycle", "pvp", "double-disconnect", "overlap", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "shop", "all"), default="pvp")
+    parser.add_argument("--scenario", choices=("probe", "friends", "lifecycle", "pvp", "double-disconnect", "overlap", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "practice-smoke", "quote-preflight", "shop", "all"), default="pvp")
     parser.add_argument("--item-catalog", type=Path)
     parser.add_argument("--catalog-migration-helper", type=Path)
     parser.add_argument("--consumable-manifest", type=Path)
@@ -1995,13 +2281,13 @@ def main():
     args = parser.parse_args()
     target = urlsplit(args.url)
     console_target = urlsplit(args.console_url)
-    if args.scenario in ("friends", "lifecycle", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "shop", "all") and (
+    if args.scenario in ("friends", "lifecycle", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop", "all") and (
             target.hostname not in ("127.0.0.1", "localhost") or target.port != 28350
             or console_target.hostname not in ("127.0.0.1", "localhost") or console_target.port != 28351):
         parser.error("This scenario requires the isolated localhost test backend on ports 28350 and 28351")
     suite = Suite(args)
     try:
-        if args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "shop"):
+        if args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop"):
             suite.isolated_only("Canonical smith catalog fixture")
             if not args.item_catalog:
                 raise RuntimeError("This scenario requires --item-catalog from the disposable runner")
@@ -2055,7 +2341,12 @@ def main():
                 "pvp": suite.pvp, "double-disconnect": suite.double_disconnect,
                 "overlap": suite.overlap_reconnect, "race": suite.race, "arena": suite.arena, "natural": suite.natural,
                 "race-unpaid": suite.race_unpaid, "race-receipts": suite.race_receipts,
-                "race-legacy-refund": suite.race_legacy_refund,"global-boss":suite.global_boss,"shop":suite.shop}
+                "race-legacy-refund": suite.race_legacy_refund,"global-boss":suite.global_boss,"shop":suite.shop,
+                "global-boss-practice":suite.global_boss_practice,"equipment-sets":suite.equipment_sets}
+            if args.scenario == "practice-smoke":
+                scenarios = {"practice-smoke": suite.practice_smoke}
+            if args.scenario == "quote-preflight":
+                scenarios = {"quote-preflight": suite.quote_preflight}
             if args.scenario == "race-policy":
                 scenarios = {"race-policy": suite.race_policy}
             for name, fn in scenarios.items():

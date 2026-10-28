@@ -1,0 +1,291 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "actual authenticated WebSocket RPC heartbeat accepts empty JSON payload and returns the account epoch within client timeout"
+    },
+    {
+      "passed": true,
+      "check": "lifecycle fixture pays one real Race entry"
+    },
+    {
+      "passed": true,
+      "check": "lifecycle fixture pays one real Race entry"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "outsider cannot surrender another two-client match"
+    },
+    {
+      "passed": true,
+      "check": "surrender RPC rejects a stale session before signaling the match"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent acknowledged Race surrenders freeze one winner after authoritative settlement"
+    },
+    {
+      "passed": true,
+      "check": "both Race clients receive the identical terminal packet without the opponent finishing manually"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "both paid Race reservations are settled immediately after one surrender"
+    },
+    {
+      "passed": true,
+      "check": "concurrent surrender charges both stakes once and records exactly one win and loss"
+    },
+    {
+      "passed": true,
+      "check": "lost-ack retry after authoritative match deletion reads the bounded own terminal receipt"
+    },
+    {
+      "passed": true,
+      "check": "both former Race participants can pay and queue again immediately"
+    },
+    {
+      "passed": true,
+      "check": "both former Race participants can pay and queue again immediately"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "a second actual Race starts and ends without the old race_entry_in_use lock"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: remaining client joins its reserved admission"
+    },
+    {
+      "passed": true,
+      "check": "classic: absent second participant cancels within bounded admission and notifies the waiting client"
+    },
+    {
+      "passed": true,
+      "check": "classic: failed admission grants neither a played result nor a free win"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "classic: cancelled admission leaves both players free to requeue into a real match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: remaining client joins its reserved admission"
+    },
+    {
+      "passed": true,
+      "check": "pro: absent second participant cancels within bounded admission and notifies the waiting client"
+    },
+    {
+      "passed": true,
+      "check": "pro: failed admission grants neither a played result nor a free win"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "pro: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "pro: cancelled admission leaves both players free to requeue into a real match"
+    },
+    {
+      "passed": true,
+      "check": "never-joined PvE fixture arms one real owned elixir"
+    },
+    {
+      "passed": true,
+      "check": "a created but never joined mine match binds one exact fifteen-energy payment"
+    },
+    {
+      "passed": true,
+      "check": "Console observes this specific fresh mine match before testing its admission expiry"
+    },
+    {
+      "passed": true,
+      "check": "never-joined paid mine match terminates within bounded admission"
+    },
+    {
+      "passed": true,
+      "check": "abandoned admission refunds original energy once, keeps armed elixir and records no phantom loss"
+    },
+    {
+      "passed": true,
+      "check": "new mine entry recovers old reservation and charges once rather than twice"
+    },
+    {
+      "passed": true,
+      "check": "only the subsequently joined mine battle consumes and applies the preserved elixir"
+    },
+    {
+      "passed": true,
+      "check": "fresh mine admission starts the authoritative first round"
+    },
+    {
+      "passed": true,
+      "check": "subsequently joined mine can surrender through the same confirmed terminal contract"
+    },
+    {
+      "passed": true,
+      "check": "gold bot pair publishes known initial HP before the human has ever joined"
+    },
+    {
+      "passed": true,
+      "check": "one real two-human gold pair completes while the separate bot pair is missing"
+    },
+    {
+      "passed": true,
+      "check": "disconnected gold bot opponent resolves promptly and releases every waiting semifinalist"
+    },
+    {
+      "passed": true,
+      "check": "technical gold result retains authoritative HP and maxima in completed bracket history"
+    },
+    {
+      "passed": true,
+      "check": "gold bot pair publishes known initial HP before the human has ever joined"
+    },
+    {
+      "passed": true,
+      "check": "one real two-human gold pair completes while the separate bot pair is missing"
+    },
+    {
+      "passed": true,
+      "check": "never-joined gold bot opponent resolves promptly and releases every waiting semifinalist"
+    },
+    {
+      "passed": true,
+      "check": "technical gold result retains authoritative HP and maxima in completed bracket history"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

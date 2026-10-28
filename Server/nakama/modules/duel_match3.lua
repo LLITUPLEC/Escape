@@ -95,7 +95,7 @@ Runtime.emit_game_over = function(dispatcher, state, payload)
     local ok,ready=pcall(Runtime.cancel_unused_journal_tickets,state)
     if not ok or ready~=true then state._terminal_pending=true;state._pending_game_over=payload;return false end
   end
-  if Runtime.Lifecycle then
+  if Runtime.Lifecycle and not (state.global_boss and state.global_boss.practice==true) then
     local published,ready=pcall(Runtime.Lifecycle.publish,state,payload)
     if not published or ready~=true then
       state._terminal_pending=true;state._pending_game_over=payload
@@ -1286,6 +1286,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     critTriggered = state.last_crit == true,
     pveAffix = current_affix_id(state),
     globalBoss = state.global_boss ~= nil,
+    globalBossPractice = state.global_boss and state.global_boss.practice==true or false,
     globalBossEventId = state.global_boss and state.global_boss.event_id or "",
     globalBossMyDamage = state.global_boss and state.global_boss.my_damage or 0,
     globalBossTotalDamage = state.global_boss and state.global_boss.total_damage or 0,
@@ -2543,6 +2544,7 @@ local function equipment_full_set_stat_multiplier(sheet)
     return 1.0
   end
   local defs = get_merged_item_defs()
+  local slots = { "Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight" }
   local first_tier, first_q = nil, nil
   for i = 1, 8 do
     local def_id = sheet.equipment[i]
@@ -2550,7 +2552,7 @@ local function equipment_full_set_stat_multiplier(sheet)
       return 1.0
     end
     local d = defs[def_id]
-    if d == nil or not item_def_is_equipment(d) then
+    if d == nil or not item_def_is_equipment(d) or tostring(d.slot or "") ~= slots[i] then
       return 1.0
     end
     local t = CFG.clamp_int(tonumber(d.tier) or 1, 1, 99)
@@ -2571,12 +2573,13 @@ local function sum_equipment_bonuses(sheet)
   local armor = 0
   local crit = 0.0
   local healing = 0
-  local eq = sheet.equipment
+  local eq = sheet and sheet.equipment or {}
+  local slots = { "Helmet", "Shoulders", "Chest", "Gloves", "Legs", "Feet", "WeaponLeft", "WeaponRight" }
   for i = 1, 8 do
     local def_id = eq[i]
     if def_id ~= nil and def_id ~= "" then
       local d = defs[def_id]
-      if d ~= nil and item_def_is_equipment(d) then
+      if d ~= nil and item_def_is_equipment(d) and tostring(d.slot or "") == slots[i] then
         hp = hp + (tonumber(d.hp) or 0)
         damage = damage + (tonumber(d.damage) or 0)
         armor = armor + (tonumber(d.armor) or 0)
@@ -2729,7 +2732,7 @@ end
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
-  local stats = CharStats.compute_character_display_stats(user_id)
+  local stats = CharStats.compute_character_display_stats(user_id, sheet)
   progress = Runtime.readProgressSnapshot(user_id) -- Late-bound: cosmetics may credit the wallet; the local reader is defined below this closure.
   local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
   local wo, we = workshop_payload_arrays(sheet)
@@ -4864,7 +4867,8 @@ local function match_init(context, params)
 
   local admitted,admission_err=Runtime.admit_journal_tickets(state)
   assert(admitted,admission_err)
-  return state, CFG.TICK_RATE, "mode=duel_match3"
+  return state, CFG.TICK_RATE, state.global_boss and state.global_boss.practice==true
+    and Runtime.GlobalBoss.practice_label(state.owner_user_id)or "mode=duel_match3"
 end
 
 local function match_join_attempt(context, dispatcher, tick, state, presence, metadata)
@@ -5519,6 +5523,10 @@ end
 local function match_signal(context, dispatcher, tick, state, data)
   if state.global_boss then
     local ok,p=pcall(nk.json_decode,data)
+    if state.global_boss.practice==true and ok and type(p)=="table"and p.kind=="duel_forfeit"and p.user_id==state.owner_user_id then
+      Runtime.BossBattle.finish(dispatcher,state,tick,"player_surrender")
+      return state,nk.json_encode({ok=state._terminal_delivered==true,accepted=true,terminal=state._terminal_delivered==true,end_reason="player_surrender"})
+    end
     if ok and type(p)=="table"and p.kind=="boss_resume"and p.user_id==state.owner_user_id then
       state.owner_session_epoch=tonumber(p.session_epoch)or state.owner_session_epoch
       return state,nk.json_encode({ok=true})
@@ -5582,6 +5590,17 @@ CharStats.configure({
   is_human = Ach.is_human,
   aura_apply_to_pve_player_stats = ServerAura.apply_to_pve_player_stats,
   cosmetics_hp_bonus = function(uid)return Runtime.Cosmetics.passive_hp_bonus(uid)end,
+  cosmetics_hp_bonus_read_only = function(uid)return Runtime.Cosmetics.passive_hp_bonus_read_only(uid)end,
+  read_stats_snapshot = function(uid)
+    local rows=nk.storage_read({{collection=CFG.STATS_COLLECTION,key=CFG.STATS_KEY,user_id=uid}})
+    assert(type(rows)=="table","practice_stats_unavailable");return rows[1]and decode_storage_value(rows[1])or{}
+  end,
+  read_progress_snapshot = function(uid)
+    local rows=nk.storage_read({{collection=CFG.PVE_PROGRESS_COLLECTION,key=CFG.PVE_PROGRESS_KEY,user_id=uid}})
+    assert(type(rows)=="table","practice_progress_unavailable")
+    local progress=rows[1]and decode_storage_value(rows[1])or{}
+    progress.level=current_level_from_xp(progress.xp or 0);return progress
+  end,
 })
 
 Runtime.Daily=runtime_lua_require("modules.duel_daily","duel_daily")
@@ -5602,7 +5621,7 @@ Runtime.GlobalBoss.configure({read_sheet=read_character_sheet,get_defs=get_merge
 Runtime.BossBattle.configure({api=Runtime.GlobalBoss,CFG=CFG,new_stats=new_stats,new_board=init_board,
   ensure_board=ensure_active_board_has_valid_swaps,init_cheat_rows=init_cheat_rows,ensure_queue=ensure_spawn_queue,
   update_cheat_rows=update_cheat_rows_from_board,read_sheet=read_character_sheet,effects=Runtime.ConsumableEffects,
-  apply_player=function(actor,uid)CharStats.apply_player_combat_stats_from_sheet(actor,uid,{aura=ServerAura.get_active()})end,
+  apply_player=function(actor,uid,practice)CharStats.apply_player_combat_stats_from_sheet(actor,uid,{aura=ServerAura.get_active(),read_only=practice==true})end,
   choose=choose_bot_action,validate=validate_action_basic,resolve=resolve_action,action_cost=action_mana_cost,
   tick_buffs=tick_buffs_end_turn,tick_cooldowns=tick_cooldowns,parse=parse_action,
   broadcast=broadcast_sync,reject=send_reject,emit=Runtime.emit_game_over,
@@ -5634,6 +5653,7 @@ Runtime.RateLimit.register_rpc(Runtime.Mail.rpc_get,"duel_mail_get")
 Runtime.RateLimit.register_rpc(Runtime.Mail.rpc_claim,"duel_mail_claim")
 Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_get,"duel_global_boss_get")
 Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_enter,"duel_global_boss_enter")
+Runtime.RateLimit.register_transient_rpc(Runtime.GlobalBoss.rpc_practice,"duel_global_boss_practice")
 Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_leaderboard,"duel_global_boss_leaderboard_get")
 Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_get,"duel_player_guidance_get")
 Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_set,"duel_player_guidance_set")

@@ -1,0 +1,15 @@
+{
+  "stage": "/opt/escape/release0315-validation-9f20fca7e4de",
+  "archiveSHA256": "29574793345b8ce3000ca7559a33a070ac1b55b9f73c9809d799937fbcffe8c4",
+  "installerSHA256": "8a8eb425f3e74a5e833e7bbfdd7cc6cf85febebe98ca0209e014dce08800c484",
+  "migrationSHA256": "534cee0354e5af5ae3f125df4f939790262ada6390a8a738dc4b9c1854f56511",
+  "baseline": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "candidate": "f154ad7f8fce9720a3710028238885b0ff4fd635f6ba58eb4042e76b84b66411",
+  "preflightCommand": "python3 /opt/escape/release0315-validation-9f20fca7e4de/candidate/deploy_runtime.py --expected-runtime-sha256 c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445 --expected-tested-sha256 f154ad7f8fce9720a3710028238885b0ff4fd635f6ba58eb4042e76b84b66411 --catalog-migration /opt/escape/release0315-validation-9f20fca7e4de/candidate/migration/merge_equipment_ingots.py --catalog-migration-sha256 534cee0354e5af5ae3f125df4f939790262ada6390a8a738dc4b9c1854f56511",
+  "applyCommand": "python3 /opt/escape/release0315-validation-9f20fca7e4de/candidate/deploy_runtime.py --expected-runtime-sha256 c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445 --expected-tested-sha256 f154ad7f8fce9720a3710028238885b0ff4fd635f6ba58eb4042e76b84b66411 --catalog-migration /opt/escape/release0315-validation-9f20fca7e4de/candidate/migration/merge_equipment_ingots.py --catalog-migration-sha256 534cee0354e5af5ae3f125df4f939790262ada6390a8a738dc4b9c1854f56511 --apply",
+  "siteOrApkChanged": false,
+  "versionChanged": false,
+  "gitTouched": false,
+  "retainRollback": "/opt/escape/backups/runtime-release-20261027T162323Z",
+  "retireOnlyAfterVerified": "/opt/escape/backups/snapshot-0.3.15-20261027T193047Z"
+}

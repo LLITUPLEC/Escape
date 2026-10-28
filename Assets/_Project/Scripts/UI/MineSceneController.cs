@@ -1568,8 +1568,11 @@ namespace Project.UI
                 return;
 
             var respawn = Mathf.Max(0, mine.respawn_left_seconds);
-            if (_modalStatTexts != null && _modalStatTexts.Length >= 6)
-                _modalStatTexts[5].text = respawn > 0 ? $"Появится: {FormatSeconds(respawn)}" : "—";
+            if (_modalStatTexts != null && _modalStatTexts.Length >= 6 && _modalStatTexts[5] != null)
+            {
+                _modalStatTexts[5].text = respawn > 0 ? $"Появится: {FormatSeconds(respawn)}" : string.Empty;
+                _modalStatTexts[5].gameObject.SetActive(respawn > 0);
+            }
 
             _botByFloor.TryGetValue(_selectedFloor, out var bot);
             if (_modalFightButton != null)
@@ -1678,12 +1681,13 @@ namespace Project.UI
         {
             if (_modalStatTexts == null || _modalStatTexts.Length < 6)
                 return;
-            _modalStatTexts[0].text = IsMine3DScene ? $"HP: {hp}" : $"Здоровье\n{hp}";
-            _modalStatTexts[1].text = IsMine3DScene ? $"Урон: {dmg}" : $"Атака\n{dmg}";
-            _modalStatTexts[2].text = IsMine3DScene ? $"Броня: {armor}" : $"Броня\n{armor}";
-            _modalStatTexts[3].text = $"Крит: {Mathf.RoundToInt(crit * 100f)}%";
-            _modalStatTexts[4].text = $"Мана: {mana}";
-            _modalStatTexts[5].text = respawnSec > 0 ? $"Появится: {FormatSeconds(respawnSec)}" : "—";
+            _modalStatTexts[0].text = IsMine3DScene ? $"HP: {hp}" : hp.ToString();
+            _modalStatTexts[1].text = IsMine3DScene ? $"Урон: {dmg}" : dmg.ToString();
+            _modalStatTexts[2].text = IsMine3DScene ? $"Броня: {armor}" : armor.ToString();
+            _modalStatTexts[3].text = (IsMine3DScene ? "Крит: " : "") + $"{Mathf.RoundToInt(crit * 100f)}%";
+            _modalStatTexts[4].text = (IsMine3DScene ? "Мана: " : "") + mana;
+            _modalStatTexts[5].text = respawnSec > 0 ? $"Появится: {FormatSeconds(respawnSec)}" : string.Empty;
+            _modalStatTexts[5].gameObject.SetActive(respawnSec > 0);
         }
 
         private async void OnFightClicked()

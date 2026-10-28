@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "original_scripts_unchanged": true,
+  "only_report_output_redirected": true,
+  "historical_reports_touched": false,
+  "reports": [
+    ".cache/qa/release-readiness-0.3.16/mine-original-art-validation.json",
+    ".cache/qa/release-readiness-0.3.16/shelter-original-art-validation.json"
+  ],
+  "scripts": {
+    "Tools/Art/validate_mine_refresh.py": "22b86eee7d9f39a519c7284496a868a6b47b3932206dc66912aba1e63b6e4e14",
+    "Tools/Art/validate_shelter_art.py": "010b3d01d2edce79c564adc66a64c5d64b3f1783a65ba136d1c9def7d8f7c800"
+  }
+}

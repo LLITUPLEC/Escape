@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-28T04:17:49.153955+00:00",
+  "scope": "Local working-tree readiness; independent of Unity/APK/publication checks performed by release owner. No network or account writes.",
+  "checks": {
+    "security_candidate": true,
+    "tracked_large_file_and_ignore_policy": true,
+    "migration_unit_tests": 19,
+    "deployment_guard_unit_tests": 5,
+    "recipes_all32": true,
+    "original_monster_and_item_art_assets": 15,
+    "original_shelter_shortcut_art_assets": 3,
+    "items_with_valid_icons": 73,
+    "monsters_with_valid_icons": 12,
+    "achievements_with_valid_icons": 23,
+    "missing_build_media_guids": 0,
+    "duplicate_asset_guids": 0,
+    "retired_release_fixture_migration": true,
+    "historical_reports_unchanged": true
+  },
+  "limitations": [
+    "Final exact staged-content security audit awaits git add from release owner.",
+    "Cached origin/main matched main at audit start; no fetch performed.",
+    "Native layout/device/APK and live publication verification are separate release evidence."
+  ],
+  "evidence": [
+    "candidate-security-qualified.json",
+    "source-policy-and-tested-hashes.json",
+    "legacy-input-migration.json",
+    "recipe-audit.json",
+    "mine-original-art-validation.json",
+    "shelter-original-art-validation.json",
+    "original-art-check-execution.json",
+    "media-audit-release-0.3.16.json"
+  ],
+  "source_inputs_migrated": [
+    "Server/nakama/data/migrations/shop-price-0.3.14.json",
+    "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json"
+  ],
+  "native_fixture_validation_method": "Project.Editor.ExpeditionGlobalBossQa0314.Run(\"logic\")"
+}

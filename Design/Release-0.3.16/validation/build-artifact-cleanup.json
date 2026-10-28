@@ -1,0 +1,16 @@
+{
+  "symbolsPreserved": "Escape-0.3.16-3f40a293713f.symbols.zip",
+  "removedGeneratedFolders": [
+    {
+      "bytes": 220721.0,
+      "directory": "Escape_BurstDebugInformation_DoNotShip",
+      "files": 2
+    },
+    {
+      "bytes": 816898713.0,
+      "directory": "Escape-Expedition-0.3.16-20261028-042849_BackUpThisFolder_ButDontShipItWithYourGame",
+      "files": 677
+    }
+  ],
+  "passed": true
+}

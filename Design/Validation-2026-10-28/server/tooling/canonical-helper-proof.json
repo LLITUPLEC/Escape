@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-27T22:44:28.997537+00:00",
+  "canonicalHelper": "/opt/escape/deploy_runtime.py",
+  "oldSha256": "a428f360cf9893c0f75ee1b2d6cd54c75cb54eeeb8d73bc355411ca412913c31",
+  "newSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "sourceExact": true,
+  "pythonSyntaxPassed": true,
+  "helpPassed": true,
+  "requiredPinsPresent": true,
+  "atomicReplacement": true,
+  "oldHelperPreserved": "/opt/escape/backups/runtime-release-20261027T223730Z/tooling/deploy_runtime.py.before-guard",
+  "prechangeBackup": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "backupManifestVerified": true,
+  "backupFiles": 82,
+  "backupManifestSha256": "e27402a251de0a22b5c5d1c03bdc9a57e0ebd9f349dd6480e6d29474333d11f9",
+  "dumpSha256Unchanged": "94a20e997ea1d8ff63184a0be1ce939038b14bbbbc12d5325d0277a9cb273a91",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "backupCount": 2,
+  "siteOrApkChanged": false
+}

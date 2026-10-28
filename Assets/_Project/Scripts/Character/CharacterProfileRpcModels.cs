@@ -10,6 +10,8 @@ namespace Project.Character
 
         public Progression progression;
         public StatsMap stats;
+        /// <summary>Authoritative changed ingot price. A rejected craft never spends; review before another explicit click.</summary>
+        public WorkshopCraftQuote craft_quote;
 
         /// <summary>8 строк в порядке EquipmentSlotId (0..7); пустая строка — пустой слот.</summary>
         public string[] equipment_def_ids;
@@ -32,6 +34,13 @@ namespace Project.Character
 
         /// <summary>Unix-время окончания крафта по слоту; 0 если слот свободен.</summary>
         public int[] workshop_ends_at;
+    }
+
+    [Serializable]
+    public sealed class WorkshopCraftQuote
+    {
+        public int schema, ingot_n;
+        public string output_def_id;
     }
 
     [Serializable]

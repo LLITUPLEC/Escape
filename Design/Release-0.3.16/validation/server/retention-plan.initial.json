@@ -1,0 +1,181 @@
+{
+  "status": "PREPARED_ONLY_WAITING_VALIDATED_BUNDLE_AND_PUBLICATION_SIGNAL",
+  "newVersion": "0.3.16",
+  "newVersionCode": 18,
+  "preserveRuntimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "preserveGeneratedSeedSha256": "8cc9c4b7da99b8b4c1168e96a00fa68f03ecde26db876582fcfb392be4552524",
+  "priorPublisherSha256": "6d1b06f15a10d5e2cad5c07c4c76f8eeb1a377374fec643f2bffcbd7f1fa8d76",
+  "preservePreviousRelease": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+  "preservePreviousApk": {
+    "filename": "Escape-0.3.15-e7ac556941de.apk",
+    "bytes": 123571699,
+    "sha256": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8"
+  },
+  "preservePreviousPrechangeBackup": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "freshBackup": "Create verified private AAD DB/runtime/source/config backup immediately before publication",
+  "removeOnlyAfterAllChecks": [
+    {
+      "path": "/var/www/escape/releases/0.3.14-46a458ea2e41-20261027T062336412411Z",
+      "files": {
+        "assets/OFL.txt": {
+          "bytes": 4434,
+          "sha256": "ddf311c28ddf5a5ad9747649837346b67bed9d356789c3072bb27dbce49e514d"
+        },
+        "assets/PTSerif-Regular.ttf": {
+          "bytes": 359048,
+          "sha256": "a4951fade06ff8f09b7673aa81ffb65a8cd409e24d3289a6dc670bc4dda2557a"
+        },
+        "assets/character.png": {
+          "bytes": 1742519,
+          "sha256": "261278982495e318e46b6a38818a4c96e1b6adf339d3f8587235ee74fd568511"
+        },
+        "assets/hub.png": {
+          "bytes": 1117428,
+          "sha256": "1a2c6a35c3022d0cab514d484d78bacd3d62d44af3eedec466d095dee57b367c"
+        },
+        "assets/mark.svg": {
+          "bytes": 181,
+          "sha256": "ea3e74a484f05d29b84d009500035c39e8a547b31b98482832b05cc3d27afb4b"
+        },
+        "assets/mine.png": {
+          "bytes": 1765999,
+          "sha256": "5277761d5e6a109e378fcd4526ec0d79e4cbcad463802285a2d8bd60486222c5"
+        },
+        "audio-035/Escape-audio-choices-0.3.5.txt": {
+          "bytes": 1447,
+          "sha256": "5fe40516466fd260ab2a735d49d23ef7d0eb6dd87456757ca79941bb8d12ae6d"
+        },
+        "audio-035/files.json": {
+          "bytes": 2942,
+          "sha256": "abeb5620280d542053bb17aad1501d95209fc19b73ef51955b37fc286554d45f"
+        },
+        "audio-035/index.html": {
+          "bytes": 18314,
+          "sha256": "16287a6c803320c3ac98487e28279edd5ef875c32139ef9674e7c1e486142000"
+        },
+        "audio-035/selected/ability_cross.wav": {
+          "bytes": 54764,
+          "sha256": "95028eacbf3e9f189c7adf3c2b6a537e91894e1be6f07b1d067b2f56f136f23f"
+        },
+        "audio-035/selected/ability_petard.wav": {
+          "bytes": 84524,
+          "sha256": "4c5671a955af9a0a326f63dd062cda8b4a1660c45d7c6ba21ee00217673c704b"
+        },
+        "audio-035/selected/ability_square.wav": {
+          "bytes": 58604,
+          "sha256": "97f56614dab00355d96e5ea9ac9240cdec1ec2c50f2b00adc99ff465dad2bcef"
+        },
+        "audio-035/selected/barrier_unlock.wav": {
+          "bytes": 117164,
+          "sha256": "369fb86b11a9202810bc6ab430bbb7a6877c065b7f07ea1afc2e2f4eb9ef7929"
+        },
+        "audio-035/selected/cascade_fall.wav": {
+          "bytes": 41324,
+          "sha256": "817a7c2e1362808558ed9ae2f4f67bc16d5c5febde4e200177a21b0536e01d34"
+        },
+        "audio-035/selected/craft_ready.wav": {
+          "bytes": 76844,
+          "sha256": "b040fbb5c1d9d94b29a881762a7a9730b9222da494a3ecb7822452a209af07c1"
+        },
+        "audio-035/selected/craft_start.wav": {
+          "bytes": 74924,
+          "sha256": "2fe35e19011001444b1a7ef977bf0ef5db0cfcb66dd7db2ebe835bc2c423bd6f"
+        },
+        "audio-035/selected/damage_hit.wav": {
+          "bytes": 32684,
+          "sha256": "04bc89461152d49d305e395945f1b8d678c3427a2a39a86645a1ba91efa80035"
+        },
+        "audio-035/selected/defeat.wav": {
+          "bytes": 117164,
+          "sha256": "60e396963abf041cdcf86df4de207a7f5c8e730fea66ac9cd127564304217891"
+        },
+        "audio-035/selected/extra_turn.wav": {
+          "bytes": 63404,
+          "sha256": "b48de1240cc5086865403398c693338e06b4535d8bf6809a94d16ca7cbb2c3ac"
+        },
+        "audio-035/selected/line_clear.wav": {
+          "bytes": 29804,
+          "sha256": "2bad1e5c7710bacc98df3b7260ccd671895d0d3af4a9bd2a940bb2cd4fba10bc"
+        },
+        "audio-035/selected/match_ready.wav": {
+          "bytes": 77804,
+          "sha256": "fc5061623da7fc14c8c0940118d24f3c7ab848117c8d8148a9dc3143400d46a5"
+        },
+        "audio-035/selected/queue_enter.wav": {
+          "bytes": 60524,
+          "sha256": "ddc9a1cb51152010f1c51dce6d8cc7f71ba21a8f70637b6ab830df644d51ec89"
+        },
+        "audio-035/selected/reward_claim.wav": {
+          "bytes": 65324,
+          "sha256": "ea2ac572ee0b1f1151c22e2b259016ab6a1605ddbb7a29f33b195c7b71d428de"
+        },
+        "audio-035/selected/timer_end.wav": {
+          "bytes": 40364,
+          "sha256": "ab6476bff9e8749ed7a87d9c615d35d3bfd4a02b3e55639e5ad75b0f484fb78f"
+        },
+        "audio-035/selected/ui_back.wav": {
+          "bytes": 20204,
+          "sha256": "28387485419eb2a9c3e74f2e114aef1896b788d36db8f8bf7b13bc810adec13b"
+        },
+        "audio-035/selected/ui_blocked.wav": {
+          "bytes": 32684,
+          "sha256": "5f2bb7bdb33018ddb3efc960ca1c15efa7080f779bd0a4009114c6e328313f8c"
+        },
+        "audio-035/selected/ui_click.wav": {
+          "bytes": 14444,
+          "sha256": "9c49bd7f03b8be99d73dd710984cad335a97cfc26c10f3d58447122efd088922"
+        },
+        "audio-035/selected/victory.wav": {
+          "bytes": 136364,
+          "sha256": "8932a603d29bbc7714d456483ede2f4c1abe86e52bd596c7cf57d9c49a651709"
+        },
+        "audio-035/selected-metadata.json": {
+          "bytes": 13343,
+          "sha256": "7562e6f2172dd843c761daec3ccd6fb265beb45387d92cfa7f304b697be7d994"
+        },
+        "downloads/Escape-0.3.14-46a458ea2e41.apk": {
+          "bytes": 124206651,
+          "sha256": "46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525"
+        },
+        "index.html": {
+          "bytes": 46841,
+          "sha256": "7c1c61e1a68adf03dfe32a3ef965201aba130f80bd9666f6625e3bca345a652e"
+        },
+        "release.json": {
+          "bytes": 358,
+          "sha256": "78f1b43964ff0550d93975d93e8b5823afc41ec87c8de94460816be70982fa64"
+        }
+      }
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.14-46a458ea2e41.apk",
+      "bytes": 124206651,
+      "sha256": "46a458ea2e41140a8ab02cee1dd84ba542de455c9bf9fab550153b2d88f28525"
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T162323Z",
+      "files": 63,
+      "bytes": 974979,
+      "runtimeSha256": "dfd08b4dd99dfeef305c3a31ae3347dca5c18e9a444a96f44669901db49c1c3f",
+      "dump": {
+        "bytes": 167331,
+        "sha256": "88f3546cdfbd363d606f880b37ad1e29ffddbb8e6d40762bb0e0df683bd012ad"
+      },
+      "manifestSha256": null
+    }
+  ],
+  "gates": [
+    "Final signed APK and client source/QA proof",
+    "Exact plan/archive/publisher pins",
+    "Fresh backup full manifest and pg_restore--list",
+    "Static publisher validates bundle and preserves0.3.15APK",
+    "HTTPS full-stream hashes for every published bundle file",
+    "Nakama/Postgres container identities/start times, runtime/catalog/config/admin hashes unchanged",
+    "New+previous release/APK verified",
+    "FreshAAD+previousC3backup verified",
+    "Sanitized selected publication proof archived locally before owned staging removal"
+  ],
+  "noRuntimeOrCatalogMutation": true,
+  "noApiDatabaseRestart": true,
+  "scope": "Only exact Escape web/backup/owned-stage paths; no other projects or Docker volumes"
+}

@@ -825,7 +825,7 @@ namespace Project.UI
         }
 
         // Размеры блока приза/ставок (PrizeFooter). Править здесь — или в префабе ArenaBracketOverlay → PrizeFooter.
-        private const float PrizeFooterFontSize = 20f;
+        private const float PrizeFooterFontSize = 30f;
         private const float PrizeFooterPreferredHeight = 112f;
         private const float PrizeFooterMinHeight = 96f;
 
@@ -865,23 +865,21 @@ namespace Project.UI
             EnsurePrizeFooter();
             if (_prizeFooterText == null) return;
 
-            var show = _bettingUiEnabled
-                       && t != null
+            var show = t != null
                        && t.active
-                       && !t.eliminated
-                       && string.Equals(t.phase, "countdown", StringComparison.Ordinal);
+                       && !t.eliminated;
             _prizeFooterText.gameObject.SetActive(show);
             if (!show) return;
 
             var prizeLine = FormatPrizePreviewLine(t);
             var wins = Mathf.Max(0, t.bet_wins);
             var losses = Mathf.Max(0, t.bet_losses);
-            _prizeFooterText.text = prizeLine + "\nСтавки: зашло " + wins + " · мимо " + losses;
+            _prizeFooterText.text = prizeLine + (_bettingUiEnabled ? "\nСтавки: верно " + wins + " · неверно " + losses : "");
         }
 
         private static string FormatPrizePreviewLine(ArenaTournamentState t)
         {
-            if (t == null) return "Потенциальный приз: —";
+            if (t == null) return "Возможный приз: —";
             var kind = (t.kind ?? "").Trim().ToLowerInvariant();
             var g = Mathf.Max(0, t.prize_preview_gold);
             var o = Mathf.Max(0, t.prize_preview_ore);
@@ -893,16 +891,18 @@ namespace Project.UI
                 ? ""
                 : (deltaScore > 0 ? $" (+{deltaPct}%)" : $" ({deltaPct}%)");
 
+            if (kind == ArenaKindSmith && t.rules_version >= 2)
+                return $"Возможный приз: {Mathf.Max(0, t.prize_ingots)} слитков + рецепт";
+
             if (kind == ArenaKindOre)
-                return $"Потенциальный приз: {o} руды{deltaSuffix}";
+                return $"Возможный приз: {o} руды{deltaSuffix}";
             if (kind == ArenaKindGold)
-                return $"Потенциальный приз: {g} золота{deltaSuffix}";
+                return $"Возможный приз: {g} золота{deltaSuffix}";
 
             // smith — золото и руда
             if (g > 0 || o > 0 || baseG > 0 || baseO > 0)
-                return $"Потенциальный приз: {g} зол. / {o} руды{deltaSuffix}" +
-                    (t.rules_version >= 2 ? $"\n+ {t.prize_ingots} слитков; рецепт с побеждённого открытого этажа\nБез нового рецепта: ещё {t.recipe_fallback_ingots} слитков\nПосле проигрыша: {t.consolation_ingots} слитков" : "");
-            return $"Потенциальный приз: —{deltaSuffix}";
+                return $"Возможный приз: {g} зол. / {o} руды{deltaSuffix}";
+            return $"Возможный приз: —{deltaSuffix}";
         }
 
         private static string BracketOverlayMainTitle(string kindRaw)
@@ -2075,21 +2075,8 @@ namespace Project.UI
         {
             var summary = _bracketRoot.transform.Find("ExpeditionTournamentSummary")?.GetComponent<TMP_Text>();
             if (summary == null) return;
-            ArenaPairRow own = null;
-            foreach (var pair in RowsForCurrentBracketPhase(tournament) ?? Array.Empty<ArenaPairRow>())
-                if (pair != null && (pair.uid_a == _myUserId || pair.uid_b == _myUserId)) { own = pair; break; }
-            var opponent = own == null ? "Ожидаем следующую пару" : "Ваш соперник: " + (own.uid_a == _myUserId ? own.display_b : own.display_a);
-            var status = own != null && own.status == "done" ? "Бой завершён · ожидаем остальных" : tournament.phase == "countdown" ? "Ожидаем начала боя" : "Турнир продолжается";
-            var tierLabel = TournamentTierLabel(tournament.kind, tournament.bet_tier);
-            if (string.IsNullOrEmpty(tierLabel)) tierLabel = "—";
-            var bettingHint = !_bettingUiEnabled ? "Прогнозы выключены"
-                : tournament.bets_open ? "Прогноз: выберите игрока в чужой паре"
-                : tournament.phase == "final" || (tournament.phase == "countdown" && tournament.next_round == "final") ? "В финале прогнозов нет"
-                : "Прогнозы доступны до начала раунда";
-            summary.enableAutoSizing = true;
-            summary.fontSizeMin = 22;
-            summary.fontSizeMax = 26;
-            summary.text = opponent + "\n" + status + " · Взнос: " + tierLabel.ToLowerInvariant() + "\n" + bettingHint;
+            summary.text = "";
+            summary.gameObject.SetActive(false);
         }
 
         private void ClearRowsKeepingTemplates(Transform rowsRoot)

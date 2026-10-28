@@ -4,7 +4,7 @@ from datetime import datetime,timezone
 import argparse,hashlib,json,shutil,tarfile,subprocess,time,sys,re,os
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('stage',help='Exact uploaded releaseNNN-validation-<12 hex> directory basename')
-parser.add_argument('scenarios',nargs='*',choices=('all','recovery','friends','cosmetics'))
+parser.add_argument('scenarios',nargs='*',choices=('all','recovery','friends','cosmetics','global-boss','global-boss-practice','equipment-sets','quote-preflight'))
 args=parser.parse_args()
 ROOT=Path('/opt/escape').resolve()
 assert Path.cwd().resolve()==ROOT and re.fullmatch(r'release[0-9]{3,12}-validation-[a-f0-9]{12}',args.stage)

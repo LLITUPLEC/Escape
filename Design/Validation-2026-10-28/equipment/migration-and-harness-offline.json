@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "tests": 15,
+  "scope": "Offline fake Console and fake socket contract checks; no production network actions",
+  "results": [
+    {
+      "test": "Server/nakama/tests/equipment_ingot_migration_test.py",
+      "passed": true,
+      "tests": 9,
+      "output": [
+        ".........",
+        "----------------------------------------------------------------------",
+        "Ran 9 tests in 0.047s",
+        "",
+        "OK"
+      ],
+      "network_actions": false
+    },
+    {
+      "test": "Server/nakama/tests/multiclient/harness_equipment_practice_test.py",
+      "passed": true,
+      "tests": 6,
+      "output": [
+        "EVIDENCE practice changed collections/keys=[\"duel_api_rate_limits/v1\"]",
+        "......",
+        "----------------------------------------------------------------------",
+        "Ran 6 tests in 0.001s",
+        "",
+        "OK"
+      ],
+      "network_actions": false
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T04:47:45.303380+00:00",
+  "pythonSyntaxPassed": true,
+  "files": {
+    "backup_before_publication_remote.py": "dacd498f4ca96ea5c44bd49c7e89dff9330eac35e9759a264a5579dbb93ede70",
+    "deploy_download_page-0.3.16.py": "e858fd15c8d6e4f02cdb30cb7097e78f5ff10596f931278d36e60f17e2131df0",
+    "final_inventory_remote.py": "874863f108810823c7dfe1652b56c034bbf9569aa29ca10e68396d781c4cb52d",
+    "launch_publication_remote.py": "3499b58d40c7a4d2656f6fdfd5d09c9c8341ddb58703ce7726c95f72ec7a9e26",
+    "make_verifier.py": "3299c0af99a73bda0cd44ec766be452679dfcb1c247a5a4eb4e5e5f736f1f48c",
+    "preflight_remote.py": "53b9360025a8863e2ced6eb717904836497fa11340c433fee14d53040c0912a9",
+    "publish_page_remote.py": "241aaaeaabaebc763cf48b309ccb7d1f177b3807fae7c309a1fe75302ec83cb3",
+    "verify_and_retain_remote.py": "771bc355c68ddfc50fcb73ec499f679a21f23f885c164d718bd5af56f9ed805a"
+  }
+}

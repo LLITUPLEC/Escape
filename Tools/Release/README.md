@@ -14,13 +14,13 @@ pass the installed component directories explicitly if the defaults differ.
 
 `Project.Editor.ExpeditionAndroidBuild.BuildReleaseBatch` builds to
 `Builds/<bundleVersion>/`, including `build-status.json` in the same directory.
-`validate-apk.ps1 -ExpectedVersion 0.3.15 -MinimumVersionCode 17` uses that status
+`validate-apk.ps1 -ExpectedVersion 0.3.16 -MinimumVersionCode 18` uses that status
 by default. Pass `-ReportDirectory` explicitly when archiving final validation.
 
 ## Client source proof
 
 ```powershell
-python Tools/Release/source_snapshot.py --version 0.3.15 --inventory
+python Tools/Release/source_snapshot.py --version 0.3.16 --inventory
 ```
 
 `--inventory` is read-only. For a new release, `--create` freezes an exclusive
@@ -37,7 +37,7 @@ Build the public bundle with `Website/escape/render-release.ps1` first. Then use
 SHA256 and the previous published APK identity through its required arguments:
 
 ```powershell
-python Tools/Release/prepare_publication.py --version 0.3.15 --version-code 17 --expected-previous-publisher-sha256 <64-hex> --previous-apk-filename <published.apk> --previous-apk-bytes <bytes> --previous-apk-sha256 <64-hex>
+python Tools/Release/prepare_publication.py --version 0.3.16 --version-code 18 --expected-previous-publisher-sha256 <64-hex> --previous-apk-filename <published.apk> --previous-apk-bytes <bytes> --previous-apk-sha256 <64-hex>
 ```
 
 This only validates local inputs and creates a unique archive and plan. It does
@@ -52,14 +52,14 @@ invoke it on the server with `--plan <remote-plan>` and the same explicit
 APK, rejects unsafe archive paths, validates the bundle before switching the
 publisher, and keeps a rollback copy. It does not restart the API or database.
 
-`verify_public_integrity.py --version 0.3.15 --version-code 17` compares full HTTPS
+`verify_public_integrity.py --version 0.3.16 --version-code 18` compares full HTTPS
 response streams against every local bundle file. It writes hashes and byte
 counts, never response bodies. Use `--report` to archive the final result.
 `verify-public-release.ps1` performs the additional website/API release checks.
 
 ## Isolated backend validation
 
-`prepare_backend_validation.py --version 0.3.15` creates a unique candidate
+`prepare_backend_validation.py --version 0.3.16` creates a unique candidate
 archive and context manifest from actual local modules, multiclient test tools,
 canonical item data and consumable migration inputs. It does not upload or run
 anything remotely. All archive members are pinned by SHA256.

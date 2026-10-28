@@ -1,0 +1,62 @@
+{
+  "utc": "2026-10-27T22:34:03.078857+00:00",
+  "runtime_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtime_files": 66,
+  "suite_sha256": "4ad47b2863afaeaa544365e1a26ce700105aee3d72e3ff2c01ccbd887c4c33aa",
+  "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "scenarios": {
+    "quote-preflight": {
+      "exit_code": 0,
+      "seconds": 19.8,
+      "checks": 6,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    },
+    "recovery": {
+      "exit_code": 0,
+      "seconds": 73.1,
+      "checks": 64,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    },
+    "global-boss-practice": {
+      "exit_code": 0,
+      "seconds": 22.6,
+      "checks": 20,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "executionStage": "release0315-validation-bb506a1cbca8",
+      "harnessSha256": "84a78cf89178c2baaa709aa3a7274494ead12b8c281dcf37b3b6e31801d1225d"
+    },
+    "equipment-sets": {
+      "exit_code": 0,
+      "seconds": 36.4,
+      "checks": 72,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "executionStage": "release0315-validation-bb506a1cbca8",
+      "harnessSha256": "84a78cf89178c2baaa709aa3a7274494ead12b8c281dcf37b3b6e31801d1225d"
+    }
+  },
+  "success": true,
+  "production_runtime_after_sha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "commonHandlerProof": {
+    "runtimeSha256": "8cf98718b4f4b3bff2204a2a04c33f88760162ae4b66abcd27325f0895f4794e",
+    "checks": 788,
+    "scope": "Common-handler proof; craft cases superseded by final quote/equipment checks",
+    "deltaFiles": [
+      "duel_match3_economy_rpc.lua",
+      "duel_workshop_quote.lua"
+    ]
+  },
+  "retainedAffectedProof": {
+    "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+    "harnessDelta": "Only Suite.quote_preflight changed; rest of Python AST identical; missing wallet remains explicit None and creation is detected"
+  }
+}

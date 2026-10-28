@@ -18,7 +18,7 @@ namespace Project.UI
         private GlobalBossLeaderboardService.Page _fixtureRanking;
         private TMP_Text _name,_time,_hp,_attempts,_contribution,_status,_enterLabel,_damage,_armor,_crit,_rules,_rankingStatus,_self,_pageLabel;
         private Image _hpFill;
-        private Button _enter,_bossTab,_rankingTab,_prev,_next;
+        private Button _enter,_practice,_bossTab,_rankingTab,_prev,_next;
         private RectTransform _bossPage,_rankingPage,_rows;
         private ScrollRect _scroll;
         private bool _participants;
@@ -48,10 +48,11 @@ namespace Project.UI
             Picture(_bossPage,"BossArt",Resources.Load<Sprite>(GlobalBossService.Art),.09f,.604f,.48f,.81f);
             BuildStats();
             var health=Card(_bossPage,"SharedHealth",.045f,.525f,.955f,.598f);
-            Label(health,"HealthKicker","ОБЩЕЕ ЗДОРОВЬЕ ДЛЯ ВСЕХ ИГРОКОВ",18,.03f,.66f,.97f,.97f).color=ExpeditionTheme.Muted;
-            var track=ExpeditionUi.Fill(health,"HealthTrack",.035f,.14f,.965f,.61f,new Color32(8,12,18,255));track.sprite=ModalPanelCloseButton.WhiteSprite();
+            Label(health,"HealthKicker","ОБЩЕЕ ЗДОРОВЬЕ ДЛЯ ВСЕХ ИГРОКОВ",18,.045f,.67f,.955f,.94f).color=ExpeditionTheme.Muted;
+            var track=ExpeditionUi.Fill(health,"HealthTrack",.045f,.18f,.955f,.59f,new Color32(8,12,18,255));track.sprite=ModalPanelCloseButton.WhiteSprite();
             _hpFill=ExpeditionUi.Fill(track.transform,"HealthFill",0,0,1,1,new Color32(142,51,124,255));_hpFill.sprite=ModalPanelCloseButton.WhiteSprite();_hpFill.type=Image.Type.Filled;_hpFill.fillMethod=Image.FillMethod.Horizontal;
-            _hp=Label(track.transform,"HealthValue","…",27,0,0,1,1,TextAlignmentOptions.Center);_hp.fontStyle=FontStyles.Bold;
+            _hpFill.rectTransform.offsetMin=new Vector2(4,4);_hpFill.rectTransform.offsetMax=new Vector2(-4,-4);
+            _hp=Label(track.transform,"HealthValue","…",27,.025f,.08f,.975f,.92f,TextAlignmentOptions.Center);_hp.fontStyle=FontStyles.Bold;
             Ability("Cry","УЖАСАЮЩИЙ КРИК","20% вашего начального здоровья сквозь броню. Без маны, не завершает ход. Перезарядка — 2 хода босса.","horrifying-scream",.395f,.517f);
             Ability("Adaptation","АДАПТАЦИЯ","На ходе n текущий урон ×(1+n%). К текущему шансу крита +n п.п. Усиление накапливается.","adaptation",.265f,.387f);
             var loot=Card(_bossPage,"VictoryLoot",.045f,.151f,.955f,.257f);
@@ -60,10 +61,11 @@ namespace Project.UI
             Reward(loot,"LegendaryRecipe","recipe_drop_t1_gold_Helmet","1 из 8\nлегендарных рецептов",.02f,.38f);
             Reward(loot,"Tesseract","tesseract","Тессеракт",.39f,.64f);Reward(loot,"Supplies",ConsumablePresentation.Bounty,"Ресурсы\nи припасы",.65f,.98f);
             _rankingPage=ExpeditionUi.Rect(panel,"BossParticipantsPage",0,.151f,1,.813f);BuildRanking();
-            _attempts=Label(panel,"Attempts","…",23,.06f,.109f,.94f,.149f);
-            _contribution=Label(panel,"Contribution","",20,.06f,.073f,.94f,.109f);
-            _enter=ExpeditionUi.Button(panel,"EnterRift","ВОЙТИ · 1 ЖЕТОН",.055f,.012f,.70f,.073f,()=>{if(_fixture==null)_=GlobalBossService.EnterAsync(_cts.Token);},true,28);_enterLabel=_enter.GetComponentInChildren<TMP_Text>();
-            ExpeditionUi.Button(panel,"BuyToken","МАГАЗИН",.72f,.012f,.947f,.073f,()=>ExpeditionShopPanel.Open(transform.parent),false,22);
+            _attempts=Label(panel,"Attempts","…",23,.06f,.123f,.94f,.150f);
+            _contribution=Label(panel,"Contribution","",20,.06f,.096f,.94f,.123f);
+            _enter=ExpeditionUi.Button(panel,"EnterRift","ВОЙТИ · 1 ЖЕТОН",.055f,.052f,.70f,.095f,()=>{if(_fixture==null)_=GlobalBossService.EnterAsync(_cts.Token);},true,28);_enterLabel=_enter.GetComponentInChildren<TMP_Text>();
+            ExpeditionUi.Button(panel,"BuyToken","МАГАЗИН",.72f,.052f,.947f,.095f,()=>ExpeditionShopPanel.Open(transform.parent),false,22);
+            _practice=ExpeditionUi.Button(panel,"PracticeRift","ПРОБНЫЙ БОЙ · БЕЗ НАГРАД И ЗАТРАТ",.055f,.008f,.947f,.047f,()=>{if(_fixture==null)_=GlobalBossService.PracticeAsync(_cts.Token);},false,22);
             _status=Label(transform,"BossStatus","",20,.05f,.012f,.78f,.052f);
             ExpeditionUi.Button(transform,"RefreshEvent","Обновить",.80f,.012f,.95f,.052f,()=>{if(_fixture==null){_=GlobalBossService.RefreshAsync(_cts.Token);if(_participants)LoadRanking(_cursor);}},false,19);
             SelectTab(false);
@@ -186,6 +188,7 @@ namespace Project.UI
             if(_status==null)return;ObserveScope();var state=_fixture??GlobalBossService.Current;var busy=_fixture==null&&GlobalBossService.Busy;
             _status.text=_fixture==null?GlobalBossService.Error??(busy?"Связываемся с измерением…":"До 3 попыток за событие. Награды доставляются в почту."):"Просмотр события";
             _enter.interactable=state!=null&&!busy&&state.hp>0&&state.status=="active"&&(state.active_attempt?.resumable==true||state.attempts_left>0&&state.token_count>0);
+            _practice.interactable=!busy;
             if(state==null){_name.text="МИРОВОЙ БОСС";_hp.text="…";_hpFill.fillAmount=0;_attempts.text="Ожидаем данные события…";_contribution.text="";_enterLabel.text="ЗАГРУЗКА…";_time.text="Связываемся с измерением…";_damage.text=_armor.text=_crit.text="…";RefreshRanking();return;}
             _name.text=string.IsNullOrEmpty(state.name)?"СЕРДЦЕ РАЗЛОМА":state.name.ToUpperInvariant();_hp.text=Number(state.hp)+" / "+Number(state.hp_max);_hpFill.fillAmount=(float)((double)state.hp/state.hp_max);
             _damage.text=Number(state.base_damage);_armor.text=Number(state.base_armor);_crit.text=(state.base_crit*100).ToString("0.#",CultureInfo.GetCultureInfo("ru-RU"))+"%";_rules.text="Не лечится · до "+(state.max_turns>0?state.max_turns:30)+" ходов";

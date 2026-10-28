@@ -3,6 +3,8 @@ local inventory_ok, Inventory = pcall(require, "modules.duel_match3_inventory")
 if not inventory_ok then Inventory = require("duel_match3_inventory") end
 local guidance_ok, Guidance = pcall(require, "modules.duel_player_guidance")
 if not guidance_ok then Guidance = require("duel_player_guidance") end
+local quote_ok, WorkshopQuote = pcall(require, "modules.duel_workshop_quote")
+if not quote_ok then WorkshopQuote = require("duel_workshop_quote") end
 
 --- Character / workshop / resources RPCs (вынесено из duel_match3.lua из‑за лимита локалей).
 return function(deps)
@@ -419,6 +421,12 @@ end
     if payload ~= nil and payload ~= "" then
       p = nk.json_decode(payload) or {}
     end
+    if type(p) ~= "table" then return nk.json_encode({ ok=false, err="bad_payload" }) end
+    -- Cheap validation before sheet initialization, recipe/access checks or any
+    -- craft mutation. Also provides a harmless backend-only guard preflight.
+    if not WorkshopQuote.valid_expected(p.expected_ingot_n) then
+      return nk.json_encode({ ok=false, err=WorkshopQuote.INVALID })
+    end
     local slot_index = tonumber(p.slot_index)
     if slot_index == nil then
       return nk.json_encode({ ok = false, err = "bad_slot_index" })
@@ -476,6 +484,14 @@ end
     end
 
     local cost = workshop_craft_cost_from_def(out_def, tier, quality)
+    local quote_matches, quote_error = WorkshopQuote.check(output_def_id, p.expected_ingot_n, cost.ingot_n)
+    if not quote_matches then
+      local reply = { ok=false, err=quote_error }
+      if quote_error == WorkshopQuote.CHANGED then
+        reply.craft_quote = { schema=1, output_def_id=output_def_id, ingot_n=cost.ingot_n }
+      end
+      return nk.json_encode(reply)
+    end
     local ore_c = cost.ore
     local gold_c = cost.gold
     local ingot_def = cost.ingot_def

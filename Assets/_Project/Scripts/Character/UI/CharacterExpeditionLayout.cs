@@ -21,6 +21,14 @@ namespace Project.Character.UI
         private readonly List<Image> _slotGhosts = new List<Image>();
         private readonly List<Image> _slotRims = new List<Image>();
         private readonly List<Image> _slotItemIcons = new List<Image>();
+        private readonly List<Image> _setRims = new List<Image>();
+        private RectTransform _setBadge;
+        private TMP_Text _setBadgeText;
+        private string _activeSetKey = string.Empty;
+        private float _setPulseStarted;
+        private bool _setPulseRunning;
+        public bool EquipmentSetActive => !string.IsNullOrEmpty(_activeSetKey);
+        public int SetActivationCount { get; private set; }
         private readonly List<RectTransform> _bagSlots = new List<RectTransform>();
         private readonly List<int> _bagDataIndices = new List<int>();
         private readonly List<Image> _bagRarity = new List<Image>();
@@ -155,6 +163,11 @@ namespace Project.Character.UI
                 rim.fillCenter = false;
                 Area(rim.rectTransform, 0, 0, 1, 1);
                 rim.enabled = false;
+                var setRim = MakeImage("ExpeditionSetActivationRim", rt);
+                SetFrame(setRim.rectTransform, _slotFrame, ExpeditionTheme.Amber, false);
+                setRim.fillCenter = false;
+                Area(setRim.rectTransform, -.035f, -.035f, 1.035f, 1.035f);
+                setRim.enabled = false; _setRims.Add(setRim);
                 _slots.Add(rt); _slotIds.Add((int)slot.SlotId); _slotBackgrounds.Add(frame);
                 _slotWashes.Add(wash); _slotGhosts.Add(ghost); _slotRims.Add(rim); _slotItemIcons.Add(itemIcon);
             }
@@ -164,6 +177,14 @@ namespace Project.Character.UI
                 if (child != _stageBackdrop && child != hero.transform && !_slots.Contains(child as RectTransform)) child.gameObject.SetActive(false);
             }
             _stageBackdrop.SetAsFirstSibling(); hero.transform.SetSiblingIndex(1);
+            _setBadge = MakeImage("ExpeditionEquipmentSetBadge", equipment).rectTransform;
+            SetFrame(_setBadge, ExpeditionTheme.Plate, new Color(.66f, .78f, .69f, 1), false);
+            Area(_setBadge, .45f, .04f, .55f, .17f);
+            _setBadgeText = Label("Label", _setBadge, "8/8\n+25%", 23, new Color32(166, 233, 189, 255));
+            Area(_setBadgeText.rectTransform, .035f, .08f, .965f, .92f);
+            _setBadgeText.enableAutoSizing = true; _setBadgeText.fontSizeMin = 17; _setBadgeText.fontSizeMax = 23;
+            _setBadgeText.textWrappingMode = TextWrappingModes.NoWrap;
+            _setBadge.gameObject.SetActive(false);
 
             // Identity is already visible in the shared profile HUD.
             var identity = MakeRect("ExpeditionCharacterIdentity", panel);
@@ -397,6 +418,40 @@ namespace Project.Character.UI
                 }
             }
         }
+
+        public void SetEquipmentSet(EquipmentSetBonus.State state)
+        {
+            if (_setBadge == null) return;
+            var nextKey = state.Key;
+            var activated = state.Active && nextKey != _activeSetKey;
+            _activeSetKey = nextKey;
+            _setBadge.gameObject.SetActive(state.Active);
+            if (activated)
+            {
+                SetActivationCount++;
+                _setPulseStarted = Time.unscaledTime;
+                _setPulseRunning = true;
+                _setBadgeText.text = "8/8\n+25%";
+            }
+            if (!state.Active) ApplySetActivationFrame(2);
+            else if (activated) ApplySetActivationFrame(0);
+        }
+
+        // A single short pulse on accepted 7/8 -> 8/8 (or a different set), never an endless per-slot animation.
+        // The rarity rim remains intact beneath this separate, non-interactive overlay.
+        public void ApplySetActivationFrame(float elapsed)
+        {
+            var progress = Mathf.Clamp01(elapsed / 1.15f);
+            if (progress >= 1) _setPulseRunning = false;
+            var pulse = EquipmentSetActive ? Mathf.Sin(progress * Mathf.PI * 3) * (1 - progress) : 0;
+            var alpha = EquipmentSetActive && progress < 1 ? .30f + Mathf.Abs(pulse) * .62f : 0;
+            foreach (var rim in _setRims)
+            {
+                rim.enabled = alpha > .001f;
+                rim.color = new Color(1, .83f, .40f, alpha);
+            }
+            if (_setBadge != null) _setBadge.localScale = Vector3.one * (1 + Mathf.Max(0, pulse) * .045f);
+        }
         public void RefreshInventory()
         {
             if (!_built) return;
@@ -454,6 +509,7 @@ namespace Project.Character.UI
         private void LateUpdate()
         {
             if (!Application.isPlaying || !_built) return;
+            if (_setPulseRunning) ApplySetActivationFrame(Time.unscaledTime - _setPulseStarted);
             var dimensions = new Vector2Int(Screen.width, Screen.height);
             var size = _screenRoot != null ? _screenRoot.rect.size : Vector2.zero;
             var safe = Screen.safeArea;
@@ -494,10 +550,20 @@ namespace Project.Character.UI
             {
                 var id = _slotIds[i]; var weapon = id >= 6;
                 var size = weapon ? Mathf.Min(width * .175f, height * .19f) : side;
-                var position = weapon ? new Vector2(id == 6 ? .405f : .595f, .102f)
+                var position = weapon ? new Vector2(id == 6 ? .365f : .635f, .102f)
                     : new Vector2(id < 3 ? .139f : .861f, .80f - (id < 3 ? id : id - 3) * .284f);
                 _slots[i].anchorMin = _slots[i].anchorMax = position; _slots[i].pivot = new Vector2(.5f, .5f);
                 _slots[i].anchoredPosition = Vector2.zero; _slots[i].sizeDelta = new Vector2(size, size);
+            }
+            if (_setBadge != null)
+            {
+                // A small buff sits between the hand slots, below the figure's feet.
+                // Size it from the real gap so it cannot cover gear or the character.
+                var handSize = Mathf.Min(width * .175f, height * .19f);
+                _setBadge.anchorMin = _setBadge.anchorMax = new Vector2(.5f, .102f);
+                _setBadge.pivot = new Vector2(.5f, .5f);
+                _setBadge.anchoredPosition = Vector2.zero;
+                _setBadge.sizeDelta = new Vector2(Mathf.Clamp(width * .27f - handSize - 16, 24, 108), Mathf.Min(84, handSize * .72f));
             }
             // Align the illustrated platform with the hero's feet while retaining its original aspect.
             var backdrop = _stageBackdrop.GetComponent<Image>().sprite;

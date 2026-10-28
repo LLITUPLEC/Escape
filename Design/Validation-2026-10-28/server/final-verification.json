@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-27T22:46:27.309770+00:00",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "seedSha256": "8cc9c4b7da99b8b4c1168e96a00fa68f03ecde26db876582fcfb392be4552524",
+  "seedPreserved": true,
+  "canonicalDeployHelperSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "protectedConfigAndAdminUnchanged": true,
+  "websiteAndBothPublishedApksUnchanged": true,
+  "onlyEightCatalogFieldsChanged": true,
+  "catalogStorageVersion": "da280feeee977bd520e1cc464a3fb937",
+  "catalogVersionPreserved": 5,
+  "freshBackup": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "freshBackupFiles": 82,
+  "freshBackupManifestSha256": "e27402a251de0a22b5c5d1c03bdc9a57e0ebd9f349dd6480e6d29474333d11f9",
+  "backupCount": 2,
+  "retainedBackups": [
+    "/opt/escape/backups/runtime-release-20261027T162323Z",
+    "/opt/escape/backups/runtime-release-20261027T223730Z"
+  ],
+  "candidateStageDirectories": [],
+  "candidateOverlayAndMigrationAbsent": true,
+  "temporaryDocker": {
+    "containers": [],
+    "volumes": [],
+    "networks": []
+  },
+  "nakamaHealth": "healthy"
+}

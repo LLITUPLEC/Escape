@@ -198,6 +198,23 @@ function M.passive_hp_bonus(uid)
   local result=M.reconcile(uid)
   return result.ok and result.passive_hp_bonus_percent/100 or 0
 end
+-- Practice may observe previously granted bonuses, but cannot reconcile new
+-- unlocks, grant Matter, send mail or initialize an identity/profile.
+function M.passive_hp_bonus_read_only(uid)
+  local rows=nk.storage_read({{collection=COLLECTION,key=KEY,user_id=uid}})
+  assert(type(rows)=="table","cosmetics_storage_unavailable")
+  local value=rows[1]and rows[1].value or{}
+  if type(value)=="string"then value=nk.json_decode(value)end
+  local count=0
+  for _,theme in ipairs(THEMES)do
+    local receipt=type(value.unlock_reward_receipts)=="table"and value.unlock_reward_receipts[theme.id]
+    if receipt then
+      assert(theme.id~="dawnwarden"and type(receipt)=="table"and receipt.version==1 and receipt.matter==REWARD_MATTER and receipt.hp_basis_points==REWARD_HP_BASIS_POINTS,"cosmetics_invalid_reward_receipt")
+      count=count+1
+    end
+  end
+  return count*REWARD_HP_BASIS_POINTS/10000
+end
 local function handler(ctx, payload, select)
   local uid = ctx and ctx.user_id
   if type(uid) ~= "string" or uid == "" then return nk.json_encode({ok=false,err="unauthorized"}) end

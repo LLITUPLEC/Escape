@@ -42,6 +42,9 @@ namespace Project.Character.UI
 
         private CancellationTokenSource _cts;
         private CharacterGetRpcResponse _profile;
+        private readonly Dictionary<string, int> _serverIngotQuotes = new();
+        private string _quoteAccountScope;
+        private int _craftQuoteGeneration, _craftRequestSerial, _activeCraftRequest;
 
         private int _selectedSlot = -1;
         private string _selectedOutputDefId;
@@ -658,7 +661,10 @@ namespace Project.Character.UI
                 return;
             var slot = _selectedSlot;
             var output = _selectedOutputDefId;
-            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftStartAsync(slot, output, ct), ExpeditionCue.CraftStart);
+            var definition = itemCatalog != null ? itemCatalog.Get(output) : null;
+            if (definition == null) return;
+            GetDisplayedCraftCost(definition, out _, out _, out var shownIngots, out _, out _);
+            await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftStartAsync(slot, output, shownIngots, ct), ExpeditionCue.CraftStart, output);
         }
 
         private async Task OnClaimClicked()
@@ -680,9 +686,13 @@ namespace Project.Character.UI
             await RunCraftRequestAsync(ct => CharacterProfileService.WorkshopCraftClaimAsync(slotIndex, ct), ExpeditionCue.RewardClaim);
         }
 
-        private async Task RunCraftRequestAsync(Func<CancellationToken, Task<CharacterGetRpcResponse>> request, ExpeditionCue successCue)
+        private async Task RunCraftRequestAsync(Func<CancellationToken, Task<CharacterGetRpcResponse>> request, ExpeditionCue successCue, string quoteOutputId = null)
         {
             if (_craftRequestInFlight) return;
+            SyncCraftQuoteScope();
+            var requestScope = _quoteAccountScope;
+            var requestGeneration = ++_craftQuoteGeneration;
+            var requestOwner = _activeCraftRequest = ++_craftRequestSerial;
             _craftRequestInFlight = true;
             foreach (var button in new[] { _createButton, _claimButton, _rushButton })
                 if (button != null) button.interactable = false;
@@ -695,8 +705,12 @@ namespace Project.Character.UI
             {
                 var resp = await request(ct).ConfigureAwait(true);
                 if (this == null || ct.IsCancellationRequested) return;
+                SyncCraftQuoteScope();
+                if (requestOwner != _activeCraftRequest || requestGeneration != _craftQuoteGeneration ||
+                    !string.Equals(requestScope, _quoteAccountScope, StringComparison.Ordinal)) return;
                 if (resp == null || !resp.ok)
                 {
+                    if (resp?.err == "craft_quote_changed" && !ApplyChangedCraftQuote(resp.craft_quote, quoteOutputId, requestScope, requestGeneration)) return;
                     ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                     if (hintText != null) hintText.text = "Ошибка: " + (resp == null ? "нет ответа от мастерской" : ErrToRu(resp.err));
                     return;
@@ -710,15 +724,19 @@ namespace Project.Character.UI
             catch (Exception e)
             {
                 if (this == null || ct.IsCancellationRequested) return;
+                SyncCraftQuoteScope();
+                if (requestOwner != _activeCraftRequest || requestGeneration != _craftQuoteGeneration ||
+                    !string.Equals(requestScope, _quoteAccountScope, StringComparison.Ordinal)) return;
                 if (hintText != null) hintText.text = "Связь с мастерской прервана. Попробуйте ещё раз.";
                 if (!craftConfirmed) ExpeditionAudio.Play(ExpeditionCue.UiBlocked);
                 Debug.LogWarning("[Workshop] Craft request failed: " + e.Message);
             }
             finally
             {
-                if (this != null)
+                if (this != null && requestOwner == _activeCraftRequest)
                 {
                     _craftRequestInFlight = false;
+                    _activeCraftRequest = 0;
                     UpdateDetailPanel();
                 }
             }
@@ -1008,7 +1026,7 @@ namespace Project.Character.UI
             if (tier < 1) tier = 1;
             if (tier > 3) tier = 3;
 
-            WorkshopCraftRules.GetCraftCost(od, out var needOre, out var needGold, out var needIngotN, out var ingotId, out var needTess);
+            GetDisplayedCraftCost(od, out var needOre, out var needGold, out var needIngotN, out var ingotId, out var needTess);
 
             var sb = new StringBuilder();
             sb.AppendLine("Требования:");
@@ -1115,6 +1133,28 @@ namespace Project.Character.UI
             _createButtonLabel.supportRichText = true;
             _createButtonLabel.text = $"Создать\n<color=#{shortfallHex}>{shortfallText}</color>";
             _createButtonLabel.color = new Color(0.94f, 0.92f, 0.86f);
+        }
+
+        private void SyncCraftQuoteScope()
+        {
+            var scope = Project.Nakama.LocalAccountCacheScope.Current;
+            if (string.Equals(scope, _quoteAccountScope, StringComparison.Ordinal)) return;
+            _quoteAccountScope = scope; _serverIngotQuotes.Clear(); _craftQuoteGeneration++;
+        }
+        private bool ApplyChangedCraftQuote(WorkshopCraftQuote quote, string requestedOutput, string requestedScope, int requestGeneration)
+        {
+            SyncCraftQuoteScope();
+            if (!string.Equals(requestedScope, _quoteAccountScope, StringComparison.Ordinal) || requestGeneration != _craftQuoteGeneration ||
+                _selectedOutputDefId != requestedOutput || quote == null || quote.schema != 1 || quote.output_def_id != requestedOutput || string.IsNullOrEmpty(requestedOutput) ||
+                itemCatalog == null || itemCatalog.Get(requestedOutput) == null || quote.ingot_n < 0 || quote.ingot_n > 1000000000) return false;
+            _serverIngotQuotes[requestedOutput] = quote.ingot_n;
+            return true;
+        }
+        private void GetDisplayedCraftCost(ItemDefinition item, out int ore, out int gold, out int ingots, out string ingotId, out int tesseracts)
+        {
+            SyncCraftQuoteScope();
+            WorkshopCraftRules.GetCraftCost(item, out ore, out gold, out ingots, out ingotId, out tesseracts);
+            if (item != null && _serverIngotQuotes.TryGetValue(item.ItemId, out var quoted)) ingots = quoted;
         }
 
         private string BuildCraftShortfallLines(
@@ -1620,6 +1660,8 @@ namespace Project.Character.UI
                 case "not_enough_ore": return "мало руды";
                 case "not_enough_gold": return "мало золота";
                 case "not_enough_ingots": return "мало слитков";
+                case "craft_quote_changed": return "цена рецепта обновлена. Проверьте стоимость и нажмите «Создать» снова.";
+                case "invalid_craft_quote": return "не удалось проверить цену рецепта. Обновите клиент игры.";
                 case "inventory_full": return "сундук полон";
                 case "not_craftable": return "предмет не крафтится";
                 case "unknown_item": return "неизвестный предмет";

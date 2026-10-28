@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 12210
   craftGold: 9380
   craftIngotDef: ingot_purple
-  craftIngotN: 180
+  craftIngotN: 560
   craftTesseractN: 0
   craftItemId: eq_t1_rare_legs
   craftMinutes: 180

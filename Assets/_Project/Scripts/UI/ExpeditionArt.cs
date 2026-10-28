@@ -27,7 +27,7 @@ namespace Project.UI
                 _iconsLoaded = atlas.Length > 0;
             }
             var canonical = CanonicalKey(key);
-            if ((canonical == "friends" || canonical == "health-red" || canonical == "healing-cross") &&
+            if ((canonical == "friends" || canonical == "health-red" || canonical == "healing-cross" || canonical == "mana-drop") &&
                 (!Icons.TryGetValue(canonical, out var standalone) || standalone == null))
             {
                 standalone = Resources.Load<Sprite>("Expedition/Icons/" + canonical);
@@ -81,6 +81,7 @@ namespace Project.UI
                 case "stat-damage": case "damage": case "sword": return "swords";
                 case "stat-armor": case "armor": return "shield";
                 case "stat-critical": case "critical": return "energy";
+                case "stat-mana": case "mana": return "mana-drop";
                 case "achievements": case "achievement": case "trophy": return "trophy";
                 case "settings": case "gear": return "settings";
                 case "mine": return "pickaxe";

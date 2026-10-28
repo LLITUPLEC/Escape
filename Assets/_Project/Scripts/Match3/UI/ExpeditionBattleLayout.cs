@@ -268,17 +268,18 @@ namespace Project.Match3
             {
                 if (statsFrame == null || statsFrame == root)
                 {
-                    statsFrame = ExpeditionUi.Rect(root, "ExpeditionCombatStatsPopover", .015f, -1.15f, .985f, -.35f);
+                    statsFrame = ExpeditionUi.Rect(root, "ExpeditionCombatStatsPopover", .015f, -1.65f, .985f, -.35f);
                     panel.combatStatsName.transform.SetParent(statsFrame, false);
                 }
                 statsFrame.SetParent(root, false);
-                ExpeditionUi.SetRect(statsFrame, .015f, -1.15f, .985f, -.35f);
+                ExpeditionUi.SetRect(statsFrame, .015f, -1.65f, .985f, -.35f);
                 var statsBackground = ExpeditionUi.Ensure<Image>(statsFrame.gameObject);
                 ExpeditionUi.StylePanel(statsBackground, ExpeditionTheme.Panel);
                 statsBackground.pixelsPerUnitMultiplier = 5;
                 statsBackground.raycastTarget = true;
                 var title = statsFrame.Find("ExpeditionStatsTitle")?.GetComponent<TMP_Text>();
-                if (title == null) title = ExpeditionUi.Text(statsFrame, "ExpeditionStatsTitle", "ХАРАКТЕРИСТИКИ", 18, .05f, .72f, .95f, .94f, TextAlignmentOptions.Center);
+                if (title == null) title = ExpeditionUi.Text(statsFrame, "ExpeditionStatsTitle", "ХАРАКТЕРИСТИКИ", 18, .05f, .82f, .95f, .96f, TextAlignmentOptions.Center);
+                ExpeditionUi.SetRect(title.rectTransform, .05f, .82f, .95f, .96f);
                 title.color = ExpeditionTheme.Amber;
                 foreach (var stats in new[] { panel.combatStatsName, panel.combatStatsValue })
                 {

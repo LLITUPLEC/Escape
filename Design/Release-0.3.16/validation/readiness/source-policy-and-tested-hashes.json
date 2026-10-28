@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "tracked_large_files_50_MiB": [],
+  "tracked_file_count": 2580,
+  "lfs_attributes_present": false,
+  "ignore_policy_probes": [
+    {
+      "path": ".cache/probe",
+      "ignored": true
+    },
+    {
+      "path": ".local/credentials/probe",
+      "ignored": true
+    },
+    {
+      "path": "Builds/0.3.16/probe.apk",
+      "ignored": true
+    },
+    {
+      "path": "Website/dist/probe",
+      "ignored": true
+    },
+    {
+      "path": "Assets/_Project/Resources/NakamaConnectionConfig.asset",
+      "ignored": true
+    },
+    {
+      "path": "Assets/_Project/Resources/NakamaConnectionConfig.asset.meta",
+      "ignored": true
+    },
+    {
+      "path": "Server/nakama/deploy/secrets/probe",
+      "ignored": true
+    },
+    {
+      "path": "test.keystore",
+      "ignored": true
+    },
+    {
+      "path": "id_ed25519",
+      "ignored": true
+    },
+    {
+      "path": "test.pem",
+      "ignored": true
+    }
+  ],
+  "tested_sources": {
+    "Assets/_Project/Editor/ExpeditionGlobalBossQa0314.cs": "9bbd2d0ca63c67e3bdc4e108d5d71811cabbaeb5b39db383dee4844b68b1e681",
+    "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json": "e36ca50db9570a615906f3b09b26b976afddf53cfa04c21b94f223825a979e2c",
+    "Assets/_Project/Editor/Fixtures/global-boss-0.3.14.json.meta": "bd9963e86f9e38ef87617c1520f7694461775939e0ea635c01e120963b4cea8b",
+    "Server/nakama/tools/merge_shop_prices0314.py": "07511abe0adf94a444bad0a9b2b18f6396ed1bace7d94d6d75b99b82e7ace201",
+    "Server/nakama/tests/shop_prices0314_migration_test.py": "17f7c0724e5c2717de49e7f4b4c6895d778a22766991a6ab4166af0b9e600fe9",
+    "Server/nakama/tests/shop_economy0314_audit.py": "5a3e429fbaae81667d8e1953642e1502b6c70d429ca53b3ec24bf584a01ad037",
+    "Server/nakama/data/migrations/shop-price-0.3.14.json": "02bfefde17382f631149362b0649d3908bbe9df0e6365e573fc92e915cb4e624",
+    "Server/nakama/tools/merge_equipment_ingots.py": "534cee0354e5af5ae3f125df4f939790262ada6390a8a738dc4b9c1854f56511",
+    "Server/nakama/tests/equipment_ingot_migration_test.py": "396a7fe2cfc7a39516848f530ef49e50de93192f25c59b41d1d4dcaa46e8e9dd",
+    "Server/nakama/deploy/deploy_runtime.py": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+    "Server/nakama/tests/deploy_runtime_guard_test.py": "4be707af782abaec53ae3c414cb4e30f0b192a155c2fb0c28f0a96bf71697fa4",
+    "Tools/Balance/audit_equipment_recipes.py": "053c62f81edf4ad9adab913969669afe29fea31433cf79ffa6fe118d29ee149d"
+  }
+}

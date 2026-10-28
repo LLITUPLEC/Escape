@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "verifiedUtc": "2026-10-27T22:39:06.318809+00:00",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "seedPreserved": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "websiteAndBothPublishedApksUnchanged": true,
+  "apkNames": [
+    "Escape-0.3.14-46a458ea2e41.apk",
+    "Escape-0.3.15-e7ac556941de.apk"
+  ],
+  "versionChanged": false,
+  "catalogOnlyEightKnownFields": true,
+  "catalogChangedPaths": [
+    "items.eq_t1_epic_chest.craft_ingot_n",
+    "items.eq_t1_epic_feet.craft_ingot_n",
+    "items.eq_t1_epic_gloves.craft_ingot_n",
+    "items.eq_t1_epic_helmet.craft_ingot_n",
+    "items.eq_t1_epic_legs.craft_ingot_n",
+    "items.eq_t1_epic_shoulders.craft_ingot_n",
+    "items.eq_t1_epic_weapon_l.craft_ingot_n",
+    "items.eq_t1_epic_weapon_r.craft_ingot_n"
+  ],
+  "catalogVersionPreserved": 5,
+  "guardActiveBeforePriceCas": true,
+  "guardProbeChecks": 6,
+  "guardProbeTemporaryAccountRemoved": true,
+  "catalogOld": {
+    "eq_t1_epic_chest": 25,
+    "eq_t1_epic_feet": 270,
+    "eq_t1_epic_gloves": 50,
+    "eq_t1_epic_helmet": 8,
+    "eq_t1_epic_legs": 180,
+    "eq_t1_epic_shoulders": 220,
+    "eq_t1_epic_weapon_l": 125,
+    "eq_t1_epic_weapon_r": 150
+  },
+  "catalogNew": {
+    "eq_t1_epic_chest": 270,
+    "eq_t1_epic_feet": 740,
+    "eq_t1_epic_gloves": 350,
+    "eq_t1_epic_helmet": 110,
+    "eq_t1_epic_legs": 560,
+    "eq_t1_epic_shoulders": 670,
+    "eq_t1_epic_weapon_l": 460,
+    "eq_t1_epic_weapon_r": 510
+  },
+  "freshBackup": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "freshBackupRuntimeSha256": "c3a81563b3bf78e9eab55f5d7eab54d11d68dee0675599e71f3eff7dbe2ee445",
+  "freshBackupFiles": 80,
+  "dumpBytes": 190055,
+  "dumpSha256": "94a20e997ea1d8ff63184a0be1ce939038b14bbbbc12d5325d0277a9cb273a91",
+  "pgRestoreListVerified": true,
+  "rollback014Preserved": "/opt/escape/backups/runtime-release-20261027T162323Z",
+  "productionPracticeChecks": 16,
+  "practiceZeroDurableWrites": true,
+  "temporaryAccountAndStorageRemoved": true,
+  "nakamaHealth": "healthy",
+  "securitySmokePassed": true,
+  "dashboardChecks": 3
+}

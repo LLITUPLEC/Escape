@@ -1,0 +1,34 @@
+{
+  "published": true,
+  "passed": true,
+  "version": "0.3.16",
+  "versionCode": 18,
+  "recordedUtc": "2026-10-28T04:46:59.213070+00:00",
+  "site": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.16-3f40a293713f.apk",
+  "apkBytes": 124355967,
+  "apkSha256": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847",
+  "samePackageAndSignerAsPrevious": true,
+  "sourceFilesChecked": 2059,
+  "sourceSnapshotManifestSha256": "981f82352593c8d03965a36c13fc8db1e2eeab8d5d8cfa3b9cfe7a685068116a",
+  "fullHttpsFilesChecked": 32,
+  "physicalAndroidTested": false,
+  "serverRuntimePreservedDuringPagePublication": true,
+  "nakamaHealth": "healthy",
+  "retainedVersions": [
+    "0.3.16",
+    "0.3.15"
+  ],
+  "verifiedVpsBackupCount": 2,
+  "gitHistoryRewritten": false,
+  "gitCommitAndPush": "Subsequent explicit release step; verify remote main after this report is committed.",
+  "evidence": [
+    "apk-validation.json",
+    "upgrade-identity.json",
+    "source-snapshot-check.json",
+    "public-file-integrity.json",
+    "website-browser-check.json",
+    "local-retention-result.json",
+    "server/retention-result.json"
+  ]
+}

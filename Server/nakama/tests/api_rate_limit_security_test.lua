@@ -169,4 +169,52 @@ for _, filename in ipairs({ "duel_match3", "duel_session", "duel_online", "duel_
   assert(not source:find("nk.register_rpc(", 1, true), "Unprotected RPC in " .. filename)
   assert(source:find("RateLimit.register_rpc(", 1, true))
 end
+local before_transient_writes,before_transient_reads=writes,reads
+local transient_calls=0
+limit.configure_maintenance(function()error("practice cannot run persistent recovery/maintenance")end)
+limit.register_transient_rpc(function()transient_calls=transient_calls+1;return true end,"practice-only")
+for _=1,20 do assert(rpc["practice-only"]({user_id="practice-owner"},{}))end
+denied(function()rpc["practice-only"]({user_id="practice-owner"},{})end)
+now=now+1000;assert(rpc["practice-only"]({user_id="practice-owner"},{}))
+assert(transient_calls==21 and writes==before_transient_writes and reads==before_transient_reads)
+print("PASS practice RPC has an in-memory flood/refill budget with zero Storage or maintenance calls")
+local Practice=require('modules.duel_global_boss_practice')
+local real_match={authoritative=true,handler_name='duel_match3',label=Practice.label('practice-join-owner')}
+nk.match_get=function(id)
+ if id=='probe-error'then error('cluster read failure')end
+ if id=='gone'then return nil end
+ return real_match
+end
+local join_body={match_join={match_id='private-practice'}}
+local join_reads,join_writes=reads,writes
+for _=1,20 do assert(hooks.MatchJoin({user_id='practice-join-owner'},join_body)==join_body)end
+denied(function()hooks.MatchJoin({user_id='practice-join-owner'},join_body)end)
+assert(reads==join_reads and writes==join_writes)
+print('PASS authoritative owner practice joins are bounded without durable budget writes')
+local before_forged=writes
+denied(function()hooks.MatchJoin({user_id='different-owner'},join_body)end,7)
+real_match.authoritative=false
+real_match.label=Practice.label('practice-join-owner-relayed')
+denied(function()hooks.MatchJoin({user_id='practice-join-owner-relayed'},join_body)end,7)
+real_match.authoritative=true;real_match.handler_name='unrelated-module'
+real_match.label=Practice.label('practice-join-owner-handler')
+denied(function()hooks.MatchJoin({user_id='practice-join-owner-handler'},join_body)end,7)
+assert(writes==before_forged)
+print('PASS other owners relayed labels and unrelated handlers cannot spoof the private practice join policy')
+for _,id in ipairs({'gone','probe-error'})do
+ denied(function()hooks.MatchJoin({user_id='failed-probe'}, {match_join={match_id=id}})end,14)
+end
+assert(writes==before_forged)
+print('PASS expired or unavailable match probes fail closed without practice Storage changes')
+real_match={authoritative=true,handler_name='duel_match3',label='mode=duel_match3'}
+local normal={match_join={match_id='ordinary',metadata={practice=true,label=Practice.label('ordinary-join')}}}
+assert(hooks.MatchJoin({user_id='ordinary-join'},normal)==normal and writes==before_forged+1)
+print('PASS ordinary joins keep the durable budget despite forged client practice metadata')
+local writes_before_stress=writes
+for i=1,1100 do limit.consume_transient({user_id='ephemeral-'..i},'mutate')end
+now=now+120001
+for _=1,20 do limit.consume_transient({user_id='practice-join-owner'},'mutate')end
+denied(function()limit.consume_transient({user_id='practice-join-owner'},'mutate')end)
+assert(writes==writes_before_stress)
+print('PASS transient join budgets stay bounded across many accounts and expire inactive IDs')
 print("API rate limit security: shared budgets, flood/refill, 5-second polling, CAS interleavings, fail-closed storage, RPC/RT guards and match input filtering passed")

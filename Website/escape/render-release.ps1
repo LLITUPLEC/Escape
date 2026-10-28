@@ -7,8 +7,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$releaseVersion = '0.3.15'
-$releaseCode = 17
+$releaseVersion = '0.3.16'
+$releaseCode = 18
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $siteRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $distPath = Join-Path $siteRoot 'dist'

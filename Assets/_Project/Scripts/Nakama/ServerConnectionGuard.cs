@@ -21,6 +21,7 @@ namespace Project.Nakama
         private NakamaBootstrap _bootstrap;
         private float _nextAttempt;
         private bool _checking, _wasOnline, _lastOnline;
+        private bool _observedFailure;
         private Canvas _canvas;
         private RectTransform _banner;
         private TMP_Text _message;
@@ -92,15 +93,17 @@ namespace Project.Nakama
             {
                 if (Application.internetReachability == NetworkReachability.NotReachable)
                 {
+                    _observedFailure = true;
                     _lease.Revoke();
                     _bootstrap.InvalidateGameplaySocket(_bootstrap.Socket);
                     return;
                 }
                 if (!_bootstrap.IsReady) await _bootstrap.EnsureConnectedAsync(_lifetime.Token);
                 await ProbeAsync(_lifetime.Token);
+                if (_bootstrap.InitialSetupFailed) _ = Observe(_bootstrap.CompleteInitialSetupAsync(_lifetime.Token));
             }
             catch (OperationCanceledException) { }
-            catch { _lease.Revoke(); }
+            catch { _observedFailure = true; _lease.Revoke(); }
             finally { _checking = false; _nextAttempt = Time.realtimeSinceStartup + 4; }
         }
         private async Task ProbeAsync(CancellationToken ct)
@@ -125,10 +128,12 @@ namespace Project.Nakama
                 _bootstrap.AcceptGameplayPing(response.Payload);
                 if (!_bootstrap.GameplaySessionAllowed) throw new InvalidOperationException(UnavailableMessage);
                 _lease.Confirm(socket, Time.realtimeSinceStartupAsDouble);
+                _observedFailure = false;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { if (request != null) _ = Observe(request); throw; }
             catch
             {
+                _observedFailure = true;
                 _lease.Revoke();
                 if (request != null) _ = Observe(request);
                 _bootstrap.InvalidateGameplaySocket(socket);
@@ -140,7 +145,7 @@ namespace Project.Nakama
         private void UpdateBanner(bool force)
         {
             var tutorial = SceneManager.GetActiveScene().name == "Tutorial";
-            var visible = !tutorial && (!Available || force);
+            var visible = ShouldShowNotice(Available, force, _observedFailure, _wasOnline, tutorial);
             if (!visible && _banner == null) return;
             if (_banner == null)
             {
@@ -162,6 +167,8 @@ namespace Project.Nakama
                 _message.color = _wasOnline ? new Color32(255, 151, 128, 255) : ExpeditionTheme.Amber;
             }
         }
+        private static bool ShouldShowNotice(bool online, bool force, bool failed, bool wasOnline, bool tutorial) =>
+            !tutorial && (force || !online && (failed || wasOnline));
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset() { _instance = null; Changed = null; }
     }

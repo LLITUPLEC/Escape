@@ -1,0 +1,80 @@
+{
+  "passed": true,
+  "utc": "2026-10-27T22:35:49.3311214Z",
+  "scope": "Latest production-component native checks compiled by Unity 6000.3.9f1 in Edit mode; test DTOs, no network/account/PlayerPrefs writes.",
+  "groups": [
+    {
+      "name": "startup-and-tournament",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/client/startup-and-tournament.json",
+      "reportSha256": "3fdd6ff3cdea776c8915514cc1cdccb186a2f2028494c2eaf92222a226e69107",
+      "checks": 25
+    },
+    {
+      "name": "shelter-concept-c",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/shelter-concept-c/shelter-c-report.json",
+      "reportSha256": "b8e2a695cdb68cfa4c3c7254dcfb0136d7f1be289f5462ce173ad33c604f5de5",
+      "checks": 342
+    },
+    {
+      "name": "equipment-sets",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/equipment/native-set-qa.json",
+      "reportSha256": "767144e28fea51516e02475f9dcb8d1af5b15f47e40377af025d0998b1696102",
+      "checks": 2
+    },
+    {
+      "name": "workshop-quote-contract",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/equipment/native-quote-contract.json",
+      "reportSha256": "3d9b0548d5c28107062265d076fb9a891a033ac5d554d97ffc3cdf50fd64ea9e",
+      "checks": 18
+    },
+    {
+      "name": "global-boss-practice",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/client/boss-practice-ui.json",
+      "reportSha256": "c4b064ec4f6a31f4aa529090fb9cf244556b49086012402bf9137b64ee887781",
+      "checks": 12
+    },
+    {
+      "name": "global-boss-native-render",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/client/boss-native-render.json",
+      "reportSha256": "52974f75718b671c9d704aa4191a504cacb962ba19af45b4a92a3264ccb5019f",
+      "checks": 106
+    },
+    {
+      "name": "battle-and-monster-presentation",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/client/battle-and-monster-presentation.json",
+      "reportSha256": "91813841b3e076172e7932e98cd61c843c7c4a6694ccf1a774c17a91c22c3874",
+      "checks": 163
+    },
+    {
+      "name": "battle-entry-regressions",
+      "passed": true,
+      "report": "Design/Validation-2026-10-28/client/battle-entry.json",
+      "reportSha256": "835fa510ec5f98aeccd6ddf17646bcc5945c5f9314d759e22e0857a44aa4ba0e",
+      "checks": 5
+    }
+  ],
+  "integrationRun": ".cache/qa/local-polish/unity-final.log",
+  "subsequentQuoteRun": ".cache/qa/local-polish/unity-workshop-quote.log",
+  "runNote": "Seven groups passed in the final integration run. The quote fixture initially omitted its controller profile initialization; after fixing the fixture only, the separate quote-only native run passed all18 checks. No runtime source changes occurred between these runs.",
+  "retainedPublishedVersions": [
+    "0.3.15",
+    "0.3.14"
+  ],
+  "bundleVersion": "0.3.15",
+  "androidBundleVersionCode": 17,
+  "playerBuilt": false,
+  "websitePublished": false,
+  "selectedShelterConcept": "C",
+  "shelterViewportProfiles": 4,
+  "selectedNativeScreenshots": [
+    "Design/Validation-2026-10-28/shelter-concept-c/shelter-c-1080x1920.png",
+    "Design/Validation-2026-10-28/shelter-concept-c/shelter-c-1080x2400-safe.png"
+  ]
+}

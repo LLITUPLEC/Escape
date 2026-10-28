@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "floor10_rewards": { "normal": 12, "rare": 20, "epic": 28 },
+  "epic_effort_multiplier": 1.25,
+  "slots": {
+    "Helmet": { "recipe_floor": 1, "normal": 4, "rare": 60, "epic": 110 },
+    "Chest": { "recipe_floor": 2, "normal": 10, "rare": 150, "epic": 270 },
+    "Gloves": { "recipe_floor": 3, "normal": 18, "rare": 200, "epic": 350 },
+    "WeaponLeft": { "recipe_floor": 5, "normal": 80, "rare": 260, "epic": 460 },
+    "WeaponRight": { "recipe_floor": 6, "normal": 100, "rare": 290, "epic": 510 },
+    "Legs": { "recipe_floor": 7, "normal": 120, "rare": 320, "epic": 560 },
+    "Shoulders": { "recipe_floor": 9, "normal": 150, "rare": 380, "epic": 670 },
+    "Feet": { "recipe_floor": 11, "normal": 180, "rare": 420, "epic": 740 }
+  }
+}

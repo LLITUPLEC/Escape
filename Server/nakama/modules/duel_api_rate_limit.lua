@@ -107,6 +107,38 @@ function M.configure_maintenance(fn)
   M.maintenance = fn
 end
 
+-- Training has no durable admission or result. Its transport budget is also
+-- in memory: normal RPC maintenance could otherwise settle real pending loot.
+local transient_pools={}
+function M.consume_transient(ctx,group)
+    local policy=assert(POLICIES[group],"Unknown transient rate limit policy")
+    local uid=ctx and ctx.user_id
+    if type(uid)~="string"or uid==""then error({"authentication_required",16})end
+    local now=nk.time()
+    local pool=transient_pools[group]
+    if not pool then pool={buckets={},count=0};transient_pools[group]=pool end
+    local buckets=pool.buckets
+    -- Bound memory even across many accounts; inactive IDs expire after two
+    -- minutes, and a full pool evicts its oldest entry before admitting a new ID.
+    for key,b in pairs(buckets)do
+      if now-b.updated_ms>120000 then buckets[key]=nil;pool.count=pool.count-1 end
+    end
+    if not buckets[uid]and pool.count>=1024 then
+      local oldest,oldest_time
+      for key,b in pairs(buckets)do if not oldest_time or b.updated_ms<oldest_time then oldest,oldest_time=key,b.updated_ms end end
+      buckets[oldest]=nil;pool.count=pool.count-1
+    end
+    local bucket,retry=next_bucket(buckets[uid],policy,now)
+    if not bucket then reject(retry)end
+    if not buckets[uid]then pool.count=pool.count+1 end;buckets[uid]=bucket
+end
+function M.register_transient_rpc(fn,name)
+  nk.register_rpc(function(ctx,payload)
+    M.consume_transient(ctx,"mutate")
+    return fn(ctx,payload)
+  end,name)
+end
+
 -- A match has one serialized Lua state, shared by all its incoming sockets.
 -- Filter before JSON decoding, board simulation, snapshots, or storage work;
 -- never perform a database operation for individual board-selection messages.

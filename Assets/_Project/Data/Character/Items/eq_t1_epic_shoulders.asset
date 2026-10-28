@@ -25,7 +25,7 @@ MonoBehaviour:
   craftOre: 13820
   craftGold: 10390
   craftIngotDef: ingot_purple
-  craftIngotN: 220
+  craftIngotN: 670
   craftTesseractN: 0
   craftItemId: eq_t1_rare_shoulders
   craftMinutes: 180

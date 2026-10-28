@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "createdUtc": "2026-10-28T04:43:31.866027+00:00",
+  "backup": "/opt/escape/backups/pre-publication-0.3.16-20261028T044329Z",
+  "files": 94,
+  "bytes": 1421847,
+  "manifestSha256": "cefa39770eb42f64ec72d62500f1e37f6dafc4f2b900de78b5442e1c05ded066",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "seedPreserved": true,
+  "dumpBytes": 193318,
+  "dumpSha256": "0b77d53c93ded9bd3cf0195cc6a1800aebcf9d456d2e6cc87e845f24b8e22d2a",
+  "pgRestoreListVerified": true,
+  "fullFileManifestVerified": true,
+  "previous015PrechangeBackupPreserved": "/opt/escape/backups/runtime-release-20261027T223730Z",
+  "old014BackupRetainedUntilPublication": true,
+  "noRuntimeOrCatalogMutation": true,
+  "noApiOrDatabaseRestart": true,
+  "nakamaHealth": "healthy"
+}

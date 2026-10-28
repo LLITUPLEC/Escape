@@ -28,10 +28,11 @@ namespace Project.UI
         }
         [Serializable] public sealed class Entry
         {
-            public bool ok, is_global_boss, spent_token, resumed; public string err, event_id, attempt_id, match_id, bot_id, bot_name, bot_user_id;
+            public bool ok, is_global_boss, practice, spent_token, resumed; public string err, event_id, attempt_id, match_id, bot_id, bot_name, bot_user_id;
             public int attempts_left;
         }
         [Serializable] private sealed class EnterRequest { public string request_id, event_id; public int session_epoch; }
+        [Serializable] private sealed class PracticeRequest { public int session_epoch; }
         private static readonly SemaphoreSlim Gate = new(1, 1);
         private static string _scope, _error, _entryId, _entryEvent; private static State _state; private static bool _busy; private static double _received;
         public static event Action Changed;
@@ -46,7 +47,8 @@ namespace Project.UI
         }
         public static Task RefreshAsync(CancellationToken ct) => Request(false, ct);
         public static Task EnterAsync(CancellationToken ct) => Request(true, ct);
-        private static async Task Request(bool enter, CancellationToken ct)
+        public static Task PracticeAsync(CancellationToken ct) => Request(true, ct, true);
+        private static async Task Request(bool enter, CancellationToken ct, bool practice = false)
         {
             var expected = await MainThreadDispatcher.RunAsync(() => { Observe(); return _scope; }).ConfigureAwait(false);
             try { await Gate.WaitAsync(ct).ConfigureAwait(false); } catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
@@ -54,12 +56,16 @@ namespace Project.UI
             try
             {
                 boot = NakamaBootstrap.Instance; if (boot == null) return;
-                await ServerConnectionGuard.RequireAsync(ct).ConfigureAwait(false); session = boot.Session;
+                if (practice)
+                    await MainThreadDispatcher.RunAsync(() => { if (!boot.IsReady || !ServerConnectionGuard.CanPlay) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage); }).ConfigureAwait(false);
+                else await ServerConnectionGuard.RequireAsync(ct).ConfigureAwait(false);
+                session = boot.Session;
                 var request = await MainThreadDispatcher.RunAsync(() =>
                 {
                     Observe(); if (_scope == null || expected != null && expected != _scope || session == null) return null;
                     owner = _scope; _busy = true; _error = null; Changed?.Invoke();
                     if (!enter) return "{}";
+                    if (practice) return JsonUtility.ToJson(new PracticeRequest { session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
                     if (_entryId == null)
                     {
                         if (string.IsNullOrEmpty(_state?.event_id)) { _error = "Обновите событие перед входом."; return null; }
@@ -68,16 +74,17 @@ namespace Project.UI
                     return JsonUtility.ToJson(new EnterRequest { request_id = _entryId, event_id = _entryEvent, session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
                 }).ConfigureAwait(false);
                 if (request == null) return;
-                var result = await boot.Client.RpcAsync(session, enter ? "duel_global_boss_enter" : "duel_global_boss_get", request, canceller: ct).ConfigureAwait(false);
+                var result = await boot.Client.RpcAsync(session, practice ? "duel_global_boss_practice" : enter ? "duel_global_boss_enter" : "duel_global_boss_get", request, canceller: ct).ConfigureAwait(false);
                 await MainThreadDispatcher.RunAsync(() =>
                 {
                     if (!LocalAccountCacheScope.IsCurrent(owner) || !ReferenceEquals(session, boot.Session)) return;
                     if (enter)
                     {
                         var reply = JsonUtility.FromJson<Entry>(result?.Payload ?? "{}");
-                        if (reply == null || !reply.ok || !reply.is_global_boss || string.IsNullOrEmpty(reply.match_id) || string.IsNullOrEmpty(reply.attempt_id) || reply.event_id != _entryEvent || string.IsNullOrEmpty(reply.bot_user_id))
-                        { _error = Message(reply?.err); if (reply?.err == "weekly_attempts_exhausted" || reply?.err == "teleport_required" || reply?.err == "boss_unavailable" || reply?.err == "attempt_finished" || reply?.err == "event_changed") _entryId = _entryEvent = null; return; }
-                        _entryId = _entryEvent = null; Match3LaunchContext.ArmGlobalBoss(reply.match_id, reply.event_id, reply.attempt_id, reply.bot_user_id, reply.bot_name);
+                        if (reply == null || !reply.ok || !reply.is_global_boss || reply.practice != practice || string.IsNullOrEmpty(reply.match_id) || string.IsNullOrEmpty(reply.attempt_id) || string.IsNullOrEmpty(reply.event_id) || !practice && reply.event_id != _entryEvent || string.IsNullOrEmpty(reply.bot_user_id))
+                        { _error = Message(reply?.err); if (!practice && (reply?.err == "weekly_attempts_exhausted" || reply?.err == "teleport_required" || reply?.err == "boss_unavailable" || reply?.err == "attempt_finished" || reply?.err == "event_changed")) _entryId = _entryEvent = null; return; }
+                        if (!practice) _entryId = _entryEvent = null;
+                        Match3LaunchContext.ArmGlobalBoss(reply.match_id, reply.event_id, reply.attempt_id, reply.bot_user_id, reply.bot_name, practice);
                         SceneManager.LoadScene("DuelMatch3");
                     }
                     else
@@ -92,7 +99,7 @@ namespace Project.UI
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
             catch (Exception)
             {
-                if (owner != null) await MainThreadDispatcher.RunAsync(() => { if (LocalAccountCacheScope.IsCurrent(owner)) _error = enter ? "Вход ещё не подтверждён. Повторите кнопку: жетон второй раз не спишется." : "Нет связи с сервером. Обновите событие."; }).ConfigureAwait(false);
+                if (owner != null) await MainThreadDispatcher.RunAsync(() => { if (LocalAccountCacheScope.IsCurrent(owner)) _error = practice ? "Не удалось начать пробный бой. Повторите попытку — затраты отсутствуют." : enter ? "Вход ещё не подтверждён. Повторите кнопку: жетон второй раз не спишется." : "Нет связи с сервером. Обновите событие."; }).ConfigureAwait(false);
             }
             finally
             {
