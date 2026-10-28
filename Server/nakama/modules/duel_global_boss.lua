@@ -110,6 +110,7 @@ function M.refund(uid,attempt_id,why)
   return retry(function()
     local a,av=read(uid,M.ATTEMPT_COLLECTION,attempt_id);if not a then return false,"attempt_not_found"end
     if a.status=="refunded"then return true end
+    if why=="admission_cancelled"and a.battle_started==true then return false,"battle_already_started"end
     if a.player_actions and a.player_actions>0 then return false,"attempt_already_started"end
     local p,pv=read(uid,M.PLAYER_COLLECTION,a.event_id);assert(p,"boss_player_missing")
     local sheet=sheet_read(uid);local defs=item_defs()
@@ -121,6 +122,16 @@ function M.refund(uid,attempt_id,why)
     p.attempts_used=math.max(0,(p.attempts_used or 0)-1)
     if p.active_attempt_id==a.id then p.active_attempt_id=nil end
     nk.storage_write({op(uid,M.ATTEMPT_COLLECTION,a.id,a,av),op(uid,M.PLAYER_COLLECTION,a.event_id,p,pv),sheet_write(uid,sheet)})
+    return true
+  end)
+end
+function M.mark_started(uid,attempt_id)
+  return retry(function()
+    local a,av=read(uid,M.ATTEMPT_COLLECTION,attempt_id)
+    if not a or a.status~="bound"then return false,"attempt_finished"end
+    if a.battle_started then return true end
+    a.battle_started=true
+    nk.storage_write({op(uid,M.ATTEMPT_COLLECTION,a.id,a,av)})
     return true
   end)
 end
@@ -153,6 +164,11 @@ function M.practice_enter(uid,epoch)
     bot_id="global_boss",bot_user_id=bot,bot_name=cfg.name,spent_token=false,resumed=false}
 end
 function M.enter(uid,request_id,epoch,expected_event)
+  if deps.recover_match then
+    local previous=deps.recover_match(uid,epoch)
+    if not previous.ok then return previous end
+    if previous.active and not previous.is_global_boss then return{ok=false,err="match_in_progress",active_match=previous}end
+  end
   local e,err=M.event();if not e then return{ok=false,err=err}end
   if expected_event and expected_event~=e.id then return{ok=false,err="event_changed"}end
   if e.status~="active"or e.hp<=0 or os.time()>=e.ends_at then return{ok=false,err="boss_unavailable"}end

@@ -63,20 +63,33 @@ return function(deps)
     return resources(progress, uid, entry and "race_cancel" or "race_cancel_noop", entry,
       entry and -(entry.costs[1] and entry.costs[1].amount or 0) or 0)
   end)
-  api.duel_match3_race_create = rpc("duel_match3_race_create", function(uid)
+  api.duel_match3_race_create = rpc("duel_match3_race_create", function(uid,payload)
+    local p=payload
+    if p==nil or p==""then p={}elseif type(p)=="string"then p=nk.json_decode(p)end
+    if type(p)~="table"or(p.request_id~=nil and(type(p.request_id)~="string"or #p.request_id<1 or #p.request_id>80 or not p.request_id:match("^[%w_-]+$")))then return{ok=false,err="bad_payload"}end
+    if deps.recover_match then
+      local previous=deps.recover_match(uid,deps.Guard.read_metadata_epoch(uid))
+      if not previous.ok then return previous end
+      if previous.active then
+        if previous.pvp_race then previous.resumed=true;return previous end
+        return{ok=false,err="match_in_progress",active_match=previous}
+      end
+    end
     local paid, err = Entry.require_pending(uid)
     if not paid then return { ok = false, err = err } end
+    if p.request_id then local bound,why=Entry.bind_request(uid,p.request_id);if not bound then return{ok=false,err=why}end end
     local bot_id = "race_bot"
     local bot_user_id = deps.make_bot_user_id(bot_id)
     local names = { "Странник", "Тень", "Путник", "Эхо", "Скиталец" }
+    local bot_name=names[math.random(1,#names)]
     local mid = deps.try_match_create({
       mode = "pve", pvp_race = true, arena_pvp_style = true, owner_user_id = uid,
-      bot_id = bot_id, bot_user_id = bot_user_id, owner_level = 1,
+      bot_id = bot_id, bot_user_id = bot_user_id,bot_name=bot_name, owner_level = 1,
       owner_session_epoch = deps.Guard.read_metadata_epoch(uid),
-      pve_run = { floor = 1, difficulty = "easy", affix = "", stat_mul = 1, reward_mul = 0, arena_suppress_all = true },
+      pve_run = { floor = 1, difficulty = "easy", affix = "", stat_mul = 1, reward_mul = 0, arena_suppress_all = true,request_id=p.request_id },
     })
     if not mid or mid == "" then return { ok = false, err = "match_create_failed" } end
-    return { ok = true, match_id = mid, bot_id = bot_id, bot_name = names[math.random(1, #names)],
+    return { ok = true, match_id = mid, bot_id = bot_id, bot_name = bot_name,request_id=p.request_id,
       bot_user_id = bot_user_id, race_goal_mana = deps.race_goal_mana(nil) }
   end)
   local friend_deps = {}

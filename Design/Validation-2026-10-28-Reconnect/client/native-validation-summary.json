@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "scope": "Production-code native editor checks and native rendering; no physical Android device, player build or live account writes in these checks.",
+  "initialIntegrationUtc": "2026-10-28T16:49:31.7205898Z",
+  "uiFollowupUtc": "2026-10-28T17:04:30.6970944Z",
+  "integrationGroupsPassed": [
+    {
+      "name": "account-lifetime-and-wire",
+      "result": "PASS 44 recovery account/wire/lifetime checks; no network, account or preference writes. .cache/qa/reconnect-0317/account",
+      "error": "",
+      "passed": true
+    },
+    {
+      "name": "battle-reconnect-and-cancel",
+      "result": "PASS battle reconnect: 42 actual checkpoint/input/reveal/cancel checks; simulated5s/30s outages, no real account/network actions.",
+      "error": "",
+      "passed": true
+    },
+    {
+      "name": "startup-and-tournament-regressions",
+      "result": "Initial hydration and compact tournament footer",
+      "error": "",
+      "passed": true
+    },
+    {
+      "name": "battle-entry-regressions",
+      "result": "{\"passed\":true,\"networkActions\":false,\"accountWrites\":false,\"checkedMineReturns\":36,\"revealWaits\":2,\"checks\":[\"All 36 mine floor/difficulty returns survive consumed launch payload and repeated catalog refresh\",\"3D destination and account ownership are respected\",\"All 12 mine names follow monstr.txt; legacy server defaults migrate and administrative names survive\",\"Unknown opponent reveals actual named art; solid monster bounds cover the card and human crop restores afterwards\",\"Production reveal coroutine waits twice, blocks queued snapshots/turn-ready, then releases battle\"]}",
+      "error": "",
+      "passed": true
+    },
+    {
+      "name": "global-boss-practice-regressions",
+      "result": "PASS boss practice: 12 native DTO/dossier/outcome checks; no transport/account calls.",
+      "error": "",
+      "passed": true
+    },
+    {
+      "name": "preserved-appearance-mail-fixture",
+      "result": "Preserved informational unlock inbox and hero navigation",
+      "error": "",
+      "passed": true
+    }
+  ],
+  "uiFollowup": {
+    "passed": true,
+    "report": "../ui/ui-report.json",
+    "checks": 1401,
+    "shelterReport": "../ui/shelter-c-report.json",
+    "shelterChecks": 1114,
+    "viewportProfiles": 4
+  },
+  "groupsPassed": 7,
+  "note": "Six groups passed in the initial integration run. UI subsequently passed after correcting capture/test fixtures to synchronize production figures and measure visible SDF ink rather than transparent quad padding. Production reconnection code was unchanged.",
+  "physicalAndroidTested": false,
+  "gitCommitOrPushPerformed": false
+}

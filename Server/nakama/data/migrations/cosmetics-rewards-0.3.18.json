@@ -1,0 +1,27 @@
+{
+  "id": "cosmetics-rewards-v2",
+  "release": "0.3.18",
+  "record_collection": "duel_player_cosmetics",
+  "record_key": "appearance_v1",
+  "receipt_version": 2,
+  "strategy": "lazy_atomic_reconciliation",
+  "source_module": "duel_cosmetics_rewards.lua",
+  "previous_receipt": {"version": 1, "matter": 5, "hp_basis_points": 50},
+  "legacy_full_collection_matter_delta": 620,
+  "full_collection_matter_total": 665,
+  "full_collection_tesseract_total": 1,
+  "items": {"tesseract": "canonical_inventory_or_pending_loot"},
+  "manual_storage_writes_required": false,
+  "receipts_and_old_mail_preserved": true,
+  "rewards": {
+    "voidranger": {"matter":15,"hp_basis_points":100},
+    "stormforged": {"matter":30,"crit_basis_points":100},
+    "emberoracle": {"matter":30,"damage_basis_points":100},
+    "frostwraith": {"matter":50,"heal_basis_points":200},
+    "phoenix": {"matter":100,"hp_basis_points":200,"armor_basis_points":200},
+    "bookmaker": {"matter":50,"hp_basis_points":200},
+    "railwarden": {"matter":40,"hp_basis_points":200,"armor_basis_points":200},
+    "beastbreaker": {"matter":300,"hp_basis_points":500,"armor_basis_points":500,"heal_basis_points":500,"damage_basis_points":500},
+    "alchemist": {"matter":50,"tesseract":1,"heal_flat":300}
+  }
+}

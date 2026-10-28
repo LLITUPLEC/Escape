@@ -7,7 +7,7 @@ import shutil
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
-MEDIA = ROOT / 'Design/Release-0.3.15/media'
+MEDIA = ROOT / 'Docs/Art/MineRefresh'
 ASSETS = ROOT / 'Assets/_Project'
 NAMES = ['Острый скол', 'Ржавый гвоздь', 'Гнилой свищ', 'Крушило',
          'Сухой грохот', 'Мёртвый плывун', 'Чёрная копоть', 'Забой',

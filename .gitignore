@@ -29,6 +29,9 @@ Website/**/site-bundle*.zip
 
 # Unity user settings
 UserSettings/
+# Unity Performance package writes these generated build descriptors temporarily.
+Assets/Resources/PerformanceTestRunInfo.json*
+Assets/Resources/PerformanceTestRunSettings.json*
 
 # Generated solution/project files
 .utmp/

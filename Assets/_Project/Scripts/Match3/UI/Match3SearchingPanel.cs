@@ -203,6 +203,16 @@ namespace Project.Match3
 
         public void Hide() => gameObject.SetActive(false);
 
+        public void SetCancelState(string label, bool interactable)
+        {
+            cancelLabelText = string.IsNullOrEmpty(label) ? "Отмена" : label;
+            ResolveReferences();
+            if (cancelButton == null) return;
+            cancelButton.interactable = interactable;
+            var text = cancelButton.GetComponentInChildren<TMP_Text>(true);
+            if (text != null) text.text = cancelLabelText;
+        }
+
         /// <summary>Replace the unknown slot only after a server match has been joined.</summary>
         public void ShowReady(Sprite portrait, string opponentName, bool upperBody, string message)
         {

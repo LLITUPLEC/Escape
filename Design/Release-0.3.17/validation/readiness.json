@@ -1,0 +1,120 @@
+{
+  "scope": "historical-prepublication-candidate-not-final-index",
+  "checkedUtc": "2026-10-28T17:16:12.724016+00:00",
+  "mode": "working-tree-candidate",
+  "head": "cede5c422dfb11df48817efd332e843baf86a362",
+  "branch": "main",
+  "remoteRefreshed": false,
+  "cachedOriginRelation": "0\t0",
+  "rawReport": ".cache/qa/reconnect-0317/readiness/candidate.json",
+  "rawReportSha256": "05f19fee0c502b81a5022b543f9176abcab816d9409e0a9af1d97f1205807db8",
+  "candidateFiles": 122,
+  "candidateBytes": 19634390,
+  "securityReviewPassed": true,
+  "finalIndexAudited": false,
+  "readyForFinalIndex": false,
+  "privateNamedFiles": [],
+  "largeFilesAtLeast50MiB": [],
+  "conflictedPaths": [],
+  "mergeMarkerFindings": [],
+  "ignoredTracked": [],
+  "secretPatternReview": [
+    {
+      "path": "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+      "line": 71,
+      "kind": "literal-secret-assignment",
+      "classification": "false-positive-preference-key-constant",
+      "symbol": "PrefSavedEmailPassword",
+      "evidence": "Constant is passed to PlayerPrefs.HasKey/DeleteKey; it names legacy storage and is not a credential value",
+      "valuesPrinted": false
+    }
+  ],
+  "generatedReview": [
+    {
+      "path": "Assets/Resources/PerformanceTestRunInfo.json",
+      "bytes": 3072,
+      "sha256": "56978d1d8bcfcfb386d743258ba03558e0a39d924360cf96ac0eff2a834ff897",
+      "classification": "transient-active-Unity-build-output",
+      "generator": "com.unity.test-framework.performance TestRunBuilder.OnPreprocessBuild",
+      "cleanup": "TestRunBuilder.OnPostprocessBuild/Cleanup deletes both JSONs and metadata",
+      "frozenInput": false
+    },
+    {
+      "path": "Assets/Resources/PerformanceTestRunInfo.json.meta",
+      "bytes": 158,
+      "sha256": "8ac76544141b3e1c6ef0600223b9125bc6554dedb1b216e55c4de155c8e39462",
+      "classification": "transient-active-Unity-build-output",
+      "generator": "com.unity.test-framework.performance TestRunBuilder.OnPreprocessBuild",
+      "cleanup": "TestRunBuilder.OnPostprocessBuild/Cleanup deletes both JSONs and metadata",
+      "frozenInput": false
+    },
+    {
+      "path": "Assets/Resources/PerformanceTestRunSettings.json",
+      "bytes": 23,
+      "sha256": "600c5c3dab7e18e51c28aad096457da91fcf60a3eedd908b6bf30194dae2b55b",
+      "classification": "transient-active-Unity-build-output",
+      "generator": "com.unity.test-framework.performance TestRunBuilder.OnPreprocessBuild",
+      "cleanup": "TestRunBuilder.OnPostprocessBuild/Cleanup deletes both JSONs and metadata",
+      "frozenInput": false
+    },
+    {
+      "path": "Assets/Resources/PerformanceTestRunSettings.json.meta",
+      "bytes": 158,
+      "sha256": "0a79b4edab44ded94ca69c5ff2486c091966c533d7a951857d99e0797addfe38",
+      "classification": "transient-active-Unity-build-output",
+      "generator": "com.unity.test-framework.performance TestRunBuilder.OnPreprocessBuild",
+      "cleanup": "TestRunBuilder.OnPostprocessBuild/Cleanup deletes both JSONs and metadata",
+      "frozenInput": false
+    }
+  ],
+  "postBuildFollowup": "Confirm the four performance build outputs are auto-removed and run the final exact-index readiness audit; no source/output was deleted or changed by this audit.",
+  "oldReleaseLiveInputs": {
+    "release": "0.3.15",
+    "matchingLiveCodeInputs": 0,
+    "searchRoots": [
+      "Tools",
+      "Assets/_Project/Editor",
+      "Server/nakama/tests",
+      "Server/nakama/data"
+    ],
+    "classification": "No live dependency found; remaining Website README mention is historical previous release metadata",
+    "retainedStableInputs": [
+      "Docs/Art/MineRefresh/art-manifest.json",
+      "Docs/Art/MineRefresh/generated-utility-art.json",
+      "Docs/Art/MineRefresh/installed-art.json",
+      "Docs/Art/ShelterIcons/art-manifest.json",
+      "Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json"
+    ],
+    "validation": [
+      {
+        "command": "Tools/Art/validate_mine_refresh.py",
+        "passed": true
+      },
+      {
+        "command": "Tools/Art/validate_shelter_art.py",
+        "passed": true
+      },
+      {
+        "command": "Tools/Balance/audit_smith_tournament_v2.py",
+        "passed": true
+      }
+    ]
+  },
+  "clientSnapshot": {
+    "files": 2083,
+    "manifestSha256": "5f563e267b33a0acf9049d520acd04ae18714354862fdd895ea6a51dc4ee4667",
+    "performanceGeneratedInputsPresent": false
+  },
+  "actions": {
+    "readOnly": true,
+    "sourceEdits": false,
+    "staged": false,
+    "committed": false,
+    "pushed": false,
+    "deleted": false
+  },
+  "limitations": [
+    "This is a historical working-tree candidate taken while the APK build is active, not the final staged/index review.",
+    "Secret patterns are heuristics; binary image inputs are inventoried and hashed rather than decoded for credentials."
+  ]
+}

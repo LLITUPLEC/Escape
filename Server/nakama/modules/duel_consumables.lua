@@ -86,6 +86,21 @@ function M.new(d)
     nk.logger_error("consumables use: "..tostring(result));return nk.json_encode({ok=false,err="storage_unavailable"})
   end
 
+  -- The reveal may show the equipped effect, but cannot spend its armed receipt.
+  -- Ready/first accepted gameplay commits the actual CAS binding below.
+  function C.preview_match(state,users)
+    if not Effects.eligible(state)then return true end
+    local preview={}
+    for _,uid in ipairs(users or{})do if d.is_human(uid)then
+      local sheet=d.read_sheet(uid);local data=Effects.normalize(sheet);local arm=data.armed or{}
+      local receipt={item_id=arm.item_id or"",activation_id=arm.activation_id or""}
+      if state.mode=="pve"and Effects.bounty_multiplier(data.bounty,os.time())>1 then receipt.bounty=data.bounty end
+      preview[uid]=receipt
+    end end
+    state._consumable_preview=preview
+    return true
+  end
+
   -- Called only once the real battle is ready to begin, never during match_create
   -- or matchmaking. Both human Pro participants claim in one atomic CAS batch.
   function C.bind_match(state, users)
@@ -133,7 +148,7 @@ function M.new(d)
     return true
   end
   function C.apply_match(state)
-    for uid,receipt in pairs(state._consumable_bindings or {}) do Effects.apply(state.stats[uid],receipt) end
+    for uid,receipt in pairs(state._consumable_bindings or state._consumable_preview or {}) do Effects.apply(state.stats[uid],receipt) end
   end
   return C
 end

@@ -12,6 +12,7 @@ namespace Project.Match3
 
         [Header("Visual")]
         [SerializeField] private Sprite icon;
+        [SerializeField] private Sprite avatar;
         [SerializeField] private Sprite frameEasy;
         [SerializeField] private Sprite frameMedium;
         [SerializeField] private Sprite frameHard;
@@ -21,6 +22,8 @@ namespace Project.Match3
         public string DisplayName => displayName;
         public int Floor => floor;
         public Sprite Icon => icon;
+        /// <summary>Dedicated square battle/medal portrait; Icon remains the complete creature.</summary>
+        public Sprite Avatar => avatar;
 
         public Sprite GetFrame(string difficulty, bool isBoss)
         {

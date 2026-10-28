@@ -52,7 +52,7 @@ def main():
         shared=ROOT/"Server/nakama/modules/duel_mine_recipe_drops.lua"
         report["shared_actual_pve_drop_table_sha256"]=hashlib.sha256(shared.read_bytes()).hexdigest()
         report["recipe_policy_version"]=3
-    out=ROOT/"Design/Release-0.3.15/validation/balance"
+    out=ROOT/".cache/qa/balance/smith"
     out.mkdir(parents=True,exist_ok=True)
     (out/"smith-balance.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     lines=["Кузнечный турнир "+version, "", "Цвет | Взнос | Чемпион: слитки + новый рецепт | Если доступного нового рецепта нет | Проигрыш"]

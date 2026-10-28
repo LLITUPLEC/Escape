@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Липкий ломун"
   floor: 10
   icon: {fileID: 21300000, guid: 71e96b640dca1da40a397e8e80b63da5, type: 3}
+  avatar: {fileID: 21300000, guid: c1ea435b6cf0540ca592cca33371e0da, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

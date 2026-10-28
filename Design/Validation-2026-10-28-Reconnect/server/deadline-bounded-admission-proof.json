@@ -1,0 +1,22 @@
+{
+  "before_runtime_sha256": "a8605fb955cc61015cd626aa3ef9fb3fa1c6b5c7c007c8f4ea9fefbd077a41c3",
+  "final_stage": "release0317-validation-d4673ded3afd",
+  "runtime_delta": [
+    {
+      "file": "runtime/duel_match3.lua",
+      "before_sha256": "5033bd0e8db95026c0d4a581a8c3e1eec7015ea4337470ff7820b3667214b81b",
+      "after_sha256": "9b28e5317bd5b6ea00e7b2395ecbfb9e44736b65da4e58ad20f8e8a1e61eef9a"
+    }
+  ],
+  "actual_core_failure_proof_sha256": "8bba833382721d615741ee23b58de38086099a8a1d6086adbb7fe2c8f02eaee1",
+  "local_fixed_suite_passed": 828,
+  "added_actual_core_cases": [
+    "joined stale reveal reaches the existing twenty-second deadline",
+    "refund CAS failure retains retry state",
+    "global boss refund happens before boss loop routing",
+    "played and arena routes retain their existing behavior"
+  ],
+  "new_wire_fields": false,
+  "client_api_changes": false,
+  "production_changed": false
+}

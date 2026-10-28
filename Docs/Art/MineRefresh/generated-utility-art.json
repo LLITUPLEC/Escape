@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-27",
+  "mode": "built-in image_gen",
+  "assets": [
+    {
+      "id": "tesseract",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-338c40b0-c372-4227-9d9a-34a5dba74e2d.png",
+      "destination": "Assets/_Project/Resources/Expedition/Items/tesseract.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game inventory resource sprite. Primary request: one beautiful mysterious tesseract artifact for a dark fantasy underground mining game. A luminous cyan-violet inner cube suspended inside a tilted outer cube made of ancient dark bronze and obsidian struts, connected corners form an impossible four-dimensional hypercube projection, small red amber mineral inclusions, readable distinctive nested-cube silhouette. Detailed hand-painted semi-realistic sculpted fantasy game icon, elegant contained magical radiance, no large glow cloud. Centered isometric three-quarter view, entire artifact visible with 12% padding. True transparent background. No scene, ground, letters, frame, labels, text or watermark. Square output."
+    },
+    {
+      "id": "health-red",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-8a9ac32d-a93b-4f4b-ac6b-43e04dd904d0.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/health-red.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game stat icon in a dark fantasy mine RPG. Primary request: a single unmistakable red-rose pink anatomical-symbol HEART, a simple classic symmetrical heart silhouette, faceted polished ruby with sculpted depth, small rose highlights, slim weathered dark bronze beveled edge matching fantasy equipment icon art. Bold readable silhouette at 24 pixels, not a real anatomical organ. Centered, fills 80% canvas, true transparent background, one object only. No UI tile, background, halo, text, watermark or extra objects. Square output."
+    },
+    {
+      "id": "healing-cross",
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a17de6-3069-7a13-8c65-7deb2cbadbb4\\exec-89efbf7a-66d8-4997-96a6-52844db863d3.png",
+      "destination": "Assets/_Project/Resources/Expedition/Icons/healing-cross.png",
+      "prompt": "Use case: stylized-concept. Asset type: final mobile game stat icon in a dark fantasy mine RPG. Primary request: one clearly readable pharmacy/medical healing PLUS CROSS, four equal short wide arms, fresh emerald green enamel and jade sculpted stone face with a slim weathered dark bronze beveled edge, softly lit ivory-green highlights, same sculpted semi-realistic game icon family as ruby heart. Bold simple silhouette clearly readable at24 pixels. Centered fills80% canvas, true transparent background. No heart, no UI tile, no backdrop, no halo, no text, no watermark, one object only. Square output."
+    }
+  ]
+}

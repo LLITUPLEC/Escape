@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse, hashlib, json, re, tarfile, uuid
 ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--version',default='0.3.16')
+parser.add_argument('--version',default='0.3.18')
 parser.add_argument('--output-dir',type=Path,default=ROOT/'.cache/release-work/backend')
 args=parser.parse_args()
 assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',args.version)

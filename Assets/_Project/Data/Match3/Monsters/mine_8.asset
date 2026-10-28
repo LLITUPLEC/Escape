@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Забой"
   floor: 8
   icon: {fileID: 21300000, guid: 9a1f717556f5ee249ae9beaf6d6d7ecf, type: 3}
+  avatar: {fileID: 21300000, guid: bd11ab0b66cd5c6da8bf204837c7a42a, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

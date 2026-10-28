@@ -15,6 +15,8 @@ import subprocess
 import sys
 import time
 from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 ROOT = Path('/opt/escape')
@@ -37,6 +39,47 @@ def verify_runtime_pins(before, tested, expected_runtime=None, expected_tested=N
     if expected_tested and tested['sha256'] != expected_tested:
         raise RuntimeError('Tested manifest differs from the pinned candidate; no deployment')
     return digest
+
+
+def wait_for_api_readiness(timeout_seconds=75, poll_seconds=2, request_timeout_seconds=5):
+    """A healthy Nakama container can precede Nginx Docker-DNS cache recovery."""
+    if timeout_seconds <= 0 or poll_seconds <= 0 or request_timeout_seconds <= 0:
+        raise ValueError('Readiness timeouts must be positive')
+    targets = {'gateway': 'http://127.0.0.1:27350/healthcheck',
+               'public': 'https://prokrust-play.ru/healthcheck'}
+    deadline = time.monotonic() + timeout_seconds
+    statuses = dict.fromkeys(targets, 'not_checked')
+    attempts = 0
+    while time.monotonic() < deadline:
+        attempts += 1
+        statuses = dict.fromkeys(targets, 'not_checked')
+        for label, url in targets.items():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                request = Request(url, headers={'Cache-Control': 'no-cache', 'User-Agent': 'Escape-DeployReadiness'})
+                with urlopen(request, timeout=min(request_timeout_seconds, remaining)) as response:
+                    statuses[label] = response.status if response.geturl() == url else 'redirected'
+            except HTTPError as error:
+                statuses[label] = error.code
+            except (URLError, TimeoutError, OSError):
+                statuses[label] = 'unavailable'
+        if all(status == 200 for status in statuses.values()):
+            print('PASS API readiness: gateway=200 public=200; attempts=' + str(attempts), flush=True)
+            return {'attempts': attempts, 'statuses': statuses}
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(poll_seconds, remaining))
+    raise RuntimeError('Escape API readiness timed out: gateway=' + str(statuses['gateway'])
+                       + ' public=' + str(statuses['public']))
+
+
+def run_post_restart_checks():
+    # Waiting never substitutes for, retries, or ignores a failed security check.
+    wait_for_api_readiness()
+    subprocess.run(['python3', 'security_smoke.py', '--url', 'https://prokrust-play.ru'], check=True)
+    subprocess.run(['python3', 'dashboard_smoke.py'], check=True)
 
 
 def restore_catalog_if_unchanged(console, migration, backup_path):
@@ -300,6 +343,7 @@ def main():
             else:
                 raise RuntimeError('Nakama healthcheck timed out')
             if migration:
+                wait_for_api_readiness()
                 # Activate the safety guard while prices are still old. Only a
                 # proven new guard may precede the higher-price CAS; never let
                 # the old runtime observe new prices even for a restart window.
@@ -324,8 +368,7 @@ def main():
                 while time.monotonic() < expires:
                     time.sleep(max(0, min(2, expires - time.monotonic())))
                 print('PASS catalog cache TTL30seconds elapsed after CAS', flush=True)
-            subprocess.run(['python3', 'security_smoke.py', '--url', 'https://prokrust-play.ru'], check=True)
-            subprocess.run(['python3', 'dashboard_smoke.py'], check=True)
+            run_post_restart_checks()
             (ROOT / 'deployed-runtime-manifest.json').write_text(json.dumps(tested, indent=2))
             print('PASS deployed tested runtime; Escape Nakama healthy; backup=' + str(backup), flush=True)
         except BaseException:

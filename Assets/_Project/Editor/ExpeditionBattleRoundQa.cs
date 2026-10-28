@@ -69,7 +69,7 @@ namespace Project.Editor
                 Require(report, hud.RoundNumber == 0 && string.IsNullOrEmpty(hud.roundText.text) && !hud.roundText.gameObject.activeSelf,
                     "Legacy boss snapshot does not invent a historical round");
                 report.passed = true;
-                const string path = "Design/Release-0.3.15/media/validation/battle-round-hud-qa.json";
+                const string path = ".cache/qa/mine-refresh/battle-round-hud-qa.json";
                 Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
                 return "PASS battle round HUD: " + report.checks + " actual manager/BoardSync/label checks across " + string.Join(", ", report.modes) + "; no network/account actions.";
             }

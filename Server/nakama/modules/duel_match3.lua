@@ -29,7 +29,19 @@ Runtime.RateLimit.configure_maintenance(function() Runtime.StorageMaintenance.ma
 Runtime.Presence = runtime_lua_require("modules.duel_match3_presence", "duel_match3_presence")
 Runtime.Lifecycle = runtime_lua_require("modules.duel_match3_lifecycle", "duel_match3_lifecycle")
 Runtime.MatchLifecycle = Runtime.Lifecycle.new({guard=Guard.assert_client_epoch_matches,
-  forfeit=function(...)return Runtime.forfeit_match(...)end})
+  forfeit=function(...)return Runtime.forfeit_match(...)end,
+  cancel=function(...)return Runtime.Prestart.cancel(...)end,
+  cancel_request=function(uid,request_id)
+    local ok,err,receipt,progress=Runtime.PveEntry.cancel_request(uid,request_id)
+    if err~="admission_not_found"then return ok,err,receipt,progress end
+    return Runtime.RaceEntry.cancel_request(uid,request_id)
+  end,
+  energy_max=function(...)return Runtime.resume_energy_max(...)end,
+  current_progression=function(uid)return Runtime.cancel_progression(uid)end,
+  refund_state=function(...)return Runtime.PveEntry.refund_state(...)end,
+  request_id=function(state,uid)return Runtime.request_for_match(state,uid)end,
+  resolve_cancel=function(uid,epoch)return Runtime.Resume.recover(uid,epoch,{})end,
+})
 Runtime.Cosmetics = runtime_lua_require("modules.duel_player_cosmetics", "duel_player_cosmetics")
 Runtime.Shop = runtime_lua_require("modules.duel_shop", "duel_shop")
 Runtime.Mail = runtime_lua_require("modules.duel_mail", "duel_mail")
@@ -111,6 +123,13 @@ Runtime.emit_game_over = function(dispatcher, state, payload)
 end
 
 Runtime.retry_pending_results = function(dispatcher, state, tick)
+  if state._prestart_cancel_pending then
+    if tick >= (state._next_result_retry_tick or 0)then
+      state._next_result_retry_tick=tick+CFG.TICK_RATE
+      Runtime.Prestart.cancel(dispatcher,state,state._prestart_cancel.user_id)
+    end
+    return state._prestart_cancel_pending==true or state._terminal_pending==true
+  end
   if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result and not state._terminal_pending then return false end
   if tick >= (state._next_result_retry_tick or 0) then
     state._next_result_retry_tick = tick + CFG.TICK_RATE
@@ -2000,6 +2019,7 @@ end
 --- Владелец PvE отключился: убрать зависание на turn_deadline_paused (ожидание OP 17 с клиента).
 local function on_pve_owner_socket_gone(state, tick)
   if state.mode ~= "pve" or state.owner_user_id == nil or state.owner_user_id == "" then return end
+  if state._prestart_pending==true then return end
   if state.turn_deadline_paused == true then
     state.turn_deadline_paused = false
     state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
@@ -2732,7 +2752,8 @@ end
 --- Единый JSON ответ duel_character_* (инвентарь + мастерская).
 local function encode_character_ok_response(sheet, progress, user_id)
   ensure_sheet_inventory_counts(sheet)
-  local stats = CharStats.compute_character_display_stats(user_id, sheet)
+  local stats, cosmetics_inventory_changed = CharStats.compute_character_display_stats(user_id, sheet)
+  if cosmetics_inventory_changed then sheet = Runtime.readCharacterSnapshot(user_id) end
   progress = Runtime.readProgressSnapshot(user_id) -- Late-bound: cosmetics may credit the wallet; the local reader is defined below this closure.
   local eq_arr, inv_arr, inv_cnt_arr = character_sheet_payload_arrays(sheet)
   local wo, we = workshop_payload_arrays(sheet)
@@ -3743,6 +3764,16 @@ local function duel_match3_pve_create(ctx, payload)
     end
     local epoch = Guard.read_metadata_epoch(uid)
     local request = payload and payload ~= "" and nk.json_decode(payload) or {}
+    if not Runtime.ResumeModule.valid_request(request.request_id)then return nk.json_encode({ok=false,err="bad_payload"})end
+    local previous=Runtime.Resume.recover(uid,epoch,{})
+    if not previous.ok then return nk.json_encode(previous)end
+    if previous.active then
+      if previous.mode=="pve"and not previous.is_global_boss and not previous.pvp_race and previous.arena_tournament_id==""then
+        previous.resumed=true;previous.energy=read_pve_progress(uid).energy;previous.energy_max=pve_energy_max_for_user(uid)
+        return nk.json_encode(previous)
+      end
+      return nk.json_encode({ok=false,err="match_in_progress",active_match=previous})
+    end
     local requested_id = tostring(request.bot_id or mine_bot_id_for_floor(1))
     local diff = normalize_mine_difficulty(request.difficulty)
     local requested_floor = CFG.clamp_int(request.floor or parse_floor_from_bot_id(requested_id), 1, CFG.PVE_MAX_LEVEL)
@@ -3751,7 +3782,8 @@ local function duel_match3_pve_create(ctx, payload)
     local floor = CFG.clamp_int(bot.floor or requested_floor, 1, CFG.PVE_MAX_LEVEL)
     local costs = PveMineCost.normalize(bot.cost_attack, PveMineCost.DEFAULT_ATTACK)
     local metadata = { bot_id = bot.id, floor = floor, difficulty = diff,
-      request_key = tostring(bot.id) .. ":" .. diff .. ":" .. floor .. ":" .. epoch }
+      request_id=request.request_id,
+      request_key = tostring(bot.id) .. ":" .. diff .. ":" .. floor .. ":" .. epoch ..(request.request_id and ":"..request.request_id or"") }
     local valid_err
     local paid, err, entry, progress = Runtime.PveEntry.reserve(uid, costs, metadata, function(fresh)
       fresh.mine = fresh.mine or {}
@@ -3784,7 +3816,8 @@ local function duel_match3_pve_create(ctx, payload)
       match_id = try_match_create({ mode = "pve", owner_user_id = uid, bot_id = bot.id,
         bot_user_id = make_bot_user_id(bot.id), owner_level = progress.level or 1, owner_session_epoch = epoch,
         pve_run = { floor = floor, difficulty = diff, affix = meta.affix or "",
-          stat_mul = mine_stat_multiplier(diff), reward_mul = mine_reward_multiplier(diff), launch_token = entry.token } })
+          stat_mul = mine_stat_multiplier(diff), reward_mul = mine_reward_multiplier(diff), launch_token = entry.token,
+          request_id=meta.request_id } })
     end
     if not match_id or match_id == "" then
       local refunded, refund_err, receipt, updated = Runtime.PveEntry.refund_launch(uid, entry.token, "match_create_failed")
@@ -3807,7 +3840,7 @@ local function duel_match3_pve_create(ctx, payload)
     end
     return nk.json_encode({ ok = true, match_id = match_id, bot_id = bot.id, bot_name = bot.name,
       bot_user_id = make_bot_user_id(bot.id), floor = floor, difficulty = diff, affix = meta.affix or "",
-      energy = progress.energy, energy_max = pve_energy_max_for_user(uid) })
+      energy = progress.energy, energy_max = pve_energy_max_for_user(uid),request_id=meta.request_id })
   end)
   if not ok then nk.logger_error("duel_match3_pve_create: " .. tostring(result)); return nk.json_encode({ ok = false, err = "server_error" }) end
   return result
@@ -3826,6 +3859,7 @@ local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3
   current_level_from_xp = current_level_from_xp,
   build_resource_payload = build_resource_payload,
   race_goal_mana = race_goal_mana,
+  recover_match=function(...)return Runtime.Resume.recover(...)end,
 })
 Runtime.RaceEntry = RaceApi.Entry
 Runtime.Recovery = runtime_lua_require("modules.duel_match3_recovery", "duel_match3_recovery").new({
@@ -4812,6 +4846,7 @@ local function match_init(context, params)
     owner_user_id = params and params.owner_user_id or nil,
     owner_session_epoch = tonumber(params and params.owner_session_epoch or 0) or 0,
     bot_id = params and params.bot_id or mine_bot_id_for_floor(1),
+    bot_name = params and(params.bot_name or params.bot_display_name)or nil,
     bot_user_id = params and params.bot_user_id or make_bot_user_id(params and params.bot_id or mine_bot_id_for_floor(1)),
     owner_level = tonumber(params and params.owner_level or 1) or 1,
     presences = {},
@@ -4819,6 +4854,7 @@ local function match_init(context, params)
     stats = {},
     board = nil,
     started = false,
+    _prestart_pending = not(params and params.arena_mirror),
     ended = false,
     active_user_id = nil,
     turn_deadline_tick = 0,
@@ -4865,14 +4901,27 @@ local function match_init(context, params)
     assert(bound, err)
   end
 
+  local tracked,track_error=Runtime.Resume.track(state)
+  assert(tracked,track_error)
   local admitted,admission_err=Runtime.admit_journal_tickets(state)
   assert(admitted,admission_err)
+  if state.pvp_race then
+    local users={}
+    if state.mode=="pve"then users={state.owner_user_id,state.bot_user_id}
+    else for uid in pairs(state.invited)do users[#users+1]=uid end;table.sort(users)end
+    local paid,why=RaceApi.Entry.claim(users,state.stats_result_id,state.match_id,state._journal_tickets)
+    assert(paid,why)
+  end
   return state, CFG.TICK_RATE, state.global_boss and state.global_boss.practice==true
     and Runtime.GlobalBoss.practice_label(state.owner_user_id)or "mode=duel_match3"
 end
 
 local function match_join_attempt(context, dispatcher, tick, state, presence, metadata)
   if state.ended then return state, false, "ended" end
+  if metadata and metadata.session_epoch~=nil and Runtime.Resume then
+    local _,resumed=Runtime.Resume.signal(dispatcher,state,tick,{user_id=presence.user_id,session_epoch=metadata.session_epoch})
+    if not resumed.ok then return state,false,resumed.err end
+  end
   local allowed, reason = Runtime.Presence.can_rejoin(state, presence, tick)
   if not allowed then return state, false, reason end
 
@@ -4899,6 +4948,10 @@ local function match_join_attempt(context, dispatcher, tick, state, presence, me
 end
 
 local function match_join(context, dispatcher, tick, state, presences)
+  if Runtime.Resume then
+    local tracked=Runtime.Resume.track(state,presences)
+    if not tracked then dispatcher.match_kick(presences);return state end
+  end
   Runtime.Presence.join(state, presences, dispatcher)
   if state.global_boss then return Runtime.BossBattle.join(dispatcher,state,tick) end
   -- Any admitted participant gets the full state, including overlap replacement.
@@ -5075,7 +5128,7 @@ local function match_join(context, dispatcher, tick, state, presences)
         state.bot_turn_ready_tick = 0
       end
       if not state.pvp_race and state.arena_mirror == nil and not pve_run.arena_suppress_all then
-        local consumed, err = Runtime.Consumables.bind_match(state, {player_id})
+        local consumed, err = Runtime.Consumables.preview_match(state, {player_id})
         if not consumed then
           nk.logger_warn("PvE start deferred: " .. tostring(err))
           state.ended = true; dispatcher.match_kick(presences); return nil
@@ -5149,7 +5202,7 @@ local function match_join(context, dispatcher, tick, state, presences)
     state.turn_deadline_paused = true
     state.turn_pause_started_tick = tick
     state.turn_deadline_tick = tick
-    local bound,bind_error = Runtime.Consumables.bind_match(state,state.players_sorted)
+    local bound,bind_error = Runtime.Consumables.preview_match(state,state.players_sorted)
     if not bound then
       nk.logger_warn("Battle start deferred: "..tostring(bind_error));state.ended=true;dispatcher.match_kick(presences);return nil
     end
@@ -5215,6 +5268,9 @@ end
 -- Socket OP12 and the acknowledged HTTP signal use the very same result path.
 -- Never treat an unstarted public duel as a played victory or grant a free prize.
 Runtime.forfeit_match = function(dispatcher,state,uid,reason)
+  if Runtime.Prestart and state._prestart_pending==true and state.arena_mirror==nil then
+    return Runtime.Prestart.cancel(dispatcher,state,uid)
+  end
   if state.global_boss then return Runtime.BossBattle.finish(dispatcher,state,state._boss_tick or 0,reason) end
   if state.ended then return end
   state.ended=true
@@ -5264,6 +5320,20 @@ local function match_leave(context, dispatcher, tick, state, presences)
 end
 
 local function match_loop(context, dispatcher, tick, state, messages)
+  if state._prestart_cancel then
+    if Runtime.retry_pending_results(dispatcher,state,tick)then return state end
+    if state._terminal_delivered then return nil end
+    return state
+  end
+  -- A joined reveal is not a played battle. Stale ownership or a deferred
+  -- ready must not bypass the same bounded admission policy, including bosses.
+  if state._prestart_pending==true and not state.ended and state.arena_mirror==nil
+      and tick>=(state.join_deadline_tick or math.huge)then
+    Runtime.Prestart.cancel(dispatcher,state,state.owner_user_id)
+    if Runtime.retry_pending_results(dispatcher,state,tick)then return state end
+    if state._terminal_delivered then return nil end
+    return state
+  end
   if state.global_boss then state._boss_tick=tick;return Runtime.BossBattle.loop(dispatcher,state,tick,messages) end
   if state.ended then
     if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
@@ -5314,6 +5384,12 @@ local function match_loop(context, dispatcher, tick, state, messages)
           sender_ok = true
         end
         if sender_ok then
+          if Runtime.Resume and Runtime.Resume.stale(state,m.sender.user_id)then
+            send_reject(dispatcher,m.sender,"session_stale")
+          else
+          local committed=true
+          if Runtime.Prestart then committed=Runtime.Prestart.commit(state,tick)end
+          if committed then
           state.turn_deadline_paused = false
           state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
           if state.mode == "pve" and state.active_user_id == state.bot_user_id then
@@ -5321,16 +5397,22 @@ local function match_loop(context, dispatcher, tick, state, messages)
             state.bot_turn_ready_tick = tick + bot_think_delay_ticks(state, state.bot_long_think_next == true)
             state.bot_long_think_next = false
           end
+          end
           broadcast_sync(dispatcher, state, nil, false, nil, tick, nil)
+          end
         end
       end
     end
     if m.op_code == CFG.OP_PLAYER_LEFT and state.started and not state.ended
         and state.presences[m.sender.user_id] ~= nil
         and (state.players_sorted[1] == m.sender.user_id or state.players_sorted[2] == m.sender.user_id) then
+      if Runtime.Resume and Runtime.Resume.stale(state,m.sender.user_id)then
+        send_reject(dispatcher,m.sender,"session_stale")
+      else
       Runtime.forfeit_match(dispatcher,state,m.sender.user_id,"player_left")
       if Runtime.retry_pending_results(dispatcher, state, tick) then return state end
       return nil
+      end
     end
 
     if m.op_code == CFG.OP_SNAPSHOT_REQUEST then
@@ -5362,6 +5444,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         and state.owner_user_id ~= ""
         and m.sender.user_id == state.owner_user_id
         and Guard.is_epoch_stale_for_match(m.sender.user_id, state.owner_session_epoch)
+      stale_pve=stale_pve or(Runtime.Resume and Runtime.Resume.stale(state,m.sender.user_id))
       if stale_pve then
         send_reject(dispatcher, m.sender, "session_stale")
       else
@@ -5370,6 +5453,11 @@ local function match_loop(context, dispatcher, tick, state, messages)
       if not valid then
         send_reject(dispatcher, m.sender, reason)
       else
+        local committed=true
+        if Runtime.Prestart then committed=Runtime.Prestart.commit(state,tick)end
+        if not committed then
+          send_reject(dispatcher,m.sender,"battle_start_pending")
+        else
         local actor_id = m.sender.user_id
         local opp_id = other_player_id(state, actor_id)
         local actor_stats = state.stats[actor_id]
@@ -5390,6 +5478,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
         else
           finish_turn_and_broadcast(dispatcher, state, action, extra_turn, keep_turn, tick, CFG.TICK_RATE, anim_steps)
         end
+        end
       end
       end
     end
@@ -5397,6 +5486,7 @@ local function match_loop(context, dispatcher, tick, state, messages)
 
   if state.started and not state.ended and state.turn_deadline_paused and state.turn_pause_started_tick
       and tick >= state.turn_pause_started_tick + (CFG.TURN_READY_TIMEOUT_SECONDS or 8) * CFG.TICK_RATE then
+    if Runtime.Prestart and not Runtime.Prestart.commit(state,tick)then return state end
     state.turn_deadline_paused = false
     state.turn_deadline_tick = tick + turn_seconds_for_state(state) * CFG.TICK_RATE
     if state.mode == "pve" and state.active_user_id == state.bot_user_id then
@@ -5521,15 +5611,25 @@ local function match_terminate(context, dispatcher, tick, state, grace_seconds)
 end
 
 local function match_signal(context, dispatcher, tick, state, data)
+  local decoded,recovery=pcall(nk.json_decode,data)
+  if decoded and type(recovery)=="table"and recovery.kind=="duel_recover"then
+    local current,response=Runtime.Resume.signal(dispatcher,state,tick,recovery)
+    return current,nk.json_encode(response)
+  end
   if state.global_boss then
     local ok,p=pcall(nk.json_decode,data)
-    if state.global_boss.practice==true and ok and type(p)=="table"and p.kind=="duel_forfeit"and p.user_id==state.owner_user_id then
-      Runtime.BossBattle.finish(dispatcher,state,tick,"player_surrender")
-      return state,nk.json_encode({ok=state._terminal_delivered==true,accepted=true,terminal=state._terminal_delivered==true,end_reason="player_surrender"})
+    if state.global_boss.practice==true and ok and type(p)=="table"and(p.kind=="duel_forfeit"or p.kind=="duel_cancel")and p.user_id==state.owner_user_id then
+      if state._prestart_pending then Runtime.Prestart.cancel(dispatcher,state,p.user_id)
+      elseif p.kind=="duel_cancel"then return state,nk.json_encode({ok=false,err="battle_already_started"})
+      else Runtime.BossBattle.finish(dispatcher,state,tick,"player_surrender")end
+      return state,nk.json_encode({ok=state._terminal_delivered==true,accepted=true,terminal=state._terminal_delivered==true,
+        practice=true,
+        match_cancelled=state._terminal_payload and state._terminal_payload.matchCancelled==true,
+        end_reason=state._terminal_payload and state._terminal_payload.endReason or"player_surrender"})
     end
     if ok and type(p)=="table"and p.kind=="boss_resume"and p.user_id==state.owner_user_id then
-      state.owner_session_epoch=tonumber(p.session_epoch)or state.owner_session_epoch
-      return state,nk.json_encode({ok=true})
+      local current,response=Runtime.Resume.signal(dispatcher,state,tick,p)
+      return current,nk.json_encode(response)
     end
   end
   return Runtime.MatchLifecycle.signal(dispatcher,state,data)
@@ -5591,6 +5691,8 @@ CharStats.configure({
   aura_apply_to_pve_player_stats = ServerAura.apply_to_pve_player_stats,
   cosmetics_hp_bonus = function(uid)return Runtime.Cosmetics.passive_hp_bonus(uid)end,
   cosmetics_hp_bonus_read_only = function(uid)return Runtime.Cosmetics.passive_hp_bonus_read_only(uid)end,
+  cosmetics_bonuses = function(uid)return Runtime.Cosmetics.passive_bonuses(uid)end,
+  cosmetics_bonuses_read_only = function(uid)return Runtime.Cosmetics.passive_bonuses_read_only(uid)end,
   read_stats_snapshot = function(uid)
     local rows=nk.storage_read({{collection=CFG.STATS_COLLECTION,key=CFG.STATS_KEY,user_id=uid}})
     assert(type(rows)=="table","practice_stats_unavailable");return rows[1]and decode_storage_value(rows[1])or{}
@@ -5603,6 +5705,8 @@ CharStats.configure({
   end,
 })
 
+Runtime.Cosmetics.configure({get_defs=get_merged_item_defs})
+Runtime.readCharacterSnapshot=read_character_sheet
 Runtime.Daily=runtime_lua_require("modules.duel_daily","duel_daily")
 Runtime.Daily.configure({read_progress=read_pve_progress,read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
   build_sheet_write=Runtime.build_character_sheet_write,build_progress_write=Runtime.build_pve_progress_write,
@@ -5617,15 +5721,49 @@ Runtime.Mail.configure({read_progress=read_pve_progress,read_sheet=read_characte
   guard_epoch=Guard.assert_client_epoch_matches})
 Runtime.GlobalBoss.configure({read_sheet=read_character_sheet,get_defs=get_merged_item_defs,
   build_sheet_write=Runtime.build_character_sheet_write,try_match_create=try_match_create,
+  recover_match=function(...)return Runtime.Resume.recover(...)end,
   guard_epoch=Guard.assert_client_epoch_matches,mail=Runtime.Mail})
+Runtime.resume_energy_max=pve_energy_max_for_user
+Runtime.cancel_progression=function(uid)return build_progression_payload_auto(read_pve_progress(uid),uid)end
+Runtime.request_for_match=function(state,uid)
+  if state.pvp_race then return Runtime.RaceEntry.request_id(uid,state.stats_result_id,state.match_id)end
+  return(state.pve_run or{}).request_id
+end
+Runtime.current_match_epoch=function(uid)
+  local account=nk.account_get_id(uid)
+  assert(account and account.user,"session_account_unavailable")
+  local raw=(account.user.metadata or{})[CFG.SESSION_EPOCH_ACCOUNT_META]
+  if raw==nil then return 0 end
+  local epoch=tonumber(raw);assert(epoch and epoch>=0 and epoch==math.floor(epoch),"invalid_session_epoch")
+  return epoch
+end
+Runtime.ResumeModule=runtime_lua_require("modules.duel_match3_resume","duel_match3_resume")
+Runtime.Resume=Runtime.ResumeModule.new({guard=Guard.assert_client_epoch_matches,lifecycle=Runtime.Lifecycle,
+  presence=Runtime.Presence,epoch=Runtime.current_match_epoch,bot_profile=get_bot_profile,
+  boss_event=Runtime.GlobalBoss.get_event,
+  request_id=Runtime.request_for_match,
+  expire=function(...)return Runtime.forfeit_match(...)end,
+  grace_ticks=function(state)return math.floor((state.arena_mirror and(CFG.ARENA_RECONNECT_GRACE_SECONDS or 20)or CFG.RECONNECT_GRACE_SECONDS)*CFG.TICK_RATE+.5)end,
+  recover_entries=function(uid)return Runtime.Recovery.maybe_recover(uid,{force=true})end})
+Runtime.Prestart=runtime_lua_require("modules.duel_match3_prestart","duel_match3_prestart").new({
+  consumables=Runtime.Consumables,pve=Runtime.PveEntry,race=RaceApi.Entry,boss=Runtime.GlobalBoss,
+  can_start=function(state)
+    for _,uid in ipairs(state.players_sorted or{})do
+      if Ach.is_human(uid)and Runtime.Resume.stale(state,uid)then return false,"session_stale"end
+    end
+    return true
+  end,
+  energy_max=pve_energy_max_for_user,progress=read_pve_progress,tick_rate=CFG.TICK_RATE,emit=Runtime.emit_game_over})
 Runtime.BossBattle.configure({api=Runtime.GlobalBoss,CFG=CFG,new_stats=new_stats,new_board=init_board,
   ensure_board=ensure_active_board_has_valid_swaps,init_cheat_rows=init_cheat_rows,ensure_queue=ensure_spawn_queue,
+  allow_cheat_rows=is_user_allowed_for_cheat_rows,
   update_cheat_rows=update_cheat_rows_from_board,read_sheet=read_character_sheet,effects=Runtime.ConsumableEffects,
   apply_player=function(actor,uid,practice)CharStats.apply_player_combat_stats_from_sheet(actor,uid,{aura=ServerAura.get_active(),read_only=practice==true})end,
   choose=choose_bot_action,validate=validate_action_basic,resolve=resolve_action,action_cost=action_mana_cost,
   tick_buffs=tick_buffs_end_turn,tick_cooldowns=tick_cooldowns,parse=parse_action,
   broadcast=broadcast_sync,reject=send_reject,emit=Runtime.emit_game_over,
-  stale=function(state)return Guard.is_epoch_stale_for_match(state.owner_user_id,state.owner_session_epoch)end,
+  commit_prestart=function(state,tick)return Runtime.Prestart.commit(state,tick)end,
+  stale=function(state)return Runtime.Resume.stale(state,state.owner_user_id)or Guard.is_epoch_stale_for_match(state.owner_user_id,state.owner_session_epoch)end,
   filter_messages=function(state,messages,tick,dispatcher)
     return Runtime.RateLimit.filter_match_messages(state,Runtime.Presence.filter_messages(state,messages),nk.time(),
       function(presence,reason)send_reject(dispatcher,presence,reason)end)
@@ -5658,6 +5796,8 @@ Runtime.RateLimit.register_rpc(Runtime.GlobalBoss.rpc_leaderboard,"duel_global_b
 Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_get,"duel_player_guidance_get")
 Runtime.RateLimit.register_rpc(Runtime.Guidance.rpc_set,"duel_player_guidance_set")
 Runtime.RateLimit.register_rpc(Runtime.MatchLifecycle.rpc,"duel_match3_forfeit")
+Runtime.RateLimit.register_rpc(Runtime.MatchLifecycle.cancel_rpc,"duel_match3_cancel")
+Runtime.RateLimit.register_rpc(Runtime.Resume.rpc,"duel_match3_recover")
 Runtime.RateLimit.register_rpc(Runtime.Daily.rpc_claim,"duel_daily_claim")
 Runtime.RateLimit.register_rpc(Runtime.Consumables.rpc_get,"duel_consumables_get")
 Runtime.RateLimit.register_rpc(Runtime.Consumables.rpc_use,"duel_consumables_use")

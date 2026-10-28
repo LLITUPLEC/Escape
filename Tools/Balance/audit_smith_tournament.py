@@ -54,7 +54,7 @@ def main():
                "expected_entries_for_final_hp_step": threshold / p,
                "expected_ingots_for_final_hp_step": fee * threshold / p} for p in (1 / slots, .25, .5, 1)]
     tests = ROOT / "Server/nakama/tests/arena_concurrency_audit.lua"
-    aggregate_path = ROOT / "Design/Release-0.3.15/validation/balance/blacksmith-production-aggregate.json"
+    aggregate_path = ROOT / ".cache/qa/balance/smith/blacksmith-production-aggregate.json"
     aggregate = json.loads(aggregate_path.read_text()) if aggregate_path.exists() else None
     report = {
         "generated_utc": datetime.now(timezone.utc).isoformat(),
@@ -92,7 +92,7 @@ def main():
         ],
         "sources_sha256": {str(path.relative_to(ROOT)).replace('\\','/'): hashlib.sha256(path.read_bytes()).hexdigest() for path in (server, tests, ROOT / "Server/nakama/data/duel_match3_item_defs.json", ROOT / "Server/nakama/data/achievement_catalog.example.json")},
     }
-    out = ROOT / "Design/Release-0.3.15/validation/balance"
+    out = ROOT / ".cache/qa/balance/smith"
     out.mkdir(parents=True, exist_ok=True)
     (out / "blacksmith-tournament-audit.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = ["Турнир кузнеца: аудит привлекательности", "", "Вывод: вход дорогой относительно практической награды; одни достижения с далёкими порогами слабо компенсируют расход материалов для крафта.", "", "Вход и базовый приз чемпиона:"]

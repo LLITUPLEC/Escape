@@ -90,11 +90,11 @@ namespace Project.Editor
                 checks.Add("Account switch and sign-out clear within SynchronizeAccount; old responses and old generations remain rejected even after returning to the same account.");
                 var mixed=new[]{new FriendListEntry{UserId="in",State=FriendRelationState.InviteReceived},new FriendListEntry{UserId="in",State=FriendRelationState.InviteReceived},new FriendListEntry{UserId="out",State=FriendRelationState.InviteSent},new FriendListEntry{UserId="mutual",State=FriendRelationState.Mutual},new FriendListEntry{UserId="blocked",State=FriendRelationState.Blocked},null};
                 Require(FriendsIncomingInviteState.CountIncoming(mixed)==1,"Outgoing/mutual/blocked/duplicate entries inflate pending count.");
-                state.Publish(scope,state.Generation,123);Require(badge.GetComponentsInChildren<TMP_Text>().Any(t=>t.text=="99+"),"Large counts are not compacted.");
+                state.Publish(scope,state.Generation,123);Require(badge.GetComponentsInChildren<TMP_Text>().Any(t=>t.text=="123"),"The actual three-digit count is missing.");
                 badge.enabled=false;badge.enabled=true;Require(badge.PendingCount==123&&badge.IsVisible,"Enable/disable lost a live binding.");
                 FriendsNavigationBadge.BindState(button,state);button.onClick.Invoke();Require(clickCount==1,"Binding duplicates or replaces the existing open action.");
-                Require(badge.BadgeRect.sizeDelta==new Vector2(52,48)&&badge.BadgeRect.anchoredPosition==new Vector2(-10,-8),"Badge geometry differs from AchievementNavigationBadge.");
-                checks.Add("Only distinct incoming state2 IDs count; compact99+; enable/rebind preserves live state and the existing button action; amber52x48 achievement style, all non-raycast and unclipped.");
+                Require(badge.BadgeRect.sizeDelta.x>60&&badge.BadgeRect.sizeDelta.y==44&&badge.BadgeRect.anchoredPosition==new Vector2(-10,-8)&&badge.BadgeRect.GetComponent<ExpeditionGoldCountGraphic>()!=null,"Three-digit badge does not use its adaptive gold bevel.");
+                checks.Add("Only distinct incoming state2 IDs count; actual123; enable/rebind preserves live state and the existing button action; adaptive gold bevel, all non-raycast and unclipped.");
                 checks.Add("URP render request or built-in Camera.Render produced non-blank whole1080x1920 frames; only the disposable scene's layer31 is visible.");
                 report.passed=true;
             }

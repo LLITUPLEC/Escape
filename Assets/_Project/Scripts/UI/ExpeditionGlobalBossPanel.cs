@@ -65,7 +65,8 @@ namespace Project.UI
             _contribution=Label(panel,"Contribution","",20,.06f,.096f,.94f,.123f);
             _enter=ExpeditionUi.Button(panel,"EnterRift","ВОЙТИ · 1 ЖЕТОН",.055f,.052f,.70f,.095f,()=>{if(_fixture==null)_=GlobalBossService.EnterAsync(_cts.Token);},true,28);_enterLabel=_enter.GetComponentInChildren<TMP_Text>();
             ExpeditionUi.Button(panel,"BuyToken","МАГАЗИН",.72f,.052f,.947f,.095f,()=>ExpeditionShopPanel.Open(transform.parent),false,22);
-            _practice=ExpeditionUi.Button(panel,"PracticeRift","ПРОБНЫЙ БОЙ · БЕЗ НАГРАД И ЗАТРАТ",.055f,.008f,.947f,.047f,()=>{if(_fixture==null)_=GlobalBossService.PracticeAsync(_cts.Token);},false,22);
+            _practice=ExpeditionUi.Button(panel,"PracticeRift","ПРОБНЫЙ БОЙ · БЕЗ НАГРАД И ЗАТРАТ",.045f,.002f,.957f,.049f,()=>{if(_fixture==null)_=GlobalBossService.PracticeAsync(_cts.Token);},false,25);
+            var practiceLabel=_practice.GetComponentInChildren<TMP_Text>();practiceLabel.color=ExpeditionTheme.Amber;practiceLabel.fontStyle=FontStyles.Bold;
             _status=Label(transform,"BossStatus","",20,.05f,.012f,.78f,.052f);
             ExpeditionUi.Button(transform,"RefreshEvent","Обновить",.80f,.012f,.95f,.052f,()=>{if(_fixture==null){_=GlobalBossService.RefreshAsync(_cts.Token);if(_participants)LoadRanking(_cursor);}},false,19);
             SelectTab(false);

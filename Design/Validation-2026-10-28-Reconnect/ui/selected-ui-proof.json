@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "selectedUtc": "2026-10-28T17:08:24.478677+00:00",
+  "release": "0.3.17",
+  "reports": [
+    {
+      "file": "ui-report.json",
+      "source": ".cache/qa/reconnect-0317/ui/ui-report.json",
+      "checks": 1401,
+      "sha256": "ee3efe73a380af78052e809dafd8d2abf6ea1d97b987ac7904f32dca1c1d6773",
+      "passed": true
+    },
+    {
+      "file": "shelter-c-report.json",
+      "source": ".cache/qa/reconnect-0317/ui/shelter-c-report.json",
+      "checks": 1114,
+      "sha256": "18961a3e4acc0fc39bc4f7656f41865e98ad69fed6533640adf68524290006ff",
+      "passed": true
+    },
+    {
+      "file": "account-report.json",
+      "source": ".cache/qa/reconnect-0317/account/account-report.json",
+      "checks": 44,
+      "sha256": "aa184197ceba8ac01792fcc4877b40409d2ac826c53b8faf1b6c954d20f7ec9c",
+      "passed": true
+    }
+  ],
+  "selectedPngs": [
+    {
+      "file": "shelter-badges-125.png",
+      "source": ".cache/qa/reconnect-0317/ui/shelter-c-1080x1920-badge125.png",
+      "sha256": "9760d2670f447f592528478ecd8a76ff549180383f7e3245c5e8089937e507ac",
+      "bytes": 3187392,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false,
+      "note": "Presentation stress125 for numeric glyph width/ink; daily eligibility remains server-controlled and this is not a public gallery screen"
+    },
+    {
+      "file": "combat-costs-120.png",
+      "source": ".cache/qa/reconnect-0317/ui/ability-costs-120-1920.png",
+      "sha256": "b8087bbe7a86dd56f9617df37c83e6de3528a0a878b03b886925de66edb26c1e",
+      "bytes": 2556567,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false,
+      "note": "Presentation stress for three-digit live costs and actual body pixels; normal costs used by public battle screen"
+    },
+    {
+      "file": "shelter-safe-1080x2400.png",
+      "source": ".cache/qa/reconnect-0317/ui/shelter-c-1080x2400-safe.png",
+      "sha256": "dea313159e5da66af9c79da3c58721cffeda2b1852717b82aa2efe60e7219fb0",
+      "bytes": 3779764,
+      "width": 1080,
+      "height": 2400,
+      "pixelsModified": false,
+      "note": "Tall-phone safe-area profile with trusted3/3/3 example counts"
+    }
+  ],
+  "publicPngs": "Design/Release-0.3.17/screens/provenance.json",
+  "renderer": "Native Unity6000.3.9f1 production components with offline DTO fixtures",
+  "networkActions": false,
+  "physicalPhoneTested": false,
+  "pixelsModified": false,
+  "otherNativeImagesRemainReproducibleCache": true
+}

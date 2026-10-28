@@ -12,6 +12,7 @@ namespace Project.Match3
         private RawImage _portrait;
         private Sprite _lastSprite;
         private Sprite _fullBodySprite;
+        private Sprite _avatarSprite, _avatarBodySprite;
         private float _headCenterX = .5f;
         private bool _localPlayer;
 
@@ -38,6 +39,18 @@ namespace Project.Match3
             view.Refresh(true);
         }
 
+        /// <summary>Use a separately authored portrait in the header while preserving the scene figure's body sprite.</summary>
+        public static void MarkAvatar(Image source, Sprite avatar)
+        {
+            if (source == null) return;
+            var view = ExpeditionUi.Ensure<ExpeditionBattlePortrait>(source.gameObject);
+            view._source = source;
+            view._localPlayer = false;
+            view._avatarSprite = avatar;
+            view._avatarBodySprite = source.sprite;
+            view.Refresh(true);
+        }
+
         public void Bind(Image source)
         {
             _source = source;
@@ -59,7 +72,8 @@ namespace Project.Match3
         {
             if (_source == null || _portrait == null) return;
             _source.enabled = false;
-            var selectedAvatar = _localPlayer ? Project.Character.CharacterAppearance.Avatar() : null;
+            var selectedAvatar = _localPlayer ? Project.Character.CharacterAppearance.Avatar()
+                : _source.sprite == _avatarBodySprite ? _avatarSprite : null;
             var sprite = selectedAvatar != null ? selectedAvatar : _source.sprite;
             if (!force && sprite == _lastSprite) return;
             _lastSprite = sprite;
@@ -67,7 +81,7 @@ namespace Project.Match3
             if (sprite == null) return;
             var region = sprite.textureRect;
             var crop = new Rect(.04f, .04f, .92f, .92f);
-            if (_localPlayer ? selectedAvatar == null : sprite == _fullBodySprite)
+            if (selectedAvatar == null && (_localPlayer || sprite == _fullBodySprite))
             {
                 const float height = .28f;
                 var width = Mathf.Min(1, height * 1.05f * region.height / region.width);

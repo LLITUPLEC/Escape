@@ -1,0 +1,63 @@
+{
+  "utc": "2026-10-28T21:41:07.370696+00:00",
+  "runtime_sha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2",
+  "runtime_files": 69,
+  "suite_sha256": "9d4700159f42db758d16776cd2e3cf1f44b44d7936f9815183068f1b99d53036",
+  "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "scenarios": {
+    "all": {
+      "exit_code": 0,
+      "seconds": 718.8,
+      "checks": 812,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    },
+    "recovery": {
+      "exit_code": 0,
+      "seconds": 72.0,
+      "checks": 64,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "resumeLog": "isolated-recovery-resume-20261028T215757300524Z-ffaac1de.log",
+      "reportSha256": "8a5a5b5c9239776b951284a24dd3a4346a61ad109538d61147341b18b10edc72"
+    },
+    "global-boss": {
+      "exit_code": 0,
+      "seconds": 71.2,
+      "checks": 37,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "resumeLog": "isolated-global-boss-resume-20261028T215757300524Z-ffaac1de.log",
+      "reportSha256": "8e0b981860bba607915f7a0c6ad7d6cc05fed512f9948b70394d02e5df989fa8"
+    },
+    "cosmetics": {
+      "exit_code": 0,
+      "seconds": 25.4,
+      "checks": 32,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "resumeLog": "isolated-cosmetics-resume-20261028T215757300524Z-ffaac1de.log",
+      "reportSha256": "fe28e1d892c0eb98c347ae03b6959cdb12764ed4636235776854959ca2eff233"
+    },
+    "reconnect-0317": {
+      "exit_code": 0,
+      "seconds": 131.6,
+      "checks": 32,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "resumeLog": "isolated-reconnect-0317-resume-20261028T215757300524Z-ffaac1de.log",
+      "reportSha256": "70dc6c7aa5d39a66a9391b37e5dd582670712203150137e5e33c37120e6abbd2"
+    }
+  },
+  "resumeEvidence": "/opt/escape/release0318-validation-4183773c5184/resume-evidence-20261028T215757300524Z-ffaac1de",
+  "resumeDriverSha256": "e8d190e0ac49f54fc472c1ce7731561a97788b520958370564d4ef06b39a1bc2",
+  "production_runtime_after_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "success": true
+}

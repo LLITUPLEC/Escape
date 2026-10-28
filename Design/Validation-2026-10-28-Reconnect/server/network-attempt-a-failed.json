@@ -1,0 +1,34 @@
+{
+  "stage": "release0317-validation-41d30b908a76",
+  "original_result_preserved": true,
+  "network_summary": {
+    "utc": "2026-10-28T16:51:45.350032+00:00",
+    "runtime_sha256": "d8ccf6796638be97f55e89c85762ef7f85f9cf9f22011a718b3a83e28f3a21c2",
+    "runtime_files": 68,
+    "suite_sha256": "b1db3f2ff23d3e2c3335d2d4d30e7a06d7264f33e977dd0aac70ad2b9a8bb335",
+    "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+    "production_runtime_changed": false,
+    "production_runtime_before_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+    "scenarios": {
+      "all": {
+        "exit_code": 1,
+        "seconds": 673.9,
+        "checks": 707,
+        "failed": 1,
+        "errors": [],
+        "tested_runtime_matches_final_candidate": true
+      }
+    },
+    "success": false,
+    "production_runtime_after_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653"
+  },
+  "failed_assertions": [
+    {
+      "passed": false,
+      "check": "fourth weekly boss attack is rejected without charging a fourth teleport"
+    }
+  ],
+  "qualification": "Fixture omitted OP17 for weekly boss attempt3, so the correct new prestart cancellation refunded that attempt. The real-ready fixture was corrected; weekly quota assertion stayed exact.",
+  "raw_report_sha256": "3a65e5d909c792b380aa533099936f7ee731d7bedc94ea059c954372c7649736",
+  "production_runtime_unchanged": true
+}

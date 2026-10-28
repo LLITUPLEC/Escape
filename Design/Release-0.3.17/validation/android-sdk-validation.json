@@ -1,0 +1,98 @@
+{
+  "owner": "Escape.Tools.Release.prepare-android-sdk",
+  "checked_utc": "2026-10-28T16:12:14.4913659Z",
+  "passed": true,
+  "project": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape",
+  "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk",
+  "sources_read_only": true,
+  "junctions_or_symlinks": false,
+  "source_bytes_preserved": true,
+  "sdkmanager": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\cmdline-tools\\latest\\bin\\sdkmanager.bat",
+  "sdkmanager_invoked": false,
+  "installs_or_license_acceptance": false,
+  "lint_disabled": false,
+  "platform_api_level": 36,
+  "cmake_version": "3.22.1",
+  "copied_files": 0,
+  "reused_files": 14625,
+  "file_count": 14625,
+  "bytes": 469708091,
+  "disk_free_bytes_before": 89736138752,
+  "disk_free_bytes_after": 89736138752,
+  "components": [
+    {
+      "component": "cmdline-tools/latest",
+      "source": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.0.81f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\cmdline-tools\\16.0",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\cmdline-tools\\latest",
+      "file_count": 107,
+      "bytes": 165567044,
+      "content_sha256": "7eceacf6add647b5985f9babadce9916b7309387e4557ce42f01d5c17759ebdb"
+    },
+    {
+      "component": "build-tools/36.0.0",
+      "source": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\build-tools\\36.0.0",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\build-tools\\36.0.0",
+      "file_count": 169,
+      "bytes": 143241305,
+      "content_sha256": "7478e6890aef0b451062c1002764cf757d58cd5e6cdd671d77bffc846ffde604"
+    },
+    {
+      "component": "platforms/android-36",
+      "source": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\platforms\\android-36",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\platforms\\android-36",
+      "file_count": 11342,
+      "bytes": 106177284,
+      "content_sha256": "14d6be0f84f2f79458cd875629e0d577e8078116da35b614915115a8c0af6797"
+    },
+    {
+      "component": "platform-tools",
+      "source": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\platform-tools",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\platform-tools",
+      "file_count": 14,
+      "bytes": 15373885,
+      "content_sha256": "0061cd118b0ce728fd5dadf2966a614b14595a135dce6e06e7d9bf9778a7d769"
+    },
+    {
+      "component": "licenses",
+      "source": "C:\\Users\\ProKrust\\AppData\\Local\\Android\\Sdk\\licenses",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\licenses",
+      "file_count": 2,
+      "bytes": 84,
+      "content_sha256": "7781fe9d8d94f8e375daed5ad81c4a5d6df199c39d9eaad6aa5447edbe619af6"
+    },
+    {
+      "component": "cmake/3.22.1",
+      "source": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\cmake\\3.22.1",
+      "destination": "C:\\Users\\ProKrust\\Desktop\\Develope\\Escape\\.cache\\android-sdk\\cmake\\3.22.1",
+      "file_count": 2991,
+      "bytes": 39348489,
+      "content_sha256": "cfdbbac29352b3175cc778ede7ced1e8a1a721307276f2b05089f05924b87000"
+    }
+  ],
+  "generated_metadata_preserved": [
+    {
+      "sha256": "36d5f926a9cb816228d173bd24e43730fd9df0b90018e6f44488e7cbed17b93b",
+      "relative": ".knownPackages",
+      "bytes": 16
+    },
+    {
+      "sha256": "bb75816b1a74a840a9c226db0845796f1d2739510152a38aa8b7122e285192de",
+      "package": "build-tools;36.0.0",
+      "relative": "build-tools/36.0.0/package.xml",
+      "bytes": 1433
+    },
+    {
+      "sha256": "4d622f5247b6f9c2f9fb3e75e8d5e15c0fd876b2c312ebab03303eea4b417333",
+      "package": "platform-tools",
+      "relative": "platform-tools/package.xml",
+      "bytes": 1432
+    },
+    {
+      "sha256": "2110f8ec9c213a77e287e4e92d89e28dd770e4377c24350758cbddebb75de9f3",
+      "package": "platforms;android-36",
+      "relative": "platforms/android-36/package.xml",
+      "bytes": 1655
+    }
+  ],
+  "note": "Installed cmdline-tools16.0 copied completely under latest, plus installed CMake3.22.1; accepted license files reused from an existing SDK. No global SDK changes, SDK package installation, or Unity invocation."
+}

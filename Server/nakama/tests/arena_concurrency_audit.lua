@@ -631,5 +631,17 @@ do
   local g,o=api.final_prize_for_winner("audit","user-1","gold","600");assert(g==0 and o==0)
   pass("both absent finalists are eliminated without awarding or advertising a free champion prize")
 end
+do
+  reset("qf");local api=instance()
+  local T=get("arena_tournament","audit");local pr=T.qf[1]
+  T.parts["zz-bot-bracket"]={display="Горняк турнира",bot=true}
+  pr.uid_b,pr.bot_b,pr.display_a,pr.display_b="zz-bot-bracket",true,"Ник из сетки","Горняк турнира"
+  pr.status,pr.match_id="pending",""
+  assert(poll(api).ok and creates==1)
+  assert(last_setup.bot_name==pr.display_b and last_setup.bot_user_id==pr.uid_b)
+  assert(last_setup.arena_mirror.uid_a==pr.uid_a and last_setup.arena_mirror.uid_b==pr.uid_b)
+  assert(last_setup.arena_mirror.display_a==pr.display_a and last_setup.arena_mirror.display_b==pr.display_b)
+  pass("spawned tournament bot and recovery mirror preserve both bracket identities without a mine nickname")
+end
 os.time = original_time
 print("arena_concurrency_audit: " .. count .. " invariants passed")

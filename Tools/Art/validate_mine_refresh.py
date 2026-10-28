@@ -7,7 +7,7 @@ import re
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
-MEDIA = ROOT / 'Design/Release-0.3.15/media'
+MEDIA = ROOT / 'Docs/Art/MineRefresh'
 NAMES = ['Острый скол', 'Ржавый гвоздь', 'Гнилой свищ', 'Крушило',
          'Сухой грохот', 'Мёртвый плывун', 'Чёрная копоть', 'Забой',
          'Слепой бурав', 'Липкий ломун', 'Тихий шорох', 'Жила']
@@ -71,8 +71,9 @@ def main():
                                          monsters12Bytes=12 * per_monster, alternative36Bytes=36 * per_monster,
                                          savedBytesBySharedDifficulty=24 * per_monster,
                                          note='Texture payload estimate; total APK size requires a release build.'))
-    (MEDIA / 'validation').mkdir(exist_ok=True)
-    (MEDIA / 'validation/art-validation.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    output = ROOT / '.cache/qa/mine-refresh/art'
+    output.mkdir(parents=True, exist_ok=True)
+    (output / 'art-validation.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(f'PASS15 original transparent assets,12 monster bindings/footprints, single replacement tesseract. ASTC monster payload: {12 * per_monster} bytes vs {36 * per_monster} bytes for36 variants.')
 
 

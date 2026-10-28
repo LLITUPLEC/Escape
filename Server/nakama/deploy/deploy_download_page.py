@@ -29,7 +29,7 @@ def has_absolute_reference(value):
     return False
 
 
-def validate_bundle(staging):
+def validate_bundle(staging, expected_version=None):
     """Pure local validation, also usable by release fixtures without deployment."""
     staging = staging.resolve(strict=True)
     release = json.loads((staging / "release.json").read_text(encoding="utf-8-sig"))
@@ -38,8 +38,12 @@ def validate_bundle(staging):
         raise SystemExit("Unexpected fields in the public release manifest")
     version = release["version"]
     checksum = release["sha256"]
-    if version != "0.3.16" or not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+    if (not isinstance(version, str) or len(version) > 32 or
+            not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", version) or
+            not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum)):
         raise SystemExit("Invalid release identity")
+    if expected_version is not None and version != expected_version:
+        raise SystemExit("Bundle version differs from the explicitly pinned release")
     if type(release["bytes"]) is not int or release["bytes"] <= 0:
         raise SystemExit("APK bytes must be a positive integer")
     # Accept the generated public manifest contract, never a local validation/log bundle.
@@ -128,11 +132,11 @@ def validate_bundle(staging):
     return release, apk_name, apk, audio_manifest
 
 
-def publish(staging, validate_only=False):
+def publish(staging, validate_only=False, expected_version=None):
     staging = staging.resolve(strict=True)
     if not staging.is_relative_to(Path("/opt/escape/page-staging")):
         raise SystemExit("Staging must be inside /opt/escape/page-staging")
-    release, apk_name, apk, audio_manifest = validate_bundle(staging)
+    release, apk_name, apk, audio_manifest = validate_bundle(staging, expected_version=expected_version)
     version, checksum = release["version"], release["sha256"]
     if validate_only:
         print(json.dumps({"state": "validated_only", "version": version,
@@ -190,5 +194,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--staging", type=Path, required=True)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--expected-version", required=True)
     args = parser.parse_args()
-    publish(args.staging, args.validate_only)
+    publish(args.staging, args.validate_only, expected_version=args.expected_version)

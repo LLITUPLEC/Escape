@@ -1,0 +1,79 @@
+{
+  "passed": true,
+  "scope": "final-working-tree-changed-new-scan-not-index-review",
+  "checkedUtc": "2026-10-28T18:23:10.266965+00:00",
+  "head": "cede5c422dfb11df48817efd332e843baf86a362",
+  "expectedHeadUnchanged": true,
+  "branch": "main",
+  "indexEmpty": true,
+  "finalIndexAudited": false,
+  "remoteRefreshed": false,
+  "candidateFiles": 219,
+  "candidateBytes": 21103428,
+  "securityReview": {
+    "confirmedSecrets": 0,
+    "unresolvedPatternFindings": [],
+    "newOrChangedFilesScanned": 87,
+    "unchangedOriginalBaselineFilesReused": 136,
+    "originalBaselineFiles": 139,
+    "previousCheckpoint": ".cache/qa/reconnect-0317/readiness/final-candidate.json",
+    "previousCheckpointSha256": "33821a91d3dbd55b77f889e17e55983003eba1d6e7b2144a27b74d37da64fda9",
+    "lastDeltaScannedPaths": [
+      "Design/Release-0.3.17/validation/release-completion.json",
+      "Design/Release-0.3.17/validation/server/final-inventory.json",
+      "Design/Release-0.3.17/validation/server/tooling/README.md",
+      "Design/Release-0.3.17/validation/server/tooling/cleanup_backend_stages_remote.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_backend_cleanup.py",
+      "Website/escape/README.md"
+    ],
+    "unchangedLateReportsReusedBySha": 79,
+    "qualifiedFalsePositives": [
+      {
+        "path": "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+        "line": 71,
+        "kind": "literal-secret-assignment",
+        "classification": "false-positive-preference-key-constant",
+        "symbol": "PrefSavedEmailPassword",
+        "valuesPrinted": false
+      }
+    ],
+    "privateNamedFiles": [],
+    "generatedCandidates": [],
+    "largeFilesAtLeast50MiB": [],
+    "mergeMarkerFindings": []
+  },
+  "conflictedPaths": [],
+  "ignoredTracked": [],
+  "transientBuildOutputsAbsent": [
+    "Assets/Resources/PerformanceTestRunInfo.json",
+    "Assets/Resources/PerformanceTestRunInfo.json.meta",
+    "Assets/Resources/PerformanceTestRunSettings.json",
+    "Assets/Resources/PerformanceTestRunSettings.json.meta"
+  ],
+  "oldRelease15LiveInputMatches": 0,
+  "retainedBuildDirs": [
+    "0.3.16",
+    "0.3.17"
+  ],
+  "retainedReleaseDirs": [
+    "Release-0.3.16",
+    "Release-0.3.17"
+  ],
+  "buildApkSymbolsIgnored": true,
+  "actions": {
+    "sourceFilesEdited": false,
+    "assetsOrPngEdited": false,
+    "bundleModified": false,
+    "staged": false,
+    "committed": false,
+    "pushed": false,
+    "deleted": false,
+    "indexContentsAudited": false
+  },
+  "notes": [
+    "The unchanged139-file post-build baseline was not pattern-scanned again; SHA equality reused its qualified results.",
+    "Only final documents, JSON and archived tooling sources added or changed since the checkpoint were pattern-scanned in the last delta.",
+    "This verifies the working tree and empty index only; it is not an index-content audit or authorization to perform Git writes.",
+    "The generated final-readiness report excludes its own path to avoid self-hash recursion."
+  ]
+}

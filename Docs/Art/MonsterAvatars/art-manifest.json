@@ -1,0 +1,164 @@
+{
+  "mode": "built-in image_gen",
+  "date": "2026-10-29",
+  "purpose": "Dedicated identity-preserving monster face/core portraits for battle headers and future medals; complete body art is unchanged.",
+  "generation": "One reference-driven close-up per original monster, transparent background, no border/text, consistent detailed industrial fantasy style.",
+  "assets": [
+    {
+      "floor": 1,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-b9b5cd1f-632a-4336-b983-e5ed8130201b.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-1.png",
+      "referenceSha256": "e00e61a82478997abb0be738d5d10b90f7caecbd94045c5f2ded90642cac2d51",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-1-avatar-v1.png",
+      "sha256": "9206fd90c9ef16a8c5df2f86e3a84e20cfd2510e0b2567728a2fb530c0362a23",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "d510aed6d93b531e8082374fbc9535fb"
+    },
+    {
+      "floor": 2,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-2f14313e-63be-4924-a841-bed3285ffd91.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-2.png",
+      "referenceSha256": "875f8821a9d23716a0632d2c635302748b5011c493f87b65813dcf46fd96aa61",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-2-avatar-v1.png",
+      "sha256": "cf9af5852dc55be0bd2b596bf9974bdbd67e14d31dc5be6d9e1b58245148b930",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "6f90e56db2bb557e865f7f8569ad009d"
+    },
+    {
+      "floor": 3,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-f4967be2-275c-48d1-be7e-202f81c35965.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-3.png",
+      "referenceSha256": "4446e09e71a6cb2d5dc0cd7d040681920bb003cd4b1f37914f719704e3482f49",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-3-avatar-v1.png",
+      "sha256": "344b9e6b0fd3fdea2708b554034de018ea0bdc55d52f8b3dd33dc9593990a8ee",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "f8355cdc618753e58cb719865dfbe407"
+    },
+    {
+      "floor": 4,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-9edb082e-a2f2-4a26-ac8d-7d45a5e7a13a.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-4.png",
+      "referenceSha256": "0209cc56ee5bf7a34e0b02bcdeec2585e1c4536decc638083f3f74200af8dfe7",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-4-avatar-v1.png",
+      "sha256": "f93e04d0100d651d6c9a9d8f8f8f0d392bd67aeb1d507c7808870abd838061ac",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "7900ced122cb5810900609af3fad4cf5"
+    },
+    {
+      "floor": 5,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-52e9b2b3-0a65-49a7-9592-08e47b29d88c.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-5.png",
+      "referenceSha256": "6997d9dd1d35af455808026ba4b3ff4a27b5a70c040fff97fdc0bc57bac27ef6",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-5-avatar-v1.png",
+      "sha256": "31eb5f9c64521b351e715d62388c3263ec45591814f20f6868b27c9e730087b9",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "3bab4d7c47885d288d8ae59ba29fb5b3"
+    },
+    {
+      "floor": 6,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-56f5d6b4-2850-47d8-a0b9-43972bc599c4.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-6.png",
+      "referenceSha256": "569887b7bcf9ef89aa4772866ad1e8c9996f4d7563fb8f3debb74a6ed19c6b69",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-6-avatar-v1.png",
+      "sha256": "b1acf4b49ca964d91cb0d25bdab01124e866875718d4a6069e50a148155e1048",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "5a99df7cd16f5e6d84748b71f65070b2"
+    },
+    {
+      "floor": 7,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-ec516a37-bc96-4f54-9143-dbd8d1ef65b6.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-7.png",
+      "referenceSha256": "8375fb48aec7049d32c4f054f26819f4c68f63c2b4665b1dee714f6ea4a3118c",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-7-avatar-v1.png",
+      "sha256": "d81e7389ce971553732cef3639c07c4ba7c53a284bd95ecaee333534b70a1a54",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "2fc70443aa3e5e2aae2c3e57c08c9d62"
+    },
+    {
+      "floor": 8,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-451a5269-7c55-406c-a482-53ee9fa3dcfe.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-8.png",
+      "referenceSha256": "87e753efb882ec5c167d89fee5184074494f13f36db1ffe0c0f516271ae86b43",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-8-avatar-v1.png",
+      "sha256": "7603e95e8789800ab9fdd32f1366670a5cc2ed51bb75dd48d0ae7f3bec2dcec8",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "bd11ab0b66cd5c6da8bf204837c7a42a"
+    },
+    {
+      "floor": 9,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-acb16d9e-e10b-4ed4-a85a-ef3a590c1457.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-9.png",
+      "referenceSha256": "bd038d5b467059d1e4b14e7e96cdd6ed638e43d55fbc62d7979e0f34e1316551",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-9-avatar-v1.png",
+      "sha256": "28de43902c77376bc02b1ced3a928237e730a0532820f5e2bd32f9cf9f73a7f1",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "8c014eb1b8ab5662ac46529375aa8e10"
+    },
+    {
+      "floor": 10,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-96529964-2e59-405e-a58a-960f436a8fbe.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-10.png",
+      "referenceSha256": "dd225a12ec12794ee1a0432cf8417c53450e032f91d947abec7f7b6d825b198b",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-10-avatar-v1.png",
+      "sha256": "f31c8812f53ece937359ed1bb825a40a978d344dbf14530d9bbf36eea50d4ca4",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "c1ea435b6cf0540ca592cca33371e0da"
+    },
+    {
+      "floor": 11,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-41c44a7a-d8e4-43fe-bc64-ce07e5d947e9.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-11.png",
+      "referenceSha256": "f30f1b12ff3241b57c43f5d5238ccc7af300570c31c24df73c818d9a21ffde8c",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-11-avatar-v1.png",
+      "sha256": "783baf18f8f2d4dcb38bfe930feb9e37f53f3f7f2fc6b2d6ebba1b1a331c3aac",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "c7df70c4d8575942b77e424cf5804d1f"
+    },
+    {
+      "floor": 12,
+      "source": "C:\\Users\\ProKrust\\.codex\\generated_images\\01a18430-6812-7300-bfa4-0acdadaaf190\\exec-fc41837d-3e53-4622-ad87-6f6b79291d61.png",
+      "reference": "Assets\\_Project\\Resources\\Expedition\\Monsters\\mine-12.png",
+      "referenceSha256": "3b966c887fcc8da1939414eb89684164233921fb91be9ef31670ccc496ce2fc9",
+      "destination": "Assets\\_Project\\Resources\\Expedition\\Monsters\\Avatars\\mine-12-avatar-v1.png",
+      "sha256": "578247b6e1385ce21d4e95d72ba31cf1c2ae898e20c6eb4a0caea4eba65df416",
+      "size": [
+        1254,
+        1254
+      ],
+      "guid": "3b3cbd8a7dab5af382d0b6d1aaec79a1"
+    }
+  ]
+}

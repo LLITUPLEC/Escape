@@ -16,12 +16,13 @@ namespace Project.Editor
     /// <summary>Real inbox presentation and server DTO, with navigation/claim transport intercepted.</summary>
     public static class ExpeditionAppearanceMailQa
     {
-        private const string Root = "Design/Release-0.3.15/media/validation/";
+        private const string Root = ".cache/qa/mine-refresh/";
         [Serializable] private sealed class Report { public bool passed, networkActions, accountWrites; public int letters, heroLinkClicks; public string[] checks; }
         public static void RunBatch()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Edit mode required.");
-            var fixture = JsonUtility.FromJson<MailService.State>(File.ReadAllText(Root + "appearance-unlock-mail-fixture.json"));
+            Directory.CreateDirectory(Root);
+            var fixture = JsonUtility.FromJson<MailService.State>(File.ReadAllText("Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json"));
             Require(MailService.Valid(fixture) && fixture.unread_count > 0, "Actual server unlock inbox did not decode.");
             Require(fixture.messages.All(m => m.IsAppearanceUnlock && m.attachments == null), "Unlock letters are informational.");
             var previous = SceneManager.GetActiveScene();

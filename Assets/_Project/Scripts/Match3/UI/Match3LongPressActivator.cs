@@ -12,14 +12,16 @@ namespace Project.Match3
         [SerializeField, Min(0.1f)] private float holdSeconds = 3f;
 
         private Action _onLongPress;
+        private Action _onTap;
         private bool _isPressed;
         private bool _isTriggered;
         private float _pressedAt;
 
-        public void Configure(float holdDurationSeconds, Action onLongPress)
+        public void Configure(float holdDurationSeconds, Action onLongPress, Action onTap = null)
         {
             holdSeconds = Mathf.Max(0.1f, holdDurationSeconds);
             _onLongPress = onLongPress;
+            _onTap = onTap;
         }
 
         private void OnDisable()
@@ -46,7 +48,9 @@ namespace Project.Match3
 
         public void OnPointerUp(PointerEventData eventData)
         {
+            var tap = _isPressed && !_isTriggered;
             ResetHold();
+            if (tap) _onTap?.Invoke();
         }
 
         public void OnPointerExit(PointerEventData eventData)

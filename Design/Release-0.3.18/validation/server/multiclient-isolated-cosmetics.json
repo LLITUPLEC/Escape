@@ -1,0 +1,1380 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "real AuthenticateDevice after-hook opens only a new account's registration choice"
+    },
+    {
+      "passed": true,
+      "check": "pending registration cannot persist cosmetics"
+    },
+    {
+      "passed": true,
+      "check": "new account stages its female registration choice on the server"
+    },
+    {
+      "passed": true,
+      "check": "invalid email registration does not permanently freeze its pending gender"
+    },
+    {
+      "passed": true,
+      "check": "temporary account registers by linking email through the real API"
+    },
+    {
+      "passed": true,
+      "check": "successful LinkEmail after-hook permanently finalizes the staged female identity"
+    },
+    {
+      "passed": true,
+      "check": "registered gender cannot be changed by an authenticated RPC"
+    },
+    {
+      "passed": true,
+      "check": "server returns ten themes and only the starter is initially unlocked"
+    },
+    {
+      "passed": true,
+      "check": "client claims cannot unlock a locked appearance or supply gender/progress"
+    },
+    {
+      "passed": true,
+      "check": "real storage request guard blocks direct cosmetic writes including a forged first create"
+    },
+    {
+      "passed": true,
+      "check": "real storage request guard blocks direct gender replacement"
+    },
+    {
+      "passed": true,
+      "check": "pre-existing durable achievement and PvP progress retroactively unlock Phoenix"
+    },
+    {
+      "passed": true,
+      "check": "Phoenix unlock atomically grants100 matter and permanent2percent HP and armor"
+    },
+    {
+      "passed": true,
+      "check": "real first appearance unlock creates one named informational letter with its paired avatar and Hero action"
+    },
+    {
+      "passed": true,
+      "check": "reading or replaying appearance letter never issues a second unlock reward"
+    },
+    {
+      "passed": true,
+      "check": "independent concurrent cosmetic selections commit through storage versions"
+    },
+    {
+      "passed": true,
+      "check": "unlocked female appearance selection is saved authoritatively"
+    },
+    {
+      "passed": true,
+      "check": "public opponent appearance RPC exposes exactly selected paired render IDs and no private metadata"
+    },
+    {
+      "passed": true,
+      "check": "email reauthentication restores selection and cannot change gender through token vars"
+    },
+    {
+      "passed": true,
+      "check": "concurrent selection, refresh and reauthentication never repay the100matter unlock"
+    },
+    {
+      "passed": true,
+      "check": "appearance polling and email reconnect never duplicate or reopen a read unlock letter"
+    },
+    {
+      "passed": true,
+      "check": "pre-upgrade account without a gender row defaults permanently to male"
+    },
+    {
+      "passed": true,
+      "check": "unlocks and selection never cross accounts"
+    },
+    {
+      "passed": true,
+      "check": "concurrent character reads upgrade nine v1receipts with one620matter delta and fresh12percent HP"
+    },
+    {
+      "passed": true,
+      "check": "nine paid legacy skins migrate to named bonuses and665total reward history without repaying45legacy matter"
+    },
+    {
+      "passed": true,
+      "check": "equipping and restoring appearances neither farm matter nor remove the collection HP bonus"
+    },
+    {
+      "passed": true,
+      "check": "real character stats apply armor9 damage6 healing7 plus300 and additive1percentage-point crit"
+    },
+    {
+      "passed": true,
+      "check": "Alchemist grants exactly one canonical inventory or pending-loot tesseract across concurrent migration and selection"
+    },
+    {
+      "passed": true,
+      "check": "all migrated appearances create one informational delta letter with no repeatable attachments"
+    },
+    {
+      "passed": true,
+      "check": "client reward/HP claims are rejected and retroactive receipts remain isolated to their account"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [
+    {
+      "name": "female-locked",
+      "response": {
+        "gender": "female",
+        "ok": true,
+        "passive_armor_bonus_percent": 0,
+        "passive_crit_bonus_percent": 0,
+        "passive_damage_bonus_percent": 0,
+        "passive_heal_bonus_flat": 0,
+        "passive_heal_bonus_percent": 0,
+        "passive_hp_bonus_percent": 0,
+        "rewarded_matter_total": 0,
+        "rewarded_tesseract_total": 0,
+        "selected_theme": "default",
+        "themes": [
+          {
+            "id": "dawnwarden",
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 0,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "voidranger",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "deep_scout",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 50 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 50
+              },
+              {
+                "current": 0,
+                "id": "first_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 1,
+            "unlock_reward_matter": 15,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "stormforged",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "absolute_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0410\u0431\u0441\u043e\u043b\u044e\u0442\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "generator_guard",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 8-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 1,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "emberoracle",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "pyrotechnic_iii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0438\u0440\u043e\u0442\u0435\u0445\u043d\u0438\u043a\u00bb: \u0440\u0430\u043d\u0433 3",
+                "met": false,
+                "required": 3
+              },
+              {
+                "current": 0,
+                "id": "forge_champion",
+                "label": "\u0412\u044b\u0438\u0433\u0440\u0430\u0442\u044c \u043a\u0443\u0437\u043d\u0435\u0447\u043d\u044b\u0439 \u0442\u0443\u0440\u043d\u0438\u0440",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 1,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "frostwraith",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "ice_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 300 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 300
+              },
+              {
+                "current": 0,
+                "id": "frozen_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 2,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "phoenix",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "reborn",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0424\u0435\u043d\u0438\u043a\u0441\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "survivor",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 25 \u043f\u043e\u0431\u0435\u0434 \u0432 PvP",
+                "met": false,
+                "required": 25
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 100,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "bookmaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "tote_genius",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0413\u0435\u043d\u0438\u0439 \u0422\u043e\u0442\u0430\u043b\u0438\u0437\u0430\u0442\u043e\u0440\u0430\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "winning_eye",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0428\u0430\u0440\u043b\u0430\u0442\u0430\u043d\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "railwarden",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "rail_races",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 20 \u043f\u043e\u0431\u0435\u0434 \u0432 \u0440\u0435\u0436\u0438\u043c\u0435 \u00ab\u0421\u043f\u0443\u0441\u043a\u00bb",
+                "met": false,
+                "required": 20
+              },
+              {
+                "current": 0,
+                "id": "shaft_end",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 40,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "beastbreaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "monster_hunter",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 500 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 500
+              },
+              {
+                "current": 0,
+                "id": "deepest_beast",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "nailer_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0440\u0438\u0433\u0432\u043e\u0437\u0434\u0438\u0442\u044c\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 5,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 5,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 5,
+            "unlock_reward_hp_percent": 5,
+            "unlock_reward_matter": 300,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "alchemist",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "recipe_collection",
+                "label": "\u0418\u0437\u0443\u0447\u0438\u0442\u044c 16 \u0440\u0430\u0437\u043d\u044b\u0445 \u0440\u0435\u0446\u0435\u043f\u0442\u043e\u0432",
+                "met": false,
+                "required": 16
+              },
+              {
+                "current": 0,
+                "id": "shield_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0416\u0435\u043b\u0435\u0437\u043d\u044b\u0439 \u0417\u0430\u043d\u0430\u0432\u0435\u0441\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "medium_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u0440\u0435\u0434\u043d\u0435",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 300,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 1,
+            "unlocked": false
+          }
+        ],
+        "unlock_reward_matter_granted": 0,
+        "unlock_reward_schema": 2,
+        "unlock_reward_tesseract_granted": 0,
+        "unlocked_prestige_count": 0
+      }
+    },
+    {
+      "name": "female-phoenix-earned",
+      "response": {
+        "gender": "female",
+        "ok": true,
+        "passive_armor_bonus_percent": 2,
+        "passive_crit_bonus_percent": 0,
+        "passive_damage_bonus_percent": 0,
+        "passive_heal_bonus_flat": 0,
+        "passive_heal_bonus_percent": 0,
+        "passive_hp_bonus_percent": 2,
+        "rewarded_matter_total": 100,
+        "rewarded_tesseract_total": 0,
+        "selected_theme": "phoenix",
+        "themes": [
+          {
+            "id": "dawnwarden",
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 0,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "voidranger",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "deep_scout",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 50 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 50
+              },
+              {
+                "current": 0,
+                "id": "first_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 1,
+            "unlock_reward_matter": 15,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "stormforged",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "absolute_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0410\u0431\u0441\u043e\u043b\u044e\u0442\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "generator_guard",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 8-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 1,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "emberoracle",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "pyrotechnic_iii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0438\u0440\u043e\u0442\u0435\u0445\u043d\u0438\u043a\u00bb: \u0440\u0430\u043d\u0433 3",
+                "met": false,
+                "required": 3
+              },
+              {
+                "current": 0,
+                "id": "forge_champion",
+                "label": "\u0412\u044b\u0438\u0433\u0440\u0430\u0442\u044c \u043a\u0443\u0437\u043d\u0435\u0447\u043d\u044b\u0439 \u0442\u0443\u0440\u043d\u0438\u0440",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 1,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "frostwraith",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "ice_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 300 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 300
+              },
+              {
+                "current": 0,
+                "id": "frozen_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 2,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "phoenix",
+            "requirements": [
+              {
+                "current": 1,
+                "id": "reborn",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0424\u0435\u043d\u0438\u043a\u0441\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": true,
+                "required": 1
+              },
+              {
+                "current": 25,
+                "id": "survivor",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 25 \u043f\u043e\u0431\u0435\u0434 \u0432 PvP",
+                "met": true,
+                "required": 25
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 100,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "bookmaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "tote_genius",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0413\u0435\u043d\u0438\u0439 \u0422\u043e\u0442\u0430\u043b\u0438\u0437\u0430\u0442\u043e\u0440\u0430\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "winning_eye",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0428\u0430\u0440\u043b\u0430\u0442\u0430\u043d\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "railwarden",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "rail_races",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 20 \u043f\u043e\u0431\u0435\u0434 \u0432 \u0440\u0435\u0436\u0438\u043c\u0435 \u00ab\u0421\u043f\u0443\u0441\u043a\u00bb",
+                "met": false,
+                "required": 20
+              },
+              {
+                "current": 0,
+                "id": "shaft_end",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 40,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "beastbreaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "monster_hunter",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 500 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 500
+              },
+              {
+                "current": 0,
+                "id": "deepest_beast",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "nailer_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0440\u0438\u0433\u0432\u043e\u0437\u0434\u0438\u0442\u044c\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 5,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 5,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 5,
+            "unlock_reward_hp_percent": 5,
+            "unlock_reward_matter": 300,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "alchemist",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "recipe_collection",
+                "label": "\u0418\u0437\u0443\u0447\u0438\u0442\u044c 16 \u0440\u0430\u0437\u043d\u044b\u0445 \u0440\u0435\u0446\u0435\u043f\u0442\u043e\u0432",
+                "met": false,
+                "required": 16
+              },
+              {
+                "current": 0,
+                "id": "shield_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0416\u0435\u043b\u0435\u0437\u043d\u044b\u0439 \u0417\u0430\u043d\u0430\u0432\u0435\u0441\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "medium_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u0440\u0435\u0434\u043d\u0435",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 300,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 1,
+            "unlocked": false
+          }
+        ],
+        "unlock_reward_matter_granted": 0,
+        "unlock_reward_schema": 2,
+        "unlock_reward_tesseract_granted": 0,
+        "unlocked_prestige_count": 1
+      }
+    },
+    {
+      "name": "male-legacy",
+      "response": {
+        "gender": "male",
+        "ok": true,
+        "passive_armor_bonus_percent": 0,
+        "passive_crit_bonus_percent": 0,
+        "passive_damage_bonus_percent": 0,
+        "passive_heal_bonus_flat": 0,
+        "passive_heal_bonus_percent": 0,
+        "passive_hp_bonus_percent": 0,
+        "rewarded_matter_total": 0,
+        "rewarded_tesseract_total": 0,
+        "selected_theme": "default",
+        "themes": [
+          {
+            "id": "dawnwarden",
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 0,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "voidranger",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "deep_scout",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 50 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 50
+              },
+              {
+                "current": 0,
+                "id": "first_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 1,
+            "unlock_reward_matter": 15,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "stormforged",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "absolute_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0410\u0431\u0441\u043e\u043b\u044e\u0442\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "generator_guard",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 8-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 1,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "emberoracle",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "pyrotechnic_iii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0438\u0440\u043e\u0442\u0435\u0445\u043d\u0438\u043a\u00bb: \u0440\u0430\u043d\u0433 3",
+                "met": false,
+                "required": 3
+              },
+              {
+                "current": 0,
+                "id": "forge_champion",
+                "label": "\u0412\u044b\u0438\u0433\u0440\u0430\u0442\u044c \u043a\u0443\u0437\u043d\u0435\u0447\u043d\u044b\u0439 \u0442\u0443\u0440\u043d\u0438\u0440",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 1,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "frostwraith",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "ice_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 300 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 300
+              },
+              {
+                "current": 0,
+                "id": "frozen_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 2,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "phoenix",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "reborn",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0424\u0435\u043d\u0438\u043a\u0441\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "survivor",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 25 \u043f\u043e\u0431\u0435\u0434 \u0432 PvP",
+                "met": false,
+                "required": 25
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 100,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "bookmaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "tote_genius",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0413\u0435\u043d\u0438\u0439 \u0422\u043e\u0442\u0430\u043b\u0438\u0437\u0430\u0442\u043e\u0440\u0430\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "winning_eye",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0428\u0430\u0440\u043b\u0430\u0442\u0430\u043d\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "railwarden",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "rail_races",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 20 \u043f\u043e\u0431\u0435\u0434 \u0432 \u0440\u0435\u0436\u0438\u043c\u0435 \u00ab\u0421\u043f\u0443\u0441\u043a\u00bb",
+                "met": false,
+                "required": 20
+              },
+              {
+                "current": 0,
+                "id": "shaft_end",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 40,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "beastbreaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "monster_hunter",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 500 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 500
+              },
+              {
+                "current": 0,
+                "id": "deepest_beast",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "nailer_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0440\u0438\u0433\u0432\u043e\u0437\u0434\u0438\u0442\u044c\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 5,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 5,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 5,
+            "unlock_reward_hp_percent": 5,
+            "unlock_reward_matter": 300,
+            "unlock_reward_tesseract": 0,
+            "unlocked": false
+          },
+          {
+            "id": "alchemist",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "recipe_collection",
+                "label": "\u0418\u0437\u0443\u0447\u0438\u0442\u044c 16 \u0440\u0430\u0437\u043d\u044b\u0445 \u0440\u0435\u0446\u0435\u043f\u0442\u043e\u0432",
+                "met": false,
+                "required": 16
+              },
+              {
+                "current": 0,
+                "id": "shield_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0416\u0435\u043b\u0435\u0437\u043d\u044b\u0439 \u0417\u0430\u043d\u0430\u0432\u0435\u0441\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "medium_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u0440\u0435\u0434\u043d\u0435",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 300,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 1,
+            "unlocked": false
+          }
+        ],
+        "unlock_reward_matter_granted": 0,
+        "unlock_reward_schema": 2,
+        "unlock_reward_tesseract_granted": 0,
+        "unlocked_prestige_count": 0
+      }
+    },
+    {
+      "name": "male-all-rewards",
+      "response": {
+        "gender": "male",
+        "ok": true,
+        "passive_armor_bonus_percent": 9,
+        "passive_crit_bonus_percent": 1,
+        "passive_damage_bonus_percent": 6,
+        "passive_heal_bonus_flat": 300,
+        "passive_heal_bonus_percent": 7,
+        "passive_hp_bonus_percent": 12,
+        "rewarded_matter_total": 665,
+        "rewarded_tesseract_total": 1,
+        "selected_theme": "default",
+        "themes": [
+          {
+            "id": "dawnwarden",
+            "reward_granted": false,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 0,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "voidranger",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "deep_scout",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 50 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 50
+              },
+              {
+                "current": 0,
+                "id": "first_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 1,
+            "unlock_reward_matter": 15,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "stormforged",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "absolute_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0410\u0431\u0441\u043e\u043b\u044e\u0442\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "generator_guard",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 8-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 1,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "emberoracle",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "pyrotechnic_iii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0438\u0440\u043e\u0442\u0435\u0445\u043d\u0438\u043a\u00bb: \u0440\u0430\u043d\u0433 3",
+                "met": false,
+                "required": 3
+              },
+              {
+                "current": 0,
+                "id": "forge_champion",
+                "label": "\u0412\u044b\u0438\u0433\u0440\u0430\u0442\u044c \u043a\u0443\u0437\u043d\u0435\u0447\u043d\u044b\u0439 \u0442\u0443\u0440\u043d\u0438\u0440",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 1,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 30,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "frostwraith",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "ice_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 300 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 300
+              },
+              {
+                "current": 0,
+                "id": "frozen_guardian",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 4-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 2,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "phoenix",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "reborn",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0424\u0435\u043d\u0438\u043a\u0441\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "survivor",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 25 \u043f\u043e\u0431\u0435\u0434 \u0432 PvP",
+                "met": false,
+                "required": 25
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 100,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "bookmaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "tote_genius",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0413\u0435\u043d\u0438\u0439 \u0422\u043e\u0442\u0430\u043b\u0438\u0437\u0430\u0442\u043e\u0440\u0430\u00bb: \u0440\u0430\u043d\u0433 1",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "winning_eye",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0428\u0430\u0440\u043b\u0430\u0442\u0430\u043d\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "railwarden",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "rail_races",
+                "label": "\u041e\u0434\u0435\u0440\u0436\u0430\u0442\u044c 20 \u043f\u043e\u0431\u0435\u0434 \u0432 \u0440\u0435\u0436\u0438\u043c\u0435 \u00ab\u0421\u043f\u0443\u0441\u043a\u00bb",
+                "met": false,
+                "required": 20
+              },
+              {
+                "current": 0,
+                "id": "shaft_end",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u043b\u0435\u0433\u043a\u043e",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 2,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 2,
+            "unlock_reward_matter": 40,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "beastbreaker",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "monster_hunter",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c 500 \u043c\u043e\u043d\u0441\u0442\u0440\u043e\u0432 \u0432 \u0448\u0430\u0445\u0442\u0435",
+                "met": false,
+                "required": 500
+              },
+              {
+                "current": 0,
+                "id": "deepest_beast",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u043b\u043e\u0436\u043d\u043e",
+                "met": false,
+                "required": 1
+              },
+              {
+                "current": 0,
+                "id": "nailer_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u041f\u0440\u0438\u0433\u0432\u043e\u0437\u0434\u0438\u0442\u044c\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 5,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 5,
+            "unlock_reward_heal_flat": 0,
+            "unlock_reward_heal_percent": 5,
+            "unlock_reward_hp_percent": 5,
+            "unlock_reward_matter": 300,
+            "unlock_reward_tesseract": 0,
+            "unlocked": true
+          },
+          {
+            "id": "alchemist",
+            "requirements": [
+              {
+                "current": 0,
+                "id": "recipe_collection",
+                "label": "\u0418\u0437\u0443\u0447\u0438\u0442\u044c 16 \u0440\u0430\u0437\u043d\u044b\u0445 \u0440\u0435\u0446\u0435\u043f\u0442\u043e\u0432",
+                "met": false,
+                "required": 16
+              },
+              {
+                "current": 0,
+                "id": "shield_ii",
+                "label": "\u0414\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u0435 \u00ab\u0416\u0435\u043b\u0435\u0437\u043d\u044b\u0439 \u0417\u0430\u043d\u0430\u0432\u0435\u0441\u00bb: \u0440\u0430\u043d\u0433 2",
+                "met": false,
+                "required": 2
+              },
+              {
+                "current": 0,
+                "id": "medium_depths",
+                "label": "\u041f\u043e\u0431\u0435\u0434\u0438\u0442\u044c \u0431\u043e\u0441\u0441\u0430 12-\u0433\u043e \u044d\u0442\u0430\u0436\u0430: \u0441\u0440\u0435\u0434\u043d\u0435",
+                "met": false,
+                "required": 1
+              }
+            ],
+            "reward_granted": true,
+            "unlock_reward_armor_percent": 0,
+            "unlock_reward_crit_percent": 0,
+            "unlock_reward_damage_percent": 0,
+            "unlock_reward_heal_flat": 300,
+            "unlock_reward_heal_percent": 0,
+            "unlock_reward_hp_percent": 0,
+            "unlock_reward_matter": 50,
+            "unlock_reward_tesseract": 1,
+            "unlocked": true
+          }
+        ],
+        "unlock_reward_matter_granted": 0,
+        "unlock_reward_schema": 2,
+        "unlock_reward_tesseract_granted": 0,
+        "unlocked_prestige_count": 9
+      }
+    }
+  ],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

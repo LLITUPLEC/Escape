@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>Escape — Экспедиция в разлом · Скачать для Android</title>
-  <meta name="description" content="Escape — онлайн-дуэли «три в ряд», шахта и создание снаряжения. Посмотрите кадры из игры и скачайте Android APK версии 0.3.16.">
+  <meta name="description" content="Escape — онлайн-дуэли «три в ряд», шахта и создание снаряжения. Посмотрите кадры из игры и скачайте Android APK версии {{RELEASE_VERSION}}.">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="https://prokrust-play.ru/escape/">
   <link rel="icon" type="image/svg+xml" href="./assets/mark.svg">
@@ -16,14 +16,14 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="Escape — Экспедиция в разлом">
-  <meta property="og:description" content="Шахта, снаряжение и тактические бои «три в ряд». Версия 0.3.16 для Android.">
+  <meta property="og:description" content="Шахта, снаряжение и тактические бои «три в ряд». Версия {{RELEASE_VERSION}} для Android.">
   <meta property="og:url" content="https://prokrust-play.ru/escape/">
-  <meta property="og:image" content="https://prokrust-play.ru/escape/assets/hub.png?v=0.3.16">
+  <meta property="og:image" content="https://prokrust-play.ru/escape/assets/hub.png?v={{RELEASE_VERSION}}">
   <meta property="og:image:alt" content="Убежище в игре Escape">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Escape — Экспедиция в разлом">
-  <meta name="twitter:description" content="Тактические дуэли «три в ряд». Скачать Escape 0.3.16 для Android.">
-  <meta name="twitter:image" content="https://prokrust-play.ru/escape/assets/hub.png?v=0.3.16">
+  <meta name="twitter:description" content="Тактические дуэли «три в ряд». Скачать Escape {{RELEASE_VERSION}} для Android.">
+  <meta name="twitter:image" content="https://prokrust-play.ru/escape/assets/hub.png?v={{RELEASE_VERSION}}">
   <style>
     @font-face{font-family:PTSerif;src:url('./assets/PTSerif-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
     :root{--bg:#09191e;--panel:#102a30;--ink:#ece1c9;--muted:#adc0b9;--amber:#edaa53;--line:#365653;--dark:#182c2b;--max:1180px}
@@ -43,7 +43,7 @@
     @media(max-width:370px){.gallery{grid-template-columns:1fr;gap:2rem}.gallery figure{display:grid;grid-template-columns:42% 1fr;align-items:center;gap:1rem}.gallery figcaption{padding:0}.gallery h3{font-size:1.4rem}.gallery p{font-size:.95rem}.hero h1{font-size:3.5rem}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
   </style>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Escape","description":"Онлайн-дуэли «три в ряд», шахта и создание снаряжения.","operatingSystem":"Android","applicationCategory":"GameApplication","softwareVersion":"0.3.16","datePublished":"{{RELEASE_DATE}}","url":"https://prokrust-play.ru/escape/","downloadUrl":"https://prokrust-play.ru/escape/downloads/{{APK_FILENAME}}","image":"https://prokrust-play.ru/escape/assets/hub.png?v=0.3.16","inLanguage":"ru"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Escape","description":"Онлайн-дуэли «три в ряд», шахта и создание снаряжения.","operatingSystem":"Android","applicationCategory":"GameApplication","softwareVersion":"{{RELEASE_VERSION}}","datePublished":"{{RELEASE_DATE}}","url":"https://prokrust-play.ru/escape/","downloadUrl":"https://prokrust-play.ru/escape/downloads/{{APK_FILENAME}}","image":"https://prokrust-play.ru/escape/assets/hub.png?v={{RELEASE_VERSION}}","inLanguage":"ru"}</script>
 </head>
 <body>
   <a class="skip" href="#main">Перейти к содержимому</a>
@@ -58,10 +58,10 @@
         <h1 id="hero-title">Спуск начинается<br>с одного <em>хода.</em></h1>
         <p class="lead">Дуэли «три в ряд» в глубине шахты. Подберите снаряжение, соберите камни в линию и проложите путь к следующему этажу.</p>
         <a class="cta" href="./downloads/{{APK_FILENAME}}" download="{{APK_FILENAME}}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Скачать для Android</a>
-        <p class="release-tag">Версия 0.3.16 <span aria-hidden="true">·</span> {{APK_MIB}} МиБ <span aria-hidden="true">·</span> APK</p>
+        <p class="release-tag">Версия {{RELEASE_VERSION}} <span aria-hidden="true">·</span> {{APK_MIB}} МиБ <span aria-hidden="true">·</span> APK</p>
       </div>
       <figure class="hero-visual">
-        <div class="screen-frame"><img src="./assets/hub.png?v=0.3.16" width="1080" height="1920" alt="Новое убежище Escape с переходами к разделам игры" fetchpriority="high" decoding="async"></div>
+        <div class="screen-frame"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Новое убежище Escape с переходами к разделам игры" fetchpriority="high" decoding="async"></div>
         <span class="screen-corner a" aria-hidden="true"></span><span class="screen-corner b" aria-hidden="true"></span>
         <figcaption>УБЕЖИЩЕ ESCAPE · НАЧАЛО ЭКСПЕДИЦИИ</figcaption>
       </figure>
@@ -72,17 +72,34 @@
     </section>
     <section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
       <div class="wrap">
-        <div class="section-heading"><div><p class="micro eyebrow">Мир Escape</p><h2 id="gallery-title">Загляните в экспедицию</h2></div><p>Убежище, изготовление снаряжения и досье монстра — три экрана текущей версии. Нажмите на изображение, чтобы рассмотреть его.</p></div>
+        <div class="section-heading"><div><p class="micro eyebrow">Мир Escape</p><h2 id="gallery-title">Загляните в экспедицию</h2></div><p>Убежище, каталог образов и досье монстра — три экрана текущей версии. Нажмите на изображение, чтобы рассмотреть его.</p></div>
         <div class="gallery">
-          <figure><a href="./assets/hub.png?v=0.3.16" data-lightbox="Убежище в свете шахты" aria-label="Увеличить экран: Убежище"><img src="./assets/hub.png?v=0.3.16" width="1080" height="1920" alt="Убежище Escape: круглый портрет героя, четыре ресурса и быстрые переходы" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">01 / УБЕЖИЩЕ</span><h3>Снарядитесь перед спуском</h3><p>Ресурсы и уведомления видны сразу; шахта, друзья и другие разделы — рядом с героем.</p></figcaption></figure>
-          <figure><a href="./assets/character.png?v=0.3.16" data-lightbox="Мастерская" aria-label="Увеличить экран: Мастерская"><img src="./assets/character.png?v=0.3.16" width="1080" height="1920" alt="Мастерская Escape: выбранный эпический рецепт, нужный предмет и стоимость материалов" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">02 / МАСТЕРСКАЯ</span><h3>Проверьте рецепт и материалы</h3><p>Будущий предмет, необходимое снаряжение и актуальная стоимость показаны перед изготовлением.</p></figcaption></figure>
-          <figure><a href="./assets/mine.png?v=0.3.16" data-lightbox="Досье монстра" aria-label="Увеличить экран: Досье монстра"><img src="./assets/mine.png?v=0.3.16" width="1080" height="1920" alt="Досье монстра шахты: пять характеристик, аффикс, награды и стоимость боя" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">03 / ШАХТА</span><h3>Изучите противника</h3><p>Перед боем видны пять характеристик монстра, его аффикс, возможная добыча и расход энергии.</p></figcaption></figure>
+          <figure><a href="./assets/hub.png?v={{RELEASE_VERSION}}" data-lightbox="Убежище в свете шахты" aria-label="Увеличить экран: Убежище"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Убежище Escape: круглый портрет героя, четыре ресурса и быстрые переходы" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">01 / УБЕЖИЩЕ</span><h3>Снарядитесь перед спуском</h3><p>Ресурсы и уведомления видны сразу; шахта, друзья и другие разделы — рядом с героем.</p></figcaption></figure>
+          <figure><a href="./assets/character.png?v={{RELEASE_VERSION}}" data-lightbox="Образы героя" aria-label="Увеличить экран: Образы героя"><img src="./assets/character.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Каталог образов Escape: три карточки в ряд, подробности открываются по нажатию" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">02 / ОБРАЗЫ</span><h3>Выберите образ героя</h3><p>Каталог занимает основной экран. Нажмите на образ, чтобы увидеть условия, награды и постоянные бонусы в отдельном окне.</p></figcaption></figure>
+          <figure><a href="./assets/mine.png?v={{RELEASE_VERSION}}" data-lightbox="Досье монстра" aria-label="Увеличить экран: Досье монстра"><img src="./assets/mine.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Досье монстра Escape: характеристики в двух колонках, аффикс, награды и кнопка Прогнать" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">03 / ШАХТА</span><h3>Изучите противника</h3><p>Характеристики собраны в две колонки. Кнопка «Прогнать» расположена рядом с аффиксом, а награды видны ниже.</p></figcaption></figure>
         </div>
       </div>
     </section>
     <section class="wrap release" id="release" aria-labelledby="release-title">
-      <div class="release-heading"><p class="micro eyebrow">Что нового</p><h2 id="release-title">Версия 0.3.16</h2><time class="date" datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div>
+      <div class="release-heading"><p class="micro eyebrow">Что нового</p><h2 id="release-title">Версия {{RELEASE_VERSION}}</h2><time class="date" datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div>
       <div>
+        <ul class="change-list">
+          <li><h3>«Спуск» снова запускается</h3><p>Оплаченный взнос корректно передаётся в поиск соперника. Восстановление соединения больше не мешает новому спуску, а повторный запрос не списывает оплату ещё раз.</p></li>
+          <li><h3>Турнир остаётся турниром</h3><p>После боя возвращается турнирная сетка. Имя соперника совпадает с сеткой, игроки показывают выбранный образ, а боты получили общий турнирный облик.</p></li>
+          <li><h3>Аватары в стиле экспедиции</h3><p>Обновлены портреты героев и соперников. Выбранный образ виден в бою и представлении соперника; аватар мирового босса соответствует его облику.</p></li>
+          <li><h3>Новые награды коллекции образов</h3><p>У каждого особого образа свои материя и постоянные бонусы: здоровье, броня, урон, лечение или шанс крита. Алхимик также даёт тессеракт. За ранее открытые образы начисляется недостающая часть награды без повторной выдачи.</p></li>
+          <li><h3>Босс действует по очереди</h3><p>Сначала проходит «Адаптация», затем отдельный «Ужасающий крик», если он готов, и после него обычное действие. Крик наносит 20% исходного здоровья сквозь броню; его эффект и урон больше не объединяются с ударом по камням.</p></li>
+          <li><h3>Удобнее тренировка и боевые окна</h3><p>Пробный бой с боссом заметнее, характеристики монстра и кнопка «Прогнать» расположены свободнее. Для разрешённых аккаунтов верхние ряды доступны и у босса: удержание аватара 3 секунды показывает их, обычное нажатие скрывает.</p></li>
+        </ul>
+        <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.17</span> — посмотреть изменения</summary>
+        <ul class="change-list">
+          <li><h3>Возвращение в бой после потери сети</h3><p>Переподключение восстанавливает состояние матча и управление. После перезапуска игра находит продолжающийся бой, а завершённый матч не мешает следующему спуску.</p></li>
+          <li><h3>Отмена до начала боя</h3><p>Отмена в окне представления соперников возвращает оплаченные ресурсы. Сервер отличает её от сдачи после начала боя и защищает от повторного возврата.</p></li>
+          <li><h3>Компактные ресурсы</h3><p>Энергия показывает текущее количество без максимума. Крупные тёмные плюсы на золотых плашках лучше видны рядом с ресурсами. Счётчики почты, друзей и заданий дня получили такие же чёткие золотые бейджи с контрастными цифрами.</p></li>
+          <li><h3>Читаемые способности и образы</h3><p>Стоимость способностей получила более плотные цифры. Текст карточки образа увеличен, а расположение элементов обновлено.</p></li>
+        </ul>
+        </details>
+        <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.16</span> — посмотреть изменения</summary>
         <ul class="change-list">
           <li><h3>Убежище в свете шахты</h3><p>Новый экран с круглым портретом героя, отдельной строкой руды, золота, материи и энергии. Рейтинг, друзья и почта рядом с героем; уведомления показывают доступные награды и входящие события.</p></li>
           <li><h3>Данные героя после загрузки</h3><p>При запуске игра ждёт настоящее имя, характеристики и ресурсы. Временные значения и преждевременное сообщение о потере связи больше не мелькают на экране; при настоящей ошибке доступен повтор.</p></li>
@@ -92,6 +109,7 @@
           <li><h3>Крупные боевые показатели</h3><p>Урон, броня, лечение и крит получили крупные иконки и значения. Пять параметров монстра собраны в общей рамке, мана обозначена голубой каплей, а портрет противника заполняет карточку подготовки к бою.</p></li>
           <li><h3>Приз и счёт ставок в турнире</h3><p>Внизу сетки виден возможный приз, а при включённых ставках — счёт правильных и ошибочных прогнозов.</p></li>
         </ul>
+        </details>
         <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.15</span> — посмотреть изменения</summary>
         <ul class="change-list">
           <li><h3>Мастерская с наглядными рецептами</h3><p>Изученные рецепты показывают иконки будущих вещей и цвет редкости. Легендарные стоят первыми; нужный для ковки предмет виден рядом с ресурсами.</p></li>
@@ -209,11 +227,11 @@
     <section class="download-section" id="download" aria-labelledby="download-title">
       <div class="wrap download-grid">
         <div><p class="micro eyebrow">Готовы к спуску?</p><h2 id="download-title">Escape для Android</h2><p class="intro">Скачайте APK и откройте его на Android для установки. Для игры нужно подключение к интернету.</p></div>
-        <div class="download-action"><a class="cta" href="./downloads/{{APK_FILENAME}}" download="{{APK_FILENAME}}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Скачать для Android</a><div class="download-info"><span>Версия 0.3.16 · {{APK_MIB}} МиБ</span><time datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div><p class="filename">Файл: {{APK_FILENAME}}</p><details class="checksum"><summary>Проверить загруженный файл</summary><p>Контрольная сумма SHA-256:</p><code>{{APK_SHA256}}</code></details></div>
+        <div class="download-action"><a class="cta" href="./downloads/{{APK_FILENAME}}" download="{{APK_FILENAME}}"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Скачать для Android</a><div class="download-info"><span>Версия {{RELEASE_VERSION}} · {{APK_MIB}} МиБ</span><time datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div><p class="filename">Файл: {{APK_FILENAME}}</p><details class="checksum"><summary>Проверить загруженный файл</summary><p>Контрольная сумма SHA-256:</p><code>{{APK_SHA256}}</code></details></div>
       </div>
     </section>
   </main>
-  <footer class="wrap footer"><span class="footer-brand">ESCAPE</span><span>Экспедиция в разлом · 0.3.16</span><a href="./assets/OFL.txt">Лицензия шрифта PT Serif</a></footer>
+  <footer class="wrap footer"><span class="footer-brand">ESCAPE</span><span>Экспедиция в разлом · {{RELEASE_VERSION}}</span><a href="./assets/OFL.txt">Лицензия шрифта PT Serif</a></footer>
   <dialog id="lightbox" aria-labelledby="lightbox-title"><div class="lightbox-inner"><p class="lightbox-title" id="lightbox-title"></p><button type="button" class="lightbox-close" autofocus>Закрыть <span aria-hidden="true">×</span></button><img alt="" id="lightbox-image"></div></dialog>
   <script>
     (()=>{

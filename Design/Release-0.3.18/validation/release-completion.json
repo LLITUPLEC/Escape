@@ -1,0 +1,39 @@
+{
+  "version": "0.3.18",
+  "versionCode": 20,
+  "state": "published_and_verified",
+  "verifiedUtc": "2026-10-28T22:22:52.343159+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.18-13e354b77d89.apk",
+  "apkSha256": "13e354b77d898666b030f4eaef4939eb651ca6cba3858c5d360a84f4d9ce6f89",
+  "apkBytes": 128893619,
+  "previousSignerPreserved": true,
+  "physicalDeviceTested": false,
+  "sourceFiles": 2122,
+  "sourceManifestSha256": "623f9637de560767eed88b472bfb7c79d410b8be23abb718950abcf952564917",
+  "runtimeSha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2",
+  "checks": {
+    "localLua": 881,
+    "nativeGroups": 10,
+    "isolatedNetwork": 977,
+    "publicFiles": 32,
+    "securitySmoke": 35,
+    "dashboardPassed": true,
+    "nativeSymbolBuildIdsAndZipCrcPassed": true
+  },
+  "retainedVersions": [
+    "0.3.18",
+    "0.3.17"
+  ],
+  "verifiedVpsBackups": 2,
+  "historicalReportsPreserved": true,
+  "changes": [
+    "Appearance catalog with closable no-scroll detail modal",
+    "Twelve generated monster avatars preserving full bodies",
+    "Separate persisted boss adaptation/scream/ordinary actions",
+    "Per-appearance rewards and idempotent v1 entitlement migration",
+    "Two-column monster stats and banish before rewards",
+    "Privileged boss rows: three-second reveal and tap hide",
+    "Race admission and tournament recovery identity/return regressions"
+  ]
+}

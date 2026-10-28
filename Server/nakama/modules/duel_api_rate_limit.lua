@@ -36,6 +36,7 @@ local READ = {
   duel_player_guidance_get = true,
   duel_global_boss_get = true, duel_mail_get = true, duel_shop_get = true,
   duel_global_boss_leaderboard_get = true,
+  duel_match3_recover = true,
 }
 
 local function reject(retry)

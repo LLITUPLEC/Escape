@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Globalization;
 using Project.Nakama;
 using Project.Utils;
 using UnityEngine;
@@ -15,12 +17,16 @@ namespace Project.Character
         {
             public string id; public bool unlocked; public Requirement[] requirements;
             public int unlock_reward_matter; public float unlock_reward_hp_percent; public bool reward_granted;
+            public int unlock_reward_tesseract, unlock_reward_heal_flat;
+            public float unlock_reward_armor_percent, unlock_reward_damage_percent, unlock_reward_heal_percent, unlock_reward_crit_percent;
         }
         [Serializable] public sealed class State
         {
             public bool ok; public string err, gender, selected_theme; public ThemeState[] themes;
             public int unlock_reward_schema, unlocked_prestige_count, rewarded_matter_total, unlock_reward_matter_granted;
             public float passive_hp_bonus_percent;
+            public int rewarded_tesseract_total, unlock_reward_tesseract_granted, passive_heal_bonus_flat;
+            public float passive_armor_bonus_percent, passive_damage_bonus_percent, passive_heal_bonus_percent, passive_crit_bonus_percent;
         }
         [Serializable] private sealed class SelectRequest { public string theme_id; }
         [Serializable] private sealed class GetRequest { public string legacy_theme_id; }
@@ -37,6 +43,55 @@ namespace Project.Character
         public static float PassiveHpBonusPercent { get { ObserveAccount(); return _loaded ? _state.passive_hp_bonus_percent : 0; } }
         public static int RewardedPrestigeCount { get { ObserveAccount(); return _loaded ? _state.unlocked_prestige_count : 0; } }
         public static int TotalRewardedMatter { get { ObserveAccount(); return _loaded ? _state.rewarded_matter_total : 0; } }
+        public static int TotalRewardedTesseracts { get { ObserveAccount(); return _loaded ? _state.rewarded_tesseract_total : 0; } }
+        public static float PassiveArmorBonusPercent { get { ObserveAccount(); return _loaded ? _state.passive_armor_bonus_percent : 0; } }
+        public static float PassiveDamageBonusPercent { get { ObserveAccount(); return _loaded ? _state.passive_damage_bonus_percent : 0; } }
+        public static float PassiveHealBonusPercent { get { ObserveAccount(); return _loaded ? _state.passive_heal_bonus_percent : 0; } }
+        public static float PassiveCritBonusPercent { get { ObserveAccount(); return _loaded ? _state.passive_crit_bonus_percent : 0; } }
+        public static int PassiveHealBonusFlat { get { ObserveAccount(); return _loaded ? _state.passive_heal_bonus_flat : 0; } }
+
+        // This mirror validates the server wire contract. Gameplay always uses server-computed stats.
+        public static ThemeState RewardDefinition(string id) => id switch
+        {
+            "dawnwarden" => new ThemeState { id = id },
+            "voidranger" => new ThemeState { id = id, unlock_reward_matter = 15, unlock_reward_hp_percent = 1 },
+            "stormforged" => new ThemeState { id = id, unlock_reward_matter = 30, unlock_reward_crit_percent = 1 },
+            "emberoracle" => new ThemeState { id = id, unlock_reward_matter = 30, unlock_reward_damage_percent = 1 },
+            "frostwraith" => new ThemeState { id = id, unlock_reward_matter = 50, unlock_reward_heal_percent = 2 },
+            "phoenix" => new ThemeState { id = id, unlock_reward_matter = 100, unlock_reward_hp_percent = 2, unlock_reward_armor_percent = 2 },
+            "bookmaker" => new ThemeState { id = id, unlock_reward_matter = 50, unlock_reward_hp_percent = 2 },
+            "railwarden" => new ThemeState { id = id, unlock_reward_matter = 40, unlock_reward_hp_percent = 2, unlock_reward_armor_percent = 2 },
+            "beastbreaker" => new ThemeState { id = id, unlock_reward_matter = 300, unlock_reward_hp_percent = 5, unlock_reward_armor_percent = 5, unlock_reward_damage_percent = 5, unlock_reward_heal_percent = 5 },
+            "alchemist" => new ThemeState { id = id, unlock_reward_matter = 50, unlock_reward_tesseract = 1, unlock_reward_heal_flat = 300 },
+            _ => null
+        };
+
+        private static string BonusText(float hp, float armor, float damage, float heal, float crit, int flatHeal)
+        {
+            var parts = new List<string>();
+            string N(float value) => value.ToString("0.#", CultureInfo.GetCultureInfo("ru-RU"));
+            if (hp > 0) parts.Add("+" + N(hp) + "% HP");
+            if (armor > 0) parts.Add("+" + N(armor) + "% брони");
+            if (damage > 0) parts.Add("+" + N(damage) + "% урона");
+            if (heal > 0) parts.Add("+" + N(heal) + "% лечения");
+            if (crit > 0) parts.Add("+" + N(crit) + " п.п. к шансу крита");
+            if (flatHeal > 0) parts.Add("+" + flatHeal + " лечения");
+            return parts.Count == 0 ? "Без постоянного бонуса" : string.Join(" · ", parts) + " навсегда";
+        }
+        public static string FormatThemeBonus(ThemeState theme) => theme == null ? "Бонусы загружаются…" :
+            BonusText(theme.unlock_reward_hp_percent, theme.unlock_reward_armor_percent, theme.unlock_reward_damage_percent,
+                theme.unlock_reward_heal_percent, theme.unlock_reward_crit_percent, theme.unlock_reward_heal_flat);
+        public static string FormatThemeReward(ThemeState theme) => theme == null ? "Награды загружаются…" :
+            theme.unlock_reward_matter + " материи" + (theme.unlock_reward_tesseract > 0 ? " · " + theme.unlock_reward_tesseract + " тессеракт" : "");
+        public static string FormatCollectionBonus()
+        {
+            ObserveAccount();
+            return !_loaded ? "Бонусы коллекции загружаются…" :
+                "Коллекция: " + BonusText(_state.passive_hp_bonus_percent, _state.passive_armor_bonus_percent, _state.passive_damage_bonus_percent,
+                    _state.passive_heal_bonus_percent, _state.passive_crit_bonus_percent, _state.passive_heal_bonus_flat) +
+                "\nНаграды за открытие: " + _state.rewarded_matter_total + " материи" +
+                (_state.rewarded_tesseract_total > 0 ? " · " + _state.rewarded_tesseract_total + " тессеракт" : "");
+        }
 
         public static ThemeState GetTheme(string id)
         {
@@ -143,11 +198,12 @@ namespace Project.Character
 
         private static bool Accept(State value)
         {
-            if (value == null || !value.ok || !AccountGender.IsLoaded || value.gender != (AccountGender.IsFemale ? "female" : "male") || value.themes == null ||
+            if (value == null || !value.ok || value.unlock_reward_schema < 0 || value.unlock_reward_schema > 2 || !AccountGender.IsLoaded || value.gender != (AccountGender.IsFemale ? "female" : "male") || value.themes == null ||
                 value.themes.Length != CharacterAppearance.Themes.Count) return false;
             var seen = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
             var selectedUnlocked = value.selected_theme == "default";
             var rewardedCount = 0;
+            var matterTotal = 0; var tesseractTotal = 0; var hp = 0f; var armor = 0f; var damage = 0f; var heal = 0f; var crit = 0f; var flatHeal = 0;
             foreach (var theme in value.themes)
             {
                 if (theme == null || !CharacterAppearance.IsTheme(theme.id) || !seen.Add(theme.id)) return false;
@@ -164,16 +220,42 @@ namespace Project.Character
                         theme.reward_granted != (prestige && theme.unlocked)) return false;
                     if (theme.reward_granted) rewardedCount++;
                 }
+                else if (value.unlock_reward_schema == 2)
+                {
+                    var expected = RewardDefinition(theme.id);
+                    if (theme.unlock_reward_matter != expected.unlock_reward_matter || theme.unlock_reward_tesseract != expected.unlock_reward_tesseract ||
+                        theme.unlock_reward_heal_flat != expected.unlock_reward_heal_flat ||
+                        !Mathf.Approximately(theme.unlock_reward_hp_percent, expected.unlock_reward_hp_percent) ||
+                        !Mathf.Approximately(theme.unlock_reward_armor_percent, expected.unlock_reward_armor_percent) ||
+                        !Mathf.Approximately(theme.unlock_reward_damage_percent, expected.unlock_reward_damage_percent) ||
+                        !Mathf.Approximately(theme.unlock_reward_heal_percent, expected.unlock_reward_heal_percent) ||
+                        !Mathf.Approximately(theme.unlock_reward_crit_percent, expected.unlock_reward_crit_percent) ||
+                        theme.reward_granted != (theme.id != "dawnwarden" && theme.unlocked)) return false;
+                    if (theme.reward_granted)
+                    {
+                        rewardedCount++; matterTotal += expected.unlock_reward_matter; tesseractTotal += expected.unlock_reward_tesseract;
+                        hp += expected.unlock_reward_hp_percent; armor += expected.unlock_reward_armor_percent; damage += expected.unlock_reward_damage_percent;
+                        heal += expected.unlock_reward_heal_percent; crit += expected.unlock_reward_crit_percent; flatHeal += expected.unlock_reward_heal_flat;
+                    }
+                }
             }
             if (!selectedUnlocked) return false;
             if (value.unlock_reward_schema == 1 && (value.unlocked_prestige_count != rewardedCount ||
                 value.rewarded_matter_total != rewardedCount * 5 || !Mathf.Approximately(value.passive_hp_bonus_percent, rewardedCount * .5f) ||
                 value.unlock_reward_matter_granted < 0 || value.unlock_reward_matter_granted > value.rewarded_matter_total ||
                 value.unlock_reward_matter_granted % 5 != 0)) return false;
+            if (value.unlock_reward_schema == 2 && (value.unlocked_prestige_count != rewardedCount || value.rewarded_matter_total != matterTotal ||
+                value.rewarded_tesseract_total != tesseractTotal || value.passive_heal_bonus_flat != flatHeal ||
+                !Mathf.Approximately(value.passive_hp_bonus_percent, hp) || !Mathf.Approximately(value.passive_armor_bonus_percent, armor) ||
+                !Mathf.Approximately(value.passive_damage_bonus_percent, damage) || !Mathf.Approximately(value.passive_heal_bonus_percent, heal) ||
+                !Mathf.Approximately(value.passive_crit_bonus_percent, crit) || value.unlock_reward_matter_granted < 0 ||
+                value.unlock_reward_matter_granted > matterTotal || value.unlock_reward_tesseract_granted < 0 ||
+                value.unlock_reward_tesseract_granted > tesseractTotal)) return false;
             var previousCount = _state?.unlocked_prestige_count ?? 0;
             _state = value; _loaded = true; _lastError = null; Changed?.Invoke();
-            if (value.unlock_reward_schema == 1 && rewardedCount > previousCount) Project.UI.MailService.RequestRefresh(true);
-            if (value.unlock_reward_schema == 1 && value.unlock_reward_matter_granted > 0 && rewardedCount > previousCount)
+            var rewardsGranted = value.unlock_reward_matter_granted > 0 || value.unlock_reward_tesseract_granted > 0;
+            if (value.unlock_reward_schema >= 1 && (rewardedCount > previousCount || rewardsGranted)) Project.UI.MailService.RequestRefresh(true);
+            if (value.unlock_reward_schema >= 1 && value.unlock_reward_matter_granted > 0 && (rewardedCount > previousCount || value.unlock_reward_schema == 2))
                 UnlockRewardsGranted?.Invoke(value.unlock_reward_matter_granted);
             return true;
         }

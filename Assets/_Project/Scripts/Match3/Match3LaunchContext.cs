@@ -38,6 +38,38 @@ namespace Project.Match3
 
         /// <summary>После автовыхода из боя 1/4–1/2: арена показывает блокер до первого poll с активной сеткой.</summary>
         private static bool _arenaMenuAwaitBracketOverlay;
+        private static Match3RecoveryReply _recoveredJoin;
+        private static string _recoveredOwner;
+        private static int _recoveredGeneration;
+
+        public static bool ArmRecoveredMatch(Match3RecoveryReply reply, string owner, int generation)
+        {
+            var boot = Project.Nakama.NakamaBootstrap.Instance;
+            if (boot == null || boot.AuthenticationGeneration != generation || !Project.Nakama.LocalAccountCacheScope.IsCurrent(owner) ||
+                !Match3RecoveryService.CanRestore(reply, owner, generation)) return false;
+            ClearArenaJoinArm(); ClearFriendRaceJoinArm(); ClearGlobalBoss();
+            var solo = reply.IsSoloBattle;
+            if (solo)
+                SetSoloMine(reply.bot_id, reply.floor, reply.difficulty, false, reply.is_global_boss ? "MainMenu" : "MineScene");
+            else
+                _nextMode = Match3LaunchMode.Multiplayer;
+            _nextPvpPro = !solo && reply.pvp_pro;
+            _nextPvpRace = !solo && reply.pvp_race;
+            _recoveredJoin = reply; _recoveredOwner = owner; _recoveredGeneration = generation;
+            return true;
+        }
+
+        public static bool TryPeekRecoveredMatch(out Match3RecoveryReply reply)
+        {
+            var boot = Project.Nakama.NakamaBootstrap.Instance;
+            if (_recoveredJoin != null && (boot == null || boot.AuthenticationGeneration != _recoveredGeneration ||
+                !Project.Nakama.LocalAccountCacheScope.IsCurrent(_recoveredOwner) ||
+                !Match3RecoveryService.CanRestore(_recoveredJoin, _recoveredOwner, _recoveredGeneration))) ClearRecoveredMatch();
+            reply = _recoveredJoin;
+            return reply != null;
+        }
+
+        public static void ClearRecoveredMatch() { _recoveredJoin = null; _recoveredOwner = null; _recoveredGeneration = 0; }
 
         public sealed class GlobalBossJoin
         {
@@ -68,6 +100,7 @@ namespace Project.Match3
 
         public static void SetMode(Match3LaunchMode mode)
         {
+            ClearRecoveredMatch();
             _nextMode = mode;
         }
 
@@ -101,12 +134,18 @@ namespace Project.Match3
 
         public static void SetSoloMine(string botId, int floor, string difficulty, bool autoStart = true, string returnScene = null)
         {
+            ClearRecoveredMatch();
             _bossJoin = null;
             _nextMode = Match3LaunchMode.SoloBot;
             _preferredBotId = string.IsNullOrWhiteSpace(botId) ? null : botId;
             _preferredFloor = floor;
             _preferredDifficulty = string.IsNullOrWhiteSpace(difficulty) ? "easy" : difficulty;
             _autoStartSolo = autoStart;
+            SetSoloReturnContext(floor, returnScene);
+        }
+
+        public static void SetSoloReturnContext(int floor, string returnScene = null)
+        {
             if (!string.IsNullOrWhiteSpace(returnScene))
                 _soloReturnScene = returnScene.Trim();
             // Keep the fought floor separately from the launch payload, which is consumed

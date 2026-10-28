@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Project.Character;
 using Project.Character.UI;
 using Project.Nakama;
@@ -62,7 +63,7 @@ namespace Project.Editor
                 Require(panel.PreviewId == CharacterAppearance.Id(9) && panel.IsOpen, "Body preview did not follow the account gender.");
                 Require(host.transform.Find("ExpeditionAppearancePage/MaleVersion") == null && host.transform.Find("ExpeditionAppearancePage/FemaleVersion") == null,
                     "The Hero page exposes a gender selector.");
-                var preview = host.transform.Find("ExpeditionAppearancePage/AppearanceBodyPreview").GetComponent<Image>();
+                var preview = host.GetComponentsInChildren<Image>(true).Single(image => image.name == "AppearanceBodyPreview");
                 Require(preview.sprite == CharacterAppearance.Load(panel.PreviewId, false), "Body preview uses the wrong illustration.");
                 panel.SelectTheme(2);
                 Require(panel.PreviewId == CharacterAppearance.Id(2), "Skin preview selection is incorrect.");

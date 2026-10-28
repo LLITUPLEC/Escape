@@ -3,6 +3,7 @@ import argparse
 import base64
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+from http.client import RemoteDisconnected
 import json
 import math
 from pathlib import Path
@@ -191,6 +192,16 @@ class SocketClient(JsonWebSocket):
         result = self.await_message(is_action)
         return json.loads(base64.b64decode(result["match_data"]["data"]))
 
+    def accepted_action(self, match_id, actor_uid, action_type):
+        def accepted(message):
+            data = message.get("match_data", {})
+            if data.get("match_id") != match_id or str(data.get("op_code")) != "10":
+                return False
+            value = json.loads(base64.b64decode(data["data"]))
+            return value.get("actionType") == action_type and value.get("actionActorUserId") == actor_uid
+        result = self.await_message(accepted, timeout=20)
+        return json.loads(base64.b64decode(result["match_data"]["data"]))
+
 
 def http(base, method, path, payload=None, auth=None):
     headers = {"Content-Type": "application/json"}
@@ -311,6 +322,39 @@ class Suite:
     def stats(self, p):
         return self.rpc(p, "duel_match3_stats_get")
 
+    def begin_played_match(self, mid, connections):
+        """A loss assertion requires actual authoritative ready, not merely Join."""
+        state = self.rpc(connections[0][0], "duel_match3_recover", {"match_id": mid})
+        if not state.get("ok") or not state.get("active"):
+            raise RuntimeError("Played-match fixture cannot recover its own active match")
+        frames = {}
+        if not state.get("battle_started"):
+            for _, ws in connections:
+                ws.match_data(mid, 17)
+            for p, ws in connections:
+                frames[p["uid"]] = ws.event(mid, 10)
+            confirmed = self.rpc(connections[0][0], "duel_match3_recover", {"match_id": mid})
+            if not confirmed.get("battle_started"):
+                raise RuntimeError("Ready failed to commit the real played-match fixture")
+        return frames
+
+    def forfeit_with_lost_ack_retry(self, p, mid):
+        """One explicit immutable surrender may lose its HTTP acknowledgement.
+
+        No generic mutation retry: creation, spending and every other error keep
+        their original failure. The same frozen account/epoch/match is replayed
+        once and must return the server's durable terminal receipt.
+        """
+        account = dict(p)
+        for attempt in range(2):
+            try:
+                return self.rpc(account, "duel_match3_forfeit", {"match_id": mid})
+            except RemoteDisconnected:
+                if attempt:
+                    raise
+                print("EVIDENCE immutable forfeit HTTP acknowledgement lost; retrying exact own match once", flush=True)
+                time.sleep(.2)
+
     def isolated_only(self, scenario):
         url = urlsplit(self.args.url)
         console = urlsplit(self.args.console_url)
@@ -332,6 +376,7 @@ class Suite:
         return value.get("achievement_stats", {}).get(name, 0)
 
     def finish(self, mid, loser, winner, loser_p, winner_p):
+        self.begin_played_match(mid, [(loser_p, loser), (winner_p, winner)])
         before_l, before_w = self.stats(loser_p), self.stats(winner_p)
         loser.match_data(mid, 12)
         # Repeat in the same match-loop batch exercises the ended-state guard.
@@ -465,13 +510,14 @@ class Suite:
             self.seed_money(p, matter=100)
             self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "lifecycle fixture pays one real Race entry")
         mid, wa, wb, board = self.pair(a, b, "race")
+        self.begin_played_match(mid, [(a, wa), (b, wb)])
         before = [self.stats(p) for p in (a, b)]
         rejected = self.rpc(outsider, "duel_match3_forfeit", {"match_id": mid})
         self.check(rejected.get("err") == "not_participant", "outsider cannot surrender another two-client match")
         stale = self.rpc(a, "duel_match3_forfeit", {"match_id": mid, "session_epoch": a["epoch"] - 1})
         self.check(stale.get("err") == "session_stale", "surrender RPC rejects a stale session before signaling the match")
         with ThreadPoolExecutor(max_workers=4) as pool:
-            replies = list(pool.map(lambda _: self.rpc(a, "duel_match3_forfeit", {"match_id": mid}), range(4)))
+            replies = list(pool.map(lambda _: self.forfeit_with_lost_ack_retry(a, mid), range(4)))
         self.check(all(r.get("ok") and r.get("accepted") and r.get("terminal") and r.get("winner_user_id") == b["uid"] for r in replies),
             "four concurrent acknowledged Race surrenders freeze one winner after authoritative settlement")
         over_a, over_b = wa.event(mid, 11), wb.event(mid, 11)
@@ -490,6 +536,7 @@ class Suite:
         for p in (a, b):
             self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "both former Race participants can pay and queue again immediately")
         mid2, next_a, next_b, _ = self.pair(a, b, "race")
+        self.begin_played_match(mid2, [(a, next_a), (b, next_b)])
         self.check(mid2 != mid and self.rpc(b, "duel_match3_forfeit", {"match_id": mid2}).get("terminal"),
             "a second actual Race starts and ends without the old race_entry_in_use lock")
         next_a.event(mid2, 11); next_b.event(mid2, 11)
@@ -503,18 +550,222 @@ class Suite:
             cancelled = wx.event(pending, 11, timeout=27)
             elapsed = time.monotonic() - started
             self.check(cancelled.get("matchCancelled") is True and cancelled.get("isDraw") is True
-                and not cancelled.get("winnerUserId") and cancelled.get("endReason") == "opponent_not_ready" and elapsed <= 26,
+                and not cancelled.get("winnerUserId") and cancelled.get("endReason") == "admission_cancelled" and elapsed <= 26,
                 rules + ": absent second participant cancels within bounded admission and notifies the waiting client")
             final = [self.stats(p) for p in (x, y)]
             self.check(all(final[i].get("played", 0) == base[i].get("played", 0) for i in range(2)),
                 rules + ": failed admission grants neither a played result nor a free win")
             retry, new_x, new_y, _ = self.pair(x, y, rules)
+            self.begin_played_match(retry, [(x, new_x), (y, new_y)])
             self.check(self.rpc(x, "duel_match3_forfeit", {"match_id": retry}).get("terminal"),
                 rules + ": cancelled admission leaves both players free to requeue into a real match")
             new_x.event(retry, 11); new_y.event(retry, 11)
         self.pve_never_join()
         self.tournament_disconnect(never_join=False)
         self.tournament_disconnect(never_join=True)
+
+    def reconnect_0317(self):
+        self.isolated_only("0.3.17 paid admission and actual reconnect actions")
+        p, outsider = self.player(), self.player()
+        self.rpc(p, "duel_character_get")
+        self.seed_money(p, energy=100, matter=100, mine={"unlocked": {"easy": 4, "medium": 0, "hard": 0},
+            # Canonical real affix with normal mana gains. A random bare_current
+            # intentionally disables mana and cannot prove a paid ability cast.
+            "floor_states": {"easy:4": {"last_affix": "mana_vampire"}}})
+        self.seed_sheet(p, ["elixir_assault"], [1])
+        path = "/storage/duel_match3_character/sheet/" + p["uid"]
+        code, row = self.console("GET", path)
+        value = json.loads(row["value"])
+        value["equipment"] = [""] * 8
+        value["equipment"][5] = "eq_t1_legendary_feet"  # canonical armor/HP only; cannot kill the fixture in one swap.
+        code, _ = self.console("PUT", path, {"value": json.dumps(value), "version": row["version"], "permission_read": 1, "permission_write": 0})
+        if code != 200:
+            raise RuntimeError("Own reconnect equipment fixture failed")
+        arm = self.consumable_use_request(p, 0, "elixir_assault", "reconnect-arm-" + self.run_id)
+        self.check(self.rpc(p, "duel_consumables_use", arm).get("ok"), "reconnect fixture arms one owned elixir")
+        before = self.stats(p)
+        request_id = "reconnect-" + uuid.uuid4().hex
+        launch = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_4", "request_id": request_id})
+        mid = launch.get("match_id")
+        if not launch.get("ok") or not mid:
+            raise RuntimeError("Reconnect paid mine admission failed: " + str(launch.get("err")))
+        recovered = self.rpc(p, "duel_match3_recover", {"request_id": request_id})
+        replay = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_4", "request_id": request_id})
+        self.check(recovered.get("active") and recovered.get("match_id") == mid and recovered.get("can_cancel")
+            and replay.get("resumed") and replay.get("match_id") == mid and self.rpc(p, "duel_player_resources_get").get("energy") == 85,
+            "lost create acknowledgement recovers/resumes the exact paid receipt without a second debit")
+        self.check(self.rpc(outsider, "duel_match3_recover", {"match_id": mid}).get("err") == "not_participant"
+            and self.rpc(outsider, "duel_match3_cancel", {"match_id": mid}).get("err") == "not_participant",
+            "foreign recovery and cancellation cannot attach or refund another admission")
+
+        def join():
+            ws = self.connect(p)
+            answer = ws.command("match_join", {"match_id": mid, "metadata": {"session_epoch": str(p["epoch"])}})
+            if "match" not in answer:
+                raise RuntimeError("Own reconnect socket admission rejected")
+            return ws, ws.event(mid, 10)
+
+        def player_turn(ws, board):
+            deadline = time.monotonic() + 90
+            for _ in range(100):
+                if time.monotonic() > deadline or board.get("aHp", 0) <= 0 or board.get("bHp", 0) <= 0:
+                    raise RuntimeError("Reconnect fixture ended before its real action proof")
+                if board.get("turnPaused") or not board.get("turnEndsAtUnixMs"):
+                    ws.match_data(mid, 17)
+                    board = ws.event(mid, 10)
+                elif board.get("activeUserId") == p["uid"]:
+                    return board
+                else:
+                    board = ws.event(mid, 10)
+            raise RuntimeError("Reconnect fixture never yielded its owner turn")
+
+        def swap_and_ability(ws, board, label):
+            board = player_turn(ws, board)
+            previous = list(board["board"])
+            ws.match_data(mid, 13, valid_swap(previous, race=True))
+            board = ws.accepted_action(mid, p["uid"], 1)
+            self.check(board["board"] != previous and board.get("actionActorUserId") == p["uid"],
+                label + ": a real swap is accepted and changes the authoritative board")
+            for _ in range(35):
+                board = player_turn(ws, board)
+                if board.get("aMana", 0) >= 50 and board.get("aPetardCd", 0) == 0:
+                    prior_mana = board["aMana"]
+                    ws.match_data(mid, 13, {"actionType": 4, "fromX": -1, "fromY": -1, "toX": -1, "toY": -1, "cx": -1, "cy": -1})
+                    board = ws.accepted_action(mid, p["uid"], 4)
+                    self.check(board.get("aMana", prior_mana) < prior_mana and board.get("aPetardCd", 0) > 0,
+                        label + ": a real ability is accepted and spends authoritative mana/cooldown")
+                    return board
+                ws.match_data(mid, 13, valid_swap(board["board"], race=True))
+                board = ws.accepted_action(mid, p["uid"], 1)
+            raise RuntimeError("Reconnect fixture could not earn mana for its actual ability proof")
+
+        ws, board = join()
+        board = self.begin_played_match(mid, [(p, ws)]).get(p["uid"], board)
+        binding = self.storage("duel_pve_entry", "active", p["uid"])
+        self.check(binding.get("status") == "consumed"
+            and self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "",
+            "ready commits the exact mine payment and armed elixir once")
+        for seconds in (5, 30):
+            board = player_turn(ws, board)
+            epoch = p["epoch"]
+            ws.close()
+            print("EVIDENCE reconnect offline seconds=" + str(seconds), flush=True)
+            time.sleep(seconds)
+            live = self.rpc(p, "duel_match3_recover", {"match_id": mid})
+            self.check(live.get("active") and live.get("match_id") == mid and p["epoch"] == epoch,
+                str(seconds) + "s transport loss recovers the same live paid match without another ownership claim")
+            ws, board = join()
+            board = swap_and_ability(ws, board, str(seconds) + "s reconnect")
+        old = ws
+        old_epoch = p["epoch"]
+        p["epoch"] = self.rpc(p, "duel_session_claim")["session_epoch"]
+        cold = self.rpc(p, "duel_match3_recover")
+        self.check(p["epoch"] > old_epoch and cold.get("active") and cold.get("match_id") == mid,
+            "cold-auth ownership claim discovers the existing paid match and safely rebinds its owner epoch")
+        ws, board = join()
+        old.close()  # A delayed old-session leave must not remove the replacement.
+        time.sleep(.3)
+        board = swap_and_ability(ws, board, "cold-auth recovery after delayed old leave")
+        code, state_row = self.console("GET", "/match/" + quote(mid, safe="") + "/state")
+        state = json.loads(state_row.get("state", "{}")) if code == 200 else {}
+        self.check(state.get("owner_user_id") == p["uid"] and state.get("owner_session_epoch") == p["epoch"]
+            and state.get("presences", {}).get(p["uid"], {}).get("session_id")
+            and state.get("_consumable_bindings", {}).get(p["uid"], {}).get("activation_id") == arm["request_id"],
+            "authoritative owner/current epoch/presence and the original consumed elixir survive every reconnect")
+        wallet_before_cancel = self.storage("duel_match3_progress", "profile", p["uid"])
+        paid_before_finish = self.storage("duel_pve_entry", "active", p["uid"])
+        denied_cancel = self.rpc(p, "duel_match3_cancel", {"match_id": mid})
+        wallet_after_cancel = self.storage("duel_match3_progress", "profile", p["uid"])
+        self.check(denied_cancel.get("err") == "battle_already_started" and wallet_after_cancel == wallet_before_cancel
+            and paid_before_finish.get("status") == "consumed" and resource_totals(paid_before_finish.get("costs")) == {"energy": 15},
+            "cancel after actual gameplay cannot refund the committed mine entry")
+        self.check(self.rpc(p, "duel_match3_forfeit", {"match_id": mid}).get("terminal"), "normal played surrender remains authoritative after recovery")
+        ws.event(mid, 11)
+        after = self.stats(p)
+        paid_after_finish = self.storage("duel_pve_entry", "active", p["uid"])
+        self.check(after.get("played", 0) == before.get("played", 0) + 1 and after.get("losses", 0) == before.get("losses", 0) + 1
+            and self.rpc(p, "duel_match3_cancel", {"match_id": mid}).get("match_cancelled") is False
+            and paid_after_finish == paid_before_finish,
+            "all reconnects produce one real played loss and cannot turn a completed match into a refund")
+        print("EVIDENCE reconnect original_charge=" + str(resource_totals(paid_after_finish.get("costs")))
+            + " current_energy_with_ordinary_regen=" + str(self.rpc(p, "duel_player_resources_get").get("energy")), flush=True)
+
+        cancel = self.player();self.rpc(cancel, "duel_character_get");self.seed_money(cancel, energy=100)
+        self.seed_sheet(cancel, ["elixir_assault"], [1])
+        self.rpc(cancel, "duel_consumables_use", self.consumable_use_request(cancel, 0, "elixir_assault", "cancel-arm-" + self.run_id))
+        base_stats = self.stats(cancel)
+        for legacy in (False, True):
+            rid = "cancel-" + uuid.uuid4().hex
+            created = self.rpc(cancel, "duel_match3_pve_create", {"bot_id": "mine_1", "request_id": rid})
+            cmid = created.get("match_id")
+            if not created.get("ok") or not cmid:
+                raise RuntimeError("Reveal cancellation fixture admission failed")
+            cw = self.connect(cancel);cw.command("match_join", {"match_id": cmid});cw.event(cmid, 10)
+            name = "duel_match3_forfeit" if legacy else "duel_match3_cancel"
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                acknowledgements = list(pool.map(lambda _: self.rpc(cancel, name, {"match_id": cmid}), range(3)))
+            self.check(all(a.get("terminal") and a.get("match_cancelled") for a in acknowledgements)
+                and self.rpc(cancel, "duel_player_resources_get").get("energy") == 100
+                and self.rpc(cancel, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "elixir_assault"
+                and self.stats(cancel).get("played", 0) == base_stats.get("played", 0),
+                ("legacy0.3.16 forfeit" if legacy else "explicit cancel") + " during reveal refunds once, keeps the armed item and awards no played result")
+            cw.event(cmid, 11)
+            if not legacy:
+                self.check(acknowledgements[0].get("progression", {}).get("energy") == 100
+                    and isinstance(acknowledgements[0].get("progression", {}).get("key_items"), dict),
+                    "confirmed cancellation returns a complete own canonical progression for the HUD")
+        # Keep the old transport alive after a new logical ownership claim. No
+        # recover/ready from the new owner may accidentally make this playable.
+        deadline_started = time.monotonic()
+        deadline_rid = "deadline-" + uuid.uuid4().hex
+        admission = self.rpc(cancel, "duel_match3_pve_create", {"bot_id": "mine_1", "request_id": deadline_rid})
+        deadline_mid = admission.get("match_id")
+        if not admission.get("ok") or not deadline_mid:
+            raise RuntimeError("Stale reveal deadline admission failed")
+        stale = self.connect(cancel)
+        stale.command("match_join", {"match_id": deadline_mid, "metadata": {"session_epoch": str(cancel["epoch"])}})
+        stale.event(deadline_mid, 10)
+        code, row = self.console("GET", "/match/" + quote(deadline_mid, safe="") + "/state")
+        pending_state = json.loads(row.get("state", "{}")) if code == 200 else {}
+        self.check(pending_state.get("started") and pending_state.get("_prestart_pending") is True,
+            "deadline fixture has actually joined the paid reveal without starting gameplay")
+        cancel["epoch"] = self.rpc(cancel, "duel_session_claim")["session_epoch"]
+        stale.match_data(deadline_mid, 17)
+        rejected = stale.event(deadline_mid, 14)
+        self.check(rejected.get("reason") == "session_stale",
+            "old still-connected owner cannot commit the reveal after a new ownership claim")
+        expired = stale.event(deadline_mid, 11, timeout=26)
+        elapsed = time.monotonic() - deadline_started
+        entry = self.storage("duel_pve_entry", "active", cancel["uid"])
+        self.check(expired.get("matchCancelled") is True and expired.get("endReason") == "admission_cancelled"
+            and 17 <= elapsed <= 26 and entry.get("status") == "refunded"
+            and self.rpc(cancel, "duel_player_resources_get").get("energy") == 100
+            and self.rpc(cancel, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "elixir_assault"
+            and self.stats(cancel).get("played", 0) == base_stats.get("played", 0),
+            "joined stale reveal expires at the existing twenty-second admission deadline with one refund and no played result")
+        expired_ack = self.rpc(cancel, "duel_match3_cancel", {"match_id": deadline_mid, "request_id": deadline_rid})
+        self.check(expired_ack.get("terminal") and expired_ack.get("match_cancelled")
+            and expired_ack.get("refund_pending") is not True
+            and expired_ack.get("progression", {}).get("energy") == 100,
+            "deadline cancellation remains exact and idempotent for the current owner after expiry")
+        race = self.player();self.seed_money(race, matter=100)
+        self.rpc(race, "duel_match3_race_enter")
+        rid = "race-" + uuid.uuid4().hex
+        created = self.rpc(race, "duel_match3_race_create", {"request_id": rid});rmid = created.get("match_id")
+        proof = self.rpc(race, "duel_match3_recover", {"request_id": rid})
+        self.check(created.get("ok") and proof.get("active") and proof.get("pvp_race") and proof.get("match_id") == rmid,
+            "lost paid Race-create acknowledgement is correlated to its exact request/match")
+        refunded = self.rpc(race, "duel_match3_cancel", {"request_id": rid})
+        self.check(refunded.get("terminal") and refunded.get("match_cancelled") and refunded.get("progression", {}).get("matter") == 100,
+            "request-only Race reveal cancellation refunds the immutable entry without a loss or prize")
+        self.rpc(race, "duel_match3_race_enter")
+        late = self.rpc(race, "duel_match3_cancel", {"request_id": rid})
+        self.check(not late.get("ok") and self.rpc(race, "duel_player_resources_get").get("matter") == 98,
+            "a delayed old request cancellation cannot refund a newer paid Race queue")
+        pending = self.rpc(race, "duel_match3_recover")
+        self.check(pending.get("pending_admission") and pending.get("request_id")
+            and self.rpc(race, "duel_match3_cancel", {"request_id": pending["request_id"]}).get("terminal"),
+            "pending paid Race queue exposes its exact server-owned reference for safe cancellation")
 
     def pve_never_join(self):
         self.isolated_only("Paid never-joined PvE lifecycle regression")
@@ -560,8 +811,11 @@ class Suite:
         if "match" not in ws.command("match_join", {"match_id": mid}): raise RuntimeError("Recovered mine launch join failed")
         board = ws.event(mid, 10)
         self.check(board.get("aConsumableId") == "elixir_assault"
-            and self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "",
-            "only the subsequently joined mine battle consumes and applies the preserved elixir")
+            and self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "elixir_assault",
+            "joined mine preview displays the preserved elixir without consuming it during reveal")
+        self.begin_played_match(mid, [(p, ws)])
+        self.check(self.rpc(p, "duel_consumables_get").get("consumables", {}).get("armed_item_id") == "",
+            "real ready consumes the preserved elixir once before the subsequent played surrender")
         self.check(board.get("roundNumber") == 1, "fresh mine admission starts the authoritative first round")
         self.check(self.rpc(p, "duel_match3_forfeit", {"match_id": mid}).get("terminal"),
             "subsequently joined mine can surrender through the same confirmed terminal contract")
@@ -783,8 +1037,9 @@ class Suite:
         resources = self.rpc(p, "duel_player_resources_get")
         self.check(rejected_cancel.get("ok") is False and rejected_cancel.get("err") == "race_entry_in_use"
             and resources.get("matter") == 98, "a claimed Race entry cannot be refunded while its match is active")
-        self.check(rejected_reuse.get("ok") is False and not rejected_reuse.get("match_id"),
-            "one paid entry cannot create a second active Race match")
+        self.check(rejected_reuse.get("ok") is True and rejected_reuse.get("match_id") == mid and rejected_reuse.get("resumed") is True,
+            "replayed Race create resumes the exact already-paid active match without creating another")
+        self.begin_played_match(mid, [(p, ws)])
         before_stats = self.stats(p)
         before_profile = self.storage("duel_match3_progress", "profile", p["uid"])
         ws.match_data(mid, 12)
@@ -846,6 +1101,7 @@ class Suite:
         if "match" not in ws.command("match_join", {"match_id": mid}):
             raise RuntimeError("Legacy paid bot Race join failed")
         ws.event(mid, 10)
+        self.begin_played_match(mid, [(p, ws)])
         before_stats = self.stats(p)
         ws.match_data(mid, 12)
         ws.match_data(mid, 12)
@@ -980,9 +1236,10 @@ class Suite:
         earned_themes = {theme["id"]: theme for theme in earned.get("themes", [])}
         self.check(earned_themes.get("phoenix", {}).get("unlocked") and all(rule.get("met") for rule in earned_themes.get("phoenix", {}).get("requirements", [])),
                    "pre-existing durable achievement and PvP progress retroactively unlock Phoenix")
-        self.check(earned.get("unlock_reward_matter_granted") == 5 and earned.get("passive_hp_bonus_percent") == .5
+        self.check(earned.get("unlock_reward_matter_granted") == 100 and earned.get("passive_hp_bonus_percent") == 2
+            and earned.get("passive_armor_bonus_percent") == 2
             and earned_themes.get("phoenix", {}).get("reward_granted") is True,
-            "first prestige unlock atomically grants five matter and permanent half-percent HP")
+            "Phoenix unlock atomically grants100 matter and permanent2percent HP and armor")
         mail = self.rpc(female, "duel_mail_get")
         notices = [m for m in mail.get("messages", []) if m.get("kind") == "appearance_unlock"]
         self.check(len(notices) == 1 and notices[0].get("id") == "appearance_unlock:phoenix"
@@ -991,7 +1248,7 @@ class Suite:
         opened = self.rpc(female, "duel_mail_claim", {"message_id": "appearance_unlock:phoenix"})
         opened_again = self.rpc(female, "duel_mail_claim", {"message_id": "appearance_unlock:phoenix"})
         self.check(opened.get("ok") and opened.get("informational") and opened_again.get("already_claimed")
-            and self.rpc(female, "duel_player_resources_get").get("matter") == 5,
+            and self.rpc(female, "duel_player_resources_get").get("matter") == 100,
             "reading or replaying appearance letter never issues a second unlock reward")
         with ThreadPoolExecutor(max_workers=2) as pool:
             selections = list(pool.map(lambda theme: raw_rpc(female, "duel_player_cosmetics_select", {"theme_id": theme}), ["phoenix", "dawnwarden"]))
@@ -1007,9 +1264,9 @@ class Suite:
         female["token"] = session["token"]
         restored = raw_rpc(female, "duel_player_cosmetics_get")
         self.check(restored.get("selected_theme") == "phoenix" and restored.get("gender") == "female", "email reauthentication restores selection and cannot change gender through token vars")
-        self.check(self.rpc(female, "duel_player_resources_get").get("matter") == 5
+        self.check(self.rpc(female, "duel_player_resources_get").get("matter") == 100
             and restored.get("unlock_reward_matter_granted") == 0,
-            "concurrent selection, refresh and reauthentication never repay the five-matter unlock")
+            "concurrent selection, refresh and reauthentication never repay the100matter unlock")
         notices = [m for m in self.rpc(female, "duel_mail_get").get("messages", []) if m.get("kind") == "appearance_unlock"]
         self.check(len(notices) == 1 and notices[0].get("claimed") and self.rpc(female, "duel_mail_get").get("unread_count") == 0,
             "appearance polling and email reconnect never duplicate or reopen a read unlock letter")
@@ -1026,38 +1283,57 @@ class Suite:
         other_themes = {theme["id"]: theme for theme in other.get("themes", [])}
         self.check(other.get("selected_theme") == "default" and not other_themes.get("phoenix", {}).get("unlocked"), "unlocks and selection never cross accounts")
         baseline = self.rpc(legacy, "duel_character_get")
-        base_hp = baseline.get("stats", {}).get("hp", 0)
+        base_stats = baseline.get("stats", {})
+        base_hp = base_stats.get("hp", 0)
         self.seed_money(legacy, matter=7)
         path = "/storage/duel_player_cosmetics/appearance_v1/" + legacy["uid"]
         status, record = self.console("GET", path)
         value = json.loads(record["value"])
         value["unlocked"] = {theme: True for theme in other_themes}
-        value.pop("unlock_reward_receipts", None)
+        value["unlock_reward_receipts"] = {theme: {"version": 1, "matter": 5, "hp_basis_points": 50} for theme in other_themes if theme != "dawnwarden"}
+        value["unlock_mail_schema"] = 1
+        value["unlock_mail_receipts"] = {theme: True for theme in other_themes if theme != "dawnwarden"}
         status, _ = self.console("PUT", path, {"value": json.dumps(value), "version": record["version"], "permission_read": 0, "permission_write": 0})
         if status != 200:
-            raise RuntimeError("Isolated pre-reward cosmetics fixture failed")
+            raise RuntimeError("Isolated v1paid cosmetics migration fixture failed")
         def reconcile(index):
             return self.rpc(legacy, "duel_character_get") if index % 2 == 0 else raw_rpc(legacy, "duel_player_cosmetics_get")
         with ThreadPoolExecutor(max_workers=6) as pool:
             reconciled = list(pool.map(reconcile, range(6)))
         self.check(all(response.get("ok") for response in reconciled)
-            and all(response.get("stats", {}).get("hp") == int(base_hp * 1.045)
-                and response.get("progression", {}).get("matter") == 52 for response in reconciled[::2]),
-            "concurrent first character reads retroactively grant all nine rewards and return fresh wallet plus four-point-five-percent HP")
+            and all(response.get("stats", {}).get("hp") == int(base_hp * 1.12 + 1e-9)
+                and response.get("progression", {}).get("matter") == 627 for response in reconciled[::2]),
+            "concurrent character reads upgrade nine v1receipts with one620matter delta and fresh12percent HP")
         print("EVIDENCE cosmetic character snapshots " + json.dumps({"baseline_hp": base_hp,
             "characters": [{"ok": r.get("ok"), "err": r.get("err"), "hp": r.get("stats", {}).get("hp"),
                 "matter": r.get("progression", {}).get("matter")} for r in reconciled[::2]]}), flush=True)
         after_rewards = raw_rpc(legacy, "duel_player_cosmetics_get")
-        self.check(after_rewards.get("unlocked_prestige_count") == 9 and after_rewards.get("rewarded_matter_total") == 45
-            and after_rewards.get("passive_hp_bonus_percent") == 4.5 and self.rpc(legacy, "duel_player_resources_get").get("matter") == 52,
-            "nine old server unlocks award exactly forty-five matter once without losing the existing balance")
+        self.check(after_rewards.get("unlocked_prestige_count") == 9 and after_rewards.get("rewarded_matter_total") == 665
+            and after_rewards.get("passive_hp_bonus_percent") == 12
+            and after_rewards.get("passive_armor_bonus_percent") == 9 and after_rewards.get("passive_damage_bonus_percent") == 6
+            and after_rewards.get("passive_heal_bonus_percent") == 7 and after_rewards.get("passive_heal_bonus_flat") == 300
+            and after_rewards.get("passive_crit_bonus_percent") == 1 and after_rewards.get("rewarded_tesseract_total") == 1 and self.rpc(legacy, "duel_player_resources_get").get("matter") == 627,
+            "nine paid legacy skins migrate to named bonuses and665total reward history without repaying45legacy matter")
         for theme in ("phoenix", "dawnwarden", "default", "phoenix"):
             raw_rpc(legacy, "duel_player_cosmetics_select", {"theme_id": theme})
         current = self.rpc(legacy, "duel_character_get")
-        self.check(current.get("stats", {}).get("hp") == int(base_hp * 1.045) and current.get("progression", {}).get("matter") == 52,
+        self.check(current.get("stats", {}).get("hp") == int(base_hp * 1.12 + 1e-9) and current.get("progression", {}).get("matter") == 627,
             "equipping and restoring appearances neither farm matter nor remove the collection HP bonus")
+        self.check(current.get("stats", {}).get("armor") == int(base_stats.get("armor", 0) * 1.09 + 1e-9)
+            and current.get("stats", {}).get("damage") == int(base_stats.get("damage", 0) * 1.06 + 1e-9)
+            and current.get("stats", {}).get("healing") == int(base_stats.get("healing", 0) * 1.07 + 1e-9) + 300
+            and abs(current.get("stats", {}).get("crit_chance", 0) - min(1, base_stats.get("crit_chance", 0) + .01)) < 1e-7,
+            "real character stats apply armor9 damage6 healing7 plus300 and additive1percentage-point crit")
+        inventory = current.get("inventory_def_ids", [])
+        counts = current.get("inventory_counts", [])
+        owned_tesseracts = sum(counts[index] for index, item in enumerate(inventory) if item == "tesseract")
+        pending_tesseracts = sum(item.get("amount", 0) for item in current.get("pending_loot", []) if isinstance(item, dict) and item.get("def_id") == "tesseract")
+        self.check(owned_tesseracts + pending_tesseracts == 1, "Alchemist grants exactly one canonical inventory or pending-loot tesseract across concurrent migration and selection")
+        migration_mail = [m for m in self.rpc(legacy, "duel_mail_get").get("messages", []) if m.get("id", "").startswith("appearance_rewards_v2:")]
+        self.check(len(migration_mail) == 9 and all(not message.get("attachments") for message in migration_mail),
+            "all migrated appearances create one informational delta letter with no repeatable attachments")
         forged = raw_rpc(legacy, "duel_player_cosmetics_get", {"rewarded_matter_total": 999, "passive_hp_bonus_percent": 100})
-        self.check(forged.get("err") == "bad_payload" and self.rpc(female, "duel_player_resources_get").get("matter") == 5,
+        self.check(forged.get("err") == "bad_payload" and self.rpc(female, "duel_player_resources_get").get("matter") == 100,
             "client reward/HP claims are rejected and retroactive receipts remain isolated to their account")
         self.cosmetic_ui_snapshots = [{"name": "female-locked", "response": first}, {"name": "female-phoenix-earned", "response": restored},
             {"name": "male-legacy", "response": other}, {"name": "male-all-rewards", "response": after_rewards}]
@@ -1177,6 +1453,7 @@ class Suite:
         self.check(self.rpc(b, "duel_consumables_use", self.consumable_use_request(b, 0, "elixir_stone", "stone-" + self.run_id)).get("ok"),
             "second Pro participant independently arms its owned Stone elixir")
         mid, wa, wb, board = self.pair(a, b, "pro")
+        self.begin_played_match(mid, [(a, wa), (b, wb)])
         sides = {uid: side for uid, side in zip(sorted((a["uid"], b["uid"])), ("a", "b"))}
         for p, item, damage, armor in ((a, "elixir_assault", 1.2, .85), (b, "elixir_stone", .9, 1.2)):
             side = sides[p["uid"]]
@@ -1196,6 +1473,7 @@ class Suite:
         gambit = self.rpc(b, "duel_consumables_use", self.consumable_use_request(b, 1, "elixir_gambit", "gambit-" + self.run_id))
         self.check(gambit.get("ok"), "new elixir can be armed after the previous eligible battle consumed its binding")
         mid, wa, wb, board = self.pair(a, b, "pro")
+        self.begin_played_match(mid, [(a, wa), (b, wb)])
         side = sides[b["uid"]]
         self.check(board.get(side + "ConsumableId") == "elixir_gambit"
             and abs(board.get(side + "ConsumableCritAdd", 0) - .1) < .0001
@@ -1213,7 +1491,12 @@ class Suite:
             and blocked.get("err") == "bounty_already_active"
             and self.storage("duel_match3_character", "sheet", a["uid"])["inventory_counts"][2] == 1,
             "bounty activation uses one server hour, rejects extension/forged multiplier and spends only one scroll on replay")
-        self.seed_money(a, xp=486974, energy=100, gold=0, ore=0)
+        # This proves the bounty reward on a real natural victory, so use a
+        # canonical affix where bomb matches deal damage. Random energy_block
+        # converts bombs to base-damage growth and cannot satisfy that fixture.
+        self.seed_money(a, xp=486974, energy=100, gold=0, ore=0,
+            mine={"unlocked": {"easy": 1, "medium": 0, "hard": 0},
+                "floor_states": {"easy:1": {"last_affix": "mana_vampire"}}})
         catalog = self.storage("duel_match3_item_defs", "catalog", "00000000-0000-0000-0000-000000000000")["items"]
         weapon = max(((item_id, definition) for item_id, definition in catalog.items() if definition.get("slot") == "WeaponLeft"),
             key=lambda pair: pair[1].get("damage", 0))[0]
@@ -1232,8 +1515,9 @@ class Suite:
         ws = self.connect(a)
         ws.command("match_join", {"match_id": mid})
         board = ws.event(mid, 10)
-        print("EVIDENCE bounty PvE initial " + json.dumps({key: board.get(key) for key in ("aHp", "bHp", "aBaseDamage", "bBaseArmor", "bountyEndsAt")}), flush=True)
-        self.check(board.get("bountyEndsAt") == status.get("bounty_ends_at"),
+        board = self.begin_played_match(mid, [(a, ws)]).get(a["uid"], board)
+        print("EVIDENCE bounty PvE initial " + json.dumps({key: board.get(key) for key in ("aHp", "bHp", "aBaseDamage", "bBaseArmor", "bountyEndsAt", "pveAffix")}), flush=True)
+        self.check(board.get("bountyEndsAt") == status.get("bounty_ends_at") and board.get("pveAffix") == "mana_vampire",
             "actual mine battle binds the authoritative active bounty timer")
         result = None
         moves = acks = bot_frames = 0
@@ -1428,6 +1712,36 @@ class Suite:
                 self.check(refreshed.get('bossActionSequence')==passed.get('bossActionSequence')
                     and refreshed.get('aMana')==passed.get('aMana')and refreshed.get('activeUserId')==en['bot_user_id'],
                     'late boss ability after real expiry cannot spend mana or recover the expired player turn')
+                # Observe actual server actions after that control transfer. A
+                # passive, scream and ordinary move must never share one packet.
+                wn.match_data(en['match_id'],17)
+                def next_boss_action(sequence):
+                    def accepted(message):
+                        md=message.get('match_data',{})
+                        if md.get('match_id')!=en['match_id']or str(md.get('op_code'))!='10':return False
+                        value=json.loads(base64.b64decode(md.get('data','')))
+                        return value.get('actionActorUserId')==en['bot_user_id']and value.get('bossActionSequence',0)>sequence
+                    wire=wn.await_message(accepted,timeout=12)
+                    return json.loads(base64.b64decode(wire['match_data']['data']))
+                adapt=next_boss_action(refreshed['bossActionSequence'])
+                self.check(adapt.get('bossAdaptationTriggered')and not adapt.get('bossScreamTriggered')and adapt.get('actionType')==0
+                    and adapt.get('aHp')==refreshed.get('aHp')and adapt.get('board')==refreshed.get('board')
+                    and adapt.get('bossOwnTurn')==1 and adapt.get('activeUserId')==en['bot_user_id'],
+                    'real boss adaptation is a separate first action with no damage or board move')
+                scream=next_boss_action(adapt['bossActionSequence'])
+                expected_scream=math.ceil(refreshed['aMaxHp']*.20)
+                self.check(scream.get('bossScreamTriggered')and not scream.get('bossAdaptationTriggered')and scream.get('actionType')==0
+                    and scream.get('bossScreamDamage')==expected_scream and scream.get('aHp')==max(0,adapt['aHp']-expected_scream)
+                    and scream.get('board')==adapt.get('board')and scream.get('bMana')==adapt.get('bMana')
+                    and scream.get('activeUserId')==en['bot_user_id']and scream.get('bossOwnTurn')==1
+                    and scream.get('turnEndsAtUnixMs')==adapt.get('turnEndsAtUnixMs'),
+                    'real boss scream separately deals twenty percent initialHP with Petard turn and timer semantics')
+                ordinary=next_boss_action(scream['bossActionSequence'])
+                self.check(ordinary.get('actionType')in(1,2,3,4,5,6)and not ordinary.get('bossScreamTriggered')
+                    and not ordinary.get('bossAdaptationTriggered')and ordinary.get('bossOwnTurn')==1,
+                    'real ordinary boss action follows scream without replaying either boss ability')
+            else:
+                self.begin_played_match(en['match_id'], [(a, wn)])
             self.check(self.rpc(a,'duel_match3_forfeit',{'match_id':en['match_id']}).get('terminal'),
                 'boss weekly attempt'+str(n)+' can finish without stale admission')
             wn.event(en['match_id'],11)
@@ -2272,7 +2586,7 @@ def main():
     parser.add_argument("--url", default="https://prokrust-play.ru")
     parser.add_argument("--console-url", default="http://127.0.0.1:27351")
     parser.add_argument("--config", type=Path, default=Path("secrets/server.yml"))
-    parser.add_argument("--scenario", choices=("probe", "friends", "lifecycle", "pvp", "double-disconnect", "overlap", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "practice-smoke", "quote-preflight", "shop", "all"), default="pvp")
+    parser.add_argument("--scenario", choices=("probe", "friends", "lifecycle", "pvp", "double-disconnect", "overlap", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "practice-smoke", "quote-preflight", "reconnect-0317", "shop", "all"), default="pvp")
     parser.add_argument("--item-catalog", type=Path)
     parser.add_argument("--catalog-migration-helper", type=Path)
     parser.add_argument("--consumable-manifest", type=Path)
@@ -2281,13 +2595,13 @@ def main():
     args = parser.parse_args()
     target = urlsplit(args.url)
     console_target = urlsplit(args.console_url)
-    if args.scenario in ("friends", "lifecycle", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop", "all") and (
+    if args.scenario in ("friends", "lifecycle", "race", "arena", "smith", "daily", "consumables", "natural", "race-unpaid", "race-receipts", "race-legacy-refund", "race-policy", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop", "all") and (
             target.hostname not in ("127.0.0.1", "localhost") or target.port != 28350
             or console_target.hostname not in ("127.0.0.1", "localhost") or console_target.port != 28351):
         parser.error("This scenario requires the isolated localhost test backend on ports 28350 and 28351")
     suite = Suite(args)
     try:
-        if args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop"):
+        if args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop"):
             suite.isolated_only("Canonical smith catalog fixture")
             if not args.item_catalog:
                 raise RuntimeError("This scenario requires --item-catalog from the disposable runner")
@@ -2347,6 +2661,8 @@ def main():
                 scenarios = {"practice-smoke": suite.practice_smoke}
             if args.scenario == "quote-preflight":
                 scenarios = {"quote-preflight": suite.quote_preflight}
+            if args.scenario == "reconnect-0317":
+                scenarios = {"reconnect-0317": suite.reconnect_0317}
             if args.scenario == "race-policy":
                 scenarios = {"race-policy": suite.race_policy}
             for name, fn in scenarios.items():

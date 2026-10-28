@@ -1,0 +1,80 @@
+{
+  "utc": "2026-10-28T17:53:00.578189+00:00",
+  "runtime_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtime_files": 68,
+  "suite_sha256": "767048fc4faa7813f9ffbe83d1bc89c44c112187d82488530faf740bea976e8b",
+  "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "scenarios": {
+    "all": {
+      "exit_code": 0,
+      "seconds": 702.7,
+      "checks": 806,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "completed_stage": "release0317-validation-0fa70c111d27",
+      "suite_sha256": "767048fc4faa7813f9ffbe83d1bc89c44c112187d82488530faf740bea976e8b"
+    },
+    "recovery": {
+      "exit_code": 0,
+      "seconds": 78.4,
+      "checks": 64,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "completed_stage": "release0317-validation-0fa70c111d27",
+      "suite_sha256": "767048fc4faa7813f9ffbe83d1bc89c44c112187d82488530faf740bea976e8b"
+    },
+    "reconnect-0317": {
+      "exit_code": 0,
+      "seconds": 144.2,
+      "checks": 32,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true,
+      "completed_stage": "release0317-validation-d4673ded3afd",
+      "suite_sha256": "cf930399795c13daed19a275b03f636fc5bf97bc438989937b46429149024960"
+    }
+  },
+  "success": true,
+  "production_runtime_after_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "evidence_kind": "composed_exact_runtime_with_target_source_equivalence",
+  "stage": "release0317-validation-0fa70c111d27",
+  "provenance": {
+    "final_summary": {
+      "path": "network-validation-summary.json",
+      "sha256": "346f70d975df7410af4728914610eeaa306826124fa46724123b9f4c27205902"
+    },
+    "final_exit": {
+      "path": "exit-status.json",
+      "sha256": "49b47dfa3045d6a4287ea733d62b1ac6af15190203a06538fe8a573e84a5d50f"
+    },
+    "target_summary": {
+      "path": "completed-target/network-validation-summary.json",
+      "sha256": "290621d1c45176f5ff58a4000c8f78c3a2872205c036c18bb78ff234ef61aa8a",
+      "source_summary_success": false
+    },
+    "target_report": {
+      "path": "completed-target/multiclient-isolated-reconnect-0317.json",
+      "sha256": "70dc6c7aa5d39a66a9391b37e5dd582670712203150137e5e33c37120e6abbd2"
+    },
+    "target_runtime": {
+      "path": "completed-target/expected-tested-runtime.json",
+      "sha256": "165142ff0146e97d247cb261712122f91b057234de1ff5880c7dbc68f57837cf"
+    },
+    "equivalence": {
+      "path": "target-source-equivalence-deadline-final.json",
+      "sha256": "95dd861edc51a40468ed88368f8cb364bea8b2075fe5d1ab0190615478d248e4"
+    },
+    "all_report": {
+      "path": "multiclient-isolated-all.json",
+      "sha256": "2b2e39d24a7d9af8cb46f2f476eb76818f720e47fe1c1b1e9d7461225b5f0d08"
+    },
+    "recovery_report": {
+      "path": "multiclient-isolated-recovery.json",
+      "sha256": "b562e53205f2c11340647eaf2242e9444599f53bcb1e79d9569da5ed7770f736"
+    }
+  }
+}

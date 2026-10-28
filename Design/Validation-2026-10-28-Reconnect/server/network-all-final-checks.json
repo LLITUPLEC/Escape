@@ -1,0 +1,3230 @@
+{
+  "source_sha256": "2b2e39d24a7d9af8cb46f2f476eb76818f720e47fe1c1b1e9d7461225b5f0d08",
+  "checks": [
+    {
+      "passed": true,
+      "check": "actual isolated migration dry-run plans exactly four additions while preserving every existing definition including boss teleport"
+    },
+    {
+      "passed": true,
+      "check": "actual consumable migration creates a backup and preserves all canonical item definitions at its versionfour boundary"
+    },
+    {
+      "passed": true,
+      "check": "repeating the catalog migration after success is an idempotent no-op"
+    },
+    {
+      "passed": true,
+      "check": "friend invite rejects unknown match kind before creating a proposal"
+    },
+    {
+      "passed": true,
+      "check": "duel: recipient receives actual incoming invitation over its live socket"
+    },
+    {
+      "passed": true,
+      "check": "duel: sender cannot accept the recipient's proposal"
+    },
+    {
+      "passed": true,
+      "check": "duel: both ready notifications preserve the stored server match kind despite forged response kind"
+    },
+    {
+      "passed": true,
+      "check": "duel: both friends join the correct real rules at round one"
+    },
+    {
+      "passed": true,
+      "check": "duel: admission charges exactly the intended fee and never charges Race resources for duel"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "race: recipient receives actual incoming invitation over its live socket"
+    },
+    {
+      "passed": true,
+      "check": "race: sender cannot accept the recipient's proposal"
+    },
+    {
+      "passed": true,
+      "check": "race: both ready notifications preserve the stored server match kind despite forged response kind"
+    },
+    {
+      "passed": true,
+      "check": "race: both friends join the correct real rules at round one"
+    },
+    {
+      "passed": true,
+      "check": "race: admission charges exactly the intended fee and never charges Race resources for duel"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "declining a duel sends the matching sender notification"
+    },
+    {
+      "passed": true,
+      "check": "actual authenticated WebSocket RPC heartbeat accepts empty JSON payload and returns the account epoch within client timeout"
+    },
+    {
+      "passed": true,
+      "check": "lifecycle fixture pays one real Race entry"
+    },
+    {
+      "passed": true,
+      "check": "lifecycle fixture pays one real Race entry"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "outsider cannot surrender another two-client match"
+    },
+    {
+      "passed": true,
+      "check": "surrender RPC rejects a stale session before signaling the match"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent acknowledged Race surrenders freeze one winner after authoritative settlement"
+    },
+    {
+      "passed": true,
+      "check": "both Race clients receive the identical terminal packet without the opponent finishing manually"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "both paid Race reservations are settled immediately after one surrender"
+    },
+    {
+      "passed": true,
+      "check": "concurrent surrender charges both stakes once and records exactly one win and loss"
+    },
+    {
+      "passed": true,
+      "check": "lost-ack retry after authoritative match deletion reads the bounded own terminal receipt"
+    },
+    {
+      "passed": true,
+      "check": "both former Race participants can pay and queue again immediately"
+    },
+    {
+      "passed": true,
+      "check": "both former Race participants can pay and queue again immediately"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "a second actual Race starts and ends without the old race_entry_in_use lock"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: remaining client joins its reserved admission"
+    },
+    {
+      "passed": true,
+      "check": "classic: absent second participant cancels within bounded admission and notifies the waiting client"
+    },
+    {
+      "passed": true,
+      "check": "classic: failed admission grants neither a played result nor a free win"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "classic: cancelled admission leaves both players free to requeue into a real match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: remaining client joins its reserved admission"
+    },
+    {
+      "passed": true,
+      "check": "pro: absent second participant cancels within bounded admission and notifies the waiting client"
+    },
+    {
+      "passed": true,
+      "check": "pro: failed admission grants neither a played result nor a free win"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "pro: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "pro: cancelled admission leaves both players free to requeue into a real match"
+    },
+    {
+      "passed": true,
+      "check": "never-joined PvE fixture arms one real owned elixir"
+    },
+    {
+      "passed": true,
+      "check": "a created but never joined mine match binds one exact fifteen-energy payment"
+    },
+    {
+      "passed": true,
+      "check": "Console observes this specific fresh mine match before testing its admission expiry"
+    },
+    {
+      "passed": true,
+      "check": "never-joined paid mine match terminates within bounded admission"
+    },
+    {
+      "passed": true,
+      "check": "abandoned admission refunds original energy once, keeps armed elixir and records no phantom loss"
+    },
+    {
+      "passed": true,
+      "check": "new mine entry recovers old reservation and charges once rather than twice"
+    },
+    {
+      "passed": true,
+      "check": "joined mine preview displays the preserved elixir without consuming it during reveal"
+    },
+    {
+      "passed": true,
+      "check": "real ready consumes the preserved elixir once before the subsequent played surrender"
+    },
+    {
+      "passed": true,
+      "check": "fresh mine admission starts the authoritative first round"
+    },
+    {
+      "passed": true,
+      "check": "subsequently joined mine can surrender through the same confirmed terminal contract"
+    },
+    {
+      "passed": true,
+      "check": "gold bot pair publishes known initial HP before the human has ever joined"
+    },
+    {
+      "passed": true,
+      "check": "one real two-human gold pair completes while the separate bot pair is missing"
+    },
+    {
+      "passed": true,
+      "check": "disconnected gold bot opponent resolves promptly and releases every waiting semifinalist"
+    },
+    {
+      "passed": true,
+      "check": "technical gold result retains authoritative HP and maxima in completed bracket history"
+    },
+    {
+      "passed": true,
+      "check": "gold bot pair publishes known initial HP before the human has ever joined"
+    },
+    {
+      "passed": true,
+      "check": "one real two-human gold pair completes while the separate bot pair is missing"
+    },
+    {
+      "passed": true,
+      "check": "never-joined gold bot opponent resolves promptly and releases every waiting semifinalist"
+    },
+    {
+      "passed": true,
+      "check": "technical gold result retains authoritative HP and maxima in completed bracket history"
+    },
+    {
+      "passed": true,
+      "check": "real newly created device atomically receives pending tutorial with both progressive gates locked"
+    },
+    {
+      "passed": true,
+      "check": "guidance rejects forged target, progress and first-recipe fields"
+    },
+    {
+      "passed": true,
+      "check": "guidance rejects forged target, progress and first-recipe fields"
+    },
+    {
+      "passed": true,
+      "check": "guidance rejects forged target, progress and first-recipe fields"
+    },
+    {
+      "passed": true,
+      "check": "tutorial mutation rejects an actual stale session epoch"
+    },
+    {
+      "passed": true,
+      "check": "tutorial completion cannot manufacture recipe ownership or ten monster wins"
+    },
+    {
+      "passed": true,
+      "check": "three trusted legacy counter views use max at 0 wins rather than adding to bypass ten"
+    },
+    {
+      "passed": true,
+      "check": "gold gate rejects forged eligibility before charging currencies or ingots at 0 wins"
+    },
+    {
+      "passed": true,
+      "check": "smith gate rejects forged eligibility before charging currencies or ingots at 0 wins"
+    },
+    {
+      "passed": true,
+      "check": "three trusted legacy counter views use max at 9 wins rather than adding to bypass ten"
+    },
+    {
+      "passed": true,
+      "check": "gold gate rejects forged eligibility before charging currencies or ingots at 9 wins"
+    },
+    {
+      "passed": true,
+      "check": "smith gate rejects forged eligibility before charging currencies or ingots at 9 wins"
+    },
+    {
+      "passed": true,
+      "check": "exactly ten durable wins unlock real tournament RPC"
+    },
+    {
+      "passed": true,
+      "check": "newly unlocked account pays exactly one authoritative tournament fee"
+    },
+    {
+      "passed": true,
+      "check": "newly unlocked queue cancellation returns the exact paid fee"
+    },
+    {
+      "passed": true,
+      "check": "real craft start ignores forged first-recipe marker and preserves wallet"
+    },
+    {
+      "passed": true,
+      "check": "first recipe unlocks workshop presentation but still requires learning the exact craft recipe"
+    },
+    {
+      "passed": true,
+      "check": "actual sale observes and persists first-recipe history before consuming the scroll"
+    },
+    {
+      "passed": true,
+      "check": "durable first-recipe flag survives sold item, receipt rollover and empty inventory"
+    },
+    {
+      "passed": true,
+      "check": "full-bag pending first recipe opens only its owner's workshop without granting tournament wins"
+    },
+    {
+      "passed": true,
+      "check": "six concurrent complete/skip requests converge monotonically to completed"
+    },
+    {
+      "passed": true,
+      "check": "completed tutorial replay neither rewrites nor resets its server receipt"
+    },
+    {
+      "passed": true,
+      "check": "real storage request guard rejects tutorial replacement and cannot reset another account"
+    },
+    {
+      "passed": true,
+      "check": "existing device reauthentication never opts a markerless legacy account into automatic tutorial"
+    },
+    {
+      "passed": true,
+      "check": "real AuthenticateDevice after-hook opens only a new account's registration choice"
+    },
+    {
+      "passed": true,
+      "check": "pending registration cannot persist cosmetics"
+    },
+    {
+      "passed": true,
+      "check": "new account stages its female registration choice on the server"
+    },
+    {
+      "passed": true,
+      "check": "invalid email registration does not permanently freeze its pending gender"
+    },
+    {
+      "passed": true,
+      "check": "temporary account registers by linking email through the real API"
+    },
+    {
+      "passed": true,
+      "check": "successful LinkEmail after-hook permanently finalizes the staged female identity"
+    },
+    {
+      "passed": true,
+      "check": "registered gender cannot be changed by an authenticated RPC"
+    },
+    {
+      "passed": true,
+      "check": "server returns ten themes and only the starter is initially unlocked"
+    },
+    {
+      "passed": true,
+      "check": "client claims cannot unlock a locked appearance or supply gender/progress"
+    },
+    {
+      "passed": true,
+      "check": "real storage request guard blocks direct cosmetic writes including a forged first create"
+    },
+    {
+      "passed": true,
+      "check": "real storage request guard blocks direct gender replacement"
+    },
+    {
+      "passed": true,
+      "check": "pre-existing durable achievement and PvP progress retroactively unlock Phoenix"
+    },
+    {
+      "passed": true,
+      "check": "first prestige unlock atomically grants five matter and permanent half-percent HP"
+    },
+    {
+      "passed": true,
+      "check": "real first appearance unlock creates one named informational letter with its paired avatar and Hero action"
+    },
+    {
+      "passed": true,
+      "check": "reading or replaying appearance letter never issues a second unlock reward"
+    },
+    {
+      "passed": true,
+      "check": "independent concurrent cosmetic selections commit through storage versions"
+    },
+    {
+      "passed": true,
+      "check": "unlocked female appearance selection is saved authoritatively"
+    },
+    {
+      "passed": true,
+      "check": "public opponent appearance RPC exposes exactly selected paired render IDs and no private metadata"
+    },
+    {
+      "passed": true,
+      "check": "email reauthentication restores selection and cannot change gender through token vars"
+    },
+    {
+      "passed": true,
+      "check": "concurrent selection, refresh and reauthentication never repay the five-matter unlock"
+    },
+    {
+      "passed": true,
+      "check": "appearance polling and email reconnect never duplicate or reopen a read unlock letter"
+    },
+    {
+      "passed": true,
+      "check": "pre-upgrade account without a gender row defaults permanently to male"
+    },
+    {
+      "passed": true,
+      "check": "unlocks and selection never cross accounts"
+    },
+    {
+      "passed": true,
+      "check": "concurrent first character reads retroactively grant all nine rewards and return fresh wallet plus four-point-five-percent HP"
+    },
+    {
+      "passed": true,
+      "check": "nine old server unlocks award exactly forty-five matter once without losing the existing balance"
+    },
+    {
+      "passed": true,
+      "check": "equipping and restoring appearances neither farm matter nor remove the collection HP bonus"
+    },
+    {
+      "passed": true,
+      "check": "client reward/HP claims are rejected and retroactive receipts remain isolated to their account"
+    },
+    {
+      "passed": true,
+      "check": "daily snapshot publishes server Moscow day, reset and three authoritative quests"
+    },
+    {
+      "passed": true,
+      "check": "all four consumables have reachable server-defined login-cycle sources without admin grants"
+    },
+    {
+      "passed": true,
+      "check": "daily rejects client progress, reward/user claims, stale day and incomplete/unclaimed objectives"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent daily logins commit only one 150-gold/100-ore wallet award"
+    },
+    {
+      "passed": true,
+      "check": "daily login and reward receipts are isolated between temporary accounts"
+    },
+    {
+      "passed": true,
+      "check": "trusted durable daily counters unlock three quests but completion still requires their claim receipts"
+    },
+    {
+      "passed": true,
+      "check": "daily concurrent mine claims reconcile one durable receipt"
+    },
+    {
+      "passed": true,
+      "check": "daily concurrent abilities claims reconcile one durable receipt"
+    },
+    {
+      "passed": true,
+      "check": "daily concurrent pvp claims reconcile one durable receipt"
+    },
+    {
+      "passed": true,
+      "check": "completed daily set awards exact currencies and retains one ingot/scroll delivery at full capacity"
+    },
+    {
+      "passed": true,
+      "check": "daily final snapshot cannot be manually farmed through refresh or repeated claim"
+    },
+    {
+      "passed": true,
+      "check": "second login-cycle item award survives a full bag using actual pending receipt JSON"
+    },
+    {
+      "passed": true,
+      "check": "actual currency and full-bag completion claim payloads are captured for native Unity JSON validation"
+    },
+    {
+      "passed": true,
+      "check": "concurrent and repeated consumable use spends exactly one owned elixir and arms its fixed server effect"
+    },
+    {
+      "passed": true,
+      "check": "second armed elixir is rejected without spending inventory and cannot affect another account"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "classic match neither applies nor consumes the elixir reserved for PvE or Pro"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "second Pro participant independently arms its owned Stone elixir"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "pro: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "real Pro BOARD_SYNC exposes fixed elixir_assault multipliers rather than forged payload values"
+    },
+    {
+      "passed": true,
+      "check": "real Pro BOARD_SYNC exposes fixed elixir_stone multipliers rather than forged payload values"
+    },
+    {
+      "passed": true,
+      "check": "real Pro start atomically claims both armed elixirs into immutable match receipts"
+    },
+    {
+      "passed": true,
+      "check": "Pro reconnect restores the frozen elixir without consuming another inventory item"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "new elixir can be armed after the previous eligible battle consumed its binding"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "pro: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "real Gambit Pro binding adds ten crit percentage points and halves healing"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "bounty activation uses one server hour, rejects extension/forged multiplier and spends only one scroll on replay"
+    },
+    {
+      "passed": true,
+      "check": "actual mine battle binds the authoritative active bounty timer"
+    },
+    {
+      "passed": true,
+      "check": "real synchronized mine combat reaches a natural victory with the bounty active"
+    },
+    {
+      "passed": true,
+      "check": "natural PvE award freezes bounty currency multipliers in its durable committed reward plan"
+    },
+    {
+      "passed": true,
+      "check": "actual bounty PvE currencies match the single committed game-over award"
+    },
+    {
+      "passed": true,
+      "check": "smith server ignores forged client cost/version and charges authoritative ten-ingot price"
+    },
+    {
+      "passed": true,
+      "check": "concurrent full-inventory smith cancellations persist exactly one complete ten-ingot refund"
+    },
+    {
+      "passed": true,
+      "check": "replayed cancellation cannot grant participation loot or duplicate pending refund"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "eight independently authenticated clients enter one shared eight-player tournament"
+    },
+    {
+      "passed": true,
+      "check": "the tournament bracket contains exactly the eight temporary accounts"
+    },
+    {
+      "passed": true,
+      "check": "authoritative tournament DTO includes paired avatar IDs for every formed participant"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "eight simultaneous arena joins charge every participant exactly one entry fee"
+    },
+    {
+      "passed": true,
+      "check": "smith production DTO quotes versioned ten-ingot stake, twenty champion and two consolation ingots"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent deliveries of one legal arena prediction are accepted idempotently"
+    },
+    {
+      "passed": true,
+      "check": "repeating, replacing, clearing and restoring one prediction counts its achievement exactly once"
+    },
+    {
+      "passed": true,
+      "check": "own-pair, invalid-side and noninteger/out-of-range predictions are rejected without achievements"
+    },
+    {
+      "passed": true,
+      "check": "qf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "qf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "qf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "sf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed sf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "final: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith champion receives exact defeated-floor Helmet recipe or thirty-ingot owned-pool fallback, including full-inventory pending"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "tournament grants its final currency prize exactly once"
+    },
+    {
+      "passed": true,
+      "check": "repeated completed-tournament polls cannot repeat its final prize"
+    },
+    {
+      "passed": true,
+      "check": "smith durable terminal state records exact paid costs and one reward receipt per human"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "real inventory delivery drains guaranteed champion items after space is freed without loss or duplication"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters smith-green-v2 arena"
+    },
+    {
+      "passed": true,
+      "check": "eight independently authenticated clients enter one shared eight-player tournament"
+    },
+    {
+      "passed": true,
+      "check": "the tournament bracket contains exactly the eight temporary accounts"
+    },
+    {
+      "passed": true,
+      "check": "authoritative tournament DTO includes paired avatar IDs for every formed participant"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "eight simultaneous arena joins charge every participant exactly one entry fee"
+    },
+    {
+      "passed": true,
+      "check": "smith production DTO quotes versioned ten-ingot stake, twenty champion and two consolation ingots"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent deliveries of one legal arena prediction are accepted idempotently"
+    },
+    {
+      "passed": true,
+      "check": "repeating, replacing, clearing and restoring one prediction counts its achievement exactly once"
+    },
+    {
+      "passed": true,
+      "check": "own-pair, invalid-side and noninteger/out-of-range predictions are rejected without achievements"
+    },
+    {
+      "passed": true,
+      "check": "qf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "qf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "qf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "sf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed sf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "final: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "smith defeated client receives its exact two-ingot pending compensation in actual game-over broadcast"
+    },
+    {
+      "passed": true,
+      "check": "smith champion receives exact defeated-floor Helmet recipe or thirty-ingot owned-pool fallback, including full-inventory pending"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "tournament grants its final currency prize exactly once"
+    },
+    {
+      "passed": true,
+      "check": "repeated completed-tournament polls cannot repeat its final prize"
+    },
+    {
+      "passed": true,
+      "check": "smith durable terminal state records exact paid costs and one reward receipt per human"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "completed smith polls and repeated match result cannot duplicate held craft rewards"
+    },
+    {
+      "passed": true,
+      "check": "real inventory delivery drains guaranteed champion items after space is freed without loss or duplication"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "inactive client cannot make a combat move"
+    },
+    {
+      "passed": true,
+      "check": "a valid combat move is resolved and synchronized to both clients"
+    },
+    {
+      "passed": true,
+      "check": "one disconnected client receives a five-minute reconnect window"
+    },
+    {
+      "passed": true,
+      "check": "disconnected test client can rejoin the same match"
+    },
+    {
+      "passed": true,
+      "check": "rejoined client receives a full board with the current turn"
+    },
+    {
+      "passed": true,
+      "check": "snapshot and reconnect preserve the authoritative round counter"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "both disconnected clients retain their match during reconnect grace"
+    },
+    {
+      "passed": true,
+      "check": "second disconnected client can also rejoin the preserved match"
+    },
+    {
+      "passed": true,
+      "check": "both rejoined clients receive the preserved board and turn"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "same-account replacement socket can join before old socket closes"
+    },
+    {
+      "passed": true,
+      "check": "replacement socket receives its initial authoritative snapshot without requesting it"
+    },
+    {
+      "passed": true,
+      "check": "superseded socket cannot move or forfeit the replacement connection's match"
+    },
+    {
+      "passed": true,
+      "check": "old socket departure preserves the replacement socket presence"
+    },
+    {
+      "passed": true,
+      "check": "authoritative match still tracks replacement user after overlap reconnect"
+    },
+    {
+      "passed": true,
+      "check": "replacement socket can make an authoritative combat move after the old socket leaves"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "public Race policy reports entry two, human prize four and bot stake refund"
+    },
+    {
+      "passed": true,
+      "check": "Race entry cost deducts exactly two matter for a disposable account"
+    },
+    {
+      "passed": true,
+      "check": "Race entry cost deducts exactly two matter for a disposable account"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "Race queue selects authoritative Race rules and configured mana goal"
+    },
+    {
+      "passed": true,
+      "check": "a started human Race binds both entry receipts and rejects cancellation"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "paid human Race retains both two-matter fees and pays the winner four matter exactly once"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "human Race receipts preserve the existing loss ten XP and win two hundred XP"
+    },
+    {
+      "passed": true,
+      "check": "settled human receipts cannot be refunded by repeated cancellation"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "one temporary participant enters gold-2400 arena"
+    },
+    {
+      "passed": true,
+      "check": "eight independently authenticated clients enter one shared eight-player tournament"
+    },
+    {
+      "passed": true,
+      "check": "the tournament bracket contains exactly the eight temporary accounts"
+    },
+    {
+      "passed": true,
+      "check": "authoritative tournament DTO includes paired avatar IDs for every formed participant"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "uninitialized arena HP is explicitly unknown with zero current/maximum"
+    },
+    {
+      "passed": true,
+      "check": "eight simultaneous arena joins charge every participant exactly one entry fee"
+    },
+    {
+      "passed": true,
+      "check": "four concurrent deliveries of one legal arena prediction are accepted idempotently"
+    },
+    {
+      "passed": true,
+      "check": "repeating, replacing, clearing and restoring one prediction counts its achievement exactly once"
+    },
+    {
+      "passed": true,
+      "check": "own-pair, invalid-side and noninteger/out-of-range predictions are rejected without achievements"
+    },
+    {
+      "passed": true,
+      "check": "qf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "qf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "qf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "qf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "sf: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed qf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical qf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: production poll retains every completed sf row"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical names, participants and actual winner survive in the production DTO"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "sf: historical sf HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: bracket provides fight matches"
+    },
+    {
+      "passed": true,
+      "check": "final: both arena clients receive identical authoritative health"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: live bracket: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "forfeit reports the remaining test participant as winner"
+    },
+    {
+      "passed": true,
+      "check": "repeated forfeit records exactly one win/loss per participant"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side a current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "completed final forfeit preserves actual survivor and loser HP: side b current/max/known match authoritative BOARD_SYNC"
+    },
+    {
+      "passed": true,
+      "check": "final: simultaneous fight results preserve every winner in the committed next stage"
+    },
+    {
+      "passed": true,
+      "check": "tournament grants its final currency prize exactly once"
+    },
+    {
+      "passed": true,
+      "check": "repeated completed-tournament polls cannot repeat its final prize"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "classic: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "classic: both clients receive the same natural result"
+    },
+    {
+      "passed": true,
+      "check": "classic: natural victory reached within 150 valid synchronized moves"
+    },
+    {
+      "passed": true,
+      "check": "classic: natural finish records exactly one played match per client"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "pro: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "pro: both clients receive the same natural result"
+    },
+    {
+      "passed": true,
+      "check": "pro: natural victory reached within 150 valid synchronized moves"
+    },
+    {
+      "passed": true,
+      "check": "pro: natural finish records exactly one played match per client"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients matched to the same private match"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive identical initial authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "race: fresh authoritative battle starts at round one for both clients"
+    },
+    {
+      "passed": true,
+      "check": "race: both clients receive the same natural result"
+    },
+    {
+      "passed": true,
+      "check": "race: natural victory reached within 150 valid synchronized moves"
+    },
+    {
+      "passed": true,
+      "check": "race: natural finish records exactly one played match per client"
+    },
+    {
+      "passed": true,
+      "check": "natural human Race uses the same two-entry/four-prize policy"
+    },
+    {
+      "passed": true,
+      "check": "unpaid Race bot creation is rejected before a match starts"
+    },
+    {
+      "passed": true,
+      "check": "unpaid Race matchmaking ticket is rejected"
+    },
+    {
+      "passed": true,
+      "check": "unpaid Race matchmaking ticket is rejected"
+    },
+    {
+      "passed": true,
+      "check": "denied unpaid Race grants no spendable resources"
+    },
+    {
+      "passed": true,
+      "check": "repeated pending Race entry charges the configured two matter only once"
+    },
+    {
+      "passed": true,
+      "check": "pending Race cancellation refunds its exact entry once"
+    },
+    {
+      "passed": true,
+      "check": "a cancelled entry cannot start a Race bot match"
+    },
+    {
+      "passed": true,
+      "check": "a paid Race entry can start a bot match"
+    },
+    {
+      "passed": true,
+      "check": "paid bot Race accepts its owner and sends a Race board"
+    },
+    {
+      "passed": true,
+      "check": "paid bot match uses authoritative Race rules"
+    },
+    {
+      "passed": true,
+      "check": "a claimed Race entry cannot be refunded while its match is active"
+    },
+    {
+      "passed": true,
+      "check": "replayed Race create resumes the exact already-paid active match without creating another"
+    },
+    {
+      "passed": true,
+      "check": "bot Race forfeit reports the human stake refund without an extra victory prize or loss XP"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "bot Race loss returns its actual paid two matter exactly once"
+    },
+    {
+      "passed": true,
+      "check": "duplicate bot forfeit and repeated cancellation preserve one loss, unchanged XP and one refund"
+    },
+    {
+      "passed": true,
+      "check": "a settled Race entry cannot be reused after match completion"
+    },
+    {
+      "passed": true,
+      "check": "legacy paid receipt migrates its actual multi-resource stake without charging today's entry"
+    },
+    {
+      "passed": true,
+      "check": "migrated paid receipt starts a bot Race"
+    },
+    {
+      "passed": true,
+      "check": "bot loss refund payload uses actual receipt seven/eleven/thirteen without extra four matter"
+    },
+    {
+      "passed": true,
+      "check": "test-owned Race entry reaches durable settled state"
+    },
+    {
+      "passed": true,
+      "check": "per-run Race settlement uses the same immutable paid receipt"
+    },
+    {
+      "passed": true,
+      "check": "durable settled reward retains the actual paid multi-resource stake"
+    },
+    {
+      "passed": true,
+      "check": "legacy bot receipt refunds each resource once despite duplicate forfeit and repeated cancellation"
+    },
+    {
+      "passed": true,
+      "check": "boss defaults use calibrated550000HP and exactly three weekly attacks, accessible to levelone"
+    },
+    {
+      "passed": true,
+      "check": "boss section receives frozen event damage armor crit no-healing and turn-limit stats"
+    },
+    {
+      "passed": true,
+      "check": "boss RPC rejects client supplied damage"
+    },
+    {
+      "passed": true,
+      "check": "boss board exposes shared HP and bounded attempt turns"
+    },
+    {
+      "passed": true,
+      "check": "fresh global boss snapshot starts authoritative round one"
+    },
+    {
+      "passed": true,
+      "check": "isolated boss fixture equips actual eight-slot epic gear before admission"
+    },
+    {
+      "passed": true,
+      "check": "retry of current boss launch reuses same attempt without second teleport charge"
+    },
+    {
+      "passed": true,
+      "check": "another account cannot join a private boss attempt"
+    },
+    {
+      "passed": true,
+      "check": "initial boss snapshot is paused and does not replay an old passive or scream"
+    },
+    {
+      "passed": true,
+      "check": "realOP17 immediately returns a visible thirty-second wall-clock deadline"
+    },
+    {
+      "passed": true,
+      "check": "snapshot refresh does not move the authoritative boss turn deadline"
+    },
+    {
+      "passed": true,
+      "check": "real board action is accepted by global boss engine"
+    },
+    {
+      "passed": true,
+      "check": "HTTP surrender settles a boss attempt and sends the boss terminal packet"
+    },
+    {
+      "passed": true,
+      "check": "boss attempt does not award ordinary mine or PvP result counters"
+    },
+    {
+      "passed": true,
+      "check": "actual thirty-second player deadline settles exactly one authoritative boss timeout"
+    },
+    {
+      "passed": true,
+      "check": "late boss ability after real expiry cannot spend mana or recover the expired player turn"
+    },
+    {
+      "passed": true,
+      "check": "boss weekly attempt2 can finish without stale admission"
+    },
+    {
+      "passed": true,
+      "check": "boss weekly attempt3 can finish without stale admission"
+    },
+    {
+      "passed": true,
+      "check": "fourth weekly boss attack is rejected without charging a fourth teleport"
+    },
+    {
+      "passed": true,
+      "check": "second account launches its own arena against same global boss"
+    },
+    {
+      "passed": true,
+      "check": "third account reserves a late attempt before global death"
+    },
+    {
+      "passed": true,
+      "check": "validated player damage kills the one shared boss and marks contributor eligible"
+    },
+    {
+      "passed": true,
+      "check": "global death before first action refunds both weekly attack and teleport"
+    },
+    {
+      "passed": true,
+      "check": "actual native boss ranking contains one weekly total per owner and own position outside a bounded page"
+    },
+    {
+      "passed": true,
+      "check": "ranking exposes current display names and avatars without private receipt or reward IDs"
+    },
+    {
+      "passed": true,
+      "check": "ranking rejects oversized pages and a different weekly event"
+    },
+    {
+      "passed": true,
+      "check": "defeated global boss delivers one durable chest to offline contributor mailbox"
+    },
+    {
+      "passed": true,
+      "check": "boss chest contains one random legendary recipe, tesseract and supplies"
+    },
+    {
+      "passed": true,
+      "check": "three concurrent mailbox claims grant one exact resource and inventory reward"
+    },
+    {
+      "passed": true,
+      "check": "non-contributor cannot claim another account boss chest"
+    },
+    {
+      "passed": true,
+      "check": "globally defeated event rejects new attempts"
+    },
+    {
+      "passed": true,
+      "check": "shop returns22 server-priced offers and fresh monotonic purchase sequence"
+    },
+    {
+      "passed": true,
+      "check": "four simultaneous identical shop purchases charge once and grant one exact bundle"
+    },
+    {
+      "passed": true,
+      "check": "shop keeps only four receipts while compacted old purchase can never recharge or regrant"
+    },
+    {
+      "passed": true,
+      "check": "unconnected real-money payment cannot charge wallet or advance purchase sequence"
+    },
+    {
+      "passed": true,
+      "check": "teleport costs exactly30000gold and full inventory queues its paid delivery safely"
+    },
+    {
+      "passed": true,
+      "check": "shop rejects client prices and grant amounts"
+    },
+    {
+      "passed": true,
+      "check": "practice rejects forged damage and stale session without durable admission"
+    },
+    {
+      "passed": true,
+      "check": "practice launches without a paid admission or token, run1"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice starts both sides at full HP and zero personal damage, run1"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice resets round, adaptation, scream, mana and ability cooldown, run1"
+    },
+    {
+      "passed": true,
+      "check": "ordinary practice action resolves only against private full-HP boss state"
+    },
+    {
+      "passed": true,
+      "check": "practice terminal keeps actual personal damage/full initial HP denominator and no eligibility/refund"
+    },
+    {
+      "passed": true,
+      "check": "practice damage percentage has the full initial HP denominator"
+    },
+    {
+      "passed": true,
+      "check": "practice admission/action/terminal/reset perform zero durable writes, including rate budget and maintenance lease"
+    },
+    {
+      "passed": true,
+      "check": "practice launches without a paid admission or token, run2"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice starts both sides at full HP and zero personal damage, run2"
+    },
+    {
+      "passed": true,
+      "check": "fresh practice resets round, adaptation, scream, mana and ability cooldown, run2"
+    },
+    {
+      "passed": true,
+      "check": "ordinary practice action resolves only against private full-HP boss state"
+    },
+    {
+      "passed": true,
+      "check": "practice terminal keeps actual personal damage/full initial HP denominator and no eligibility/refund"
+    },
+    {
+      "passed": true,
+      "check": "practice damage percentage has the full initial HP denominator"
+    },
+    {
+      "passed": true,
+      "check": "practice admission/action/terminal/reset perform zero durable writes, including rate budget and maintenance lease"
+    },
+    {
+      "passed": true,
+      "check": "normal paid entry still requires and spends a teleport after practice"
+    },
+    {
+      "passed": true,
+      "check": "normal paid battle retains actual depleted shared HP instead of practice full HP"
+    },
+    {
+      "passed": true,
+      "check": "normal paid terminal preserves one real weekly attempt and exactly one token debit"
+    },
+    {
+      "passed": true,
+      "check": "normal: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "normal: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "normal: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "normal: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "normal: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "rare: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "rare: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "rare: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "epic: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "epic: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "epic: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: actual seven-piece profile has no set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: eighth item RPC immediately returns correct full-set stats, critical chance unchanged"
+    },
+    {
+      "passed": true,
+      "check": "legendary: actual battle actor and immediate character response use identical complete-set stats"
+    },
+    {
+      "passed": true,
+      "check": "legendary: repeated profile read does not compound the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "legendary: unequip RPC immediately removes the set multiplier"
+    },
+    {
+      "passed": true,
+      "check": "eight occupied slots with mixed quality do not activate a set"
+    },
+    {
+      "passed": true,
+      "check": "canonical backend exposes all32 equipment recipe costs"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: published unquoted client receives readable update notice with zero resource/fodder/job mutation"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: stale displayed quote returns the actual ingot price without charging or creating a job"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_epic_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_legendary_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "published unquoted client can still craft unchanged common recipes"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_normal_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_chest: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_feet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_gloves: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_helmet: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_legs: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_shoulders: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_weapon_l: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "eq_t1_rare_weapon_r: actual craft debits exact canonical ore/gold/materials and previous gear once, starts correct slot"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": []
+}

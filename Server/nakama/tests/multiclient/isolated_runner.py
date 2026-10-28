@@ -45,7 +45,7 @@ def suite_arguments(escape, root, project, scenario):
         "--url", "http://127.0.0.1:28350", "--console-url", "http://127.0.0.1:28351",
         "--config", str(root / "secrets/server.yml"), "--scenario", scenario,
         "--report", str(escape / ("multiclient-isolated-" + scenario + ".json"))]
-    if scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop"):
+    if scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop"):
         result.extend(["--item-catalog", str(root / "item-catalog.json")])
     if scenario == "all":
         result.extend(["--catalog-migration-helper", str(root / "catalog-migration/merge_consumable_catalog.py"),
@@ -60,7 +60,7 @@ def main():
     escape = Path("/opt/escape").resolve()
     if Path.cwd().resolve() != escape or not (escape / "runtime/duel_match3.lua").is_file():
         raise SystemExit("Run from the existing /opt/escape project only")
-    if args.scenario in ("recovery", "all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop") and not (escape / "recovery-item-catalog.json").is_file():
+    if args.scenario in ("recovery", "all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop") and not (escape / "recovery-item-catalog.json").is_file():
         raise SystemExit("Install canonical repository item defs as /opt/escape/recovery-item-catalog.json first")
     if args.scenario == "all" and not (escape / "multiclient-catalog-migration/merge_consumable_catalog.py").is_file():
         raise SystemExit("Install the isolated consumable migration fixture before --scenario all")
@@ -81,7 +81,7 @@ def main():
     root.mkdir(mode=0o700)
     os.umask(0o077)
     shutil.copytree(escape / "runtime", root / "runtime")
-    if recovery or args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "shop"):
+    if recovery or args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop"):
         shutil.copy2(escape / "recovery-item-catalog.json", root / "item-catalog.json")
     if args.scenario == "all":
         shutil.copytree(escape / "multiclient-catalog-migration", root / "catalog-migration")

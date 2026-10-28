@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Сухой грохот"
   floor: 5
   icon: {fileID: 21300000, guid: db3be28bac0fb4e48b8e2b1339214198, type: 3}
+  avatar: {fileID: 21300000, guid: 3bab4d7c47885d288d8ae59ba29fb5b3, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

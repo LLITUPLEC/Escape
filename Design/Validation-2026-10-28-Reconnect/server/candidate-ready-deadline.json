@@ -1,0 +1,15 @@
+{
+  "stage": "release0317-validation-d4673ded3afd",
+  "runtime_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtime_files": 68,
+  "suite_sha256": "cf930399795c13daed19a275b03f636fc5bf97bc438989937b46429149024960",
+  "security_smoke_sha256": "5ab85a5d19a9619508f45b2be83b43decef00483b96b6691f94d9a78216253d0",
+  "deployer_sha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "local_lua": {
+    "passed": true,
+    "named_cases": 828,
+    "sources_changed_during_run": false
+  },
+  "network_status": "pending",
+  "change": "Bound unplayed non-arena admission to its existing twenty-second deadline before general/boss loop routing; canonical refund retry; no API change."
+}

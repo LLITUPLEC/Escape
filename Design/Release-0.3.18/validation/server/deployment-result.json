@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "applied": true,
+  "checks": 977,
+  "runtimeSha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2",
+  "rollbackBackup": "/opt/escape/backups/runtime-release-20261028T221231Z",
+  "canonicalHelperPromoted": true,
+  "oldHelperSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "newHelperSha256": "0e18d8c819265ccb29019a4d40045c1d97133c8eb947f1bbe9c49156461c1d92",
+  "originalPlanSha256": "c6be02b6fe165fe89c90c7b9b1285124e177411030ac9888bafae113ea29c0e2",
+  "updatedPlanSha256": "9498d7e083718a5584d1c17be6be33c281a4c02f9d3a64e9e45f0c07f366f73f",
+  "proofSha256": "4d931669427f53519565de9c217b4babcac73739a86aab11718cb419a8b78243",
+  "evidence": "/opt/escape/release0318-validation-4183773c5184/readiness-retry-evidence-20261028T221229759930Z-34a1574e"
+}

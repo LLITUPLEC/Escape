@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "templateOnly": true,
+  "utc": "2026-10-28T17:10:05.212588+00:00",
+  "version": "0.3.17",
+  "versionCode": 19,
+  "previous": "0.3.16",
+  "templateSha256": "fe29df7adf622cc561a7f6ad2b2c90b21c5d73199e73e343837339905317266e",
+  "galleryScreens": 3,
+  "staticImageElements": 4,
+  "lightboxReady": true,
+  "frozenScreensMatchProvenance": true,
+  "networkActions": false,
+  "published": false
+}

@@ -66,16 +66,16 @@ check(R.number(legacy)==0,'legacy boss history remains unknown instead of invent
 
 -- The real boss actor must persist the counter before publishing, including
 -- an unavailable commit, retry, recreated actor, and a live reconnect.
-local clock,fail_commit,attempt_snapshot=100000,true,nil
+local clock,fail_commit,attempt_snapshot,attempt_sequence=100000,false,nil,0
 local event={id='round-week',hp=100000,max_hp=100000,ends_at=os.time()+3600,
  config={think_seconds=2,max_turns=30,base_damage=0,base_armor=0,base_crit=0}}
 local function copy(v)if type(v)~='table'then return v end;local t={}for k,x in pairs(v)do t[k]=copy(x)end return t end
 B.configure({CFG=E.CFG,now_ms=function()return clock end,
  api={get_event=function()return event end,get_player=function()return{}end,
-  get_attempt=function()return{sequence=1,snapshot=copy(attempt_snapshot),actual_damage=0}end,
+  get_attempt=function()return{sequence=attempt_sequence,snapshot=copy(attempt_snapshot),actual_damage=0}end,
   commit=function(_,_,seq,damage,snapshot,_,reason)
    if fail_commit then return nil,'storage_unavailable' end
-   attempt_snapshot=copy(snapshot)
+   attempt_snapshot=copy(snapshot);attempt_sequence=seq
    return{event=event,attempt={sequence=seq,snapshot=copy(snapshot),status='bound',actual_damage=0}}
   end},
  filter_messages=function(_,messages)return messages end,stale=function()return false end,
@@ -87,13 +87,20 @@ B.configure({CFG=E.CFG,now_ms=function()return clock end,
 local boss=E.init_state({max_hp=100000},{max_hp=100000});boss.global_boss.event_id=event.id;boss.global_boss.attempt_id='round-attempt'
 boss._boss_sequence=0;boss._boss_config=event.config;boss.presences={hero={user_id='hero'}}
 R.start(boss,'hero');R.set_active(boss,boss.bot_user_id);boss.turn_deadline_paused=false;boss.turn_deadline_unix_ms=clock+30000;boss.bot_turn_ready_tick=0
-local before_sync=#snapshots;B.loop(dispatcher,boss,1,{})
+ B.loop(dispatcher,boss,1,{})
+check(boss.round_number==1 and boss.active_user_id==boss.bot_user_id and snapshots[#snapshots].bossAdaptationTriggered,
+ 'separate boss adaptation remains within round1 before the response move')
+B.loop(dispatcher,boss,boss.bot_turn_ready_tick,{})
+check(boss.round_number==1 and boss.active_user_id==boss.bot_user_id and snapshots[#snapshots].bossScreamTriggered,
+ 'separate free boss scream remains within round1 before the response move')
+local response_tick=boss.bot_turn_ready_tick;fail_commit=true
+local before_sync=#snapshots;B.loop(dispatcher,boss,response_tick,{})
 check(boss._boss_pending and boss.round_number==2 and boss._boss_pending.snapshot.round_number==2 and #snapshots==before_sync,
  'boss response freezes round2 in pending durable commit without premature broadcast')
-B.loop(dispatcher,boss,1+E.CFG.TICK_RATE,{})
+B.loop(dispatcher,boss,response_tick+E.CFG.TICK_RATE,{})
 check(boss.round_number==2 and boss._boss_pending.snapshot.round_number==2 and #snapshots==before_sync,
  'repeated unavailable commit cannot count boss response twice')
-fail_commit=false;B.loop(dispatcher,boss,1+2*E.CFG.TICK_RATE,{})
+fail_commit=false;B.loop(dispatcher,boss,response_tick+2*E.CFG.TICK_RATE,{})
 check(not boss._boss_pending and boss.round_number==2 and attempt_snapshot.round_number==2 and snapshots[#snapshots].roundNumber==2,
  'successful retry publishes the committed round2 exactly once')
 local function recovered()
@@ -113,6 +120,9 @@ check(recreated.round_number==2 and recreated.active_user_id=='hero','real resto
 B.loop(dispatcher,recreated,35,message(17));B.loop(dispatcher,recreated,36,message(E.CFG.OP_ACTION_REQUEST,{actionType=1}))
 check(recreated.round_number==2 and recreated.active_user_id==recreated.bot_user_id,'real restored boss response starts within round2')
 B.loop(dispatcher,recreated,37,message(17));B.loop(dispatcher,recreated,recreated.bot_turn_ready_tick,{})
+check(recreated.round_number==2 and recreated.active_user_id==recreated.bot_user_id and snapshots[#snapshots].bossAdaptationTriggered,
+ 'restored next-turn adaptation cannot advance round2 before the ordinary boss response')
+B.loop(dispatcher,recreated,recreated.bot_turn_ready_tick,{})
 check(recreated.round_number==3 and recreated.active_user_id=='hero'and snapshots[#snapshots].roundNumber==3,
  'real restored boss response advances to round3 only when hero regains control')
 attempt_snapshot.round_number=nil;attempt_snapshot.round_first_user_id=nil

@@ -30,6 +30,7 @@ local function expired(s,tick)
  return s.turn_deadline_tick~=nil and tick>=s.turn_deadline_tick
 end
 local function start_clock(dispatcher,s,tick)
+ if d.commit_prestart and not d.commit_prestart(s,tick)then return false end
  s.turn_deadline_paused=false
  s.turn_deadline_tick=tick+30*d.CFG.TICK_RATE
  s.turn_deadline_unix_ms=math.floor(now_ms()+30000)
@@ -37,6 +38,7 @@ local function start_clock(dispatcher,s,tick)
  -- The initial state advertises a paused clock. Publish its transition now;
  -- waiting for an unrelated action left the client with turnEndsAt=0.
  d.broadcast(dispatcher,s,nil,false,nil,tick,'')
+ return true
 end
 local function sync(dispatcher,s,tick,action,extra,steps,actor)
  d.broadcast(dispatcher,s,action,extra,steps,tick,actor)
@@ -92,6 +94,11 @@ function M.join(dispatcher,s,tick)
   a=started;restore(s,a.snapshot)
  end
  s._boss_sequence=a.sequence or 0;s._boss_join_pending=nil;s.started=true;s.cheat_rows_allowed={}
+ if d.allow_cheat_rows then
+  local ok,allowed=pcall(d.allow_cheat_rows,s.owner_user_id)
+  s.cheat_rows_allowed[s.owner_user_id]=ok and allowed==true
+ end
+ if a.battle_started or(a.player_actions or 0)>0 or(a.sequence or 0)>0 then s._prestart_pending=false end
  local p=api(s).get_player(s.owner_user_id,e.id)or{};s.global_boss.my_damage=a.actual_damage or 0;s.global_boss.total_damage=p.total_damage or 0;s.global_boss.qualified=p.qualified==true
  s.stats[s.bot_user_id].hp=e.hp;deadline(s,tick);sync(dispatcher,s,tick,nil,false,nil,'');return s
 end
@@ -119,10 +126,14 @@ local function action(dispatcher,s,tick,a,actor,pass)
  local e=api(s).get_event(s.global_boss.event_id)
  if e.hp<=0 or os.time()>=e.ends_at then M.finish(dispatcher,s,tick,e.hp<=0 and'boss_defeated'or'event_expired');return end
  s.stats[s.bot_user_id].hp=e.hp;s._global_boss_damage_raw=0
+ s.last_crit=false;s._action_mana_drain=0;s._sync_popup=nil
  s.global_boss.scream_triggered=false;s.global_boss.scream_damage=0;s.global_boss.adaptation_triggered=false
  local extra,keep,steps=false,false,nil
- if boss and not s.global_boss.boss_turn_prepared then Rules.begin_turn(s)end
- if s.stats[s.owner_user_id].hp>0 and not pass then
+ if boss and not pass and not s.global_boss.boss_turn_prepared then
+  Rules.begin_turn(s);keep=true
+ elseif boss and not pass and Rules.scream_ready(s)then
+  Rules.scream(s);keep=true
+ elseif s.stats[s.owner_user_id].hp>0 and not pass then
    if not a then s._bot_pre_mana=s.stats[actor].mana;a=d.choose(s,actor,opp)end
   if a then
    local valid=d.validate(s,actor,a);if not valid then restore(s,before);return false,'invalid_action'end

@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Острый скол"
   floor: 1
   icon: {fileID: 21300000, guid: e4b78b7e7c9e4ec5870fb31ca27ad932, type: 3}
+  avatar: {fileID: 21300000, guid: d510aed6d93b531e8082374fbc9535fb, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

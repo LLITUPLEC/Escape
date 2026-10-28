@@ -112,6 +112,8 @@ namespace Project.Editor
                 }
                 Check(report.revealWaits == 2 && !(bool)Get(manager, "_matchRevealPending") && !panel.gameObject.activeSelf, "Two countdown waits finish before battle overlay hides");
                 report.checks.Add("Production reveal coroutine waits twice, blocks queued snapshots/turn-ready, then releases battle");
+                ValidateTournamentReturns(manager, managerRoot.transform);
+                report.checks.Add("All gold/ore/smith tournament rounds return to ArenaMenu after automatic advancement or the actual outcome Continue button; stale solo flags cannot redirect a tournament to the mine, and mine/global boss return destinations survive");
                 report.passed = true;
                 var path = ".cache/qa/battle-entry/battle-entry-qa.json";
                 Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
@@ -132,6 +134,66 @@ namespace Project.Editor
             // Unity refuses to combine with an additive editor QA scene.
             EditorSceneManager.OpenScene("Assets/_Project/Scenes/MainMenu.unity", OpenSceneMode.Single);
             Debug.Log(Run());
+        }
+        private static void ValidateTournamentReturns(DuelMatch3Manager manager, Transform parent)
+        {
+            var navigationField = typeof(DuelMatch3Manager).GetField("EditorNavigationOverride", S);
+            var previousNavigation = navigationField.GetValue(null);
+            var destinations = new List<string>();
+            navigationField.SetValue(null, new Action<string>(destinations.Add));
+            try
+            {
+                Set(manager, "_offlinePresentationQa", true);
+                Set(manager, "_myStats", new PlayerStats());
+                var outcomeRoot = new GameObject("QaTournamentOutcome", typeof(RectTransform)); outcomeRoot.transform.SetParent(parent, false);
+                var outcome = outcomeRoot.AddComponent<Match3GameOverPanel>();
+                outcome.titleText = new GameObject("Title", typeof(RectTransform)).AddComponent<TMPro.TextMeshProUGUI>();
+                outcome.titleText.transform.SetParent(outcomeRoot.transform, false);
+                outcome.backButton = new GameObject("Continue", typeof(RectTransform), typeof(Image), typeof(Button)).GetComponent<Button>();
+                outcome.backButton.transform.SetParent(outcomeRoot.transform, false);
+                outcome.OnBackClicked += () => Call(manager, "ReturnFromGameOver");
+                Set(manager, "_gameOverPanel", outcome);
+                foreach (var kind in new[] { "gold", "ore", "smith" })
+                foreach (var round in new[] { "qf", "sf", "final" })
+                foreach (var won in new[] { false, true })
+                {
+                    // An old solo flag must never override the authoritative tournament context.
+                    Match3LaunchContext.SetSoloMine("mine_7", 7, "hard", false, "MineScene3D");
+                    Match3LaunchContext.ClearArenaMenuAwaitBracketOverlay();
+                    Match3LaunchContext.ArmArenaJoin("qa-completed-tournament", "Турнирный бот", true, "zz-bot-arena-qa");
+                    Set(manager, "_isSoloBotMode", true); Set(manager, "_isArenaTournamentMatch", true);
+                    Set(manager, "_gameEnded", false); Set(manager, "_pendingGameOver", true);
+                    Set(manager, "_pendingGameOverWon", won); Set(manager, "_pendingGameOverDraw", false);
+                    Set(manager, "_arenaGameOverRound", round); Set(manager, "_arenaGameOverKind", kind);
+                    outcome.Hide(); var before = destinations.Count;
+                    Call(manager, "TryShowDeferredGameOver");
+                    var advance = won && round != "final";
+                    Check((bool)Get(manager, "_gameEnded"), "Tournament outcome completes: " + kind + "/" + round);
+                    if (advance)
+                    {
+                        Check(destinations.Count == before + 1 && !outcome.gameObject.activeSelf && Match3LaunchContext.ArenaMenuAwaitBracketOverlay,
+                            "Intermediate victory automatically opens the bracket: " + kind + "/" + round);
+                    }
+                    else
+                    {
+                        Check(destinations.Count == before && outcome.gameObject.activeSelf && outcome.titleText.text == (won ? "Победа в турнире!" : "Вы выбыли из турнира"),
+                            "Defeat/final victory keeps its actual outcome modal: " + kind + "/" + round);
+                        outcome.backButton.onClick.Invoke();
+                        Check(destinations.Count == before + 1, "Outcome Continue navigates exactly once");
+                    }
+                    Check(destinations[destinations.Count - 1] == "ArenaMenu", "Every tournament outcome returns to the arena");
+                    Check(!Match3LaunchContext.TryPeekArenaJoin(out _, out _, out _, out _) && Match3LaunchContext.PeekSoloReturnScene() == "MineScene3D",
+                        "Completed arena join is cleared without consuming mine return context");
+                }
+                Set(manager, "_isArenaTournamentMatch", false);
+                foreach (var destination in new[] { "MineScene", "MineScene3D", "MainMenu" })
+                {
+                    Match3LaunchContext.SetSoloReturnContext(7, destination);
+                    Call(manager, "ReturnFromGameOver");
+                    Check(destinations[destinations.Count - 1] == destination, "Solo return destination preserved: " + destination);
+                }
+            }
+            finally { navigationField.SetValue(null, previousNavigation); }
         }
         private static void ValidateMonsterNames()
         {

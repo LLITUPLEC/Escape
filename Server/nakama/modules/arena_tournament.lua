@@ -659,12 +659,14 @@ local function spawn_pair(tid, rk, index)
   if not claimed or won_claim ~= true then return end
   local pr = claimed[rk][index]
   local params = { arena_mirror = { tournament_id = tid, round = rk, slot_index = index,
-    bet_tier = claimed.bet_tier, kind = claimed.kind, spawn_token = token } }
+    bet_tier = claimed.bet_tier, kind = claimed.kind, spawn_token = token,
+    uid_a = pr.uid_a, uid_b = pr.uid_b, display_a = pr.display_a, display_b = pr.display_b } }
   if pr.bot_a or pr.bot_b then
     local human = pr.bot_a and pr.uid_b or pr.uid_a
     local bot_display = pr.bot_a and pr.display_a or pr.display_b
     params.mode, params.owner_user_id = "pve", human
     params.bot_id, params.bot_user_id = "arena_bot", pr.bot_a and pr.uid_a or pr.uid_b
+    params.bot_name = bot_display
     params.owner_level, params.owner_session_epoch = 1, guard_read_metadata_epoch(human)
     params.arena_pvp_style = true
     params.arena_human_like_bot = FakeOnline.is_online_pool_name(bot_display)

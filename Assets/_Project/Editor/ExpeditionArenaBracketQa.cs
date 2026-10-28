@@ -413,7 +413,7 @@ namespace Project.Editor
                 if (male.sprite == null || male.sprite != ExpeditionTheme.Icon("hero") || female.sprite != Project.Character.CharacterAppearance.Load("dawnwarden-female", true))
                     throw new InvalidOperationException("Default-account avatars do not match their actual player icons.");
                 var report = new Report { target = "avatars-batch", ok = true, message = result + " Paired default icons and JsonUtility avatar DTO round-trip verified. No network/account actions.", utc = DateTime.UtcNow.ToString("O") };
-                var path = "Design/Release-0.3.15/media/validation/tournament-avatar-qa.json";
+                var path = ".cache/qa/mine-refresh/tournament-avatar-qa.json";
                 Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
                 Debug.Log(report.message);
             }

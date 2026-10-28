@@ -1,0 +1,27 @@
+{
+  "utc": "2026-10-28T17:38:45.728770+00:00",
+  "runtime_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtime_files": 68,
+  "suite_sha256": "cf930399795c13daed19a275b03f636fc5bf97bc438989937b46429149024960",
+  "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+  "production_runtime_changed": false,
+  "production_runtime_before_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "scenarios": {
+    "reconnect-0317": {
+      "exit_code": 0,
+      "seconds": 144.2,
+      "checks": 32,
+      "failed": 0,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    },
+    "all": {
+      "exit_code": 1,
+      "seconds": 371.6,
+      "checks": 193,
+      "failed": 1,
+      "errors": [],
+      "tested_runtime_matches_final_candidate": true
+    }
+  }
+}

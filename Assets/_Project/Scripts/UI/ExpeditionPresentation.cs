@@ -794,13 +794,8 @@ namespace Project.UI
             var value = ExpeditionUi.Text(cell.transform, "Value", "—", 30, .28f, .12f, .775f, .88f, TextAlignmentOptions.Center);
             value.margin = Vector4.zero; value.textWrappingMode = TextWrappingModes.NoWrap;
             value.enableAutoSizing = true; value.fontSizeMin = 20; value.fontSizeMax = 30;
-            var plus = ExpeditionUi.Button(cell.transform, "Plus", "+", 1, .5f, 1, .5f,
-                () => { if (key == "energy") OpenEnergy(); else OpenResourceShop(key); }, true, 27);
-            var rect = plus.transform as RectTransform; rect.pivot = new Vector2(1, .5f); rect.sizeDelta = new Vector2(44, 44); rect.anchoredPosition = new Vector2(-12, 0);
-            ExpeditionShelterStyle.ThinFrame(plus.GetComponent<Image>());
-            var plusLabel = plus.GetComponentInChildren<TMP_Text>(); plusLabel.margin = Vector4.zero;
-            plusLabel.enableAutoSizing = true; plusLabel.fontSizeMin = 22; plusLabel.fontSizeMax = 27;
-            plusLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            ExpeditionShelterStyle.ResourcePlus(cell.transform,
+                () => { if (key == "energy") OpenEnergy(); else OpenResourceShop(key); });
             return value;
         }
 
@@ -1025,7 +1020,7 @@ namespace Project.UI
                 if (_drawer != null) _drawer.text = "Загрузка запасов…";
                 return;
             }
-            _energy.text = _shelterStyle ? Short(value.energy) + " / " + value.energy_max : Short(value.energy);
+            _energy.text = Short(value.energy);
             _gold.text = Short(value.gold);
             _ore.text = Short(value.ore);
             if (_matter != null) _matter.text = Short(value.matter);

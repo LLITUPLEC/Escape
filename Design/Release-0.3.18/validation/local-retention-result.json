@@ -1,0 +1,70 @@
+{
+  "version": "0.3.18",
+  "retainedVersions": [
+    "0.3.18",
+    "0.3.17"
+  ],
+  "retained": [
+    {
+      "version": "0.3.18",
+      "apk": "Builds\\0.3.18\\Escape-Expedition-0.3.18-20261028-214517.apk",
+      "apkBytes": 128893619,
+      "apkSha256": "13e354b77d898666b030f4eaef4939eb651ca6cba3858c5d360a84f4d9ce6f89",
+      "symbols": "Builds\\0.3.18\\Escape-Expedition-0.3.18-20261028-214517.symbols.zip",
+      "symbolsBytes": 458407942,
+      "symbolsSha256": "ecc0801f29d3c9decb7b3937542dffbaae6136b0d0ce532c08f4e44ef46a85ea",
+      "symbolsZipVerified": true
+    },
+    {
+      "version": "0.3.17",
+      "apk": "Builds\\0.3.17\\Escape-0.3.17-a692d44fa0ad.apk",
+      "apkBytes": 124415319,
+      "apkSha256": "a692d44fa0adeaf40720e308b22fe11716f3f32c630bbf011859e6ef5c9cddca",
+      "symbols": "Builds\\0.3.17\\Escape-0.3.17-a692d44fa0ad.symbols.zip",
+      "symbolsBytes": 48745618,
+      "symbolsSha256": "5262dc35a319572ac8683953836557899d8c24032effd3a6051c4f1cce1e8dec",
+      "symbolsZipVerified": true
+    }
+  ],
+  "historicalReportsAndScriptsSha256": "a1bcf055a8965edb93c2b30f371002ed2af27ec49517971a1624bd1b65812c35",
+  "historicalReportsAndScriptsCount": 253,
+  "targets": [
+    {
+      "path": "Builds/0.3.16",
+      "kind": "obsolete_build_directory",
+      "files": {
+        "build-status.json": "d7c75fe0e54562558cb259c9800e78df327f54b23adc521fc51cc373f4409aaa",
+        "Escape-0.3.16-3f40a293713f.apk": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847",
+        "Escape-0.3.16-3f40a293713f.apk.sha256": "814711cd6648e589f1a68519b2b5c6fef7dcb77673460a96a0502e1973b565ec",
+        "Escape-0.3.16-3f40a293713f.symbols.zip": "7f7800d20a9504732b13358edb123363bf23b4f8e0435010e424f359eec89f6e"
+      },
+      "treeSha256": "38d9db5d20ba15a685bf2207805f4ea12528d68a9307271c263f513d048b1166"
+    },
+    {
+      "path": "Design/Release-0.3.16/screens/character.png",
+      "kind": "generated_old_release_media",
+      "sha256": "3817726b4b91032a4358985ae3a70d3b22fd49cea810ad998e67d320438cad5e",
+      "bytes": 2698500
+    },
+    {
+      "path": "Design/Release-0.3.16/screens/hub.png",
+      "kind": "generated_old_release_media",
+      "sha256": "66c086267d69575512e536f85f71b5c5588f99a9b33ccce63d4176baa396a46c",
+      "bytes": 3329833
+    },
+    {
+      "path": "Design/Release-0.3.16/screens/mine.png",
+      "kind": "generated_old_release_media",
+      "sha256": "82645974b3b30732345c29362f9aed853651ff83f0a9acc379b581a51ab95d1c",
+      "bytes": 2261762
+    }
+  ],
+  "passed": true,
+  "readyToApply": true,
+  "applied": true,
+  "planSha256": "d3df14df874a0b6acb140ab91ca96d80d79f7327f4aa5fbb31f7a08d1a1aad1c",
+  "waitingFor": [],
+  "historicalReportsPreserved": true,
+  "gitMutationsPerformed": false,
+  "checkedUtc": "2026-10-28T22:21:17.363605+00:00"
+}

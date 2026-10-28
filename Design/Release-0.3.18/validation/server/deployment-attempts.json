@@ -1,0 +1,20 @@
+{
+  "attempts": [
+    {
+      "state": "automatically_rolled_back",
+      "reason": "Transient negative Docker DNS cache in Nginx returned public health502 after healthy Nakama startup; no runtime initialization error.",
+      "databaseRestored": false,
+      "failedBackup": "runtime-release-20261028T220453Z",
+      "failedBackupRetiredOnlyAfterTwoVerifiedBackups": true
+    },
+    {
+      "state": "passed",
+      "publicAndGatewayReadinessRequired": true,
+      "fullSecuritySmokeChecks": 35,
+      "dashboardChecksPassed": true,
+      "helperSha256": "0e18d8c819265ccb29019a4d40045c1d97133c8eb947f1bbe9c49156461c1d92",
+      "runtimeSha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2"
+    }
+  ],
+  "codeOrAccountStateReset": false
+}

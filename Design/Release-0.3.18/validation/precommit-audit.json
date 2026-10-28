@@ -1,0 +1,1137 @@
+{
+  "utc": "2026-10-28T21:47:55.098616+00:00",
+  "scope": "read-only working tree and index audit; no Git mutations, remote access or source changes",
+  "counts": {
+    "tracked": 2639,
+    "modified_or_deleted": 113,
+    "staged": 0,
+    "untracked": 222,
+    "changed_existing_files": 312
+  },
+  "secret_scan": {
+    "value_output": false,
+    "high_confidence_findings": [],
+    "sensitive_paths_in_scope": [],
+    "literal_candidates_for_manual_review": [
+      {
+        "path": "Server/nakama/tests/download_publication_test.py",
+        "rule": "literal_secret",
+        "line": 84,
+        "literal_length": 18,
+        "resolution": "Non-secret negative test value: synthetic extra secret field is passed to a manifest validator and must be rejected; no connection or credential data."
+      }
+    ],
+    "unresolved_literal_candidates": []
+  },
+  "files_over_50_mib": [],
+  "largest_changed_files": [
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-6-avatar-v1.png",
+      "bytes": 4118133,
+      "untracked": true
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/ui/shelter-safe-1080x2400.png",
+      "bytes": 3779764,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-8-avatar-v1.png",
+      "bytes": 3407154,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-10-avatar-v1.png",
+      "bytes": 3273035,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-11-avatar-v1.png",
+      "bytes": 3261672,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-4-avatar-v1.png",
+      "bytes": 3210310,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-2-avatar-v1.png",
+      "bytes": 3191907,
+      "untracked": true
+    },
+    {
+      "path": "Design/Release-0.3.17/screens/hub.png",
+      "bytes": 3189569,
+      "untracked": true
+    },
+    {
+      "path": "Design/Release-0.3.18/screens/hub.png",
+      "bytes": 3189569,
+      "untracked": true
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/ui/shelter-badges-125.png",
+      "bytes": 3187392,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-9-avatar-v1.png",
+      "bytes": 3182048,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-12-avatar-v1.png",
+      "bytes": 3119545,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-7-avatar-v1.png",
+      "bytes": 3063804,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-3-avatar-v1.png",
+      "bytes": 2857422,
+      "untracked": true
+    },
+    {
+      "path": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-1-avatar-v1.png",
+      "bytes": 2813854,
+      "untracked": true
+    }
+  ],
+  "generated_paths_to_exclude": [
+    "Assets/Resources/PerformanceTestRunInfo.json",
+    "Assets/Resources/PerformanceTestRunInfo.json.meta",
+    "Assets/Resources/PerformanceTestRunSettings.json",
+    "Assets/Resources/PerformanceTestRunSettings.json.meta"
+  ],
+  "ignore_verification": [
+    {
+      "path": "Assets/_Project/Resources/NakamaConnectionConfig.asset",
+      "tracked": false,
+      "ignored": true
+    },
+    {
+      "path": "Assets/_Project/Resources/NakamaConnectionConfig.asset.meta",
+      "tracked": false,
+      "ignored": true
+    },
+    {
+      "path": "Server/nakama/deploy/.env",
+      "tracked": false,
+      "ignored": true
+    },
+    {
+      "path": "Server/nakama/deploy/secrets",
+      "tracked": false,
+      "ignored": true,
+      "verification_path": "Server/nakama/deploy/secrets/audit-nonexistent-probe"
+    },
+    {
+      "path": "Server/nakama/deploy/backups",
+      "tracked": false,
+      "ignored": true,
+      "verification_path": "Server/nakama/deploy/backups/audit-nonexistent-probe"
+    },
+    {
+      "path": "Builds",
+      "tracked": false,
+      "ignored": true
+    },
+    {
+      "path": ".cache",
+      "tracked": false,
+      "ignored": true
+    }
+  ],
+  "historical_0315_reports": {
+    "count": 83,
+    "missing": [],
+    "content_changed": [],
+    "normalized_content_preserved": 83,
+    "files": [
+      {
+        "path": "Design/Release-0.3.15/art-manifest.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/art-manifest.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/generated-utility-art.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/implementation-notes.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/installed-art.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/provenance/appearance-unlock-catalog.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/provenance/appearance-unlock-conditions.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/provenance/extra-hero-media-manifest-037.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/provenance/hero-monster-media-manifest.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/provenance/item-media-manifest.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/appearance-unlock-mail-fixture.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/appearance-unlock-mail-ui-qa.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/appearance-unlock-server-qa.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/art-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/battle-entry-qa.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/battle-round-hud-qa.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/grounding/grounding-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/monster-name-catalog-sync.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/release-native-aggregate.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/runtime-integration-audit.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/shelter/shelter-shortcuts-report.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/tournament-avatar-qa.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/ui/native-report.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/media/validation/workshop/workshop-recipes-report.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/release-status.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/android-build-status.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/apk-manifest-xmltree.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/apk-manifest.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/apk-signature.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/apk-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/art-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/backend-local/local-security-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/cleanup-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/dependency-input-moves.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/dependency-migration-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/final-staged-readiness.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/layout-reference-updates.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/file-size-inventory.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/file-size-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/git-readiness-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/ignore-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/local-inventory.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/migration-receipt.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/prospective-secret-scan.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/protected-path-history.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/reference-audit.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-audit/root-inventory.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-cleanup-result.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-moves.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-proposed-delete.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-security-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/local-temporary-cleanup-result.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/migration-smoke.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/post-cleanup-lua-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/sdk-validation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-cleanup-plan-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-cleanup-result.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-current-backup.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-deploy-helper-consolidation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-deploy-helper-proposal.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/cleanup/vps-proposed-cleanup.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/native-aggregate.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/public-file-integrity.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/public-release.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/publication-plan.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/release-completion.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/candidate-inputs.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/deployment-preflight.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/deployment-preparation.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/expected-tested-runtime.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/first-crash/context.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/first-crash/evidence-classification.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/first-crash/multiclient-isolated-consumables.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/first-crash/network-validation-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/installed-runtime-manifest.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/installed-runtime-sha256.txt",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/local-source-match.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/multiclient-isolated-all.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/multiclient-isolated-recovery.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/network-validation-summary.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/server/production-deployment0315.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/source-snapshot-check.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      },
+      {
+        "path": "Design/Release-0.3.15/validation/source-snapshot.json",
+        "exists": true,
+        "modified": false,
+        "normalized_text_equal_to_head": true,
+        "json_semantically_equal_to_head": true
+      }
+    ]
+  },
+  "deleted_paths": [
+    "Design/Release-0.3.15/media/monster-contact-sheet.png",
+    "Design/Release-0.3.15/media/validation/grounding/portrait-1080-safe.png",
+    "Design/Release-0.3.15/media/validation/grounding/portrait-1080.png",
+    "Design/Release-0.3.15/media/validation/grounding/tall-1440-safe.png",
+    "Design/Release-0.3.15/media/validation/grounding/tall-1440.png",
+    "Design/Release-0.3.15/media/validation/shelter/appearance-unlock-mail.png",
+    "Design/Release-0.3.15/media/validation/shelter/shelter-generated-shortcuts.png",
+    "Design/Release-0.3.15/media/validation/ui/battle-stats-hard.png",
+    "Design/Release-0.3.15/media/validation/ui/hero-stats.png",
+    "Design/Release-0.3.15/media/validation/ui/mine-easy.png",
+    "Design/Release-0.3.15/media/validation/ui/mine-hard.png",
+    "Design/Release-0.3.15/media/validation/ui/mine-medium.png",
+    "Design/Release-0.3.15/media/validation/workshop/basic-requirements-no-prerequisite.png",
+    "Design/Release-0.3.15/media/validation/workshop/learned-recipes-sorted.png",
+    "Design/Release-0.3.15/media/validation/workshop/legendary-requirements-missing.png",
+    "Design/Release-0.3.15/media/validation/workshop/legendary-requirements-owned.png",
+    "Design/Release-0.3.15/screens/character.png",
+    "Design/Release-0.3.15/screens/hub.png",
+    "Design/Release-0.3.15/screens/mine.png",
+    "Design/Release-0.3.15/validation/cleanup/apply-local-cleanup.ps1",
+    "Design/Release-0.3.15/validation/public-release-browser-hero.png",
+    "Design/Release-0.3.15/validation/public-release-browser.png",
+    "Design/Release-0.3.15/validation/tooling/finalize_release0315.py"
+  ],
+  "historical_report_deletions": [],
+  "staging_plan": {
+    "exclude": [
+      "Assets/Resources/PerformanceTestRunInfo.json",
+      "Assets/Resources/PerformanceTestRunInfo.json.meta",
+      "Assets/Resources/PerformanceTestRunSettings.json",
+      "Assets/Resources/PerformanceTestRunSettings.json.meta"
+    ],
+    "modified_and_deleted_candidates": [
+      "AGENTS.md",
+      "Assets/_Project/Data/Match3/Monsters/mine_1.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_10.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_11.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_12.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_2.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_3.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_4.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_5.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_6.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_7.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_8.asset",
+      "Assets/_Project/Data/Match3/Monsters/mine_9.asset",
+      "Assets/_Project/Editor/ExpeditionAppearanceMailQa.cs",
+      "Assets/_Project/Editor/ExpeditionAppearanceQa.cs",
+      "Assets/_Project/Editor/ExpeditionArenaBracketQa.cs",
+      "Assets/_Project/Editor/ExpeditionBattleEntryQa.cs",
+      "Assets/_Project/Editor/ExpeditionBattleRoundQa.cs",
+      "Assets/_Project/Editor/ExpeditionFriendsBadgeQa.cs",
+      "Assets/_Project/Editor/ExpeditionLocalPresentationQa.cs",
+      "Assets/_Project/Editor/ExpeditionReleaseVisualQa20261027.cs",
+      "Assets/_Project/Editor/ExpeditionShelterConceptCQa.cs",
+      "Assets/_Project/Editor/ExpeditionShelterShortcutQa.cs",
+      "Assets/_Project/Editor/ExpeditionVisualCapture20261027.cs",
+      "Assets/_Project/Editor/ExpeditionWorkshopRecipeQa.cs",
+      "Assets/_Project/Scripts/Character/CharacterAppearanceService.cs",
+      "Assets/_Project/Scripts/Character/UI/CharacterAppearancePanel.cs",
+      "Assets/_Project/Scripts/Friends/FriendsNavigationBadge.cs",
+      "Assets/_Project/Scripts/Match3/DuelMatch3GlobalBoss.cs",
+      "Assets/_Project/Scripts/Match3/DuelMatch3Manager.cs",
+      "Assets/_Project/Scripts/Match3/Match3LaunchContext.cs",
+      "Assets/_Project/Scripts/Match3/MonsterDefinition.cs",
+      "Assets/_Project/Scripts/Match3/UI/ExpeditionAbilityCostCorner.cs",
+      "Assets/_Project/Scripts/Match3/UI/ExpeditionBattlePortrait.cs",
+      "Assets/_Project/Scripts/Match3/UI/Match3CheatRowsOverlayView.cs",
+      "Assets/_Project/Scripts/Match3/UI/Match3LongPressActivator.cs",
+      "Assets/_Project/Scripts/Match3/UI/Match3SearchingPanel.cs",
+      "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+      "Assets/_Project/Scripts/Nakama/ServerConnectionGuard.cs",
+      "Assets/_Project/Scripts/UI/DailyQuestBadge.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionGlobalBossPanel.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionMailBadge.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionPresentation.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionShelterStyle.cs",
+      "Assets/_Project/Scripts/UI/MonsterModalView.cs",
+      "Design/Release-0.3.15/media/monster-contact-sheet.png",
+      "Design/Release-0.3.15/media/validation/grounding/portrait-1080-safe.png",
+      "Design/Release-0.3.15/media/validation/grounding/portrait-1080.png",
+      "Design/Release-0.3.15/media/validation/grounding/tall-1440-safe.png",
+      "Design/Release-0.3.15/media/validation/grounding/tall-1440.png",
+      "Design/Release-0.3.15/media/validation/shelter/appearance-unlock-mail.png",
+      "Design/Release-0.3.15/media/validation/shelter/shelter-generated-shortcuts.png",
+      "Design/Release-0.3.15/media/validation/ui/battle-stats-hard.png",
+      "Design/Release-0.3.15/media/validation/ui/hero-stats.png",
+      "Design/Release-0.3.15/media/validation/ui/mine-easy.png",
+      "Design/Release-0.3.15/media/validation/ui/mine-hard.png",
+      "Design/Release-0.3.15/media/validation/ui/mine-medium.png",
+      "Design/Release-0.3.15/media/validation/workshop/basic-requirements-no-prerequisite.png",
+      "Design/Release-0.3.15/media/validation/workshop/learned-recipes-sorted.png",
+      "Design/Release-0.3.15/media/validation/workshop/legendary-requirements-missing.png",
+      "Design/Release-0.3.15/media/validation/workshop/legendary-requirements-owned.png",
+      "Design/Release-0.3.15/screens/character.png",
+      "Design/Release-0.3.15/screens/hub.png",
+      "Design/Release-0.3.15/screens/mine.png",
+      "Design/Release-0.3.15/validation/cleanup/apply-local-cleanup.ps1",
+      "Design/Release-0.3.15/validation/public-release-browser-hero.png",
+      "Design/Release-0.3.15/validation/public-release-browser.png",
+      "Design/Release-0.3.15/validation/tooling/finalize_release0315.py",
+      "ProjectSettings/ProjectSettings.asset",
+      "README.md",
+      "Server/nakama/deploy/deploy_download_page.py",
+      "Server/nakama/deploy/security_smoke.py",
+      "Server/nakama/modules/arena_tournament.lua",
+      "Server/nakama/modules/duel_api_rate_limit.lua",
+      "Server/nakama/modules/duel_consumables.lua",
+      "Server/nakama/modules/duel_global_boss.lua",
+      "Server/nakama/modules/duel_global_boss_battle.lua",
+      "Server/nakama/modules/duel_global_boss_rules.lua",
+      "Server/nakama/modules/duel_match3.lua",
+      "Server/nakama/modules/duel_match3_character_stats.lua",
+      "Server/nakama/modules/duel_match3_lifecycle.lua",
+      "Server/nakama/modules/duel_match3_pve_entry.lua",
+      "Server/nakama/modules/duel_match3_race_api.lua",
+      "Server/nakama/modules/duel_match3_race_entry.lua",
+      "Server/nakama/modules/duel_player_cosmetics.lua",
+      "Server/nakama/tests/arena_concurrency_audit.lua",
+      "Server/nakama/tests/battle_rounds_test.lua",
+      "Server/nakama/tests/character_encoder_forward_test.lua",
+      "Server/nakama/tests/cosmetics_security_test.lua",
+      "Server/nakama/tests/global_boss_test.lua",
+      "Server/nakama/tests/global_boss_timer_test.lua",
+      "Server/nakama/tests/multiclient/README.md",
+      "Server/nakama/tests/multiclient/isolated_runner.py",
+      "Server/nakama/tests/multiclient/run.py",
+      "Server/nakama/tests/race_entry_security_test.lua",
+      "Tools/Art/install_mine_refresh.py",
+      "Tools/Art/validate_mine_refresh.py",
+      "Tools/Art/validate_shelter_art.py",
+      "Tools/Balance/audit_smith_tournament.py",
+      "Tools/Balance/audit_smith_tournament_v2.py",
+      "Tools/Balance/calibrate_global_boss.py",
+      "Tools/Release/README.md",
+      "Tools/Release/prepare_backend_validation.py",
+      "Tools/Release/prepare_publication.py",
+      "Tools/Release/publish_page_remote.py",
+      "Tools/Release/source_snapshot.py",
+      "Tools/Release/validate-apk.ps1",
+      "Tools/Release/validate_backend_remote.py",
+      "Tools/Release/verify-public-release.ps1",
+      "Tools/Release/verify_public_integrity.py",
+      "Website/escape/README.md",
+      "Website/escape/index.template.html",
+      "Website/escape/render-release.ps1"
+    ],
+    "new_candidates": [
+      "Assets/_Project/Editor/ExpeditionBattleReconnectQa.cs",
+      "Assets/_Project/Editor/ExpeditionBattleReconnectQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionBossActionRowsQa0318.cs",
+      "Assets/_Project/Editor/ExpeditionBossActionRowsQa0318.cs.meta",
+      "Assets/_Project/Editor/ExpeditionModeRecoveryQa.cs",
+      "Assets/_Project/Editor/ExpeditionModeRecoveryQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionMonsterAvatarQa0318.cs",
+      "Assets/_Project/Editor/ExpeditionMonsterAvatarQa0318.cs.meta",
+      "Assets/_Project/Editor/ExpeditionReconnectAccountQa.cs",
+      "Assets/_Project/Editor/ExpeditionReconnectAccountQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionReconnectReleaseQa.cs",
+      "Assets/_Project/Editor/ExpeditionReconnectReleaseQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionReconnectUiQa.cs",
+      "Assets/_Project/Editor/ExpeditionReconnectUiQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionRelease0318Qa.cs",
+      "Assets/_Project/Editor/ExpeditionRelease0318Qa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionRelease0318UiQa.cs",
+      "Assets/_Project/Editor/ExpeditionRelease0318UiQa.cs.meta",
+      "Assets/_Project/Editor/ExpeditionTournamentIdentityQa.cs",
+      "Assets/_Project/Editor/ExpeditionTournamentIdentityQa.cs.meta",
+      "Assets/_Project/Editor/Fixtures/appearance-server-0318.json",
+      "Assets/_Project/Editor/Fixtures/appearance-server-0318.json.meta",
+      "Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json",
+      "Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-1-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-1-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-10-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-10-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-11-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-11-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-12-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-12-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-2-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-2-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-3-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-3-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-4-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-4-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-5-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-5-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-6-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-6-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-7-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-7-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-8-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-8-avatar-v1.png.meta",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-9-avatar-v1.png",
+      "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-9-avatar-v1.png.meta",
+      "Assets/_Project/Scripts/Match3/DuelMatch3Recovery.cs",
+      "Assets/_Project/Scripts/Match3/DuelMatch3Recovery.cs.meta",
+      "Assets/_Project/Scripts/Match3/Match3RecoveryCoordinator.cs",
+      "Assets/_Project/Scripts/Match3/Match3RecoveryCoordinator.cs.meta",
+      "Assets/_Project/Scripts/Match3/Match3RecoveryService.cs",
+      "Assets/_Project/Scripts/Match3/Match3RecoveryService.cs.meta",
+      "Assets/_Project/Scripts/Nakama/SessionOwnershipClaimGate.cs",
+      "Assets/_Project/Scripts/Nakama/SessionOwnershipClaimGate.cs.meta",
+      "Assets/_Project/Scripts/UI/ExpeditionGoldCountBadge.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionGoldCountBadge.cs.meta",
+      "Assets/_Project/Scripts/UI/ExpeditionGoldCountGraphic.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionGoldCountGraphic.cs.meta",
+      "Assets/_Project/Scripts/UI/ExpeditionResourcePlusGraphic.cs",
+      "Assets/_Project/Scripts/UI/ExpeditionResourcePlusGraphic.cs.meta",
+      "Design/Release-0.3.17/README.md",
+      "Design/Release-0.3.17/screens/character.png",
+      "Design/Release-0.3.17/screens/hub.png",
+      "Design/Release-0.3.17/screens/mine.png",
+      "Design/Release-0.3.17/screens/provenance.json",
+      "Design/Release-0.3.17/validation/android-build-status.json",
+      "Design/Release-0.3.17/validation/android-sdk-validation.json",
+      "Design/Release-0.3.17/validation/apk-manifest-xmltree.txt",
+      "Design/Release-0.3.17/validation/apk-manifest.txt",
+      "Design/Release-0.3.17/validation/apk-signature.txt",
+      "Design/Release-0.3.17/validation/apk-validation.json",
+      "Design/Release-0.3.17/validation/apply-local-retention.ps1",
+      "Design/Release-0.3.17/validation/build-artifact-cleanup.json",
+      "Design/Release-0.3.17/validation/final-readiness.json",
+      "Design/Release-0.3.17/validation/local-retention-result.json",
+      "Design/Release-0.3.17/validation/native-symbols.json",
+      "Design/Release-0.3.17/validation/page-publisher-identity.json",
+      "Design/Release-0.3.17/validation/postbuild-readiness.json",
+      "Design/Release-0.3.17/validation/public-file-integrity.json",
+      "Design/Release-0.3.17/validation/public-release.json",
+      "Design/Release-0.3.17/validation/publication-plan.json",
+      "Design/Release-0.3.17/validation/readiness.json",
+      "Design/Release-0.3.17/validation/release-completion.json",
+      "Design/Release-0.3.17/validation/server/backend-apply-exit.json",
+      "Design/Release-0.3.17/validation/server/backend-apply-proof.json",
+      "Design/Release-0.3.17/validation/server/backend-archive-acknowledgment.json",
+      "Design/Release-0.3.17/validation/server/backend-cleanup-inventory.json",
+      "Design/Release-0.3.17/validation/server/backend-cleanup-plan.json",
+      "Design/Release-0.3.17/validation/server/backend-cleanup.json",
+      "Design/Release-0.3.17/validation/server/backend-orchestration-exit.json",
+      "Design/Release-0.3.17/validation/server/final-inventory.json",
+      "Design/Release-0.3.17/validation/server/fresh-backup-manifest.json",
+      "Design/Release-0.3.17/validation/server/fresh-backup.json",
+      "Design/Release-0.3.17/validation/server/inventory-after-static-retention.json",
+      "Design/Release-0.3.17/validation/server/orchestration-apply-launch.json",
+      "Design/Release-0.3.17/validation/server/orchestration-baseline-check.json",
+      "Design/Release-0.3.17/validation/server/orchestration-before-apply.json",
+      "Design/Release-0.3.17/validation/server/orchestration-current-candidate.json",
+      "Design/Release-0.3.17/validation/server/orchestration-final-dryrun.json",
+      "Design/Release-0.3.17/validation/server/orchestration-preparation.json",
+      "Design/Release-0.3.17/validation/server/orchestration-ready.json",
+      "Design/Release-0.3.17/validation/server/pre-retention-verification.json",
+      "Design/Release-0.3.17/validation/server/preflight.json",
+      "Design/Release-0.3.17/validation/server/publication-baseline.json",
+      "Design/Release-0.3.17/validation/server/publication-exit.json",
+      "Design/Release-0.3.17/validation/server/publication-launch.json",
+      "Design/Release-0.3.17/validation/server/retention.json",
+      "Design/Release-0.3.17/validation/server/rollback-backup-manifest.json",
+      "Design/Release-0.3.17/validation/server/tooling/README.md",
+      "Design/Release-0.3.17/validation/server/tooling/backend_orchestrator.py",
+      "Design/Release-0.3.17/validation/server/tooling/backup_before_publication_remote.py",
+      "Design/Release-0.3.17/validation/server/tooling/check_current_candidate.py",
+      "Design/Release-0.3.17/validation/server/tooling/check_preparation.py",
+      "Design/Release-0.3.17/validation/server/tooling/cleanup_backend_stages_remote.py",
+      "Design/Release-0.3.17/validation/server/tooling/final_inventory_remote.py",
+      "Design/Release-0.3.17/validation/server/tooling/launch_publication_remote.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_backend_cleanup.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_backend_job.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_baseline_check.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_final_inventory.py",
+      "Design/Release-0.3.17/validation/server/tooling/make_publication_job.py",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/archive-manifest.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-0fa70c111d27.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-36517314722a.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-40edf29df0f7.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-41d30b908a76.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-4ac36f19453b.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-68c0bf100853.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-be8e18d391f7.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-d4673ded3afd.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/exit-status.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/expected-tested-runtime.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/multiclient-isolated-all.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/multiclient-isolated-recovery.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/network-validation-composed.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/network-validation-summary.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/target-source-equivalence-deadline-final.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/expected-tested-runtime.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/multiclient-isolated-all.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/multiclient-isolated-reconnect-0317.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/network-validation-summary.json",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/suites/release0317-validation-0fa70c111d27-multiclient_review.py",
+      "Design/Release-0.3.17/validation/server/tooling/validation-inputs/suites/release0317-validation-d4673ded3afd-multiclient_review.py",
+      "Design/Release-0.3.17/validation/server/tooling/verify_and_retain_remote.py",
+      "Design/Release-0.3.17/validation/source-snapshot-check.json",
+      "Design/Release-0.3.17/validation/source-snapshot.json",
+      "Design/Release-0.3.17/validation/upgrade-identity.json",
+      "Design/Release-0.3.17/validation/website-browser-check.json",
+      "Design/Release-0.3.17/validation/website-bundle.json",
+      "Design/Release-0.3.17/validation/website-template.json",
+      "Design/Release-0.3.18/screens/character.png",
+      "Design/Release-0.3.18/screens/hub.png",
+      "Design/Release-0.3.18/screens/mine.png",
+      "Design/Release-0.3.18/screens/provenance.json",
+      "Design/Release-0.3.18/validation/source-snapshot.json",
+      "Design/Validation-2026-10-28-Reconnect/CLIENT_DESIGN.md",
+      "Design/Validation-2026-10-28-Reconnect/SERVER_DESIGN.md",
+      "Design/Validation-2026-10-28-Reconnect/client/account-report.json",
+      "Design/Validation-2026-10-28-Reconnect/client/battle-reconnect-report.json",
+      "Design/Validation-2026-10-28-Reconnect/client/client-freeze.json",
+      "Design/Validation-2026-10-28-Reconnect/client/client-validation-summary.json",
+      "Design/Validation-2026-10-28-Reconnect/client/native-validation-summary.json",
+      "Design/Validation-2026-10-28-Reconnect/retention-input-migration.json",
+      "Design/Validation-2026-10-28-Reconnect/server/candidate-ready-deadline.json",
+      "Design/Validation-2026-10-28-Reconnect/server/candidate-ready-network-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/candidate-ready-v2.json",
+      "Design/Validation-2026-10-28-Reconnect/server/candidate-ready.json",
+      "Design/Validation-2026-10-28-Reconnect/server/deadline-bounded-admission-proof.json",
+      "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-deadline.json",
+      "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-network-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-v2.json",
+      "Design/Validation-2026-10-28-Reconnect/server/local-security-summary.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-all-final-checks.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-attempt-a-failed.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-attempt-e-failed.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-attempt-f-transport.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-attempt-h-bounty-fixture-failed.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-baseline-a860-all-recovery.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-reconnect-0317.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-recovery-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-validation-composed.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-validation-final-exit.json",
+      "Design/Validation-2026-10-28-Reconnect/server/network-validation-final-original.json",
+      "Design/Validation-2026-10-28-Reconnect/server/target-source-equivalence-deadline-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/target-source-equivalence.json",
+      "Design/Validation-2026-10-28-Reconnect/server/tested-context-final.json",
+      "Design/Validation-2026-10-28-Reconnect/server/tested-runtime-final.json",
+      "Design/Validation-2026-10-28-Reconnect/ui/account-report.json",
+      "Design/Validation-2026-10-28-Reconnect/ui/combat-costs-120.png",
+      "Design/Validation-2026-10-28-Reconnect/ui/selected-ui-proof.json",
+      "Design/Validation-2026-10-28-Reconnect/ui/shelter-badges-125.png",
+      "Design/Validation-2026-10-28-Reconnect/ui/shelter-c-report.json",
+      "Design/Validation-2026-10-28-Reconnect/ui/shelter-safe-1080x2400.png",
+      "Design/Validation-2026-10-28-Reconnect/ui/source-meta.json",
+      "Design/Validation-2026-10-28-Reconnect/ui/ui-report.json",
+      "Docs/Art/MineRefresh/art-manifest.json",
+      "Docs/Art/MineRefresh/generated-utility-art.json",
+      "Docs/Art/MineRefresh/installed-art.json",
+      "Docs/Art/MonsterAvatars/art-manifest.json",
+      "Docs/Art/ShelterIcons/art-manifest.json",
+      "Docs/Balance/AppearanceCollectionRewards-2026-10-29.md",
+      "Server/nakama/data/migrations/cosmetics-rewards-0.3.18.json",
+      "Server/nakama/modules/duel_cosmetics_rewards.lua",
+      "Server/nakama/modules/duel_match3_prestart.lua",
+      "Server/nakama/modules/duel_match3_resume.lua",
+      "Server/nakama/tests/cosmetics_collection_stats_test.lua",
+      "Server/nakama/tests/download_publication_test.py",
+      "Server/nakama/tests/global_boss_action_order_test.lua",
+      "Server/nakama/tests/match_recovery_identity_test.lua",
+      "Server/nakama/tests/multiclient/harness_reconnect0317_test.py",
+      "Server/nakama/tests/pve_bounty_fixture_affix_test.lua",
+      "Server/nakama/tests/reconnect_admission_recovery_test.lua",
+      "Tools/Art/install_monster_avatars.py",
+      "Tools/QA/export_cosmetics_fixtures.py"
+    ],
+    "guidance": [
+      "Review all candidate lists and use explicit paths or a generated pathspec file; do not git add . or force ignored files.",
+      "Keep Assets/Resources/PerformanceTestRunInfo.json and PerformanceTestRunSettings.json and their meta files out of Git.",
+      "Stage historical0.3.15 PNG/helper deletions only as the authorized old-artifact cleanup, with reports retained.",
+      "Do not stage .cache, Builds, website dist, connection assets, credentials, backups, APKs or symbols."
+    ],
+    "recommended_command": "git add -A -- AGENTS.md README.md Assets/_Project ProjectSettings Packages Server Tools Docs Design Website",
+    "recommended_command_excludes": "Assets/Resources is outside this allowlist, including all four generated PerformanceTestRun files; ignored connection config, secrets, Builds, .cache and website dist remain ignored.",
+    "freshness": "This is a point-in-time audit while build/publication evidence is being produced. Recheck final status and add new release0318 durable reports after publication; do not stage transient QA outputs.",
+    "literal_pathspec_file": ".cache/qa/release0318/precommit-pathspec.nul",
+    "literal_pathspec_count": 331
+  },
+  "audit_passed": true,
+  "all_versionable_files_over_50_mib": [],
+  "manual_diff_review": {
+    "scope": "Reviewed non-primary changes by path and diff; no source edits or Git mutations.",
+    "expected_accumulated_changes": [
+      "Previous release0317 source/reconnect work and retained release evidence",
+      "Resource-plus controls/gold counters/friends and daily/mail badges",
+      "QA output paths moved from historical release folders to.cache/qa",
+      "Art installer source inputs moved from historical release media to Docs/Art",
+      "New0318 appearance rewards/avatar/boss/tournament sources and tests",
+      "Release tooling defaults moved to0318/versionCode20"
+    ],
+    "historical_deletions_classification": {
+      "png_count": 21,
+      "release_specific_helper_scripts": [
+        "Design/Release-0.3.15/validation/cleanup/apply-local-cleanup.ps1",
+        "Design/Release-0.3.15/validation/tooling/finalize_release0315.py"
+      ]
+    },
+    "notes": [
+      "No historical JSON/text report deletion remains.83reports compare equal toHEAD after harmless encoding/line-ending normalization or JSON semantic comparison.",
+      "AGENTS.md/README.md still name0317and0316as the published pair, correctly pending successful0318publication; update only when publication succeeds.",
+      "Two0315release-specific cleanup/finalization helper scripts remain deleted. They are not current reusable tools; preserve their Git history and stage only as intentional old-release cleanup.",
+      "Source-art provenance and backup manifests contain hashes/file names; no private backup payload or credential material is among new candidates."
+    ]
+  }
+}

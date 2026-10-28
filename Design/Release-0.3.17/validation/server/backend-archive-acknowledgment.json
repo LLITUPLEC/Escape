@@ -1,0 +1,185 @@
+{
+  "passed": true,
+  "scope": "Archive acknowledgment only; no SSH, deletion, production smoke or source changes.",
+  "inventory_source": "Design/Release-0.3.17/validation/server/backend-cleanup-inventory.json",
+  "inventory_sha256": "2d58fe901c7827cc574b37c7026b3a29d72b31f1ba2100957d0750fdba00c655",
+  "stages": [
+    {
+      "stage": "release0317-validation-0fa70c111d27",
+      "remote_tree_sha256": "c0092bde1c4df7f5c423528efea2aa1f54ccaaa8c9eab007eecb2db2755407e6",
+      "context_sha256": "19a900e25d914800364bfa18dfff19e70ff514004868121e11ce852626cdb3ed",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-0fa70c111d27.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-0fa70c111d27/candidate.tar.gz",
+      "candidate_archive_sha256": "6859013dcb9ae4989c42b684758550b5f222857387e1240ba1dc8afc5898011b",
+      "exact_suite_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/suites/release0317-validation-0fa70c111d27-multiclient_review.py",
+      "exact_suite_sha256": "767048fc4faa7813f9ffbe83d1bc89c44c112187d82488530faf740bea976e8b",
+      "path": "/opt/escape/release0317-validation-0fa70c111d27",
+      "contextSha256": "19a900e25d914800364bfa18dfff19e70ff514004868121e11ce852626cdb3ed"
+    },
+    {
+      "stage": "release0317-validation-36517314722a",
+      "remote_tree_sha256": "26933ca0e1a40babbf77badc21110cab4349bb5cf3c5193bf9b33f8ae1d4479f",
+      "context_sha256": "c3244fa22b34917c971ba7acb3be16ff80fddff3d8c306a777b676ac2dfeab52",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-36517314722a.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-36517314722a/candidate.tar.gz",
+      "candidate_archive_sha256": "f293e18ab0e3dda0cdfe8499979e23886f5543ac878ff91361b20f366264b285",
+      "path": "/opt/escape/release0317-validation-36517314722a",
+      "contextSha256": "c3244fa22b34917c971ba7acb3be16ff80fddff3d8c306a777b676ac2dfeab52"
+    },
+    {
+      "stage": "release0317-validation-40edf29df0f7",
+      "remote_tree_sha256": "51de3a9c26c15b0a6b9d49537a99ec378c58e5ce7d9a51acfc8d207eee3b99c8",
+      "context_sha256": "25df1006b32cbfcfdf730541fd4e2082521554e3fe295d65465f095f3e4e3a13",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-40edf29df0f7.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-40edf29df0f7/candidate.tar.gz",
+      "candidate_archive_sha256": "6c9b7f350af890c80e2601d57fda8a4a4092ade0b87a07f60f2aad03991ec640",
+      "path": "/opt/escape/release0317-validation-40edf29df0f7",
+      "contextSha256": "25df1006b32cbfcfdf730541fd4e2082521554e3fe295d65465f095f3e4e3a13"
+    },
+    {
+      "stage": "release0317-validation-41d30b908a76",
+      "remote_tree_sha256": "2af9df6f3c2f79a21929a7844122d5603fb505ab043d257b6650f137fa7ec37f",
+      "context_sha256": "e3eae9a8c9800b40c095ef5eb87327254e14f568270937040fc762482adf6f29",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-41d30b908a76.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-41d30b908a76/candidate.tar.gz",
+      "candidate_archive_sha256": "f815c32cc7d1bffd1ec94f3113ac6b788d7b1c65c9a8dd8bd7955352aba7ad5e",
+      "path": "/opt/escape/release0317-validation-41d30b908a76",
+      "contextSha256": "e3eae9a8c9800b40c095ef5eb87327254e14f568270937040fc762482adf6f29"
+    },
+    {
+      "stage": "release0317-validation-4ac36f19453b",
+      "remote_tree_sha256": "329fbac951f1b557c95ea37e5502a2e2b0c729767353d90c2e334f0abec1f237",
+      "context_sha256": "ed7c87f5554837a33060a4d962134f122b260466999d866e2773e0ba5d874ab5",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-4ac36f19453b.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-4ac36f19453b/candidate.tar.gz",
+      "candidate_archive_sha256": "35aef4980dcf21e4cd247011b2526dc010f78911d1e6fa554023bf1fc0ac9b09",
+      "path": "/opt/escape/release0317-validation-4ac36f19453b",
+      "contextSha256": "ed7c87f5554837a33060a4d962134f122b260466999d866e2773e0ba5d874ab5"
+    },
+    {
+      "stage": "release0317-validation-68c0bf100853",
+      "remote_tree_sha256": "f656b874ba57a2a380b581be9f72d83e2fa02c3b4f027bef90696374ae4dbdb3",
+      "context_sha256": "e87357cf354bcfcae46c6304d91352a10f876c8d939db5228271e730fbd397cd",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-68c0bf100853.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-68c0bf100853/candidate.tar.gz",
+      "candidate_archive_sha256": "14ebd0a502ed21f3a499e2a32b646c3c3637e658ed474385c22be5c143898c9b",
+      "path": "/opt/escape/release0317-validation-68c0bf100853",
+      "contextSha256": "e87357cf354bcfcae46c6304d91352a10f876c8d939db5228271e730fbd397cd"
+    },
+    {
+      "stage": "release0317-validation-be8e18d391f7",
+      "remote_tree_sha256": "163aa9bc8bb1378e5a769c66485edc823cede658005adbc81da95d5df2513d64",
+      "context_sha256": "52e8f442fb95cf96ed9293919c1e23e05fc0131f4d5b56568130f0013fd834b4",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-be8e18d391f7.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-be8e18d391f7/candidate.tar.gz",
+      "candidate_archive_sha256": "0115f53e50e1bfc753d41906936897318a6e2fef6e4fddeb120af8b845981fa5",
+      "path": "/opt/escape/release0317-validation-be8e18d391f7",
+      "contextSha256": "52e8f442fb95cf96ed9293919c1e23e05fc0131f4d5b56568130f0013fd834b4"
+    },
+    {
+      "stage": "release0317-validation-d4673ded3afd",
+      "remote_tree_sha256": "822fba811a75f9c911b64dc9c86338258d0a961b0d4bba8c081f7f9a5f572056",
+      "context_sha256": "fc63021699dd57bffe47de40e366646f398031a82bfccc24f0dc2e44abf47e0d",
+      "context_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/contexts/release0317-validation-d4673ded3afd.json",
+      "candidate_archive_local_path": ".cache/release-work/backend/release0317-validation-d4673ded3afd/candidate.tar.gz",
+      "candidate_archive_sha256": "3814a334186360dc4e99eacaca436e6fa4773dc8b1bfde1ca0d43c08d0a89aef",
+      "exact_suite_durable_path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/suites/release0317-validation-d4673ded3afd-multiclient_review.py",
+      "exact_suite_sha256": "cf930399795c13daed19a275b03f636fc5bf97bc438989937b46429149024960",
+      "path": "/opt/escape/release0317-validation-d4673ded3afd",
+      "contextSha256": "fc63021699dd57bffe47de40e366646f398031a82bfccc24f0dc2e44abf47e0d"
+    }
+  ],
+  "mandatory_raw_reports": [
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/network-validation-summary.json",
+      "sha256": "290621d1c45176f5ff58a4000c8f78c3a2872205c036c18bb78ff234ef61aa8a"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/expected-tested-runtime.json",
+      "sha256": "165142ff0146e97d247cb261712122f91b057234de1ff5880c7dbc68f57837cf"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/multiclient-isolated-all.json",
+      "sha256": "44925ca54df60d00730fb31f28cb8cd6210120810f0bdc88758871109d7f80c3"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/target/multiclient-isolated-reconnect-0317.json",
+      "sha256": "70dc6c7aa5d39a66a9391b37e5dd582670712203150137e5e33c37120e6abbd2"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/network-validation-summary.json",
+      "sha256": "346f70d975df7410af4728914610eeaa306826124fa46724123b9f4c27205902"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/expected-tested-runtime.json",
+      "sha256": "165142ff0146e97d247cb261712122f91b057234de1ff5880c7dbc68f57837cf"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/exit-status.json",
+      "sha256": "49b47dfa3045d6a4287ea733d62b1ac6af15190203a06538fe8a573e84a5d50f"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/multiclient-isolated-all.json",
+      "sha256": "2b2e39d24a7d9af8cb46f2f476eb76818f720e47fe1c1b1e9d7461225b5f0d08"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/multiclient-isolated-recovery.json",
+      "sha256": "b562e53205f2c11340647eaf2242e9444599f53bcb1e79d9569da5ed7770f736"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/network-validation-composed.json",
+      "sha256": "c2cedfa82ed0d88f589d668d452b9688064959f26013716c154d20dd2e0a730a"
+    },
+    {
+      "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/reports/final/target-source-equivalence-deadline-final.json",
+      "sha256": "95dd861edc51a40468ed88368f8cb364bea8b2075fe5d1ab0190615478d248e4"
+    }
+  ],
+  "durable_final_and_failure_notes": [
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/network-validation-composed.json",
+      "sha256": "c2cedfa82ed0d88f589d668d452b9688064959f26013716c154d20dd2e0a730a"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/target-source-equivalence-deadline-final.json",
+      "sha256": "95dd861edc51a40468ed88368f8cb364bea8b2075fe5d1ab0190615478d248e4"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-network-final.json",
+      "sha256": "d9cc7b5203ba6a4175634336971d330bf77f7da8d7df349159330a3691a9eb1d"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/SERVER_DESIGN.md",
+      "sha256": "1c67b1d8215787d29b00d19f03759c16d74dc1a943955c5d1868cbbb2944d116"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/network-attempt-a-failed.json",
+      "sha256": "e8b8a8f5f0dfb7c8c89a43b19ef51da3f97fa380e322fb86eb463014969f842d"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/network-attempt-e-failed.json",
+      "sha256": "2ea809c30412da6fe164883089ba58bfa8a66fd3c2e99f4c8314519792d532c5"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/network-attempt-f-transport.json",
+      "sha256": "20dd0a6d4b3622c22b785d3e659fbd7762ad726d513ae3ec0e54e5fcc15459be"
+    },
+    {
+      "path": "Design/Validation-2026-10-28-Reconnect/server/network-attempt-h-bounty-fixture-failed.json",
+      "sha256": "a7ec4fcbf44badc32492adc51a5c646b6c4322dd422bd01869042c03761f5978"
+    }
+  ],
+  "exact_target_final_suite_sources_durable": true,
+  "original_failed_summaries_preserved": true,
+  "candidate_archives_retained_locally_in_ignored_cache": true,
+  "all_8_remote_stages_no_longer_required": true,
+  "temporary_overlays_and_duplicate_reportfiles_no_longer_required": true,
+  "production_smoke_started": false,
+  "own_accounts_created": 0,
+  "deletion_authorization": "Apply only the parent-approved exact path/tree-hash inventory; this acknowledgment does not broaden cleanup scope.",
+  "proofArchivedLocallyAndShaVerified": true,
+  "archive_manifest": {
+    "path": "Design/Release-0.3.17/validation/server/tooling/validation-inputs/archive-manifest.json",
+    "sha256": "b5415b708dfe858bab7e8e23778a5ab5f2708025e20f64b42705066e4d1638ee"
+  }
+}

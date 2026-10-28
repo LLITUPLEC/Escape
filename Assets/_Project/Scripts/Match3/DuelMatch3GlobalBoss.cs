@@ -57,23 +57,28 @@ namespace Project.Match3
                    string.Equals(msg.actionActorUserId, _opUserId, StringComparison.Ordinal) &&
                    (msg.bossScreamTriggered || msg.bossAdaptationTriggered);
         }
+        private bool KeepsBossTurnWithoutTimerReset(M3BoardSyncMsg msg) =>
+            HasBossAbilityAction(msg) && msg.actionType == 0 && !msg.turnPaused &&
+            msg.activeUserId == _opUserId && !_isMyTurn;
+        private static float BossAbilityPresentationDuration(M3BoardSyncMsg msg) =>
+            msg.bossAdaptationTriggered ? ExpeditionRiftAdaptation.Lifetime : ExpeditionRiftScream.Lifetime;
         private void UpdateGlobalBossPresentation(M3BoardSyncMsg msg, bool animate)
         {
             _isGlobalBoss = true;
             _isGlobalBossPractice = msg.globalBossPractice;
             if (_bossBattleStatus != null) _bossBattleStatus.text = $"{(_isGlobalBossPractice ? "ПРОБНЫЙ БОЙ · УРОН" : "ВКЛАД")}: {ExpeditionGlobalBossPanel.Number(msg.globalBossMyDamage)}  ·  ОСТАЛОСЬ ХОДОВ: {Math.Max(0, msg.bossPlayerTurnsLeft)}";
+            if(animate&&msg.bossAdaptationTriggered&&msg.bossActionSequence>_lastAdaptationSequence)
+            {
+                _lastAdaptationSequence=msg.bossActionSequence;
+                ExpeditionRiftAdaptation.Play(_opPanel);
+                _boardView?.ShowCenterAnnouncement("АДАПТАЦИЯ · ХОД "+msg.bossOwnTurn,new Color32(255,112,91,255),1.5f);
+            }
             if (animate && msg.bossScreamTriggered && msg.bossOwnTurn > _lastScreamTurn)
             {
                 _lastScreamTurn = msg.bossOwnTurn;
                 ExpeditionRiftScream.Play(_opPanel, _myPanel);
                 _boardView?.ShowCenterAnnouncement("УЖАСАЮЩИЙ КРИК\n20% здоровья сквозь броню", new Color32(215, 164, 255, 255), 1.8f);
                 if (msg.actionType <= 0 && msg.bossScreamDamage > 0) _myPanel?.ShowDamagePopup(msg.bossScreamDamage, false);
-            }
-            if(animate&&msg.bossAdaptationTriggered&&msg.bossActionSequence>_lastAdaptationSequence)
-            {
-                _lastAdaptationSequence=msg.bossActionSequence;
-                ExpeditionRiftAdaptation.Play(_opPanel);
-                if(!msg.bossScreamTriggered)_boardView?.ShowCenterAnnouncement("АДАПТАЦИЯ · ХОД "+msg.bossOwnTurn,new Color32(255,112,91,255),1.5f);
             }
             // The shared health can also change because other players are fighting.
             // Its authoritative bar is always refreshed, without treating that change as our damage.

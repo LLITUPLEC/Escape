@@ -192,6 +192,10 @@ def websocket_check(epoch):
         ws.send_json({"cid": "smoke-join", "match_join": {"match_id": match_id}})
         board = ws.wait_match_data(match_id, 10)
         check(bool(board.get("board")) and bool(board.get("activeUserId")), "authoritative PvE board starts over WebSocket")
+        ws.send_json({"match_data_send": {"match_id": match_id, "op_code": "17", "data": ""}})
+        ready = ws.wait_match_data(match_id, 10)
+        check(ready.get("turnPaused") is False and ready.get("turnEndsAtUnixMs", 0) > 0,
+              "authoritative ready commits the paid battle before testing a played surrender")
         ws.send_json({"match_data_send": {"match_id": match_id, "op_code": "12", "data": ""}})
         game_over = ws.wait_match_data(match_id, 11)
         check(game_over.get("winnerUserId") == created.get("bot_user_id") and game_over.get("isDraw") is not True,
@@ -231,6 +235,7 @@ def main():
         check(status == 200 and all(stats_after.get(k) == stats_before.get(k) for k in ("played", "wins", "losses")),
               "forged result leaves trusted counters unchanged")
         for collection, key in (("duel_match3_progress", "profile"), ("duel_match3_character", "sheet"),
+                                ("duel_match3_active", "v1"), ("duel_pve_entry", "active"), ("duel_race_entry", "active"),
                                 ("duel_match3_stats", "summary"), ("duel_match3_cheat_whitelist", "emails"),
                                 ("arena_tournament", "forged"), ("duel_global_boss", "config"),
                                 ("duel_global_boss_player", "week-forged"), ("duel_global_boss_attempt", "attempt-forged"),

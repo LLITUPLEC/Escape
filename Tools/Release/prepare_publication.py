@@ -19,8 +19,8 @@ def sha(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='0.3.16')
-    parser.add_argument('--version-code', type=int, default=18)
+    parser.add_argument('--version', default='0.3.18')
+    parser.add_argument('--version-code', type=int, default=20)
     parser.add_argument('--dist', type=Path, default=ROOT / 'Website/escape/dist')
     parser.add_argument('--validation-dir', type=Path)
     parser.add_argument('--screens-dir', type=Path)
@@ -43,7 +43,7 @@ def main():
     spec = importlib.util.spec_from_file_location('escape_page_publisher', helper)
     publisher = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(publisher)
-    release, apk_name, apk, audio = publisher.validate_bundle(dist)
+    release, apk_name, apk, audio = publisher.validate_bundle(dist, expected_version=args.version)
     validation = json.loads((validation_dir / 'apk-validation.json').read_text(encoding='utf-8-sig'))
     assert release['version'] == validation['version'] == args.version and validation['version_code'] == args.version_code
     assert validation['build_result'] == 'Succeeded' and validation['development_build'] is False

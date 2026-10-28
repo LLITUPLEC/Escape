@@ -1,0 +1,17 @@
+{
+  "stage": "release0317-validation-0fa70c111d27",
+  "runtime_sha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtime_files": 68,
+  "suite_sha256": "767048fc4faa7813f9ffbe83d1bc89c44c112187d82488530faf740bea976e8b",
+  "security_smoke_sha256": "5ab85a5d19a9619508f45b2be83b43decef00483b96b6691f94d9a78216253d0",
+  "deployer_sha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "local_lua": {
+    "passed": true,
+    "named_cases": 830,
+    "sources_changed_during_run": false
+  },
+  "network_status": "pending all/recovery; target32 completed on exact same runtime, source equivalence recorded",
+  "change": "Bound unplayed non-arena admission to its existing twenty-second deadline before general/boss loop routing; canonical refund retry; no API change.",
+  "local_suite_source": "Design/Validation-2026-10-28-Reconnect/server/local-security-summary-network-final.json",
+  "network_composition_source": "Design/Validation-2026-10-28-Reconnect/server/target-source-equivalence-deadline-final.json"
+}

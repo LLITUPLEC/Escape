@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Тихий шорох"
   floor: 11
   icon: {fileID: 21300000, guid: 390b8a576e1b96e44947fb5bac2b4b29, type: 3}
+  avatar: {fileID: 21300000, guid: c7df70c4d8575942b77e424cf5804d1f, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

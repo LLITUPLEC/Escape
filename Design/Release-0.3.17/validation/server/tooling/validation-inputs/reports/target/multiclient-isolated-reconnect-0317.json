@@ -1,0 +1,139 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "reconnect fixture arms one owned elixir"
+    },
+    {
+      "passed": true,
+      "check": "lost create acknowledgement recovers/resumes the exact paid receipt without a second debit"
+    },
+    {
+      "passed": true,
+      "check": "foreign recovery and cancellation cannot attach or refund another admission"
+    },
+    {
+      "passed": true,
+      "check": "ready commits the exact mine payment and armed elixir once"
+    },
+    {
+      "passed": true,
+      "check": "5s transport loss recovers the same live paid match without another ownership claim"
+    },
+    {
+      "passed": true,
+      "check": "5s reconnect: a real swap is accepted and changes the authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "5s reconnect: a real ability is accepted and spends authoritative mana/cooldown"
+    },
+    {
+      "passed": true,
+      "check": "30s transport loss recovers the same live paid match without another ownership claim"
+    },
+    {
+      "passed": true,
+      "check": "30s reconnect: a real swap is accepted and changes the authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "30s reconnect: a real ability is accepted and spends authoritative mana/cooldown"
+    },
+    {
+      "passed": true,
+      "check": "cold-auth ownership claim discovers the existing paid match and safely rebinds its owner epoch"
+    },
+    {
+      "passed": true,
+      "check": "cold-auth recovery after delayed old leave: a real swap is accepted and changes the authoritative board"
+    },
+    {
+      "passed": true,
+      "check": "cold-auth recovery after delayed old leave: a real ability is accepted and spends authoritative mana/cooldown"
+    },
+    {
+      "passed": true,
+      "check": "authoritative owner/current epoch/presence and the original consumed elixir survive every reconnect"
+    },
+    {
+      "passed": true,
+      "check": "cancel after actual gameplay cannot refund the committed mine entry"
+    },
+    {
+      "passed": true,
+      "check": "normal played surrender remains authoritative after recovery"
+    },
+    {
+      "passed": true,
+      "check": "all reconnects produce one real played loss and cannot turn a completed match into a refund"
+    },
+    {
+      "passed": true,
+      "check": "explicit cancel during reveal refunds once, keeps the armed item and awards no played result"
+    },
+    {
+      "passed": true,
+      "check": "confirmed cancellation returns a complete own canonical progression for the HUD"
+    },
+    {
+      "passed": true,
+      "check": "legacy0.3.16 forfeit during reveal refunds once, keeps the armed item and awards no played result"
+    },
+    {
+      "passed": true,
+      "check": "deadline fixture has actually joined the paid reveal without starting gameplay"
+    },
+    {
+      "passed": true,
+      "check": "old still-connected owner cannot commit the reveal after a new ownership claim"
+    },
+    {
+      "passed": true,
+      "check": "joined stale reveal expires at the existing twenty-second admission deadline with one refund and no played result"
+    },
+    {
+      "passed": true,
+      "check": "deadline cancellation remains exact and idempotent for the current owner after expiry"
+    },
+    {
+      "passed": true,
+      "check": "lost paid Race-create acknowledgement is correlated to its exact request/match"
+    },
+    {
+      "passed": true,
+      "check": "request-only Race reveal cancellation refunds the immutable entry without a loss or prize"
+    },
+    {
+      "passed": true,
+      "check": "a delayed old request cancellation cannot refund a newer paid Race queue"
+    },
+    {
+      "passed": true,
+      "check": "pending paid Race queue exposes its exact server-owned reference for safe cancellation"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "arena_ui_snapshots": [],
+  "cosmetic_ui_snapshots": [],
+  "daily_ui_snapshots": [],
+  "guidance_ui_snapshots": [],
+  "consumable_ui_snapshots": [],
+  "boss_ui_snapshots": []
+}

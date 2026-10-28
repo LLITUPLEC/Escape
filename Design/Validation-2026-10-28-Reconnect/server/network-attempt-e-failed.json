@@ -1,0 +1,38 @@
+{
+  "stage": "release0317-validation-36517314722a",
+  "original_result_preserved": true,
+  "network_summary": {
+    "utc": "2026-10-28T17:07:15.607880+00:00",
+    "runtime_sha256": "a8605fb955cc61015cd626aa3ef9fb3fa1c6b5c7c007c8f4ea9fefbd077a41c3",
+    "runtime_files": 68,
+    "suite_sha256": "3718fd0823b5b0a613d712a8248901b610b591b3afaec56c859af3a6b01d26b3",
+    "catalog_sha256": "6266d0eb19fcf79d749d2eeea4185fb53fc1d94d3b357d9b7178c4e9aae393f1",
+    "production_runtime_changed": false,
+    "production_runtime_before_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+    "scenarios": {
+      "reconnect-0317": {
+        "exit_code": 1,
+        "seconds": 112.3,
+        "checks": 28,
+        "failed": 2,
+        "errors": [],
+        "tested_runtime_matches_final_candidate": true
+      }
+    },
+    "success": false,
+    "production_runtime_after_sha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653"
+  },
+  "failed_assertions": [
+    {
+      "passed": false,
+      "check": "cancel after actual gameplay cannot refund the committed mine entry"
+    },
+    {
+      "passed": false,
+      "check": "all reconnects produce one real played loss and cannot turn a completed match into a refund"
+    }
+  ],
+  "qualification": "All 5s/30s/cold actual swap and ability proofs passed. Two compound checks incorrectly expected constant energy85 after112seconds despite canonical one-energy-per60-second regeneration. They now compare exact wallet state across denied cancel and the original immutable consumed receipt across surrender.",
+  "raw_report_sha256": "c5cc666da38ccd2cd34843bb5ba8ed0308ceaee61618e99a5a38f725de791486",
+  "production_runtime_unchanged": true
+}

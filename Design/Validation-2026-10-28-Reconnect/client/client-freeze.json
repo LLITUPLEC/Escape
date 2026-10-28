@@ -1,0 +1,29 @@
+{
+  "frozenUtc": "2026-10-28T16:48:39.534911+00:00",
+  "runtimeAndEditorCompilePassed": true,
+  "nativeAggregateStatus": "Account and battle phases PASS; whole aggregate awaiting unrelated UI badge padding repair",
+  "networkOrDeployActions": false,
+  "files": {
+    "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs": "d315c478d660012a18c4eae24697159530c6af0f75694072731f4ccc8f69a2d3",
+    "Assets/_Project/Scripts/Nakama/ServerConnectionGuard.cs": "3478721b5ea7bb382f75e7bf6804aa404ad08d0fe6f2d3a92b1d47748e2a7c63",
+    "Assets/_Project/Scripts/Nakama/SessionOwnershipClaimGate.cs": "12eb74cb50bb88568afd82e9f7ba592e1cf568f061bdcbf8ecfbefd40006278e",
+    "Assets/_Project/Scripts/Match3/Match3RecoveryService.cs": "fe01314ee41c1b12a1f7c5c7c6e91ab3cac3f8c03b411478f8843c49900aa66a",
+    "Assets/_Project/Scripts/Match3/Match3RecoveryCoordinator.cs": "29668c6e13a4b7ff06b8cee2dfd8af77ad9c1f6da9b1263bc1b8bdbffd26f0d3",
+    "Assets/_Project/Scripts/Match3/Match3LaunchContext.cs": "bf37f213162819f4ad1649940653b4af60a2d1e03b326ef2040b9c06749becec",
+    "Assets/_Project/Scripts/Match3/DuelMatch3Manager.cs": "3d2938c599166cba77968003ccb11eed4cac9a7afde7e9916bace25cdbf4fb79",
+    "Assets/_Project/Scripts/Match3/DuelMatch3Recovery.cs": "527b85d9f9bcd647a9bbf1dc7befbab9edb2f509dea28e3a64be32c9c5bcc06d",
+    "Assets/_Project/Scripts/Match3/UI/Match3SearchingPanel.cs": "7677d0def955af04bcd9bad7cd5d69a30043a0c5f1e78c0c9c3c8967c7fb83af",
+    "Assets/_Project/Editor/ExpeditionBattleReconnectQa.cs": "57bd5221df43efea01ca99b9f8306e2cc10e8de86390813ffabf6aab9a2ffa4d",
+    "Assets/_Project/Editor/ExpeditionReconnectAccountQa.cs": "d58c8593469b2ecbd8f0c57a9294f8023013cf683651e537164bbf63bbdcc3e1"
+  },
+  "additiveWire": [
+    "refund_recorded",
+    "progression_pending"
+  ],
+  "prejoinReceiveFilter": true,
+  "nativeClientPassed": true,
+  "accountChecks": 44,
+  "battleChecks": 42,
+  "nativeCheckedUtc": "2026-10-28T16:49:31.7634630Z",
+  "proofArchivedUtc": "2026-10-28T16:50:41.377312+00:00"
+}

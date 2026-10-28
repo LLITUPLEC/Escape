@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-28T16:49:59.658094+00:00",
+  "runtime_modules": 67,
+  "module_tree_sha256_without_production_seed": "1b26ed59b2018e2f55bd6faae7ba438d12a67f45703d5120cb6622041a661d8b",
+  "lua_named_cases": 822,
+  "new_reconnect_admission_cases": 24,
+  "offline_harness_tests": 13,
+  "no_runtime_changes_after_local_suite": true,
+  "network_scenario": "reconnect-0317",
+  "remote_validation_required": [
+    "all",
+    "reconnect-0317",
+    "recovery"
+  ],
+  "network_executed_by_this_local_report": false,
+  "catalog_migration_required": false,
+  "reusable_validation_inputs_sha256": {
+    "Server/nakama/tests/multiclient/run.py": "b1db3f2ff23d3e2c3335d2d4d30e7a06d7264f33e977dd0aac70ad2b9a8bb335",
+    "Server/nakama/tests/multiclient/isolated_runner.py": "43fc5b70fef43dbae449a1d8c9157710d543997219eadd21fe8ee736c484e420",
+    "Server/nakama/tests/multiclient/recovery_probe.py": "929161103f8470216c69442fdc7e4ba09ca9cd9b2050b4ef35669226d12a5797",
+    "Server/nakama/deploy/security_smoke.py": "5ab85a5d19a9619508f45b2be83b43decef00483b96b6691f94d9a78216253d0",
+    "Tools/Release/prepare_backend_validation.py": "374c169fc63bf377f176e190bfa1db01d03742515ed7e2335b63f8ebe7aa22e6",
+    "Tools/Release/validate_backend_remote.py": "630af2bec3b531db86190ca75a4cbd98e34029150dbb11d31eb85cbb27eb276d"
+  },
+  "compatibility": "0.3.16 payloads remain accepted. Legacy forfeit before ready cancels admission without a played result; normal played surrender requires ready or real gameplay."
+}

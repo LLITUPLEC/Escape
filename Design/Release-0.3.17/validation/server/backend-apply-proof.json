@@ -1,0 +1,64 @@
+{
+  "passed": true,
+  "finishedUtc": "2026-10-28T18:11:16.718193+00:00",
+  "runtimeSha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtimeFiles": 68,
+  "baselineRuntimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "backup": "/opt/escape/backups/runtime-release-20261028T181102Z",
+  "backupManifestSha256": "af68728ced8aeb79ce095b8a027b7f522312d82264aba410c25450c06991329d",
+  "backupManifestVerified": true,
+  "pgRestoreListVerified": true,
+  "securitySmokeSha256": "5ab85a5d19a9619508f45b2be83b43decef00483b96b6691f94d9a78216253d0",
+  "oldSecuritySmokeBackedUp": true,
+  "catalogMigration": false,
+  "forceActiveGames": false,
+  "canonicalDeployerSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "nakamaHealth": "healthy",
+  "onlyNakamaRestarted": true,
+  "siteOrApkChanged": false,
+  "networkEvidenceKind": "composed_exact_runtime_with_target_source_equivalence",
+  "networkComposedSha256": "c2cedfa82ed0d88f589d668d452b9688064959f26013716c154d20dd2e0a730a",
+  "networkProvenance": {
+    "final_summary": {
+      "path": "network-validation-summary.json",
+      "sha256": "346f70d975df7410af4728914610eeaa306826124fa46724123b9f4c27205902"
+    },
+    "final_exit": {
+      "path": "exit-status.json",
+      "sha256": "49b47dfa3045d6a4287ea733d62b1ac6af15190203a06538fe8a573e84a5d50f"
+    },
+    "target_summary": {
+      "path": "completed-target/network-validation-summary.json",
+      "sha256": "290621d1c45176f5ff58a4000c8f78c3a2872205c036c18bb78ff234ef61aa8a",
+      "source_summary_success": false
+    },
+    "target_report": {
+      "path": "completed-target/multiclient-isolated-reconnect-0317.json",
+      "sha256": "70dc6c7aa5d39a66a9391b37e5dd582670712203150137e5e33c37120e6abbd2"
+    },
+    "target_runtime": {
+      "path": "completed-target/expected-tested-runtime.json",
+      "sha256": "165142ff0146e97d247cb261712122f91b057234de1ff5880c7dbc68f57837cf"
+    },
+    "equivalence": {
+      "path": "target-source-equivalence-deadline-final.json",
+      "sha256": "95dd861edc51a40468ed88368f8cb364bea8b2075fe5d1ab0190615478d248e4"
+    },
+    "all_report": {
+      "path": "multiclient-isolated-all.json",
+      "sha256": "2b2e39d24a7d9af8cb46f2f476eb76818f720e47fe1c1b1e9d7461225b5f0d08"
+    },
+    "recovery_report": {
+      "path": "multiclient-isolated-recovery.json",
+      "sha256": "b562e53205f2c11340647eaf2242e9444599f53bcb1e79d9569da5ed7770f736"
+    }
+  },
+  "networkGroupChecks": {
+    "all": 806,
+    "recovery": 64,
+    "reconnect-0317": 32
+  },
+  "readinessSha256": "1a6269006b9ead5a5ada78276b96a2f3bf607c182e24a216e34659878c86f6b8",
+  "localSuiteSha256": "d9cc7b5203ba6a4175634336971d330bf77f7da8d7df349159330a3691a9eb1d",
+  "targetEquivalenceIndependentlyRecomputed": true
+}

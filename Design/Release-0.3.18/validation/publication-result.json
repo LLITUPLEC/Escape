@@ -1,0 +1,28 @@
+{
+  "events": [
+    {
+      "state": "published",
+      "url": "https://prokrust-play.ru/escape/",
+      "version": "0.3.18",
+      "apk_sha256": "13e354b77d898666b030f4eaef4939eb651ca6cba3858c5d360a84f4d9ce6f89",
+      "bytes": 128893619,
+      "release_directory": "/var/www/escape/releases/0.3.18-13e354b77d89-20261028T221417387520Z"
+    },
+    {
+      "state": "validated_only",
+      "version": "0.3.18",
+      "apk_sha256": "13e354b77d898666b030f4eaef4939eb651ca6cba3858c5d360a84f4d9ce6f89",
+      "bytes": 128893619,
+      "audition_wav_files": 19
+    },
+    {
+      "state": "page_installer_complete",
+      "version": "0.3.18",
+      "publisherSha256": "12f51b30325c6311aedbc90261121660390cdea8935f5fee59b946e73cedb5ce",
+      "previousPublisherBackup": "/opt/escape/page-staging/escape0318-a2ab324e5cf841fa9fc7f0363c674c61-previous-publisher.py",
+      "previousApkPreserved": true,
+      "apiOrDatabaseRestarted": false
+    }
+  ],
+  "publicIntegrityVerified": true
+}

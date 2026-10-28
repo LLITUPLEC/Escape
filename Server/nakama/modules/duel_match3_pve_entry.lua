@@ -74,17 +74,22 @@ function M.new(deps)
     return remaining
   end
 
-  function E.refund_launch(uid, token, reason, expired_only)
+  function E.refund_launch(uid, token, reason, expired_only, prestart)
     return retry(function()
       local receipt, version = read(uid, "launch:" .. tostring(token or ""))
       if type(receipt) ~= "table" then return false, "pve_entry_required" end
-      if receipt.status == "refunded" or receipt.status == "consumed" then return true, nil, receipt end
+      if receipt.status == "refunded" then return true, nil, receipt end
+      if receipt.status == "consumed" then return not prestart, prestart and "battle_already_started" or nil, receipt end
       if receipt.status ~= "reserved" and receipt.status ~= "bound" and receipt.status ~= "refund_pending" then return false, "invalid_pve_entry" end
       if receipt.status == "reserved" and expired_only and now() < receipt.expires_at then return true, nil, receipt end
       if receipt.status == "bound" then
-        local live, probe_err = alive(receipt.match_id)
-        if live == nil then return false, probe_err end
-        if live then return true, nil, receipt end
+        if prestart then
+          if receipt.match_id ~= prestart.match_id or receipt.run_id ~= prestart.run_id then return false,"pve_entry_in_use"end
+        else
+          local live, probe_err = alive(receipt.match_id)
+          if live == nil then return false, probe_err end
+          if live then return true, nil, receipt end
+        end
       end
       local writes = {}
       if receipt.run_id and receipt.run_id ~= "" and receipt.status ~= "refund_pending" then
@@ -111,6 +116,30 @@ function M.new(deps)
       nk.storage_write(writes)
       return true, nil, receipt, progress
     end)
+  end
+
+  -- Only the authoritative precombat state calls this with its immutable run
+  -- and match IDs. Its abort competes atomically with consume/reward intents.
+  function E.cancel_before_start(uid,token,run_id,match_id)
+    return E.refund_launch(uid,token,"admission_cancelled",false,{run_id=run_id,match_id=match_id})
+  end
+
+  function E.cancel_request(uid,request_id)
+    return retry(function()
+      local receipt=read(uid,"active")
+      if not receipt or(receipt.metadata or{}).request_id~=request_id then return false,"admission_not_found"end
+      if receipt.status=="bound"or receipt.status=="consumed"then return false,"admission_bound",receipt end
+      if receipt.status=="refunded"or receipt.status=="refund_pending"then return true,nil,receipt end
+      if receipt.status~="reserved"then return false,"admission_not_found"end
+      local ok,err,current,progress=E.refund_launch(uid,receipt.token,"admission_cancelled",false)
+      if current and(current.status=="bound"or current.status=="consumed")then return false,"admission_bound",current end
+      return ok,err,current,progress
+    end)
+  end
+  function E.refund_state(uid,token)
+    local receipt=read(uid,"launch:"..tostring(token or""))
+    if not receipt then return {recorded=false,pending=true}end
+    return {recorded=receipt.status=="refunded"or receipt.status=="refund_pending",pending=receipt.status=="refund_pending"}
   end
 
   function E.recover(uid)
@@ -143,6 +172,10 @@ function M.new(deps)
     return retry(function()
       local active, version = read(uid, "active")
       local progress, progress_version = progress_read(uid)
+      if metadata.request_id and active and(active.metadata or{}).request_id==metadata.request_id
+          and(active.status=="refunded"or active.status=="refund_pending"or active.status=="consumed")then
+        return false,active.status=="consumed"and"admission_finished"or"admission_cancelled"
+      end
       if active and (active.status == "reserved" or active.status == "bound") then
         if active.request_key ~= metadata.request_key then return false, "pve_launch_in_use" end
         return true, nil, active, progress

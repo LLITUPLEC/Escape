@@ -216,7 +216,7 @@ namespace Project.Editor
                 var frame = root.GetComponentsInChildren<RectTransform>(true).Single(rect => rect.name == "MonsterStatsFrame");
                 Check(frame.childCount == 5 && frame.GetComponents<Image>().Length == 1, "All five monster stats share one production frame " + floor + "/" + suffix, report);
                 var expected = new[] { "1234", "173", "208", "13%", "37" };
-                var lastBottom = float.PositiveInfinity;
+                var rowBounds = new List<Rect>();
                 for (var i = 0; i < 5; i++)
                 {
                     var row = frame.Find("MonsterStatRow_" + i) as RectTransform;
@@ -224,9 +224,18 @@ namespace Project.Editor
                     if (i == 4) Check(icon.sprite != null && icon.sprite == ExpeditionArt.Icon("stat-mana"), "Monster mana uses its canonical blue drop, distinct from energy " + floor + "/" + suffix, report);
                     var bounds = BoundsIn(row, frame);
                     Check(value.transform.parent == row && value.text == expected[i] && icon.sprite != null && row.GetComponent<Image>() == null, "Monster row has one canonical icon and numeric-only value, without another frame " + i + "/" + suffix, report);
-                    Check(Contains(frame.rect, bounds) && bounds.yMax <= lastBottom + .1f && BoundsIn(icon.rectTransform, row).xMax < BoundsIn(value.rectTransform, row).xMin, "Five monster rows stay ordered, non-overlapping and inside the shared frame " + i + "/" + suffix, report);
-                    lastBottom = bounds.yMin;
+                    Check(Contains(frame.rect, bounds) && !rowBounds.Any(previous => previous.Overlaps(bounds)) && BoundsIn(icon.rectTransform, row).xMax < BoundsIn(value.rectTransform, row).xMin,
+                        "Monster stat cells stay non-overlapping and inside the shared frame " + i + "/" + suffix, report);
+                    rowBounds.Add(bounds);
                 }
+                Check(rowBounds[0].xMax < rowBounds[1].xMin && Near(rowBounds[0].center.y, rowBounds[1].center.y)
+                    && rowBounds[2].yMax < rowBounds[0].yMin && rowBounds[4].yMax < rowBounds[2].yMin,
+                    "Five monster stats use two compact columns and three rows " + suffix, report);
+                var sheet = view.DismissButton.transform.parent as RectTransform;
+                var dismissBounds = BoundsIn(view.DismissButton.transform as RectTransform, sheet);
+                var affixBounds = BoundsIn(root.GetComponentsInChildren<RectTransform>(true).Single(rect => rect.name == "AnomalyCard"), sheet);
+                Check(dismissBounds.xMax < affixBounds.xMin && dismissBounds.yMin > BoundsIn(view.RewardsSectionTitle.rectTransform, sheet).yMax,
+                    "Dismiss action is above rewards and to the left of affix information " + suffix, report);
                 Check(!view.StatTexts[5].transform.IsChildOf(frame) && view.StatTexts[5].gameObject.activeInHierarchy && view.StatTexts[5].text.StartsWith("Появится:", StringComparison.Ordinal), "Respawn is visibly rendered separately from the five combat stat rows " + suffix, report);
                 Save(canvas, camera, target, "monster-modal-mine" + floor + "-" + suffix, report);
                 apply.Invoke(controller, new object[] { 1234, 173, 208, .13f, 37, 0 });

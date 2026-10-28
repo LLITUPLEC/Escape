@@ -1,0 +1,64 @@
+{
+  "version": "0.3.18",
+  "retainedVersions": [
+    "0.3.18",
+    "0.3.17"
+  ],
+  "retainedBackups": [
+    {
+      "path": "/opt/escape/backups/pre-publication-0.3.18-20261028T221349664593Z",
+      "manifestSha256": "ecd3a784c29556a24ca46c1d6e619ed33dc1de3f2f8b20ea5542c9e01bf70b0a",
+      "runtimeSha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2",
+      "files": 97,
+      "dumpSha256": "afcb68513d42f3794adf006f20def6e0be697ce836d43862812071b73c367ee0",
+      "pgRestoreListVerified": true
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261028T221231Z",
+      "manifestSha256": "1be4e9efe6a18752cd653991213e69eaa0728c366d979bc6ba46a4b670fb87c2",
+      "runtimeSha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+      "files": 80,
+      "dumpSha256": "a559faf57d14eeed4e7ab82fafb64045d2b55d233a5d755485f0b8e1ddafeccd",
+      "pgRestoreListVerified": true
+    }
+  ],
+  "currentTarget": "/var/www/escape/releases/0.3.18-13e354b77d89-20261028T221417387520Z",
+  "runtimeSha256": "7276752162876220c14a09157cd0635f70cb98013780eefac58c1ebf71df62f2",
+  "apkSha256": "13e354b77d898666b030f4eaef4939eb651ca6cba3858c5d360a84f4d9ce6f89",
+  "publicIntegritySha256": "f0d556288c868dc141514231f048877953f7ed3763612c14fa46c7af5f4b7109",
+  "targets": [
+    {
+      "path": "/opt/escape/backups/pre-publication-0.3.17-20261028T181224Z",
+      "treeSha256": "b14e680a0cb8ac113f8b0753f24fb3fe94012fca7cb7b28feb74088f21b564e1",
+      "files": 97
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261028T181102Z",
+      "treeSha256": "8d60f88a1fb440b51a398ec0dea7125b8c6ce3965fd821cb7f260429688a0ce4",
+      "files": 81
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261028T220453Z",
+      "treeSha256": "9a15ac8cfd553f36c54594f221833a79714020f0a862bbd7dabaf8d0b63fcfc2",
+      "files": 81
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.16-3f40a293713f-20261028T044411350269Z",
+      "treeSha256": "fbe80c200229be2e1086fe962896be49147b9f7e7f06b8414e6ce3a38a63e2b2",
+      "files": 32
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.16-3f40a293713f.apk",
+      "sha256": "3f40a293713fa7689ca54929f597201cd5f0c9ca7a6a304be46bd95b7810e847",
+      "bytes": 124355967
+    }
+  ],
+  "passed": true,
+  "retentionApplied": true,
+  "planSha256": "be51dbc5dccaf75ec934d20d9fd419492b2d385375e957f6e3ad63bda025704a",
+  "backupCount": 2,
+  "bothBackupsVerified": true,
+  "pgRestoreListVerified": true,
+  "otherProjectsOrVolumesTouched": false,
+  "checkedUtc": "2026-10-28T22:15:52.292902+00:00"
+}

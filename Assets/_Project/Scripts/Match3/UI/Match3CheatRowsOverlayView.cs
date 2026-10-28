@@ -126,7 +126,7 @@ namespace Project.Match3
                 }
                 else
                 {
-                    var overlayGo = new GameObject("CheatRowsOverlayCells");
+                    var overlayGo = new GameObject("CheatRowsOverlayCells", typeof(RectTransform));
                     overlayGo.transform.SetParent(baseBoardView.cellContainer.parent, false);
                     containerTr = overlayGo.transform;
                 }
@@ -153,6 +153,10 @@ namespace Project.Match3
             _overlayContainerRt = containerTr as RectTransform;
             if (_overlayContainerRt == null)
                 _overlayContainerRt = containerTr.gameObject.AddComponent<RectTransform>();
+            // Adding RectTransform replaces Unity's original Transform. Retain
+            // the replacement rather than accessing the now-destroyed wrapper.
+            containerTr = _overlayContainerRt;
+            cellContainer = _overlayContainerRt;
 
             bool useSceneTopStretch = UsesTopStretchLayout(_overlayContainerRt);
             if (!useSceneTopStretch)

@@ -5,7 +5,7 @@ import json
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
-RELEASE = ROOT / 'Design/Release-0.3.15'
+RELEASE = ROOT / 'Docs/Art/ShelterIcons'
 data = json.loads((RELEASE / 'art-manifest.json').read_text(encoding='utf-8'))
 assert data['mode'] == 'built-in image_gen' and len(data['assets']) == 3
 rows = []
@@ -23,5 +23,7 @@ for asset in data['assets']:
                          bytes=path.stat().st_size, dimensions=image.size))
 assert len({row['sha256'] for row in rows}) == 3
 report = dict(passed=True, originalPixelsUnchanged=True, generationMode=data['mode'], assets=rows)
-(RELEASE / 'validation/art-validation.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+output = ROOT / '.cache/qa/mine-refresh/art'
+output.mkdir(parents=True, exist_ok=True)
+(output / 'shelter-art-validation.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
 print('PASS 3 unique transparent generated Shelter icons; original PNG pixels unchanged.')

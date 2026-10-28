@@ -1,0 +1,68 @@
+{
+    "utc": "2026-10-28T21:41:45.4850615Z",
+    "passed": true,
+    "playerBuilt": false,
+    "publicationPerformed": false,
+    "phases": [
+        {
+            "name": "account-lifetime-and-wire",
+            "result": "PASS 44 recovery account/wire/lifetime checks; no network, account or preference writes. .cache/qa/reconnect-0317/account",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "battle-reconnect-and-race-admission",
+            "result": "PASS battle reconnect: 52 actual checkpoint/input/reveal/cancel checks; simulated5s/30s outages, no real account/network actions.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "battle-entry-and-tournament-return",
+            "result": "{\"passed\":true,\"networkActions\":false,\"accountWrites\":false,\"checkedMineReturns\":36,\"revealWaits\":2,\"checks\":[\"All 36 mine floor/difficulty returns survive consumed launch payload and repeated catalog refresh\",\"3D destination and account ownership are respected\",\"All 12 mine names follow monstr.txt; legacy server defaults migrate and administrative names survive\",\"Unknown opponent reveals actual named art; solid monster bounds cover the card and human crop restores afterwards\",\"Production reveal coroutine waits twice, blocks queued snapshots/turn-ready, then releases battle\",\"All gold/ore/smith tournament rounds return to ArenaMenu after automatic advancement or the actual outcome Continue button; stale solo flags cannot redirect a tournament to the mine, and mine/global boss return destinations survive\"]}",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "tournament-and-race-identity",
+            "result": "Tournament identity recovery: 30 checks passed; no network or account writes.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "boss-actions-and-privileged-rows",
+            "result": "PASS boss action/rows: 19 actual pointer and BoardSync checks; no network/account actions.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "disposable-boss-practice",
+            "result": "PASS boss practice: 12 native DTO/dossier/outcome checks; no transport/account calls.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "appearance-cache-and-catalog",
+            "result": "PASS: 10 themes, 20 bodies + 20 paired avatars; imported sprites, paired-only avatar migration, server/account isolation, immutable gender filtering and ten-card non-mutating skin previews.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "resources-and-appearance-regressions",
+            "result": "1561 UI typography/cost checks plus 1114 Shelter C checks passed with 12 native 1080x1920/2400 captures, including safe-area profiles. No transport, auth, account or preference actions.; output .cache/qa/reconnect-0317/ui",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "monster-avatar-assets-and-binding",
+            "result": "PASS monster avatars: 101 asset/manager/header/figure checks and Unity contact sheet.",
+            "error": "",
+            "passed": true
+        },
+        {
+            "name": "appearance-dossier-and-practice-ui",
+            "result": "808 production UI checks and 18 native captures; no network or account writes.",
+            "error": "",
+            "passed": true
+        }
+    ]
+}

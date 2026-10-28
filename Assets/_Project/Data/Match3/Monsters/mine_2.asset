@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Ржавый гвоздь"
   floor: 2
   icon: {fileID: 21300000, guid: e0e7697abad849d2806509e1b83be94c, type: 3}
+  avatar: {fileID: 21300000, guid: 6f90e56db2bb557e865f7f8569ad009d, type: 3}
   frameEasy: {fileID: 21300000, guid: 3409491e8cbfc0f4084ae7d009cf8584, type: 3}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

@@ -7,9 +7,13 @@ local Cat = load("modules.duel_match3_achievement_catalog", "duel_match3_achieve
 local Gender = load("modules.duel_account_gender", "duel_account_gender")
 local RateLimit = load("modules.duel_api_rate_limit", "duel_api_rate_limit")
 local Mail = load("modules.duel_mail", "duel_mail")
+local Rewards = load("modules.duel_cosmetics_rewards", "duel_cosmetics_rewards")
+local Inventory = load("modules.duel_match3_inventory", "duel_match3_inventory")
 local M = {}
 local COLLECTION, KEY = "duel_player_cosmetics", "appearance_v1"
-local REWARD_MATTER, REWARD_HP_BASIS_POINTS, MAX_SAFE_INTEGER = 5, 50, 9007199254740991
+local MAX_SAFE_INTEGER = 9007199254740991
+local deps={}
+function M.configure(d)deps=d or{}end
 
 local function req(id, label, kind, goal, key, extra)
   return { id=id, label=label, kind=kind, required=goal, key=key, extra=extra }
@@ -55,7 +59,8 @@ local function read_sources(uid)
     (old.value.selected_theme ~= "default" and not INDEX[old.value.selected_theme])) then error("cosmetics_invalid_record") end
   return value(data[CFG.STATS_COLLECTION .. "/" .. CFG.STATS_KEY]), value(data[CFG.PVE_PROGRESS_COLLECTION .. "/" .. CFG.PVE_PROGRESS_KEY]),
     value(data[CFG.CHARACTER_SHEET_COLLECTION .. "/" .. CFG.CHARACTER_SHEET_KEY]), old,
-    data[CFG.PVE_PROGRESS_COLLECTION .. "/" .. CFG.PVE_PROGRESS_KEY]
+    data[CFG.PVE_PROGRESS_COLLECTION .. "/" .. CFG.PVE_PROGRESS_KEY],
+    data[CFG.CHARACTER_SHEET_COLLECTION .. "/" .. CFG.CHARACTER_SHEET_KEY]
 end
 local function achievement_rank(stats, id)
   local claimed = type(stats.achievement_claimed) == "table" and stats.achievement_claimed or {}
@@ -111,13 +116,13 @@ local function snapshot(uid, requested, legacy)
   if type(identity) ~= "table" or identity.finalized ~= true then return {ok=false,err="registration_incomplete"} end
   local female = identity.gender == "female"
   for _ = 1, 5 do
-    local stats, progress, sheet, row, progress_row = read_sources(uid)
+    local stats, progress, sheet, row, progress_row, sheet_row = read_sources(uid)
     local old = row and row.value or {}
     local unlocked, catalog, changed = {}, {}, row == nil
     assert(old.unlock_reward_receipts == nil or type(old.unlock_reward_receipts) == "table", "cosmetics_invalid_reward_receipts")
     assert(old.unlock_mail_schema == nil or old.unlock_mail_schema == 1, "cosmetics_invalid_mail_schema")
     assert(old.unlock_mail_receipts == nil or type(old.unlock_mail_receipts) == "table", "cosmetics_invalid_mail_receipts")
-    local receipts, new_count, rewarded_count = {}, 0, 0
+    local receipts, matter_delta, tesseract_delta, rewarded_count, total = {}, 0, 0, 0, Rewards.empty()
     local notice_receipts, notices = {}, {}
     for id,proof in pairs(old.unlock_mail_receipts or {}) do notice_receipts[id]=proof end
     for _, theme in ipairs(THEMES) do
@@ -132,16 +137,33 @@ local function snapshot(uid, requested, legacy)
       unlocked[theme.id] = earned or type(old.unlocked) == "table" and old.unlocked[theme.id] == true
       if unlocked[theme.id] and not (type(old.unlocked) == "table" and old.unlocked[theme.id] == true) then changed=true end
       local prestige = theme.id ~= "dawnwarden"
+      local reward=Rewards.catalog[theme.id]
       local receipt = type(old.unlock_reward_receipts) == "table" and old.unlock_reward_receipts[theme.id] or nil
       if receipt then
-        assert(prestige and type(receipt) == "table" and receipt.version == 1 and receipt.matter == REWARD_MATTER
-          and receipt.hp_basis_points == REWARD_HP_BASIS_POINTS, "cosmetics_invalid_reward_receipt")
+        Rewards.validate(theme.id,receipt)
         unlocked[theme.id] = true -- A paid permanent unlock cannot be removed by later source changes.
-      elseif prestige and unlocked[theme.id] then
-        receipt={version=1,matter=REWARD_MATTER,hp_basis_points=REWARD_HP_BASIS_POINTS,granted_at=os.time()}
-        new_count=new_count+1; changed=true
       end
-      if receipt then receipts[theme.id]=receipt; rewarded_count=rewarded_count+1 end
+      if prestige and unlocked[theme.id] and(not receipt or receipt.version<Rewards.VERSION)then
+        local previous=receipt
+        local delta=reward.matter-(previous and previous.matter or 0)
+        local tess=(reward.tesseract or 0)-(previous and previous.tesseract or 0)
+        assert(delta>=0 and tess>=0,"cosmetics_reward_migration_reduction")
+        matter_delta=matter_delta+delta;tesseract_delta=tesseract_delta+tess
+        receipt=Rewards.receipt(theme.id,previous,os.time());changed=true
+        if previous then
+          local key="rewards_v2:"..theme.id
+          if not notice_receipts[key]then
+            notices[#notices+1]={id="appearance_rewards_v2:"..theme.id,kind="appearance_unlock",action="hero",
+              theme_id=theme.id,avatar_id=theme.id..(female and "-female"or"-male"),created_at=os.time(),
+              title="Обновлены награды образа: «"..NAMES[theme.id].."»",
+              body="Доплата за ранее открытый образ уже начислена: "..delta.." материи"..(tess>0 and" и "..tess.." тессеракт"or"")..
+                ". Бонус коллекции: "..Rewards.bonus_text(reward)..". Прежний бонус этого образа заменён новым."..
+                (tess>0 and" При заполненном инвентаре тессеракт сохранён в ожидающей добыче."or"")}
+            notice_receipts[key]=true
+          end
+        end
+      end
+      if receipt then receipts[theme.id]=receipt;rewarded_count=rewarded_count+1;Rewards.add(total,receipt)end
       if prestige and unlocked[theme.id] and not notice_receipts[theme.id] then
         -- Existing collections are baselined silently on first upgrade. Newly
         -- earned appearances and their mail are committed in the same batch.
@@ -150,15 +172,23 @@ local function snapshot(uid, requested, legacy)
           notices[#notices+1]={id="appearance_unlock:"..theme.id,kind="appearance_unlock",action="hero",
             theme_id=theme.id,avatar_id=theme.id..(female and "-female" or "-male"),created_at=os.time(),
             title="Новый образ героя: «"..NAMES[theme.id].."»",
-            body="Вы выполнили условия открытия образа. Найдите его в разделе «Герой» → «Образы». Награда за открытие уже начислена: 5 материи и +0,5% к здоровью навсегда."}
+            body="Вы выполнили условия открытия образа. Найдите его в разделе «Герой» → «Образы». Награда за открытие уже начислена: "..
+              reward.matter.." материи"..((reward.tesseract or 0)>0 and" и "..reward.tesseract.." тессеракт"or"")..
+              ". Бонус коллекции: "..Rewards.bonus_text(reward).."."..
+              ((reward.tesseract or 0)>0 and" При заполненном инвентаре тессеракт сохранён в ожидающей добыче."or"")}
         end
         notice_receipts[theme.id]=true;changed=true
       end
       -- Omit the starter's empty array: Lua JSON implementations disagree on
       -- whether an untyped empty table means {} or []. The client normalizes it.
       catalog[#catalog+1] = {id=theme.id,unlocked=unlocked[theme.id],requirements=#requirements > 0 and requirements or nil,
-        unlock_reward_matter=prestige and REWARD_MATTER or 0,
-        unlock_reward_hp_percent=prestige and REWARD_HP_BASIS_POINTS/100 or 0,reward_granted=receipt ~= nil}
+        unlock_reward_matter=reward.matter,unlock_reward_tesseract=reward.tesseract or 0,
+        unlock_reward_hp_percent=(reward.hp_basis_points or 0)/100,
+        unlock_reward_armor_percent=(reward.armor_basis_points or 0)/100,
+        unlock_reward_damage_percent=(reward.damage_basis_points or 0)/100,
+        unlock_reward_heal_percent=(reward.heal_basis_points or 0)/100,
+        unlock_reward_crit_percent=(reward.crit_basis_points or 0)/100,
+        unlock_reward_heal_flat=reward.heal_flat or 0,reward_granted=receipt ~= nil}
     end
     local selected = old.selected_theme or "default"
     if selected ~= "default" and not unlocked[selected] then selected="default"; changed=true end
@@ -167,20 +197,33 @@ local function snapshot(uid, requested, legacy)
       if requested ~= "default" and not unlocked[requested] then return {ok=false,err="appearance_locked",themes=catalog} end
       if requested ~= selected then selected=requested; changed=true end
     end
-    local result = {ok=true,gender=identity.gender,selected_theme=selected,themes=catalog,unlock_reward_schema=1,
-      unlocked_prestige_count=rewarded_count,passive_hp_bonus_percent=rewarded_count*REWARD_HP_BASIS_POINTS/100,
-      unlock_reward_matter_granted=new_count*REWARD_MATTER,rewarded_matter_total=rewarded_count*REWARD_MATTER}
+    local result = {ok=true,gender=identity.gender,selected_theme=selected,themes=catalog,unlock_reward_schema=Rewards.VERSION,
+      unlocked_prestige_count=rewarded_count,passive_hp_bonus_percent=total.hp_basis_points/100,
+      passive_armor_bonus_percent=total.armor_basis_points/100,passive_damage_bonus_percent=total.damage_basis_points/100,
+      passive_heal_bonus_percent=total.heal_basis_points/100,passive_crit_bonus_percent=total.crit_basis_points/100,
+      passive_heal_bonus_flat=total.heal_flat,
+      unlock_reward_matter_granted=matter_delta,rewarded_matter_total=total.matter,
+      unlock_reward_tesseract_granted=tesseract_delta,rewarded_tesseract_total=total.tesseract}
     if changed then
       local record={};for key,value in pairs(old)do record[key]=value end
-      record.schema_version=1;record.selected_theme=selected;record.unlocked=unlocked;record.unlock_reward_receipts=receipts
+      record.schema_version=1;record.selected_theme=selected;record.unlocked=unlocked;record.unlock_reward_receipts=receipts;record.unlock_reward_schema=Rewards.VERSION
       record.unlock_mail_schema=1;record.unlock_mail_receipts=notice_receipts;record.updated_at=os.time()
       local writes={{ collection=COLLECTION,key=KEY,user_id=uid,
         value=record,
         version=row and row.version or "*",permission_read=0,permission_write=0 }}
-      if new_count > 0 then
+      if matter_delta > 0 or tesseract_delta > 0 then
         local matter=number(progress.matter)
-        assert(matter <= MAX_SAFE_INTEGER-new_count*REWARD_MATTER,"cosmetics_matter_overflow")
-        progress.matter=matter+new_count*REWARD_MATTER; progress.updated_at=os.time()
+        assert(matter <= MAX_SAFE_INTEGER-matter_delta,"cosmetics_matter_overflow")
+        progress.matter=matter+matter_delta; progress.updated_at=os.time()
+        if tesseract_delta>0 then
+          local defs=assert(type(deps.get_defs)=="function"and deps.get_defs(),"cosmetics_item_catalog_unavailable")
+          assert(type(defs.tesseract)=="table","cosmetics_tesseract_unavailable")
+          Inventory.add_or_queue(sheet,"tesseract",tesseract_delta,defs)
+          Inventory.sync_resource_counters(sheet,progress,defs)
+          sheet.updated_at=os.time()
+          writes[#writes+1]={collection=CFG.CHARACTER_SHEET_COLLECTION,key=CFG.CHARACTER_SHEET_KEY,user_id=uid,value=sheet,
+            version=sheet_row and sheet_row.version or"*",permission_read=1,permission_write=0}
+        end
         writes[#writes+1]={collection=CFG.PVE_PROGRESS_COLLECTION,key=CFG.PVE_PROGRESS_KEY,user_id=uid,value=progress,
           version=progress_row and progress_row.version or "*",permission_read=1,permission_write=0}
       end
@@ -198,23 +241,30 @@ function M.passive_hp_bonus(uid)
   local result=M.reconcile(uid)
   return result.ok and result.passive_hp_bonus_percent/100 or 0
 end
+function M.passive_bonuses(uid)
+  local result=M.reconcile(uid)
+  if not result.ok then return Rewards.fractions(Rewards.empty())end
+  return {hp=result.passive_hp_bonus_percent/100,armor=result.passive_armor_bonus_percent/100,
+    damage=result.passive_damage_bonus_percent/100,healing=result.passive_heal_bonus_percent/100,
+    crit_chance=result.passive_crit_bonus_percent/100,healing_flat=result.passive_heal_bonus_flat},result.unlock_reward_tesseract_granted>0
+end
 -- Practice may observe previously granted bonuses, but cannot reconcile new
 -- unlocks, grant Matter, send mail or initialize an identity/profile.
-function M.passive_hp_bonus_read_only(uid)
+function M.passive_bonuses_read_only(uid)
   local rows=nk.storage_read({{collection=COLLECTION,key=KEY,user_id=uid}})
   assert(type(rows)=="table","cosmetics_storage_unavailable")
   local value=rows[1]and rows[1].value or{}
   if type(value)=="string"then value=nk.json_decode(value)end
-  local count=0
+  local total=Rewards.empty()
   for _,theme in ipairs(THEMES)do
     local receipt=type(value.unlock_reward_receipts)=="table"and value.unlock_reward_receipts[theme.id]
     if receipt then
-      assert(theme.id~="dawnwarden"and type(receipt)=="table"and receipt.version==1 and receipt.matter==REWARD_MATTER and receipt.hp_basis_points==REWARD_HP_BASIS_POINTS,"cosmetics_invalid_reward_receipt")
-      count=count+1
+      Rewards.validate(theme.id,receipt);Rewards.add(total,receipt)
     end
   end
-  return count*REWARD_HP_BASIS_POINTS/10000
+  return Rewards.fractions(total)
 end
+function M.passive_hp_bonus_read_only(uid)return M.passive_bonuses_read_only(uid).hp end
 local function handler(ctx, payload, select)
   local uid = ctx and ctx.user_id
   if type(uid) ~= "string" or uid == "" then return nk.json_encode({ok=false,err="unauthorized"}) end

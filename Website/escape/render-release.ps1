@@ -2,13 +2,15 @@
 param(
     [Parameter(Mandatory = $true)][string]$ApkPath,
     [Parameter(Mandatory = $true)][string]$ScreensRoot,
-    [string]$FinalValidationJson
+    [string]$FinalValidationJson,
+    [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')][string]$Version = '0.3.18',
+    [ValidateRange(1, [int]::MaxValue)][int]$VersionCode = 20
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$releaseVersion = '0.3.16'
-$releaseCode = 18
+$releaseVersion = $Version
+$releaseCode = $VersionCode
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $siteRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $distPath = Join-Path $siteRoot 'dist'
@@ -133,6 +135,7 @@ if (-not [string]::IsNullOrWhiteSpace($FinalValidationJson)) {
 
 $html = [IO.File]::ReadAllText($template.FullName)
 $values = [ordered]@{
+    '{{RELEASE_VERSION}}' = $releaseVersion
     '{{APK_FILENAME}}' = $apkFilename
     '{{APK_MIB}}' = $apkMib
     '{{APK_SHA256}}' = $sha256

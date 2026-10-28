@@ -1,0 +1,257 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "assetWrites": false,
+    "error": "",
+    "screenshot": ".cache/qa/release0318/avatars/monster-avatars-contact-sheet.png",
+    "checks": [
+        "Production monster catalog and common PvP body exist",
+        "Floor 1 has a dedicated body and avatar",
+        "Floor 1 avatar is independent and unique",
+        "Floor 1 binds its authored square avatar asset",
+        "Floor 1 full-body reference is unchanged",
+        "Floor 1 manager preserves Image and live scene-figure body sprites",
+        "Floor 1 visible RawImage uses the dedicated avatar texture",
+        "Floor 1 header uses authored portrait UV instead of body head crop",
+        "Floor 1 repeat refresh cannot replace the full body with its portrait",
+        "Floor 2 has a dedicated body and avatar",
+        "Floor 2 avatar is independent and unique",
+        "Floor 2 binds its authored square avatar asset",
+        "Floor 2 full-body reference is unchanged",
+        "Floor 2 manager preserves Image and live scene-figure body sprites",
+        "Floor 2 visible RawImage uses the dedicated avatar texture",
+        "Floor 2 header uses authored portrait UV instead of body head crop",
+        "Floor 2 repeat refresh cannot replace the full body with its portrait",
+        "Floor 3 has a dedicated body and avatar",
+        "Floor 3 avatar is independent and unique",
+        "Floor 3 binds its authored square avatar asset",
+        "Floor 3 full-body reference is unchanged",
+        "Floor 3 manager preserves Image and live scene-figure body sprites",
+        "Floor 3 visible RawImage uses the dedicated avatar texture",
+        "Floor 3 header uses authored portrait UV instead of body head crop",
+        "Floor 3 repeat refresh cannot replace the full body with its portrait",
+        "Floor 4 has a dedicated body and avatar",
+        "Floor 4 avatar is independent and unique",
+        "Floor 4 binds its authored square avatar asset",
+        "Floor 4 full-body reference is unchanged",
+        "Floor 4 manager preserves Image and live scene-figure body sprites",
+        "Floor 4 visible RawImage uses the dedicated avatar texture",
+        "Floor 4 header uses authored portrait UV instead of body head crop",
+        "Floor 4 repeat refresh cannot replace the full body with its portrait",
+        "Floor 5 has a dedicated body and avatar",
+        "Floor 5 avatar is independent and unique",
+        "Floor 5 binds its authored square avatar asset",
+        "Floor 5 full-body reference is unchanged",
+        "Floor 5 manager preserves Image and live scene-figure body sprites",
+        "Floor 5 visible RawImage uses the dedicated avatar texture",
+        "Floor 5 header uses authored portrait UV instead of body head crop",
+        "Floor 5 repeat refresh cannot replace the full body with its portrait",
+        "Floor 6 has a dedicated body and avatar",
+        "Floor 6 avatar is independent and unique",
+        "Floor 6 binds its authored square avatar asset",
+        "Floor 6 full-body reference is unchanged",
+        "Floor 6 manager preserves Image and live scene-figure body sprites",
+        "Floor 6 visible RawImage uses the dedicated avatar texture",
+        "Floor 6 header uses authored portrait UV instead of body head crop",
+        "Floor 6 repeat refresh cannot replace the full body with its portrait",
+        "Floor 7 has a dedicated body and avatar",
+        "Floor 7 avatar is independent and unique",
+        "Floor 7 binds its authored square avatar asset",
+        "Floor 7 full-body reference is unchanged",
+        "Floor 7 manager preserves Image and live scene-figure body sprites",
+        "Floor 7 visible RawImage uses the dedicated avatar texture",
+        "Floor 7 header uses authored portrait UV instead of body head crop",
+        "Floor 7 repeat refresh cannot replace the full body with its portrait",
+        "Floor 8 has a dedicated body and avatar",
+        "Floor 8 avatar is independent and unique",
+        "Floor 8 binds its authored square avatar asset",
+        "Floor 8 full-body reference is unchanged",
+        "Floor 8 manager preserves Image and live scene-figure body sprites",
+        "Floor 8 visible RawImage uses the dedicated avatar texture",
+        "Floor 8 header uses authored portrait UV instead of body head crop",
+        "Floor 8 repeat refresh cannot replace the full body with its portrait",
+        "Floor 9 has a dedicated body and avatar",
+        "Floor 9 avatar is independent and unique",
+        "Floor 9 binds its authored square avatar asset",
+        "Floor 9 full-body reference is unchanged",
+        "Floor 9 manager preserves Image and live scene-figure body sprites",
+        "Floor 9 visible RawImage uses the dedicated avatar texture",
+        "Floor 9 header uses authored portrait UV instead of body head crop",
+        "Floor 9 repeat refresh cannot replace the full body with its portrait",
+        "Floor 10 has a dedicated body and avatar",
+        "Floor 10 avatar is independent and unique",
+        "Floor 10 binds its authored square avatar asset",
+        "Floor 10 full-body reference is unchanged",
+        "Floor 10 manager preserves Image and live scene-figure body sprites",
+        "Floor 10 visible RawImage uses the dedicated avatar texture",
+        "Floor 10 header uses authored portrait UV instead of body head crop",
+        "Floor 10 repeat refresh cannot replace the full body with its portrait",
+        "Floor 11 has a dedicated body and avatar",
+        "Floor 11 avatar is independent and unique",
+        "Floor 11 binds its authored square avatar asset",
+        "Floor 11 full-body reference is unchanged",
+        "Floor 11 manager preserves Image and live scene-figure body sprites",
+        "Floor 11 visible RawImage uses the dedicated avatar texture",
+        "Floor 11 header uses authored portrait UV instead of body head crop",
+        "Floor 11 repeat refresh cannot replace the full body with its portrait",
+        "Floor 12 has a dedicated body and avatar",
+        "Floor 12 avatar is independent and unique",
+        "Floor 12 binds its authored square avatar asset",
+        "Floor 12 full-body reference is unchanged",
+        "Floor 12 manager preserves Image and live scene-figure body sprites",
+        "Floor 12 visible RawImage uses the dedicated avatar texture",
+        "Floor 12 header uses authored portrait UV instead of body head crop",
+        "Floor 12 repeat refresh cannot replace the full body with its portrait",
+        "Actual Unity camera renders the twelve portrait/body pairs",
+        "Switch to PvP replaces header and figure with hero art without a stale monster avatar",
+        "Switch back to mine selects the new floor avatar and its complete body",
+        "All twelve catalog full-body sprites remain unchanged"
+    ],
+    "floors": [
+        {
+            "floor": 1,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-1.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-1-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 2,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-2.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-2-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 3,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-3.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-3-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 4,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-4.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-4-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 5,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-5.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-5-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 6,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-6.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-6-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 7,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-7.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-7-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 8,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-8.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-8-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 9,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-9.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-9-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 10,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-10.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-10-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 11,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-11.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-11-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        },
+        {
+            "floor": 12,
+            "body": "Assets/_Project/Resources/Expedition/Monsters/mine-12.png",
+            "avatar": "Assets/_Project/Resources/Expedition/Monsters/Avatars/mine-12-avatar-v1.png",
+            "headerUv": {
+                "serializedVersion": "2",
+                "x": 0.03999999910593033,
+                "y": 0.03999999910593033,
+                "width": 0.9200000166893005,
+                "height": 0.9200000166893005
+            }
+        }
+    ]
+}

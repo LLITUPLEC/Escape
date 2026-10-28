@@ -125,10 +125,39 @@ function M.new(deps)
       for _, line in ipairs(costs) do progress[line.resource] = (tonumber(progress[line.resource]) or 0) + line.amount end
       progress.race_entry_pending, progress.race_entry_costs = false, nil
       local cancelled = { status = "cancelled", costs = costs,
-        receipt_id = entry and entry.receipt_id or nk.uuid_v4(), cancelled_at = os.time() }
+        receipt_id = entry and entry.receipt_id or nk.uuid_v4(),request_id=entry and entry.request_id, cancelled_at = os.time() }
       nk.storage_write({ build_progress(uid, progress, version), object(uid, "active", cancelled, entry_version) })
       return true, nil, progress, cancelled
     end)
+  end
+
+  function E.bind_request(uid,request_id)
+    return retry(function()
+      local entry,version=read(uid,"active")
+      if not entry or entry.status~="pending"then return false,"race_entry_in_use"end
+      if entry.request_id then return entry.request_id==request_id,entry.request_id~=request_id and"race_entry_in_use"or nil end
+      entry.request_id=request_id;nk.storage_write({object(uid,"active",entry,version)})
+      return true
+    end)
+  end
+  function E.request_id(uid,run_id,match_id)
+    local receipt=read(uid,"run:"..tostring(run_id or""))
+    if receipt and receipt.match_id==match_id then return receipt.request_id or receipt.receipt_id end
+    local entry=read(uid,"active")
+    if entry and entry.status=="pending"then return entry.request_id or entry.receipt_id end
+  end
+  function E.cancel_request(uid,request_id)
+    local entry=read(uid,"active")
+    if not entry or(entry.request_id~=request_id and entry.receipt_id~=request_id)then return false,"admission_not_found"end
+    if entry.status=="bound"then return false,"admission_bound",entry end
+    if entry.status=="cancelled"or entry.status=="refunded"then
+      local p=read_progress(uid);return true,nil,{status="refunded"},p
+    end
+    local ok,err,progress,receipt=E.cancel(uid)
+    if ok then return true,nil,{status="refunded"},progress end
+    entry=read(uid,"active")
+    if entry and(entry.request_id==request_id or entry.receipt_id==request_id)and entry.status=="bound"then return false,"admission_bound",entry end
+    return false,err,receipt
   end
 
   local function human_users(users)
@@ -169,7 +198,7 @@ function M.new(deps)
           writes[#writes + 1] = object(uid, "run:" .. run_id, {
             status = "bound", run_id = run_id, receipt_id = entry.receipt_id,
             costs = costs, paid_at = entry.paid_at, bound_at = entry.bound_at,
-            match_id = match_id, participants = copy(humans), players = copy(users),
+            match_id = match_id, participants = copy(humans), players = copy(users),request_id=entry.request_id,
             journal_tickets = admitted_tickets,
           }, nil)
         else
@@ -279,15 +308,19 @@ function M.new(deps)
     return true
   end
 
-  function E.refund_orphan(uid, run_id)
+  local function refund_bound(uid, run_id, cancelled_match_id)
     return retry(function()
       local origin = read(uid, "run:" .. run_id)
       if not origin then return false, "race_entry_required" end
       if origin.status == "refunded" then return true end
       if origin.status ~= "bound" then return false, "race_entry_in_use" end
       if origin.finish_intent then return false, "race_result_pending" end
-      local gone, probe_err = orphaned(origin)
-      if gone ~= true then return gone == false, probe_err end
+      if cancelled_match_id then
+        if origin.match_id~=cancelled_match_id then return false,"race_entry_in_use"end
+      else
+        local gone, probe_err = orphaned(origin)
+        if gone ~= true then return gone == false, probe_err end
+      end
       local writes = {}
       for _, owner in ipairs(origin.participants or { uid }) do
         local receipt, version = read(owner, "run:" .. run_id)
@@ -300,7 +333,7 @@ function M.new(deps)
           if not costs then return false, "invalid_entry_receipt" end
           local progress, progress_version = read_progress(owner)
           for _, cost in ipairs(costs) do progress[cost.resource] = (tonumber(progress[cost.resource]) or 0) + cost.amount end
-          receipt.status, receipt.refunded_at, receipt.refund_reason = "refunded", os.time(), "orphaned_match"
+          receipt.status, receipt.refunded_at, receipt.refund_reason = "refunded", os.time(), cancelled_match_id and "admission_cancelled"or"orphaned_match"
           entry.status, entry.refunded_at = "refunded", receipt.refunded_at
           writes[#writes + 1] = build_progress(owner, progress, progress_version)
           writes[#writes + 1] = object(owner, "active", entry, entry_version)
@@ -310,6 +343,12 @@ function M.new(deps)
       if #writes > 0 then nk.storage_write(writes) end
       return true
     end)
+  end
+
+  function E.refund_orphan(uid,run_id)return refund_bound(uid,run_id)end
+  function E.cancel_before_start(uid,run_id,match_id)
+    if tostring(match_id or"")==""then return false,"invalid_race_run"end
+    return refund_bound(uid,run_id,match_id)
   end
 
   function E.recover(uid)

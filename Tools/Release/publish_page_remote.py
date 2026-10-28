@@ -65,10 +65,10 @@ def main():
     spec = importlib.util.spec_from_file_location('escape_page_uploaded', uploaded)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    release, apk_name, apk, audio = module.validate_bundle(stage)
+    release, apk_name, apk, audio = module.validate_bundle(stage, expected_version=version)
     assert release['version'] == version and release['sha256'] == plan['apkSha256'] and release['bytes'] == plan['apkBytes']
     assert apk_name == plan['apkFilename'] and len(audio) == plan['selectedAudioFiles']
-    module.publish(stage, validate_only=True)
+    module.publish(stage, validate_only=True, expected_version=version)
     assert sha(live_helper) == expected_old
     backup = parent / (identifier + '-previous-publisher.py')
     with backup.open('xb') as stream: stream.write(live_helper.read_bytes())
@@ -79,7 +79,7 @@ def main():
     assert sha(temporary) == plan['publisherSha256']
     os.replace(temporary, live_helper)
     try:
-        subprocess.run(['python3', str(live_helper), '--staging', str(stage)], check=True)
+        subprocess.run(['python3', str(live_helper), '--staging', str(stage), '--expected-version', version], check=True)
     except BaseException:
         rollback = live_helper.with_name('.deploy_download_page-rollback-' + identifier + '.py')
         with rollback.open('xb') as stream: stream.write(backup.read_bytes())

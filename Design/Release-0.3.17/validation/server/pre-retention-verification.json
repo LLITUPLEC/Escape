@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T18:16:51.210275+00:00",
+  "version": "0.3.17",
+  "versionCode": 19,
+  "runtimeSha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtimeFiles": 68,
+  "seedPreserved": true,
+  "catalogsUnchanged": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "noApiDatabaseRestartDuringStaticPublication": true,
+  "nakamaHealth": "healthy",
+  "currentTarget": "/var/www/escape/releases/0.3.17-a692d44fa0ad-20261028T181540317124Z",
+  "fullHttpsFiles": 32,
+  "fullHttpsApkVerified": true,
+  "previous016WebAndApkPreserved": true,
+  "currentRuntimeBackup": "/opt/escape/backups/pre-publication-0.3.17-20261028T181224Z",
+  "rollback016Backup": "/opt/escape/backups/runtime-release-20261028T181102Z",
+  "bothBackupsVerified": true,
+  "publisherSha256": "70f6510f8cf873f8598cad4437e0bc9e868bfdcc7a48453f58ba6cc3aad5a34e",
+  "retentionApplied": false
+}

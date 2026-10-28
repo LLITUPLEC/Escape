@@ -43,6 +43,8 @@ namespace Project.Nakama
         public IClient Client { get; private set; }
         public ISession Session { get; private set; }
         public ISocket Socket { get; private set; }
+        private readonly SessionOwnershipClaimGate _ownershipClaim = new();
+        public int AuthenticationGeneration => _ownershipClaim.Generation;
 
         public bool IsReady => Socket != null && Socket.IsConnected && Session != null;
         internal bool GameplaySessionAllowed => !_sessionReplacedFlowActive && !_skipOnlineHeartbeat;
@@ -132,6 +134,7 @@ namespace Project.Nakama
 
             Instance = this;
             ServerConnectionGuard.Install(this);
+            gameObject.AddComponent<Project.Match3.Match3RecoveryCoordinator>();
             Volatile.Write(ref _localSessionEpoch, PlayerPrefs.GetInt(SessionEpochLocalPrefKey, 0));
             DeleteLegacyEmailPasswordSync();
             DontDestroyOnLoad(gameObject);
@@ -369,6 +372,7 @@ namespace Project.Nakama
             }
 
             await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
+            var authenticationGeneration = _ownershipClaim.BeginAuthentication();
             if (Client == null)
             {
                 Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
@@ -395,12 +399,15 @@ namespace Project.Nakama
                 .ConfigureAwait(false);
             await MainThreadDispatcher.RunAsync(() =>
             {
+                if (authenticationGeneration != AuthenticationGeneration) throw new OperationCanceledException("Authentication changed.");
                 PersistEmailSessionSync(authenticated);
                 PersistKnownLinkedEmailSync(email);
                 PlayerPrefs.DeleteKey(PrefForceEmailSetup);
                 PlayerPrefs.Save();
+                Session = authenticated;
+                // AuthenticateEmail already advances the authoritative ownership epoch.
+                _ownershipClaim.Acknowledge(authenticated.UserId, authenticationGeneration);
             }).ConfigureAwait(false);
-            Session = authenticated;
 
             await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
             await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
@@ -440,6 +447,7 @@ namespace Project.Nakama
         /// </summary>
         public async Task ClearEmailPersistenceAndReconnectAsync(CancellationToken ct)
         {
+            _ownershipClaim.BeginAuthentication();
             await MainThreadDispatcher.RunAsync(ClearAllEmailPersistenceSync).ConfigureAwait(false);
             Session = null;
 
@@ -595,6 +603,8 @@ namespace Project.Nakama
 
         private static void ClearAllLocalAuthPrefsSync()
         {
+            Instance?._ownershipClaim.BeginAuthentication();
+            Project.Match3.Match3LaunchContext.ClearRecoveredMatch();
             ClearAllEmailPersistenceSync();
             PlayerPrefs.DeleteKey(SessionEpochLocalPrefKey);
             Volatile.Write(ref _localSessionEpoch, 0);
@@ -688,6 +698,9 @@ namespace Project.Nakama
         private async Task ClaimEmailSessionOwnershipAsync(CancellationToken ct)
         {
             if (Session == null || Client == null) return;
+            var session = Session;
+            var generation = AuthenticationGeneration;
+            if (!_ownershipClaim.NeedsClaim(session.UserId)) return;
 
             var shouldClaim = await MainThreadDispatcher.RunAsync(() =>
                     NakamaCredentialStore.HasKnownEmail)
@@ -697,14 +710,19 @@ namespace Project.Nakama
 
             try
             {
-                var rpc = await Client.RpcAsync(Session, RpcSessionClaim, "{}", canceller: ct).ConfigureAwait(false);
+                var rpc = await Client.RpcAsync(session, RpcSessionClaim, "{}", canceller: ct).ConfigureAwait(false);
                 var payload = rpc?.Payload;
                 if (string.IsNullOrEmpty(payload)) return;
                 var model = JsonUtility.FromJson<SessionEpochRpcResponse>(payload);
                 if (model != null && model.ok)
                 {
+                    if (!ReferenceEquals(session, Session) || generation != AuthenticationGeneration) return;
                     await MainThreadDispatcher
-                        .RunAsync(() => PersistLocalSessionEpochSync(model.session_epoch))
+                        .RunAsync(() =>
+                        {
+                            if (ReferenceEquals(session, Session) && _ownershipClaim.Acknowledge(session.UserId, generation))
+                                PersistLocalSessionEpochSync(model.session_epoch);
+                        })
                         .ConfigureAwait(false);
                 }
             }
@@ -768,6 +786,7 @@ namespace Project.Nakama
         private void BeginSessionReplacedFlow()
         {
             if (_sessionReplacedFlowActive) return;
+            _ownershipClaim.BeginAuthentication();
             _sessionReplacedFlowActive = true;
             _skipOnlineHeartbeat = true;
 
@@ -1063,6 +1082,7 @@ namespace Project.Nakama
                 PrepareAuthEndpointScopeSync(config.GetScheme(), config.host, config.port)).ConfigureAwait(false);
             if (!changed) return;
 
+            _ownershipClaim.BeginAuthentication();
             Session = null;
             Client = null;
             _socketBoundAuthToken = null;

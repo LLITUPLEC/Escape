@@ -1,0 +1,299 @@
+{
+  "passed": true,
+  "runtime_sha256": "a8605fb955cc61015cd626aa3ef9fb3fa1c6b5c7c007c8f4ea9fefbd077a41c3",
+  "target_stage": "release0317-validation-40edf29df0f7",
+  "final_stage": "release0317-validation-68c0bf100853",
+  "target_report_sha256": "84369c36fa18839ffd322c9d438b61a6026c833258b2df776bb6f050eb3e1ae7",
+  "old_suite_sha256": "cb2dad097896265b037216b52b953cb0441cb8e97f6979153ef08d67dabe73c9",
+  "new_suite_sha256": "d6278b342de0d2e62e73a36981a9726b743893f21f2c8c65d96f5c88613cc1cf",
+  "target_checks": 28,
+  "target_failed": 0,
+  "checked_dependency_sources": {
+    "JsonWebSocket": {
+      "equal": true,
+      "sha256": "3c5e8f65850a9c84c236187023a3744d225ba144847dae25c3b8fcfc81c16184"
+    },
+    "JsonWebSocket.__init__": {
+      "equal": true,
+      "sha256": "65087a5af60b1096ffd5340be8295ab7673388e4bf7cf032162daa711f10097a"
+    },
+    "JsonWebSocket.close": {
+      "equal": true,
+      "sha256": "9b6effdccee24ad6d044019fc682b3ba77627c8f284012891a46c278182b5362"
+    },
+    "JsonWebSocket.read_exact": {
+      "equal": true,
+      "sha256": "7d7c6e55156788429a112867a2bcb2f681d7eec8c37bf4bfac3479300b488b41"
+    },
+    "JsonWebSocket.read_json": {
+      "equal": true,
+      "sha256": "4028770f1e3fcf5f581440e27b431154685bf52472617410187b1e470450df5d"
+    },
+    "JsonWebSocket.remaining": {
+      "equal": true,
+      "sha256": "4879287584567aeeea23adc3b2035a5943c50da3d1b6966ec7ead8a4a21f214e"
+    },
+    "JsonWebSocket.send_frame": {
+      "equal": true,
+      "sha256": "1d81947afc1f5a4920c8ae4362b4a6866c08e1467b56566d495345f55c36ea4b"
+    },
+    "JsonWebSocket.send_json": {
+      "equal": true,
+      "sha256": "13579d619900db017ca84910a04d73450f307ef4bcf82c3969c2b93def726ccb"
+    },
+    "JsonWebSocket.wait_match_data": {
+      "equal": true,
+      "sha256": "16027f51f0eb47781b891a37ab5f3a762b9a6ba1530f797f64de6defd972d935"
+    },
+    "SocketClient": {
+      "equal": true,
+      "sha256": "b6c1e3f38cac03b399106ba2c38fcfed16011d7189752ea57e167b442ffc4967"
+    },
+    "SocketClient.__init__": {
+      "equal": true,
+      "sha256": "88be2f9755858a507fbe0642db86d4beaa304433b49e905fdd945d40eb1c88da"
+    },
+    "SocketClient.accepted_action": {
+      "equal": true,
+      "sha256": "1bbf0da4b1d1aa5373655bc1231eea08b478ae1e23f8e075dd95fc18bd945343"
+    },
+    "SocketClient.await_message": {
+      "equal": true,
+      "sha256": "70f05781ea95ce6ebea95cc697e124ec0dd4dcf2e14fad894af7fb03a23bb877"
+    },
+    "SocketClient.board_action": {
+      "equal": true,
+      "sha256": "facbb9bf88b184e878758bb6d0f2a98d4be48e11b0b5140497a5bdd133e4a086"
+    },
+    "SocketClient.command": {
+      "equal": true,
+      "sha256": "e2cfd77d581fe2564ccd163a77eea19baad7bc02b79e6fea0bad833d21bd7a36"
+    },
+    "SocketClient.event": {
+      "equal": true,
+      "sha256": "80a58a7cc87e7855d0bec4b0f946fac0bd6f149d86ba753c06f9929522b551ec"
+    },
+    "SocketClient.match_data": {
+      "equal": true,
+      "sha256": "f5e10b76b0d1f75ba1a7aa8540824ee513f3300bec7e8f976fd15f126a49f4ba"
+    },
+    "Suite.__init__": {
+      "equal": true,
+      "sha256": "4ab14321f21ccc32dada4dc3382f104a396b73a401980792daa3be8e2627eca0"
+    },
+    "Suite._practice_trace": {
+      "equal": true,
+      "sha256": "373d1e7c6fd4669634fd44b18e5bcea0df2d7213db417dd06b1365cd2cd0d821"
+    },
+    "Suite.achievement_count": {
+      "equal": true,
+      "sha256": "758818348ca3bfb675dea8397b86ad76b8b325191b35a2fa2f8d1babefc0fb4c"
+    },
+    "Suite.arena": {
+      "equal": true,
+      "sha256": "83924a333eabce4d7f2d3480634d4f8eca1a975366ffee9533d6677f0cd91156"
+    },
+    "Suite.begin_played_match": {
+      "equal": true,
+      "sha256": "1a30d2000af575d5f357a8c3cfdfe4ebd41517166c652fb539c4108482b10412"
+    },
+    "Suite.capture_arena_ui": {
+      "equal": true,
+      "sha256": "0b14b580647ee159f13ae7a3b3ae10cf1aeb9be87648d970da3e1e62c8b4e913"
+    },
+    "Suite.check": {
+      "equal": true,
+      "sha256": "86e5ed5119d493e455af6491e4cdd30e18f9d6d63bca61a9381c7d25fa792fd1"
+    },
+    "Suite.check_arena_hp": {
+      "equal": true,
+      "sha256": "4bd11a2da301b35ae2843ce6117b61c9584b08005416d01e12e4709c0cbdcf7f"
+    },
+    "Suite.cleanup": {
+      "equal": true,
+      "sha256": "8ba4665ea7d4d128fe19d43d243ebd667dbaf66499a8f35155a245af85f0f1b2"
+    },
+    "Suite.connect": {
+      "equal": true,
+      "sha256": "d084eaec604671cd60e4b61861d1ec392804c7e3119dac19e3299082254dda56"
+    },
+    "Suite.console": {
+      "equal": true,
+      "sha256": "4951c56da21f099fa5a3207577328da107ef5cbe629e9c2ef7dfe17ba864165e"
+    },
+    "Suite.consumable_use_request": {
+      "equal": true,
+      "sha256": "bdd2569528b3fbce8e186516c00a5c980fc595fd6e7a3cea80f4fcb6fc92f680"
+    },
+    "Suite.consumables": {
+      "equal": true,
+      "sha256": "69308b5fd538b704e33706a3484df6bed7b60ff35affef4ba86c49a63c1e8224"
+    },
+    "Suite.cosmetics": {
+      "equal": true,
+      "sha256": "c726adea62e51bba9097a17b6f65806395465cd8d725458972d1b88bb1d09e69"
+    },
+    "Suite.daily": {
+      "equal": true,
+      "sha256": "7611ef0d21ad9a3f3bc7322571f67b9567dd76cf8c731c8c0896f86884a88013"
+    },
+    "Suite.double_disconnect": {
+      "equal": true,
+      "sha256": "f8c6e0d48892e7ffca1024f64a5efe0ba9fdf98f985c8f83cb71693dc03a7d1e"
+    },
+    "Suite.equipment_sets": {
+      "equal": true,
+      "sha256": "0a2c32e298d421536bec8744f89faf803412e947ad7dc018bcc4b9650657958f"
+    },
+    "Suite.finish": {
+      "equal": true,
+      "sha256": "76395bb7659b773dcb573a6090f099e594da03788f11e74d2990d71401b57a16"
+    },
+    "Suite.friends": {
+      "equal": true,
+      "sha256": "c938f5cb7c6ab8cd7f903c64352754c0068bb06ab7feee3f2faa09ad6e1edd8a"
+    },
+    "Suite.global_boss": {
+      "equal": true,
+      "sha256": "38d64c9dcae449d2c54b80da4947a2a278a7b101af2d8322ad5190fb919fdd94"
+    },
+    "Suite.global_boss_practice": {
+      "equal": true,
+      "sha256": "93724a2602ee84cff83864f5c6f96dded7ee32a45ad8e6846457f2b512175e68"
+    },
+    "Suite.guidance": {
+      "equal": true,
+      "sha256": "0d1af1e83c14f0d0a4c704900772f469cace26b89f04893831fc8c12c05411cf"
+    },
+    "Suite.isolated_only": {
+      "equal": true,
+      "sha256": "afee2457577f8b891526a47f72a9ad94d48de85561b51543a72c5ff2926753f5"
+    },
+    "Suite.natural": {
+      "equal": true,
+      "sha256": "3db7cf0e6747abf9564e4794647aa8c2dfba909edcef30cceb4f6add36bfe879"
+    },
+    "Suite.overlap_reconnect": {
+      "equal": true,
+      "sha256": "54428ad39fa54dde97f25453bd303a6c48a65ad4f7d3583469da3843af21a502"
+    },
+    "Suite.pair": {
+      "equal": true,
+      "sha256": "170e66c4cef52ea2d8c40f4c22003b9407f921eda08793caf968ac21e930f1a6"
+    },
+    "Suite.pending_pair": {
+      "equal": true,
+      "sha256": "65c37f7c9d2aa06d1cb0ef77b687d8a87771ad2e87d6c054373f6eca6f4d1ee1"
+    },
+    "Suite.player": {
+      "equal": true,
+      "sha256": "9809a81f5c05ee161b48796b57011d38089bdd050efccfb3e00901bc5165152c"
+    },
+    "Suite.practice_smoke": {
+      "equal": true,
+      "sha256": "6cb727e9f821c01b6f3c5422615ebdd95d5c0ea2c65defa0a62478ac1c1b06a7"
+    },
+    "Suite.pve_never_join": {
+      "equal": true,
+      "sha256": "4b650c37588b6c6c992b1cca622ccfc785976a3c096fc5418bdafa9cc55acf81"
+    },
+    "Suite.pvp": {
+      "equal": true,
+      "sha256": "b1bfa6a3ed6ddd994d056547898ca4ae5fba7746ce8cf39b88ba0e524bf281f7"
+    },
+    "Suite.quote_preflight": {
+      "equal": true,
+      "sha256": "abf109ed1bd4d0764beec586402ab0e430fbdea417c63739fe85824a2cda4a85"
+    },
+    "Suite.race": {
+      "equal": true,
+      "sha256": "534c8b75bc75454fad252533c49ce4ed336037c7577d99bf41702a5426bf6324"
+    },
+    "Suite.race_legacy_refund": {
+      "equal": true,
+      "sha256": "40faa2bf027ee6482b434a6ee9834bc5803a4697d042b6263c6ef02f0edf55ef"
+    },
+    "Suite.race_policy": {
+      "equal": true,
+      "sha256": "0ad5d74381c89b86a80855d102d5ec319bf0bd3f60d1e2dac17d5a3f38e27c4a"
+    },
+    "Suite.race_receipts": {
+      "equal": true,
+      "sha256": "4cae0a93ee4502e415e3cef2c3576dd9d58b3f159782f8211ccd7912d1bb7de8"
+    },
+    "Suite.race_settlement": {
+      "equal": true,
+      "sha256": "44b0dd0fc31a702c28808ebb0378afa8a9e63e52a3cf78a30f8a3fcc13e96c65"
+    },
+    "Suite.race_unpaid": {
+      "equal": true,
+      "sha256": "6f636b1022d20e4c0c116a6cca457e5b5fdb6dd4f8a09e8aaf3e8e8334787a49"
+    },
+    "Suite.reconnect_0317": {
+      "equal": true,
+      "sha256": "a8b66ee25a2392176d0db13aa0d9a31a00d3d6011c1dea39dec9b8ccb1abe98f"
+    },
+    "Suite.rpc": {
+      "equal": true,
+      "sha256": "211ccea8e1c37ce5182950e2a34377c3b31dd9cf0562e4043bf3d90c77a204ec"
+    },
+    "Suite.seed_money": {
+      "equal": true,
+      "sha256": "785a0d41cb6fc673dc2528da6c91357f768ce12b6b55c2b770dcf82bcde6b1f1"
+    },
+    "Suite.seed_sheet": {
+      "equal": true,
+      "sha256": "ee7270af1433e5601fdc460ea239fd93b55d291a365f134276a16b97a00171c7"
+    },
+    "Suite.seed_tournament_access": {
+      "equal": true,
+      "sha256": "20f1e1663550b30f8082df6e71aa96486dd42083cac4bfa3a07d5630eee034c0"
+    },
+    "Suite.shop": {
+      "equal": true,
+      "sha256": "8773ff09538f9058d02d89137f280b56414fa345aedaad4353e2c5c6780768d4"
+    },
+    "Suite.smith": {
+      "equal": true,
+      "sha256": "e0bb2be7868ff8202dd6d7bc8964720b566cbf84c393b23cb1bc315dd04e6783"
+    },
+    "Suite.stats": {
+      "equal": true,
+      "sha256": "2bbe184abb74dd687147b51fa4b3b6e857a0a45197628059623489ce278764d3"
+    },
+    "Suite.storage": {
+      "equal": true,
+      "sha256": "14fa0f61a6189cbed26599f026fa0046c3c350660fc06cdf2b5887a9bc9bbd89"
+    },
+    "Suite.storage_snapshot": {
+      "equal": true,
+      "sha256": "2fe69e61bfca9ee237f7c7ba4f2fa9d327df05b7a465b96b959758ba15f0520d"
+    },
+    "Suite.tournament_disconnect": {
+      "equal": true,
+      "sha256": "0423893a31b089a3a5eff4396933d04ed54e7a131747990d936cd645e90f508e"
+    },
+    "http": {
+      "equal": true,
+      "sha256": "5b92eccac03cffde592b733a3b00a4ff8cfc1a8ae73c9255ca721702c48a3bf8"
+    },
+    "main": {
+      "equal": true,
+      "sha256": "3297d00923583567b70285ba6d6456f45661ebc45fa1f05378c3adead4543010"
+    },
+    "resource_totals": {
+      "equal": true,
+      "sha256": "8af4a38f94fd3357ffbfb594d662d098c08dd6737973dc6163eb0b4652c487e6"
+    },
+    "valid_swap": {
+      "equal": true,
+      "sha256": "fb5ac788ba1c2f57d45f81849187c33bce2671bfbd28f690268b21115742ea8c"
+    }
+  },
+  "all_checked_sources_byte_equal": true,
+  "only_new_method": "Suite.forfeit_with_lost_ack_retry",
+  "only_changed_prior_method": "Suite.lifecycle",
+  "only_added_global": "from http.client import RemoteDisconnected (used only by the explicit lifecycle retry)",
+  "all_other_global_ast_equal": true,
+  "scope": "Over-approximation: every previous Suite method except lifecycle, both complete socket classes, every module function including main/HTTP/board solver. The unchanged reconnect-0317 body includes all of its nested helpers."
+}

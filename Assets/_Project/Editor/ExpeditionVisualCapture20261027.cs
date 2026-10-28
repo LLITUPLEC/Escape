@@ -21,7 +21,7 @@ namespace Project.Editor
     /// <summary>Native 1080x1920 renders of production widgets in an isolated edit-mode fixture. No account/network lifecycle.</summary>
     public static class ExpeditionVisualCapture20261027
     {
-        private const string Output = "Design/Release-0.3.15/media/validation/ui";
+        private const string Output = ".cache/qa/mine-refresh/ui";
         private const BindingFlags Hidden = BindingFlags.Instance | BindingFlags.NonPublic;
         [Serializable] private sealed class Report
         {
@@ -60,7 +60,7 @@ namespace Project.Editor
             foreach (var sceneName in new[] { "MineScene", "DuelMatch3", "ArenaMenu" })
                 Check(File.ReadAllText("Assets/_Project/Scenes/" + sceneName + ".unity").Contains("guid: 5bf4d0b3d4221c3448e19cb7dcb46915"), "HUD/reward tesseract reference did not migrate: " + sceneName);
             report.checks.Add("All12 new monster paths and grounding metadata; canonical tesseract shared by inventory and scene HUD/reward references; obsolete textures absent.");
-            report.checks.Add(ExpeditionCombatantGroundingQa.RunTo("Design/Release-0.3.15/media/validation/grounding"));
+            report.checks.Add(ExpeditionCombatantGroundingQa.RunTo(".cache/qa/mine-refresh/grounding"));
             Capture(report, monsters, items);
             report.passed = true;
             File.WriteAllText(Output + "/native-report.json", JsonUtility.ToJson(report, true));

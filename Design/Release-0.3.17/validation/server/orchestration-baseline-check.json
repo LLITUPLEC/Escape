@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "readOnly": true,
+  "checkedUtc": "2026-10-28T16:59:34.383316+00:00",
+  "runtimeSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "runtimeFiles": 66,
+  "publisherSha256": "e858fd15c8d6e4f02cdb30cb7097e78f5ff10596f931278d36e60f17e2131df0",
+  "securitySmokeSha256": "b29e50266d95a9eb1eb3e23017ba4583f368dd4f94d1f200bdce6e6c9b8ec85c",
+  "canonicalDeployerSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "protectedConfigAdminCatalogAndWebUnchanged": true,
+  "containers": [
+    {
+      "name": "escape-nakama-1",
+      "id": "9f979dd842442cc5eb516b8de672a519422dd49c6193d2a5ecd03289ed778e2b",
+      "startedAt": "2026-10-27T22:37:33.497209432Z",
+      "restartCount": 0,
+      "status": "running",
+      "health": "healthy",
+      "image": "sha256:b475a1d7baf6f27be53abe30a59a29f10860ac3101780e626f90ff60107546a9"
+    },
+    {
+      "name": "escape-postgres-1",
+      "id": "6816d7898927e032eb5cc0b0f8312c5f4a68d5b332760147e76ab3899432ed68",
+      "startedAt": "2026-10-22T18:14:38.863810708Z",
+      "restartCount": 0,
+      "status": "running",
+      "health": "healthy",
+      "image": "sha256:f4610795587492cd4fb887c2dc3de301b813278bb6f616992061141b5f15ac36"
+    }
+  ],
+  "idle": true,
+  "idleSummary": "Idle check: matches=0, tournaments=0, queued=0, connected_sessions=0",
+  "productionChanged": false,
+  "candidateNotYetApproved": true
+}

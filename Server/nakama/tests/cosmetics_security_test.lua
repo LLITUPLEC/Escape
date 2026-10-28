@@ -23,7 +23,8 @@ local nk = {
       assert(w.version=="*" and not old or old and w.version==old.version,"CAS conflict")
       assert((w.collection=="duel_player_cosmetics" and w.permission_read==0 or
         w.collection=="duel_mail" and w.permission_read==0 or
-        w.collection=="duel_match3_progress" and w.permission_read==1) and w.permission_write==0)
+        w.collection=="duel_match3_progress" and w.permission_read==1 or
+        w.collection=="duel_match3_character" and w.permission_read==1) and w.permission_write==0)
     end
     for _,w in ipairs(writes) do
       local key=w.collection.."/"..w.key.."/"..w.user_id
@@ -59,6 +60,7 @@ local function catalog()
 end
 local Cosmetics=assert(loadfile("Server/nakama/modules/duel_player_cosmetics.lua"))()
 local Mail=require("modules.duel_mail")
+Cosmetics.configure({get_defs=function()return{tesseract={kind="tesseract",max_stack=99}}end})
 local get,select=rpcs.duel_player_cosmetics_get,rpcs.duel_player_cosmetics_select
 local function init(female)
   db={};identities={u={gender=female and "female" or "male",finalized=true},other={gender="male",finalized=true}};revision=0;fail_read=false;fail_write=false;race=nil;barrier=false;ambiguous=false;catalog()
@@ -178,39 +180,39 @@ local function old_unlocks(ids)
   local unlocked={dawnwarden=true};for _,id in ipairs(ids) do unlocked[id]=true end
   put("duel_player_cosmetics","appearance_v1","u",{schema_version=1,selected_theme="default",unlocked=unlocked})
 end
-test("old prestige unlocks retroactively pay five matter once and passive HP survives selection changes",function()
+test("old prestige unlocks receive their named rewards once and permanent collection bonuses survive selection changes",function()
   progress({matter=7});old_unlocks({"phoenix","voidranger"})
   local r=get({user_id="u"},{})
-  assert(r.ok and r.unlock_reward_matter_granted==10 and r.rewarded_matter_total==10 and r.passive_hp_bonus_percent==1 and matter()==17)
-  assert(theme(r,"phoenix").reward_granted and theme(r,"phoenix").unlock_reward_matter==5)
+  assert(r.ok and r.unlock_reward_matter_granted==115 and r.rewarded_matter_total==115 and r.passive_hp_bonus_percent==3 and r.passive_armor_bonus_percent==2 and matter()==122)
+  assert(theme(r,"phoenix").reward_granted and theme(r,"phoenix").unlock_reward_matter==100)
   for _,id in ipairs({"phoenix","default","voidranger","dawnwarden"}) do assert(select({user_id="u"},{theme_id=id}).ok) end
-  assert(get({user_id="u"},{}).unlock_reward_matter_granted==0 and matter()==17 and Cosmetics.passive_hp_bonus("u")==.01)
+  assert(get({user_id="u"},{}).unlock_reward_matter_granted==0 and matter()==122 and Cosmetics.passive_hp_bonus("u")==.03)
 end)
 test("starter and default grant no matter or passive HP",function()
   local r=get({user_id="u"},{})
   assert(r.ok and r.unlocked_prestige_count==0 and r.passive_hp_bonus_percent==0 and matter()==0)
   assert(not theme(r,"dawnwarden").reward_granted and theme(r,"dawnwarden").unlock_reward_matter==0)
 end)
-test("all nine prestige rewards cap at forty-five matter and four point five percent HP",function()
+test("all nine named rewards grant 665 matter one tesseract and exact collection bonuses",function()
   old_unlocks({"voidranger","stormforged","emberoracle","frostwraith","phoenix","bookmaker","railwarden","beastbreaker","alchemist"})
   local r=Cosmetics.reconcile("u")
-  assert(r.ok and r.unlocked_prestige_count==9 and r.passive_hp_bonus_percent==4.5 and matter()==45)
-  assert(Cosmetics.passive_hp_bonus("u")==.045 and matter()==45)
+  assert(r.ok and r.unlocked_prestige_count==9 and r.passive_hp_bonus_percent==12 and matter()==665 and r.rewarded_tesseract_total==1 and r.unlock_reward_tesseract_granted==1)
+  assert(Cosmetics.passive_hp_bonus("u")==.12 and matter()==665)
 end)
 test("reward outage changes neither wallet nor unlock receipt",function()
   old_unlocks({"phoenix"});progress({matter=9});fail_write=true
   assert(get({user_id="u"},{}).err=="cosmetics_unavailable" and matter()==9 and not row().value.unlock_reward_receipts)
-  fail_write=false;assert(get({user_id="u"},{}).ok and matter()==14)
+  fail_write=false;assert(get({user_id="u"},{}).ok and matter()==109)
 end)
 test("lost acknowledgement observes committed receipt and never repays",function()
   old_unlocks({"phoenix"});ambiguous=true
   local r=get({user_id="u"},{})
-  assert(r.ok and matter()==5 and r.unlock_reward_matter_granted==0 and theme(r,"phoenix").reward_granted)
+  assert(r.ok and matter()==100 and r.unlock_reward_matter_granted==0 and theme(r,"phoenix").reward_granted)
 end)
 test("progress CAS conflict preserves unrelated currency and retries one reward",function()
   old_unlocks({"phoenix"});progress({matter=3,gold=8})
   race=function() progress({matter=23,gold=99}) end
-  assert(get({user_id="u"},{}).ok and matter()==28)
+  assert(get({user_id="u"},{}).ok and matter()==123)
   local p=db[CFG.PVE_PROGRESS_COLLECTION.."/"..CFG.PVE_PROGRESS_KEY.."/u"].value
   assert(p.gold==99)
 end)
@@ -218,18 +220,18 @@ test("concurrent reconciliation snapshots award only one account-scoped receipt"
   old_unlocks({"phoenix"});progress({matter=11})
   barrier=true
   local a=coroutine.create(function() assert(get({user_id="u"},{}).ok) end)
-  local b=coroutine.create(function() assert(Cosmetics.passive_hp_bonus("u")==.005) end)
+  local b=coroutine.create(function() assert(Cosmetics.passive_hp_bonus("u")==.02) end)
   local ok,x=coroutine.resume(a);assert(ok and x=="snapshot")
   ok,x=coroutine.resume(b);assert(ok and x=="snapshot");barrier=false
   assert(coroutine.resume(a));assert(coroutine.resume(b))
-  assert(coroutine.status(a)=="dead" and coroutine.status(b)=="dead" and matter()==16)
+  assert(coroutine.status(a)=="dead" and coroutine.status(b)=="dead" and matter()==111)
   assert(get({user_id="other"},{}).unlocked_prestige_count==0 and matter("other")==0)
 end)
 test("receipt permanence retains HP when source progress is lowered",function()
   old_unlocks({"phoenix"});get({user_id="u"},{})
   local saved=row().value;saved.unlocked.phoenix=nil
   put("duel_player_cosmetics","appearance_v1","u",saved)
-  assert(theme(get({user_id="u"},{}),"phoenix").unlocked and Cosmetics.passive_hp_bonus("u")==.005 and matter()==5)
+  assert(theme(get({user_id="u"},{}),"phoenix").unlocked and Cosmetics.passive_hp_bonus("u")==.02 and matter()==100)
 end)
 
 local function earn_scout()
@@ -239,13 +241,13 @@ test("old collection baselines silently while new unlock commits one named infor
   old_unlocks({"phoenix"});assert(get({user_id="u"},{}).ok)
   assert(Mail.get("u").unread_count==0 and row().value.unlock_mail_receipts.phoenix)
   earn_scout();local r=get({user_id="u"},{})
-  local inbox=Mail.get("u");assert(r.ok and r.unlock_reward_matter_granted==5 and matter()==9)
+  local inbox=Mail.get("u");assert(r.ok and r.unlock_reward_matter_granted==15 and matter()==19)
   assert(inbox.unread_count==1 and #inbox.messages==1)
   local m=inbox.messages[1]
   assert(m.id=="appearance_unlock:voidranger" and m.kind=="appearance_unlock" and m.action=="hero" and m.avatar_id=="voidranger-male")
   assert(m.theme_id=="voidranger" and not m.attachments and row().value.unlock_mail_receipts.voidranger)
-  for _=1,8 do assert(get({user_id="u"},{}).ok and Cosmetics.passive_hp_bonus("u")==.01)end
-  assert(Mail.get("u").unread_count==1 and matter()==9)
+  for _=1,8 do assert(get({user_id="u"},{}).ok and Cosmetics.passive_hp_bonus("u")==.03)end
+  assert(Mail.get("u").unread_count==1 and matter()==19)
 end)
 test("fresh female unlock uses paired avatar; reading letter changes only mail and compacted history cannot reappear",function()
   identities.u.gender="female";get({user_id="u"},{})
@@ -270,8 +272,8 @@ test("unlock mail outage and lost acknowledgement preserve atomic reward, receip
   assert(get({user_id="u"},{}).err=="cosmetics_unavailable")
   assert(not row().value.unlocked.voidranger and matter()==4 and not db["duel_mail/inbox/u"])
   fail_write=false;ambiguous=true
-  assert(get({user_id="u"},{}).ok and matter()==9 and Mail.get("u").unread_count==1)
-  assert(get({user_id="u"},{}).ok and matter()==9 and Mail.get("u").unread_count==1)
+  assert(get({user_id="u"},{}).ok and matter()==19 and Mail.get("u").unread_count==1)
+  assert(get({user_id="u"},{}).ok and matter()==19 and Mail.get("u").unread_count==1)
 end)
 test("concurrent new unlock reconciliation emits one account-scoped notification",function()
   get({user_id="u"},{});earn_scout();barrier=true
@@ -280,14 +282,94 @@ test("concurrent new unlock reconciliation emits one account-scoped notification
   local ok,stage=coroutine.resume(a);assert(ok and stage=="snapshot")
   ok,stage=coroutine.resume(b);assert(ok and stage=="snapshot");barrier=false
   assert(coroutine.resume(a));assert(coroutine.resume(b))
-  assert(Mail.get("u").unread_count==1 and matter()==9 and Mail.get("other").unread_count==0)
+  assert(Mail.get("u").unread_count==1 and matter()==19 and Mail.get("other").unread_count==0)
 end)
 test("concurrent inbox change preserves unrelated mail and custom cosmetic metadata",function()
   get({user_id="u"},{})
   row().value.admin_note={keep="custom"};earn_scout()
   race=function() assert(Mail.deliver("u",{id="other-event",title="event",body="event",created_at=os.time()}))end
   assert(get({user_id="u"},{}).ok)
-  local inbox=Mail.get("u");assert(inbox.unread_count==2 and matter()==9 and row().value.admin_note.keep=="custom")
+  local inbox=Mail.get("u");assert(inbox.unread_count==2 and matter()==19 and row().value.admin_note.keep=="custom")
+end)
+
+local Rewards=require("modules.duel_cosmetics_rewards")
+local function legacy_rewards(ids)
+  old_unlocks(ids)
+  local record=row().value;record.unlock_reward_receipts={};record.unlock_mail_schema=1;record.unlock_mail_receipts={}
+  for _,id in ipairs(ids)do
+    record.unlock_reward_receipts[id]={version=1,matter=5,hp_basis_points=50,granted_at=123}
+    record.unlock_mail_receipts[id]=true
+  end
+end
+local function tess_count()
+  local s=db[CFG.CHARACTER_SHEET_COLLECTION.."/"..CFG.CHARACTER_SHEET_KEY.."/u"]
+  local n=0
+  if s then
+    for i,id in pairs(s.value.inventory or{})do if id=="tesseract"then n=n+(s.value.inventory_counts[i]or 0)end end
+    for _,item in ipairs(s.value.inventory_pending_loot or{})do if item.def_id=="tesseract"then n=n+item.amount end end
+  end
+  return n
+end
+test("each v1 appearance migrates only its unpaid named reward delta and exact replacement bonus",function()
+  for id,reward in pairs(Rewards.catalog)do if id~="dawnwarden"then
+    init(false);legacy_rewards({id});progress({matter=7,gold=12})
+    local r=get({user_id="u"},{})
+    assert(r.ok and r.unlock_reward_schema==2 and r.unlock_reward_matter_granted==reward.matter-5 and matter()==7+reward.matter-5,id)
+    local proof=row().value.unlock_reward_receipts[id];assert(proof.version==2 and proof.granted_at==123 and proof.previously_paid_matter==5)
+    local bonus=Cosmetics.passive_bonuses("u")
+    assert(bonus.hp==(reward.hp_basis_points or 0)/10000 and bonus.armor==(reward.armor_basis_points or 0)/10000)
+    assert(bonus.damage==(reward.damage_basis_points or 0)/10000 and bonus.healing==(reward.heal_basis_points or 0)/10000)
+    assert(bonus.crit_chance==(reward.crit_basis_points or 0)/10000 and bonus.healing_flat==(reward.heal_flat or 0))
+    assert(tess_count()==(reward.tesseract or 0)and Mail.get("u").unread_count==1)
+    local before=revision;local again=get({user_id="u"},{})
+    assert(again.unlock_reward_matter_granted==0 and again.unlock_reward_tesseract_granted==0 and revision==before)
+  end end
+end)
+test("full v1 collection receives 620 matter delta one tesseract and retains no obsolete HP bonuses",function()
+  legacy_rewards({"voidranger","stormforged","emberoracle","frostwraith","phoenix","bookmaker","railwarden","beastbreaker","alchemist"})
+  progress({matter=7});local r=get({user_id="u"},{})
+  assert(r.ok and matter()==627 and r.unlock_reward_matter_granted==620 and r.rewarded_matter_total==665 and tess_count()==1)
+  assert(r.passive_hp_bonus_percent==12 and r.passive_armor_bonus_percent==9 and r.passive_damage_bonus_percent==6)
+  assert(r.passive_heal_bonus_percent==7 and r.passive_heal_bonus_flat==300 and r.passive_crit_bonus_percent==1)
+  assert(Mail.get("u").unread_count==9)
+end)
+test("read-only practice preserves old receipt bonuses until normal reconciliation and never pays or sends mail",function()
+  legacy_rewards({"stormforged","alchemist"});progress({matter=7});local before=revision
+  local b=Cosmetics.passive_bonuses_read_only("u")
+  assert(b.hp==.01 and b.crit_chance==0 and b.healing_flat==0 and matter()==7 and revision==before and Mail.get("u").unread_count==0)
+  assert(get({user_id="u"},{}).ok)
+  before=revision;b=Cosmetics.passive_bonuses_read_only("u")
+  assert(b.hp==0 and b.crit_chance==.01 and b.healing_flat==300 and revision==before)
+end)
+test("alchemist item entitlement queues at full inventory atomically with wallet and v2 receipt",function()
+  legacy_rewards({"alchemist"});progress({matter=2,gold=21})
+  local s={inventory={},inventory_counts={},learned_recipes={"saved-recipe"},custom_field="keep"}
+  for i=1,25 do s.inventory[i]="occupied";s.inventory_counts[i]=1 end;sheet(s)
+  local r=get({user_id="u"},{})
+  local saved=db[CFG.CHARACTER_SHEET_COLLECTION.."/"..CFG.CHARACTER_SHEET_KEY.."/u"].value
+  assert(r.ok and r.unlock_reward_tesseract_granted==1 and tess_count()==1 and #saved.inventory_pending_loot==1 and matter()==47)
+  assert(saved.custom_field=="keep"and saved.learned_recipes[1]=="saved-recipe"and saved.inventory[25]=="occupied")
+  assert(get({user_id="u"},{}).unlock_reward_tesseract_granted==0 and tess_count()==1)
+end)
+test("migration item wallet receipt and mail all remain unchanged during outage and survive ambiguous commit once",function()
+  legacy_rewards({"alchemist"});progress({matter=2});fail_write=true
+  assert(get({user_id="u"},{}).err=="cosmetics_unavailable"and matter()==2 and tess_count()==0 and row().value.unlock_reward_receipts.alchemist.version==1)
+  assert(Mail.get("u").unread_count==0)
+  fail_write=false;ambiguous=true;local r=get({user_id="u"},{})
+  assert(r.ok and matter()==47 and tess_count()==1 and Mail.get("u").unread_count==1)
+  assert(r.unlock_reward_matter_granted==0 and r.unlock_reward_tesseract_granted==0)
+end)
+test("missing canonical tesseract definition fails closed without suppressing other owed rewards",function()
+  legacy_rewards({"alchemist","phoenix"});progress({matter=2});Cosmetics.configure({get_defs=function()return{}end})
+  assert(get({user_id="u"},{}).err=="cosmetics_unavailable"and matter()==2 and tess_count()==0)
+  assert(row().value.unlock_reward_receipts.phoenix.version==1 and Mail.get("u").unread_count==0)
+  Cosmetics.configure({get_defs=function()return{tesseract={kind="tesseract",max_stack=99}}end})
+  assert(get({user_id="u"},{}).ok and matter()==142 and tess_count()==1)
+end)
+test("damaged v2 receipt fails closed rather than creating an extra entitlement",function()
+  old_unlocks({"phoenix"});get({user_id="u"},{})
+  row().value.unlock_reward_receipts.phoenix.matter=99
+  assert(get({user_id="u"},{}).err=="cosmetics_unavailable"and matter()==100)
 end)
 
 -- A real server response for mobile QA: existing progress unlocks the first
@@ -304,4 +386,11 @@ COSMETIC_UI_SELECTED_MALE=select({user_id="u"},{theme_id="voidranger"})
 COSMETIC_UI_FIXTURE_FEMALE=fixture(true)
 COSMETIC_UI_SELECTED_FEMALE=select({user_id="u"},{theme_id="voidranger"})
 COSMETIC_UNLOCK_MAIL_FIXTURE=Mail.get("u")
+local function full_fixture(female)
+  init(female)
+  old_unlocks({"voidranger","stormforged","emberoracle","frostwraith","phoenix","bookmaker","railwarden","beastbreaker","alchemist"})
+  return get({user_id="u"},{})
+end
+COSMETIC_UI_ALL_MALE=full_fixture(false)
+COSMETIC_UI_ALL_FEMALE=full_fixture(true)
 print("Cosmetics security: "..passed.." passed")

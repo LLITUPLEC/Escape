@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "apk": "Escape-0.3.17-a692d44fa0ad.apk",
+  "symbols": "Escape-0.3.17-a692d44fa0ad.symbols.zip",
+  "bytes": 48745618,
+  "sha256": "5262dc35a319572ac8683953836557899d8c24032effd3a6051c4f1cce1e8dec",
+  "entries": [
+    "arm64-v8a/lib_burst_generated.so",
+    "arm64-v8a/libil2cpp.so",
+    "arm64-v8a/libmain.so",
+    "arm64-v8a/libunity.so",
+    "armeabi-v7a/lib_burst_generated.so",
+    "armeabi-v7a/libil2cpp.so",
+    "armeabi-v7a/libmain.so",
+    "armeabi-v7a/libunity.so"
+  ],
+  "source": "Unity generated symbols plus Burst native libraries",
+  "published": false
+}

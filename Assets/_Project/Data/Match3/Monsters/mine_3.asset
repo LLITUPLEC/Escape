@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Гнилой свищ"
   floor: 3
   icon: {fileID: 21300000, guid: 908f54c19efd4a2e9bdd2e0b1dca9620, type: 3}
+  avatar: {fileID: 21300000, guid: f8355cdc618753e58cb719865dfbe407, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checked_utc": "2026-10-28T16:56:29.901884+00:00",
+  "runtime_modules": 67,
+  "lua_named_cases": 823,
+  "new_reconnect_admission_cases": 25,
+  "offline_harness_tests": 13,
+  "module_tree_sha256_without_production_seed": "4f70330341b0a1e4beb64333592d22f1cb7b914f88ff2237d1706a7db5794b52",
+  "changed_from_first_network_candidate": [
+    "duel_match3_resume.lua"
+  ],
+  "change_reason": "Plain cold discovery must check a new pending admission before returning a historical terminal pointer. Exact-match/request recovery semantics are unchanged.",
+  "before_fix_failing_unit_saved": ".cache/qa/reconnect-0317/terminal-masks-pending-before-fix.log",
+  "network_validation_pending_new_candidate": true,
+  "production_runtime_changed": false,
+  "catalog_migration_required": false
+}

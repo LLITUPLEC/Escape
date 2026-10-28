@@ -20,7 +20,7 @@ namespace Project.Editor
     public static class ExpeditionWorkshopRecipeQa
     {
         private const BindingFlags Hidden = BindingFlags.Instance | BindingFlags.NonPublic;
-        private const string Output = "Design/Release-0.3.15/media/validation/workshop";
+        private const string Output = ".cache/qa/mine-refresh/workshop";
         [Serializable] private sealed class Report
         {
             public bool passed, networkActions, accountWrites;

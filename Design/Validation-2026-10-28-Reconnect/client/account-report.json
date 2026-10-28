@@ -1,0 +1,80 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "preferenceWrites": false,
+    "accountWrites": false,
+    "utc": "2026-10-28T16:49:31.7299168Z",
+    "error": "",
+    "checks": [
+        "Fresh offline QA owns an empty dispatcher queue before creating callbacks",
+        "Only a real authenticated user needs an initial ownership claim",
+        "One accepted claim acknowledges that authentication lifetime",
+        "Socket reconnect does not re-claim or bump authentication generation 0",
+        "Socket reconnect does not re-claim or bump authentication generation 1",
+        "Socket reconnect does not re-claim or bump authentication generation 2",
+        "Socket reconnect does not re-claim or bump authentication generation 3",
+        "Socket reconnect does not re-claim or bump authentication generation 4",
+        "Socket reconnect does not re-claim or bump authentication generation 5",
+        "Socket reconnect does not re-claim or bump authentication generation 6",
+        "Socket reconnect does not re-claim or bump authentication generation 7",
+        "Socket reconnect does not re-claim or bump authentication generation 8",
+        "Socket reconnect does not re-claim or bump authentication generation 9",
+        "Explicit same-user login rejects an old claim acknowledgement",
+        "New explicit-login claim can settle exactly its own generation",
+        "Logout invalidates delayed acknowledgements and the next account starts unclaimed",
+        "Actual RecoverAsync serializes authenticated epoch and exact optional identities to the read-only recovery RPC",
+        "Actual CancelAsync uses the acknowledgement RPC and parses a terminal cancellation without a fresh launch",
+        "Actual cold-start Recover(null,null) JSON physically omits optional identity fields instead of serializing rejected empty strings",
+        "Actual request-only cancellation JSON supplies a valid request identity and physically omits match_id",
+        "Actual match-only recovery JSON physically omits request_id; all four wire variants are exercised through production transport",
+        "Cancel waits for connection before sending any transport request",
+        "Same-user relogin during Require cannot turn an old Cancel into a new-session server side effect",
+        "A legitimate token object refresh in the same authentication lifetime remains recoverable",
+        "Late other-account active reply is cancelled before it can arm a launch",
+        "A late acknowledgement from a previous login of the same user cannot become current data",
+        "A logged-out operation fails before connection or transport",
+        "Terminal replies cannot restore a battle",
+        "Practice attempts cannot become durable recovered joins",
+        "Legacy practice mode is also excluded from recovery",
+        "Known terminal match is deduplicated inside this owner lifetime",
+        "A current account can arm only a server-confirmed durable descriptor",
+        "Recovered PvE enters the existing solo presentation mode",
+        "Recovered metadata restores its own floor/difficulty with auto-start/payment disabled",
+        "Consuming presentation mode does not lose the authoritative recovered match identity",
+        "A same-user authentication generation change clears an armed recovery before scene entry",
+        "An old authentication operation cannot re-arm a recovered scene",
+        "Current login can explicitly accept a fresh descriptor",
+        "Explicit new selection cannot retain a hidden earlier recovered descriptor",
+        "Explicit selection retains its own metadata; context manipulation alone never calls a paid RPC",
+        "RPC failure releases the coordinator lock and schedules a bounded retry",
+        "Unresolved paid admission is retried without launching or marking recovery complete",
+        "A cold-start response after scene navigation cannot replace the user's current scene",
+        "All tests leave no authenticated client/socket or queued gameplay/account callbacks"
+    ],
+    "actualSerializedRequests": [
+        {
+            "rpc": "duel_match3_recover",
+            "json": "{\"match_id\":\"qa-match-a\",\"request_id\":\"qa-request-a\",\"session_epoch\":7}"
+        },
+        {
+            "rpc": "duel_match3_cancel",
+            "json": "{\"match_id\":\"qa-match-a\",\"request_id\":\"qa-request-a\",\"session_epoch\":7}"
+        },
+        {
+            "rpc": "duel_match3_recover",
+            "json": "{\"session_epoch\":7}"
+        },
+        {
+            "rpc": "duel_match3_cancel",
+            "json": "{\"request_id\":\"qa-pending-request\",\"session_epoch\":7}"
+        },
+        {
+            "rpc": "duel_match3_recover",
+            "json": "{\"match_id\":\"qa-match-only\",\"session_epoch\":7}"
+        },
+        {
+            "rpc": "duel_match3_recover",
+            "json": "{\"session_epoch\":7}"
+        }
+    ]
+}

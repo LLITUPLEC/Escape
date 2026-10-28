@@ -1,0 +1,38 @@
+{
+  "original_summary_unchanged": true,
+  "source_stage": "release0317-validation-40edf29df0f7",
+  "runtime_sha256": "a8605fb955cc61015cd626aa3ef9fb3fa1c6b5c7c007c8f4ea9fefbd077a41c3",
+  "target_reconnect_passed": {
+    "exit_code": 0,
+    "seconds": 103.5,
+    "checks": 28,
+    "failed": 0,
+    "errors": [],
+    "tested_runtime_matches_final_candidate": true
+  },
+  "unselected_all_error": {
+    "exit_code": 1,
+    "seconds": 49.2,
+    "checks": 32,
+    "failed": 0,
+    "errors": [
+      "lifecycle: RemoteDisconnected: Remote end closed connection without response"
+    ],
+    "tested_runtime_matches_final_candidate": true
+  },
+  "container_state": [
+    {
+      "Status": "running",
+      "Running": true,
+      "OOMKilled": false,
+      "Dead": false,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-10-28T17:15:13.901125443Z",
+      "FinishedAt": "0001-01-01T00:00:00Z"
+    }
+  ],
+  "qualification": "RemoteDisconnected occurred only in four concurrent immutable forfeit requests. No OOM/dead/restart or Lua/Go panic was observed. A dedicated bounded one-time retry of the identical frozen account/epoch/match was added only to that fixture, with three offline negative tests. The original failed summary is not reclassified as successful.",
+  "source_summary_sha256": "942876cea22f4d10afd85910c5855aceb075bd8b60b630a6616869a5c474e50d",
+  "traceback_sha256": "808bebf82e9e77e8bdc4879f6f03bf0cb4788f771caeeb37f0f70e107d4d0074"
+}

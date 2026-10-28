@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "identityOnly": true,
+  "networkActions": false,
+  "published": false,
+  "publisherSha256": "70f6510f8cf873f8598cad4437e0bc9e868bfdcc7a48453f58ba6cc3aad5a34e",
+  "checks": [
+    {
+      "version": "0.3.17",
+      "passed": true,
+      "result": "Current identity accepted; deliberately absent APK rejected before bundle admission"
+    },
+    {
+      "version": "0.3.16",
+      "passed": true,
+      "result": "Other release identity rejected"
+    },
+    {
+      "version": "0.3.18",
+      "passed": true,
+      "result": "Other release identity rejected"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "version": "0.3.17",
+  "versionCode": 19,
+  "selectedUtc": "2026-10-28T17:07:45.074941+00:00",
+  "renderer": "Unity6000.3.9f1 native production UI render",
+  "physicalAndroidCapture": false,
+  "networkActions": false,
+  "screenCount": 3,
+  "pixelsModified": false,
+  "screens": [
+    {
+      "file": "hub.png",
+      "caption": "Убежище",
+      "source": ".cache/qa/reconnect-0317/ui/shelter-c-1080x1920.png",
+      "sourceReport": ".cache/qa/reconnect-0317/ui/shelter-c-report.json",
+      "sourceSha256": "79f9a682c02c2f1f34f899fe2042b97e6f9bdc003fd9bb95adce4461ab1245f8",
+      "sha256": "79f9a682c02c2f1f34f899fe2042b97e6f9bdc003fd9bb95adce4461ab1245f8",
+      "bytes": 3189569,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false,
+      "offlineData": "Production BuildShelter and ResourceHeader hydrated from offline account/character/wallet DTOs; genuine3/3/3 mail/friend/quest example counts"
+    },
+    {
+      "file": "character.png",
+      "caption": "Образы героя",
+      "source": ".cache/qa/reconnect-0317/ui/appearance-male-locked-1920.png",
+      "sourceReport": ".cache/qa/reconnect-0317/ui/ui-report.json",
+      "sourceSha256": "5a2de8967556e7446811142626e9020f96701ac890e657ed8d8b70d7ac12b4c6",
+      "sha256": "5a2de8967556e7446811142626e9020f96701ac890e657ed8d8b70d7ac12b4c6",
+      "bytes": 1938483,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false,
+      "offlineData": "Production CharacterAppearancePanel with offline appearance-server-039.json DTO fixture; male Alchemist locked preview and actual shipping paired art"
+    },
+    {
+      "file": "mine.png",
+      "caption": "Бой",
+      "source": ".cache/qa/reconnect-0317/ui/ability-costs-1920.png",
+      "sourceReport": ".cache/qa/reconnect-0317/ui/ui-report.json",
+      "sourceSha256": "96416fa017e8d74dcef1952c3580475d56ced4b1cad0652f54c80397bee8b89b",
+      "sha256": "96416fa017e8d74dcef1952c3580475d56ced4b1cad0652f54c80397bee8b89b",
+      "bytes": 2556246,
+      "width": 1080,
+      "height": 1920,
+      "pixelsModified": false,
+      "offlineData": "Production DuelMatch3 serialized components, normal live ability costs30/20/20/40/30, deterministic Match3BoardLogic seed3400 and local PlayerStats examples; two actual shipping bodies"
+    }
+  ]
+}

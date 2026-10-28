@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "accountChecks": 44,
+  "battleChecks": 42,
+  "actualProductionMethodsExercised": [
+    "Match3RecoveryService.RecoverAsync/CancelAsync JSON + async lifetime checks",
+    "DuelMatch3Manager.OnMatchState/OnBoardSyncReceived/ApplyRemoteBoardSync",
+    "OnCellClicked swap and production selected ability request",
+    "CancelPreparationAsync and PresentConfirmedMatch"
+  ],
+  "simulatedDisconnectSeconds": [
+    5,
+    30
+  ],
+  "noActualNetwork": true,
+  "noAccountOrPreferenceWrites": true,
+  "physicalDeviceTested": false,
+  "runtimeAndEditorCompilePassed": true,
+  "wholeAggregateUiPending": true,
+  "sourceFreezeMatches": true
+}

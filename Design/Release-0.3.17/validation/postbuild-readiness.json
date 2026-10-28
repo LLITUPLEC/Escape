@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "scope": "postbuild-working-tree-candidate-not-index-review",
+  "checkedUtc": "2026-10-28T17:42:20.340912+00:00",
+  "head": "cede5c422dfb11df48817efd332e843baf86a362",
+  "branch": "main",
+  "remoteRefreshed": false,
+  "sourceReport": ".cache/qa/reconnect-0317/readiness/postbuild-candidate.json",
+  "sourceReportSha256": "e8ad5ac8e95e829823bac0988838081410c36917fcb2b9208ed735594cfe8021",
+  "candidateFiles": 139,
+  "candidateBytes": 19720935,
+  "confirmedSecrets": 0,
+  "qualifiedFalsePositives": [
+    {
+      "path": "Assets/_Project/Scripts/Nakama/NakamaBootstrap.cs",
+      "line": 71,
+      "kind": "literal-secret-assignment",
+      "classification": "false-positive-preference-key-constant",
+      "symbol": "PrefSavedEmailPassword",
+      "valuesPrinted": false
+    }
+  ],
+  "privateNamedFiles": [],
+  "largeFilesAtLeast50MiB": [],
+  "generatedCandidates": [],
+  "conflictedPaths": [],
+  "mergeMarkerFindings": [],
+  "ignoredTracked": [],
+  "performanceBuildOutputsAutoRemoved": [
+    "Assets/Resources/PerformanceTestRunInfo.json",
+    "Assets/Resources/PerformanceTestRunInfo.json.meta",
+    "Assets/Resources/PerformanceTestRunSettings.json",
+    "Assets/Resources/PerformanceTestRunSettings.json.meta"
+  ],
+  "ignoredBuildArtifacts": [
+    {
+      "path": "Builds/0.3.17/build-status.json",
+      "bytes": 392,
+      "ignored": true
+    },
+    {
+      "path": "Builds/0.3.17/Escape-0.3.17-a692d44fa0ad.apk",
+      "bytes": 124415319,
+      "ignored": true
+    },
+    {
+      "path": "Builds/0.3.17/Escape-0.3.17-a692d44fa0ad.apk.sha256",
+      "bytes": 98,
+      "ignored": true
+    },
+    {
+      "path": "Builds/0.3.17/Escape-0.3.17-a692d44fa0ad.symbols.zip",
+      "bytes": 48745618,
+      "ignored": true
+    }
+  ],
+  "ignoredCacheOutputs": [
+    ".cache/qa/reconnect-0317/readiness/postbuild-candidate.json",
+    ".cache/release-work/publication/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58.tar.gz",
+    "Website/escape/dist/index.html"
+  ],
+  "sourceSnapshot": {
+    "passed": true,
+    "files": 2083,
+    "manifestSha256": "5f563e267b33a0acf9049d520acd04ae18714354862fdd895ea6a51dc4ee4667",
+    "missing": [],
+    "added": [],
+    "changed": []
+  },
+  "indexReviewed": false,
+  "staged": false,
+  "committed": false,
+  "pushed": false,
+  "sourceFilesEdited": false,
+  "publicationPerformed": false,
+  "followup": "A short final changed/new-file delta scan remains for future durable server reports; no index audit or Git writes are authorized.",
+  "limitations": [
+    "Secret patterns are heuristic; matches are qualified without storing or printing their values.",
+    "This report describes the post-build working tree before future server-proof additions, not an index or publication review."
+  ]
+}

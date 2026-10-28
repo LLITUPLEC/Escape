@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Жила"
   floor: 12
   icon: {fileID: 21300000, guid: 6b3d782029dfd604db663c59dd070df1, type: 3}
+  avatar: {fileID: 21300000, guid: 3b3cbd8a7dab5af382d0b6d1aaec79a1, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

@@ -22,7 +22,7 @@ namespace Project.Editor
     {
         private const BindingFlags Hidden = BindingFlags.Instance | BindingFlags.NonPublic;
         private const BindingFlags StaticHidden = BindingFlags.Static | BindingFlags.NonPublic;
-        private const string Output = "Design/Release-0.3.15/media/validation/shelter";
+        private const string Output = ".cache/qa/mine-refresh/shelter";
         [Serializable] private sealed class Report
         {
             public bool passed, networkActions, accountWrites;
@@ -41,7 +41,7 @@ namespace Project.Editor
             Camera camera = null; RenderTexture target = null;
             try
             {
-                var fixture = JsonUtility.FromJson<MailService.State>(File.ReadAllText("Design/Release-0.3.15/media/validation/appearance-unlock-mail-fixture.json"));
+                var fixture = JsonUtility.FromJson<MailService.State>(File.ReadAllText("Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json"));
                 Check(MailService.Valid(fixture) && fixture.unread_count > 0, "Actual server unlock inbox fixture is required for the badge.");
                 typeof(MailService).GetField("_scope", StaticHidden).SetValue(null, LocalAccountCacheScope.Current);
                 typeof(MailService).GetField("_state", StaticHidden).SetValue(null, fixture);

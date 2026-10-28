@@ -1,0 +1,39 @@
+{
+  "version": "0.3.18",
+  "date": "2026-10-29",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": ".cache/qa/reconnect-0317/ui/shelter-c-1080x1920.png",
+      "sha256": "79f9a682c02c2f1f34f899fe2042b97e6f9bdc003fd9bb95adce4461ab1245f8",
+      "bytes": 3189569,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unmodified actual Unity production-component render using offline data fixtures; no physical Android capture."
+    },
+    {
+      "file": "character.png",
+      "source": ".cache/qa/release0318/ui/appearance-catalog-1080x1920.png",
+      "sha256": "2f44bbc7baa6d26afaf13e02b0bb97ecc4341ee10d744eb9389d1ec536765242",
+      "bytes": 2450677,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unmodified actual Unity production-component render using offline data fixtures; no physical Android capture."
+    },
+    {
+      "file": "mine.png",
+      "source": ".cache/qa/release0318/ui/monster-dossier-1080x1920.png",
+      "sha256": "5377ecc1c9d274e2a0e324b6604d5c3afef014582f4d86acd0152b0f25d006ff",
+      "bytes": 2255324,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unmodified actual Unity production-component render using offline data fixtures; no physical Android capture."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "purpose": "Preserve active reusable source inputs before eventual retirement of release0.3.15. No release deleted. Historical originals unchanged.",
+  "inputs": [
+    {
+      "source": "Design/Release-0.3.15/art-manifest.json",
+      "destination": "Docs/Art/ShelterIcons/art-manifest.json",
+      "sha256": "a27a6c0531a319e92c7eb88a960a2e8eda64b4e2a206b2f654729317730f8731",
+      "byteIdentical": true
+    },
+    {
+      "source": "Design/Release-0.3.15/media/art-manifest.json",
+      "destination": "Docs/Art/MineRefresh/art-manifest.json",
+      "sha256": "86365e4608c24159bc18be89be8ffd597f69a94615bce74b7d27c3204b42b197",
+      "byteIdentical": true
+    },
+    {
+      "source": "Design/Release-0.3.15/media/generated-utility-art.json",
+      "destination": "Docs/Art/MineRefresh/generated-utility-art.json",
+      "sha256": "ba8424b936602c2477ab468f67414da26aa3271cc60c41d95e2ad06b6a8f079e",
+      "byteIdentical": true
+    },
+    {
+      "source": "Design/Release-0.3.15/media/installed-art.json",
+      "destination": "Docs/Art/MineRefresh/installed-art.json",
+      "sha256": "74a10b9393d55c975a887d15fc7ac0cc56fc528380de620a67e65c8501765d50",
+      "byteIdentical": true
+    },
+    {
+      "source": "Design/Release-0.3.15/media/validation/appearance-unlock-mail-fixture.json",
+      "destination": "Assets/_Project/Editor/Fixtures/appearance-unlock-mail.json",
+      "sha256": "3ece7dc8a2c1b7213c94a8372ef9688d9c3edebd9751d558d2390b530fb89706",
+      "byteIdentical": true
+    }
+  ],
+  "runtimeArtPixelsChanged": false,
+  "qaOutputsMovedToIgnoredCache": true
+}

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$StatusPath, [string]$ReportDirectory, [string]$ExpectedVersion = '0.3.16', [long]$MinimumVersionCode = 18)
+param([string]$StatusPath, [string]$ReportDirectory, [string]$ExpectedVersion = '0.3.18', [long]$MinimumVersionCode = 20)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))

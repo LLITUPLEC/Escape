@@ -115,7 +115,7 @@ namespace Project.UI
             if (backgroundImage == null) backgroundImage = _sheet.gameObject.AddComponent<Image>();
             ExpeditionUi.StylePanel(backgroundImage, ExpeditionTheme.Panel);
             backgroundImage.raycastTarget = true;
-            var portraitFrame = ExpeditionUi.Panel(_sheet, "MonsterPortraitFrame", .035f, .60f, .405f, .945f);
+            var portraitFrame = ExpeditionUi.Panel(_sheet, "MonsterPortraitFrame", .035f, .635f, .405f, .945f);
             // Clip to the inner well, rather than the outer bevel: even a tall original sprite
             // must stay behind the frame and may never cover its bottom edge with its feet.
             var portraitWell = ExpeditionUi.Rect(portraitFrame.transform, "PortraitWell", .065f, .055f, .935f, .945f);
@@ -144,17 +144,18 @@ namespace Project.UI
                 if (statTexts[i] == null) continue;
                 if (i < 5)
                 {
-                    var bottom = .065f + (4 - i) * .174f;
-                    var row = ExpeditionUi.Rect(statsFrame.transform, "MonsterStatRow_" + i, .06f, bottom, .94f, bottom + .174f);
-                    var icon = NewImage(row, "StatIcon", Color.white, .08f, .05f, .24f, .95f);
+                    var left = i % 2 == 0 ? .035f : .515f;
+                    var bottom = .065f + (2 - i / 2) * .29f;
+                    var row = ExpeditionUi.Rect(statsFrame.transform, "MonsterStatRow_" + i, left, bottom, left + .45f, bottom + .27f);
+                    var icon = NewImage(row, "StatIcon", Color.white, .025f, .12f, .23f, .88f);
                     icon.sprite = ExpeditionArt.Icon(statKeys[i]);
                     icon.preserveAspect = true;
-                    Place(statTexts[i], row, .34f, 0, .91f, 1, 32, ExpeditionTheme.Ivory);
+                    Place(statTexts[i], row, .29f, 0, .98f, 1, 32, ExpeditionTheme.Ivory);
                     statTexts[i].horizontalOverflow = HorizontalWrapMode.Overflow;
                 }
                 else
                 {
-                    Place(statTexts[i], monster, .05f, .535f, .405f, .59f, 23, ExpeditionTheme.Muted);
+                    Place(statTexts[i], monster, .05f, .59f, .405f, .63f, 23, ExpeditionTheme.Muted);
                     statTexts[i].alignment = TextAnchor.MiddleCenter;
                 }
             }
@@ -181,7 +182,7 @@ namespace Project.UI
             NewText(barrier, "GateCaption", "ПУТЬ ЗАКРЫТ", 23, ExpeditionTheme.Amber, .065f, .37f, .38f, .425f).alignment = TextAnchor.MiddleCenter;
             Place(supplementalInfoText, _sheet, .43f, .132f, .965f, .22f, 22, new Color32(221, 157, 120, 255));
             Place(fightButton, _sheet, .035f, .035f, .672f, .12f);
-            Place(dismissButton, _sheet, .035f, .135f, .405f, .215f);
+            Place(dismissButton, _sheet, .035f, .455f, .405f, .575f);
             Place(closeButton, _sheet, .70f, .035f, .965f, .12f);
             ExpeditionUi.StyleButton(fightButton, true, 29);
             ExpeditionUi.StyleButton(dismissButton, false, 23);
@@ -208,7 +209,7 @@ namespace Project.UI
             ExpeditionDifficultyAura.Set(_portrait, difficulty, !barrier && monster != null);
             ExpeditionDifficultyAura.Set(_sceneMonster, difficulty, !barrier && monster != null);
             _sceneGate.gameObject.SetActive(barrier);
-            if (dismissButton != null) Rect(dismissButton.transform as RectTransform, .035f, barrier ? .035f : .135f, barrier ? .672f : .405f, barrier ? .12f : .215f);
+            if (dismissButton != null) Rect(dismissButton.transform as RectTransform, .035f, barrier ? .035f : .455f, barrier ? .672f : .405f, barrier ? .12f : .575f);
             if (dismissButton != null) ExpeditionUi.StyleButton(dismissButton, barrier, barrier ? 29 : 23);
             // The controller fills text/costs after this call, including when an already-open
             // barrier becomes a monster dossier. Reapply the view once those writes settle.

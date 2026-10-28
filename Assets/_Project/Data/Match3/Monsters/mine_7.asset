@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Чёрная копоть"
   floor: 7
   icon: {fileID: 21300000, guid: 2c596ed4d11afa7498be2901556eed77, type: 3}
+  avatar: {fileID: 21300000, guid: 2fc70443aa3e5e2aae2c3e57c08c9d62, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

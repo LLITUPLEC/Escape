@@ -57,13 +57,14 @@ namespace Project.Nakama
             var bootstrap = NakamaBootstrap.Instance;
             var guard = _instance;
             var owner = LocalAccountCacheScope.Current;
+            var generation = bootstrap?.AuthenticationGeneration ?? 0;
             if (bootstrap == null || guard == null) throw new InvalidOperationException(UnavailableMessage);
             try
             {
                 await bootstrap.EnsureConnectedAsync(ct);
                 await guard.ProbeAsync(ct);
                 if (!CanPlay || !ReferenceEquals(bootstrap, NakamaBootstrap.Instance) || !ReferenceEquals(guard, _instance) ||
-                    owner != null && !LocalAccountCacheScope.IsCurrent(owner)) throw new InvalidOperationException(UnavailableMessage);
+                    owner != null && (!LocalAccountCacheScope.IsCurrent(owner) || generation != bootstrap.AuthenticationGeneration)) throw new InvalidOperationException(UnavailableMessage);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch

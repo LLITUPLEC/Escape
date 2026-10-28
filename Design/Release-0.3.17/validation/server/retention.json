@@ -1,0 +1,64 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T18:17:02.564169+00:00",
+  "version": "0.3.17",
+  "versionCode": 19,
+  "runtimeSha256": "0c16126510fe0ca50b8f99a72f5cbc6a3a4e71b6e3a3412063e452c4f78058fe",
+  "runtimeFiles": 68,
+  "seedPreserved": true,
+  "catalogsUnchanged": true,
+  "protectedConfigAndAdminUnchanged": true,
+  "noApiDatabaseRestartDuringStaticPublication": true,
+  "nakamaHealth": "healthy",
+  "currentTarget": "/var/www/escape/releases/0.3.17-a692d44fa0ad-20261028T181540317124Z",
+  "fullHttpsFiles": 32,
+  "fullHttpsApkVerified": true,
+  "previous016WebAndApkPreserved": true,
+  "currentRuntimeBackup": "/opt/escape/backups/pre-publication-0.3.17-20261028T181224Z",
+  "rollback016Backup": "/opt/escape/backups/runtime-release-20261028T181102Z",
+  "bothBackupsVerified": true,
+  "publisherSha256": "70f6510f8cf873f8598cad4437e0bc9e868bfdcc7a48453f58ba6cc3aad5a34e",
+  "retentionApplied": true,
+  "removed": [
+    {
+      "path": "/opt/escape/backups/pre-publication-0.3.16-20261028T044329Z",
+      "files": 94,
+      "manifestSha256": "cefa39770eb42f64ec72d62500f1e37f6dafc4f2b900de78b5442e1c05ded066"
+    },
+    {
+      "path": "/opt/escape/backups/runtime-release-20261027T223730Z",
+      "files": 82,
+      "manifestSha256": "e27402a251de0a22b5c5d1c03bdc9a57e0ebd9f349dd6480e6d29474333d11f9"
+    },
+    {
+      "path": "/var/www/escape/releases/0.3.15-e7ac556941de-20261027T162440099786Z",
+      "files": 32
+    },
+    {
+      "path": "/var/www/escape/downloads/Escape-0.3.15-e7ac556941de.apk",
+      "sha256": "e7ac556941debbe4295b14cfd298f7a278d4da8ffb97ee8e89d59c954f6b83c8"
+    }
+  ],
+  "ownedStagePathsRemoved": [
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58.tar.gz",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-publisher.py",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-plan.json",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-installer.py",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-run-publication.py",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-publication.log",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-publication-exit.json",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-previous-publisher.py",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-full-integrity.json",
+    "/opt/escape/page-staging/escape0317-c2177bdcec304a9d95bbc2ebd04a3a58-public-smoke.json"
+  ],
+  "retainedVersions": [
+    "0.3.17",
+    "0.3.16"
+  ],
+  "retainedBackups": [
+    "/opt/escape/backups/pre-publication-0.3.17-20261028T181224Z",
+    "/opt/escape/backups/runtime-release-20261028T181102Z"
+  ],
+  "backupCount": 2
+}

@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Мёртвый плывун"
   floor: 6
   icon: {fileID: 21300000, guid: 5c7279e8ac76e0e45bb69fbadb3d10b7, type: 3}
+  avatar: {fileID: 21300000, guid: 5a99df7cd16f5e6d84748b71f65070b2, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}

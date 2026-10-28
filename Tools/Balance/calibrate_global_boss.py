@@ -75,8 +75,11 @@ function trial(seed)
  local actor,opponent="hero","zz-bot-global";local new_turn=true;local damage=0;local actions=0;local turns=0;local ability_counts={0,0,0,0,0,0}
  while s.stats.hero.hp>0 and actions<400 do
   if new_turn then
-   if actor=="zz-bot-global"then RULES.begin_turn(s);if s.stats.hero.hp<=0 then break end
+   if actor=="zz-bot-global"then RULES.begin_turn(s)
    else turns=turns+1;if turns>TURN_CAP then break end end
+  end
+  if actor=="zz-bot-global"and RULES.scream_ready(s)then
+   RULES.scream(s);actions=actions+1;if s.stats.hero.hp<=0 then break end
   end
   local action=E.choose(s,actor,opponent)
   if not action then break end

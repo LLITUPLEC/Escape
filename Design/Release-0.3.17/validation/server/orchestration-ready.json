@@ -1,0 +1,23 @@
+{
+  "ready": true,
+  "checkedUtc": "2026-10-28T17:05:55.096024+00:00",
+  "scope": "Preparation only: local scripts and read-only VPS baseline/idle checks",
+  "productionMutationPerformed": false,
+  "backendApplyApproved": false,
+  "staticPublicationApproved": false,
+  "obsoleteCandidateNotApproved": "release0317-validation-41d30b908a76 / d8ccf679\u2026",
+  "liveBaselineSha256": "aad128d4e8b67dc8b423e6725620c89fee22519e43f727fa1fcfa2b59ed36653",
+  "publisherSha256": "e858fd15c8d6e4f02cdb30cb7097e78f5ff10596f931278d36e60f17e2131df0",
+  "canonicalDeployerSha256": "ff499e1a887c724b1bcc072ed41f1d55735b210bfdd2f2a624ae6858530f74d2",
+  "liveHealth": "healthy",
+  "idle": true,
+  "preparedScripts": 10,
+  "localGuardChecks": 5,
+  "scriptsDirectory": ".cache/release-work/0317-vps",
+  "nextRequiredInputs": [
+    "Root final tested stage and complete runtime SHA after all/reconnect-0317/recovery PASS",
+    "Separate backend apply signal",
+    "Validated signed APK/publication plan and separate static signal",
+    "Full HTTPS byte/SHA PASS and explicit exact retention signal"
+  ]
+}

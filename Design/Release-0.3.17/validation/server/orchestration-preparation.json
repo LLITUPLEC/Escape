@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-10-28T18:13:35.311603+00:00",
+  "scope": "Local Python syntax, obsolete-stage/approval guards and actual helper CAS rollback on owned fixture; no network or production actions",
+  "checks": [
+    "All prepared Python sources compile without executing their remote side effects",
+    "Apply requires a separate explicit approval flag",
+    "Obsolete candidate is rejected against current source/ready/context before any SSH script is emitted",
+    "Actual rollback helper atomically restores exactly its own pinned smoke update",
+    "Actual rollback helper preserves a concurrent operator change instead of overwriting it"
+  ],
+  "sourceSha256": {
+    "backend_orchestrator.py": "10482ea35ecdf0d6c2e249a50d855d65eef8a92e83a979312dd361294140c039",
+    "backup_before_publication_remote.py": "3544b5aa16d2201a2aea46341dbb8647682b05a5a1cf71352e7095be3303f2f6",
+    "check_current_candidate.py": "3e39c1cf5596407f1899985ec4fdcd790d50f3b2e5dd49d6ee21a49d40c82d69",
+    "check_preparation.py": "0b016af65f2fc408bd271e97fcf1ec1357314f14f58875d73f42f0d4082d761d",
+    "cleanup_backend_stages_remote.py": "4c37693373dc3b439c169d1534578ede4dc579eecfa1024214f7e9d60b62afc5",
+    "launch_publication_remote.py": "7738f8a3ec8dd67d299d260983a16443cfb31a6d61ec4d3d3e4680c0e2956292",
+    "make_backend_job.py": "3dabe9301845ca660357c15e12ae9f8a852ffe9f928c72f38354c2c91f27a0ff",
+    "make_baseline_check.py": "873d99ff7a8fd7354491cdf43156644e12b44df0404d01e66f31f45bce246bd4",
+    "make_publication_job.py": "f84b517fdb98d5b53d8a3f7dd0d058d447ed142b2f36c58ac862326912b34a19",
+    "preflight_remote.py": "7d4615eb5274121e260067d6a029da2b1b871f92f22f52135624817f94bf22a5",
+    "verify_and_retain_remote.py": "be21f0f54bf3c3db9850073f535a070687549307ccd3f2104f5b014757751b1b"
+  },
+  "productionMutations": false,
+  "finalBackendCandidateApproved": false,
+  "staticPublicationApproved": false
+}

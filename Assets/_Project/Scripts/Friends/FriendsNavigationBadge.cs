@@ -12,6 +12,7 @@ namespace Project.Friends
         private FriendsIncomingInviteState _state;
         private CanvasGroup _group;
         private TMP_Text _count;
+        private ExpeditionGoldCountBadge _presentation;
         public int PendingCount => _state?.Count ?? 0;
         public bool IsVisible => _group != null && _group.alpha > 0;
         public RectTransform BadgeRect { get; private set; }
@@ -31,24 +32,12 @@ namespace Project.Friends
         private void Refresh()
         {
             if (_group == null) Build();
-            _count.text = PendingCount > 99 ? "99+" : PendingCount.ToString();
-            _group.alpha = PendingCount > 0 ? 1 : 0;
+            _presentation.Present(PendingCount);
         }
         private void Build()
         {
-            var root = transform.Find("ExpeditionFriendsBadge") as RectTransform;
-            if (root == null) root = ExpeditionUi.Rect(transform, "ExpeditionFriendsBadge", 1, 1, 1, 1);
-            BadgeRect = root; root.anchorMin = root.anchorMax = root.pivot = Vector2.one;
-            root.anchoredPosition = new Vector2(-10, -8); root.sizeDelta = new Vector2(52, 48); root.SetAsLastSibling();
-            _group = ExpeditionUi.Ensure<CanvasGroup>(root.gameObject); _group.blocksRaycasts = false; _group.interactable = false;
-            var image = ExpeditionUi.Ensure<Image>(root.gameObject); image.sprite = ExpeditionArt.Frame(true) ?? ExpeditionTheme.Plate;
-            image.type = Image.Type.Sliced; image.pixelsPerUnitMultiplier = 4; image.color = Color.white; image.raycastTarget = false;
-            var label = root.Find("Count") as RectTransform;
-            if (label == null) label = ExpeditionUi.Rect(root, "Count", .06f, .06f, .94f, .94f);
-            _count = ExpeditionUi.Ensure<TextMeshProUGUI>(label.gameObject);
-            _count.font = ExpeditionTheme.Font; _count.fontSize = _count.fontSizeMax = 30; _count.fontSizeMin = 24;
-            _count.enableAutoSizing = true; _count.alignment = TextAlignmentOptions.Center;
-            _count.color = new Color32(35, 28, 18, 255); _count.raycastTarget = false;
+            _presentation = ExpeditionGoldCountBadge.Build(transform, "ExpeditionFriendsBadge", "Count", new Vector2(-10, -8));
+            BadgeRect = _presentation.Rect; _group = _presentation.Group; _count = _presentation.Label;
         }
     }
 }

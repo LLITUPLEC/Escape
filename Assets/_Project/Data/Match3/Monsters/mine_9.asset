@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "Слепой бурав"
   floor: 9
   icon: {fileID: 21300000, guid: a91d543982b8d6745b32b2cd79bb2ded, type: 3}
+  avatar: {fileID: 21300000, guid: 8c014eb1b8ab5662ac46529375aa8e10, type: 3}
   frameEasy: {fileID: 0}
   frameMedium: {fileID: 0}
   frameHard: {fileID: 0}
