@@ -1,0 +1,23 @@
+{
+  "sha256": "bec46055bfcde715b5ac2bd062ad2a43540b80b65b34724977bff5d3c9f2c5dc",
+  "signature_verified": true,
+  "build_errors": 0,
+  "apk": "Escape-Expedition-0.3.22-20261112-224551.apk",
+  "build_warnings": 4,
+  "date": "2026-11-13T01:57:03+03:00",
+  "version_code": 24,
+  "version": "0.3.22",
+  "debuggable_attribute_present": false,
+  "build_result": "Succeeded",
+  "manifest_parsed": true,
+  "build_seconds": 648.5616163999999,
+  "development_build": false,
+  "native_abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "debuggable": false,
+  "unity_data_entries": 10,
+  "bytes": 130366059,
+  "physical_device_tested": false
+}

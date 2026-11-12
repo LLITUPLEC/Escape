@@ -276,6 +276,7 @@ namespace Project.Match3
         // Input
         private int          _selX = -1, _selY = -1;
         private AbilityType? _pendingAbility;
+        private Vector2Int   _abilityAimCell = new Vector2Int(-1, -1);
         private bool         _inputBlocked;
         private bool _connectionInputPaused, _matchCancelled;
         private bool CanSendGameplayInput => _useLocalBotSimulation || ServerConnectionGuard.CanPlay &&
@@ -1115,6 +1116,7 @@ namespace Project.Match3
                 _turnEndsAtUnixMs = UtcNowMs() + (long)(turnDuration * 1000);
             _inputBlocked = false;
             _pendingAbility = null;
+            ClearAbilityAim();
             _selX = _selY = -1;
             _boardView?.ClearSelections();
             _remoteSelX = _remoteSelY = -1;
@@ -1160,9 +1162,36 @@ namespace Project.Match3
             if (_gameEnded) return;
             PlaySfx(sfxTimerEnd);
             _inputBlocked = true; // ждём серверный тик/обновление
+            ClearAbilityAim();
         }
 
         // ─── Input ────────────────────────────────────────────────────────────────
+
+        private void OnCellAimChanged(int x, int y, bool aiming)
+        {
+            var cell = new Vector2Int(x, y);
+            if (!aiming)
+            {
+                if (_abilityAimCell == cell) ClearAbilityAim();
+                return;
+            }
+            if (!_isMyTurn || _gameEnded || _inputBlocked || !CanSendGameplayInput ||
+                !_pendingAbility.HasValue || _abilityAimCell == cell)
+                return;
+
+            _abilityAimCell = cell;
+            _boardView?.SetAbilityPreview(_pendingAbility, x, y);
+            if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
+                _cheatRowsOverlayView.SetAbilityPreview(_pendingAbility, x, y);
+        }
+
+        private void ClearAbilityAim()
+        {
+            if (_abilityAimCell.x < 0) return;
+            _abilityAimCell = new Vector2Int(-1, -1);
+            _boardView?.SetAbilityPreview(null);
+            _cheatRowsOverlayView?.SetAbilityPreview(null);
+        }
 
         private void OnCellClicked(int x, int y)
         {
@@ -1237,29 +1266,19 @@ namespace Project.Match3
         private void ExecuteAbility(AbilityType ability, int cx, int cy)
         {
             _pendingAbility = null;
+            ClearAbilityAim();
             _abilityPanel?.SetSelectedAbility(null);
             _abilityPanel?.ShowHint(false);
 
-            if (!IsAbilityAvailable(ability))
+            if (!CanSendGameplayInput || !IsAbilityAvailable(ability))
             {
                 RefreshAbilityUi(_isMyTurn, false);
                 return;
             }
 
-            StartCoroutine(SendAbilityRequestRoutine(ability, cx, cy));
-        }
-
-        private IEnumerator SendAbilityRequestRoutine(AbilityType ability, int cx, int cy)
-        {
-            var inputGeneration = _matchTransportGeneration;
             _inputBlocked = true;
-            if (_boardView != null && (ability == AbilityType.Cross || ability == AbilityType.Square))
-            {
-                yield return _boardView.AnimateAbilityArea(ability, cx, cy, 0.24f);
-                if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
-                    yield return _cheatRowsOverlayView.AnimateAbilityArea(ability, cx, cy, 0.24f);
-            }
-            if (inputGeneration != _matchTransportGeneration || !CanSendGameplayInput || _cancelPreparationIntent) yield break;
+            bool usesCell = ability == AbilityType.Cross || ability == AbilityType.Square;
+            if (usesCell) ExpeditionAudio.Play(ExpeditionCue.UiClick);
             var req = new M3ActionRequest
             {
                 actionType = ability == AbilityType.Cross ? 2 :
@@ -1267,8 +1286,8 @@ namespace Project.Match3
                              ability == AbilityType.Petard ? 4 :
                              ability == AbilityType.Shield ? 5 : 6,
                 fromX = -1, fromY = -1, toX = -1, toY = -1,
-                cx = (ability == AbilityType.Cross || ability == AbilityType.Square) ? cx : -1,
-                cy = (ability == AbilityType.Cross || ability == AbilityType.Square) ? cy : -1,
+                cx = usesCell ? cx : -1,
+                cy = usesCell ? cy : -1,
             };
             SendActionRequest(req);
         }
@@ -1663,6 +1682,8 @@ namespace Project.Match3
 
         private void ShowGameOver(bool won)
         {
+            ClearAbilityAim();
+            _boardView?.ClearAbilityImpact();
             if (_isGlobalBoss) { ShowGlobalBossOutcome(); return; }
             var isDraw = _pendingGameOverDraw;
             if (!isDraw)
@@ -2119,6 +2140,7 @@ namespace Project.Match3
                 _remoteSyncRoutine = null;
                 _pendingBoardSyncs.Clear(); _silentBoardSyncs.Clear();
                 _abilityFx?.CancelTransient();
+                _boardView?.ClearAbilityImpact();
                 _awaitingPresentationSnapshot = false;
             }
             if (silent) _silentBoardSyncs.Add(msg);
@@ -2241,6 +2263,13 @@ namespace Project.Match3
             yield return null;
             var silent = _silentBoardSyncs.Remove(msg);
             var presentAction = !silent && msg.actionType > 0;
+            if (silent) _boardView?.ClearAbilityImpact();
+            AbilityType? boardImpact = presentAction ? msg.actionType switch
+            {
+                2 => AbilityType.Cross,
+                3 => AbilityType.Square,
+                _ => null
+            } : null;
             var actor = string.Equals(msg.actionActorUserId, _myUserId, StringComparison.Ordinal) ? _myPanel
                 : string.Equals(msg.actionActorUserId, _opUserId, StringComparison.Ordinal) ? _opPanel : null;
             var target = actor == _myPanel ? _opPanel : _myPanel;
@@ -2290,21 +2319,9 @@ namespace Project.Match3
                     _board.FromArray(currentBoard);
                     _boardView.RefreshAll(_board);
                 }
-                else if (msg.actionType == 2 &&
-                         msg.abilityX >= 0 && msg.abilityY >= 0)
+                else if (boardImpact.HasValue && msg.abilityX >= 0 && msg.abilityY >= 0)
                 {
-                    PlaySfx(sfxAbilityCross);
-                    yield return _boardView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
-                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
-                        yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Cross, msg.abilityX, msg.abilityY, 0.24f);
-                }
-                else if (msg.actionType == 3 &&
-                         msg.abilityX >= 0 && msg.abilityY >= 0)
-                {
-                    PlaySfx(sfxAbilitySquare);
-                    yield return _boardView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
-                    if (_cheatRowsOverlayView != null && _cheatRowsOverlayView.IsVisible)
-                        yield return _cheatRowsOverlayView.AnimateAbilityArea(AbilityType.Square, msg.abilityX, msg.abilityY, 0.24f);
+                    PlaySfx(msg.actionType == 2 ? sfxAbilityCross : sfxAbilitySquare);
                 }
             }
 
@@ -2320,7 +2337,10 @@ namespace Project.Match3
                     if (step.phase == 1)
                     {
                         PlaySfx(sfxLineClear);
-                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.125f);
+                        var impact = boardImpact;
+                        boardImpact = null; // Later clears in the cascade are ordinary matches.
+                        yield return _boardView.AnimateClearByBoardDiff(currentBoard, step.board, 0.125f,
+                            impact, msg.abilityX, msg.abilityY);
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
                         currentBoard = _board.ToArray();
@@ -2330,7 +2350,7 @@ namespace Project.Match3
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
                         PlaySfx(sfxCascadeFall);
-                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.25f);
+                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.25f, playbackSpeed: 1.10f);
                         currentBoard = _board.ToArray();
                     }
                 }
@@ -3254,6 +3274,7 @@ namespace Project.Match3
         private void RefreshAbilityUi(bool isMyTurn, bool gameEnded)
         {
             isMyTurn = isMyTurn && CanSendGameplayInput;
+            if (!isMyTurn || gameEnded || _inputBlocked) ClearAbilityAim();
             _abilityPanel?.Refresh(
                 _myStats,
                 isMyTurn,
@@ -4441,6 +4462,7 @@ namespace Project.Match3
 
             _boardView.CellClicked += OnCellClicked;
             _boardView.CellSwiped += OnCellSwiped;
+            _boardView.CellAimChanged += OnCellAimChanged;
             _boardView.Build();
 
             EnsureCombatWidgets(_opPanel);
@@ -4650,6 +4672,8 @@ namespace Project.Match3
             _cheatRowsOverlayView.SetVisible(true);
             if (_latestCheatRows != null)
                 _cheatRowsOverlayView.RefreshAll(_latestCheatRows);
+            if (_abilityAimCell.x >= 0)
+                _cheatRowsOverlayView.SetAbilityPreview(_pendingAbility, _abilityAimCell.x, _abilityAimCell.y);
         }
 
         private void HideCheatRowsOverlay() => _cheatRowsOverlayView?.SetVisible(false);
@@ -5150,6 +5174,7 @@ namespace Project.Match3
             if (_pendingAbility.HasValue && _pendingAbility.Value == ability)
             {
                 _pendingAbility = null;
+                ClearAbilityAim();
                 _abilityPanel?.SetSelectedAbility(null);
                 _abilityPanel?.ShowHint(false);
                 RefreshAbilityUi(_isMyTurn, _gameEnded);
@@ -5157,6 +5182,7 @@ namespace Project.Match3
             }
 
             if (!IsAbilityAvailable(ability)) return;
+            ClearAbilityAim();
             if (_selX >= 0 && _selY >= 0) SendSelectionSync(_selX, _selY, false);
             _pendingAbility = ability;
             _abilityPanel?.SetSelectedAbility(ability);

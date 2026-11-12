@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "version": "0.3.22",
+  "checkedUtc": "2026-11-12T22:57:01.914595+00:00",
+  "fileCount": 2177,
+  "snapshotManifestSha256": "0dc713eb14b87181a273297afe914be47f320ff5138fffcb9a4798a614bdd5a4",
+  "missing": [],
+  "added": [],
+  "changed": [],
+  "exactExpectedBuildCleanup": []
+}

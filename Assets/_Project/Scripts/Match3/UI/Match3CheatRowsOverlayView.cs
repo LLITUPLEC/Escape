@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -30,10 +29,6 @@ namespace Project.Match3
         [Tooltip("Force CheatRowsOverlayCells anchoredPosition (ignored when container uses top-stretch anchors).")]
         [SerializeField] private bool forceContainerAnchoredPosition = false;
         [SerializeField] private Vector2 forcedContainerAnchoredPosition = new Vector2(0f, 320f);
-
-        [Header("Ability Highlight")]
-        [SerializeField] private Color abilitySelColor = new Color(1f, 0.95f, 0.25f, 0.05f);
-        [SerializeField] private Color abilitySelColorMax = new Color(1f, 0.95f, 0.25f, 0.52f);
 
         private Image[,] _bg;        // [x, yGhost]
         private RawImage[,] _icon;   // [x, yGhost]
@@ -262,7 +257,7 @@ namespace Project.Match3
                 selRt.offsetMin = new Vector2(2, 2);
                 selRt.offsetMax = new Vector2(-2, -2);
                 var selImg = selGo.AddComponent<Image>();
-                selImg.color = abilitySelColor;
+                selImg.color = Match3BoardView.AbilityPreviewColor;
                 selImg.raycastTarget = false;
                 selGo.SetActive(false);
                 _sel[x, yGhost] = selImg;
@@ -310,34 +305,22 @@ namespace Project.Match3
             }
         }
 
-        public IEnumerator AnimateAbilityArea(AbilityType ability, int cx, int cy, float duration = 0.24f)
+        public void SetAbilityPreview(AbilityType? ability, int cx = -1, int cy = -1)
         {
-            if (!_built || _sel == null || duration <= 0f) yield break;
+            if (!_built || _sel == null) return;
+            foreach (var overlay in _sel)
+                if (overlay != null && overlay.gameObject.activeSelf)
+                    overlay.gameObject.SetActive(false);
 
-            var cells = CollectGhostCellsForAbility(ability, cx, cy);
-            if (cells.Count == 0) yield break;
-
-            foreach (var (x, yGhost) in cells)
+            if (!ability.HasValue) return;
+            foreach (var (x, yGhost) in CollectGhostCellsForAbility(ability.Value, cx, cy))
             {
-                if (_sel[x, yGhost] == null) continue;
-                _sel[x, yGhost].gameObject.SetActive(true);
-                _sel[x, yGhost].color = abilitySelColor;
+                var overlay = _sel[x, yGhost];
+                if (overlay == null) continue;
+                overlay.sprite = Match3BoardView.GetAbilityPreviewSprite();
+                overlay.color = Match3BoardView.AbilityPreviewColor;
+                overlay.gameObject.SetActive(true);
             }
-
-            float t = 0f;
-            while (t < duration)
-            {
-                t += Time.deltaTime;
-                float p = Mathf.Clamp01(t / duration);
-                var alpha = Mathf.Lerp(abilitySelColor.a, abilitySelColorMax.a, p);
-                foreach (var (x, yGhost) in cells)
-                    if (_sel[x, yGhost] != null)
-                        _sel[x, yGhost].color = new Color(abilitySelColor.r, abilitySelColor.g, abilitySelColor.b, alpha);
-                yield return null;
-            }
-
-            foreach (var (x, yGhost) in cells)
-                if (_sel[x, yGhost] != null) _sel[x, yGhost].gameObject.SetActive(false);
         }
 
         private System.Collections.Generic.List<(int x, int yGhost)> CollectGhostCellsForAbility(AbilityType ability, int cx, int cy)
@@ -378,19 +361,7 @@ namespace Project.Match3
                 }
             }
 
-            // De-dup
-            if (cells.Count <= 1) return cells;
-            var used = new bool[Cols, TopGhostRows];
-            var uniq = new System.Collections.Generic.List<(int, int)>();
-            foreach (var c in cells)
-            {
-                int x = c.x, yGhost = c.yGhost;
-                if (x < 0 || x >= Cols || yGhost < 0 || yGhost >= TopGhostRows) continue;
-                if (used[x, yGhost]) continue;
-                used[x, yGhost] = true;
-                uniq.Add((x, yGhost));
-            }
-            return uniq;
+            return cells;
         }
 
         private static bool UsesTopStretchLayout(RectTransform rt)

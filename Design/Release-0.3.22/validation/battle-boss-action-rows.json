@@ -1,0 +1,27 @@
+{
+    "passed": true,
+    "networkActions": false,
+    "accountWrites": false,
+    "error": "",
+    "checks": [
+        "A boss packet without privileged rows creates no avatar trigger or overlay access",
+        "Allowlisted boss rows bind to the opponent avatar and start hidden",
+        "First dynamic overlay owns the live RectTransform and twelve ghost cells",
+        "A legacy plain Transform container upgrades without retaining a destroyed Transform wrapper",
+        "Avatar reveal still requires a three second hold",
+        "A shorter hold cannot reveal hidden rows",
+        "Three second opponent avatar hold reveals the two rows",
+        "Releasing the completed reveal hold does not immediately hide the rows",
+        "Subsequent boss packets refresh privileged rows while preserving visibility",
+        "A simple avatar tap hides already visible rows",
+        "A simple avatar tap never reveals hidden rows",
+        "Moving the pointer away cancels the reveal hold",
+        "Holding a visible overlay keeps it visible until a simple tap",
+        "A denied boss snapshot hides rows and clears their cached content",
+        "Adaptation and scream are recognized as separate free boss actions",
+        "Actual adaptation presentation preserves HP and gives its effect a separate animation interval",
+        "Adaptation does not transition turns restart the timer or unlock player input",
+        "Actual scream presentation applies its6300 HP packet after adaptation with its own animation interval",
+        "Scream keeps the same boss turn and live deadline before the ordinary move"
+    ]
+}

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Match3;
@@ -15,6 +15,7 @@ using Project.Utils;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -67,8 +68,10 @@ namespace Project.Editor
                 SynchronizationContext.SetSynchronizationContext(null);
                 var root = new GameObject("InactiveReconnectFixture"); root.SetActive(false);
                 var boot = root.AddComponent<NakamaBootstrap>(); config = ScriptableObject.CreateInstance<NakamaConnectionConfig>(); config.host = "offline.invalid"; boot.Config = config;
-                var session = (global::Nakama.ISession)FormatterServices.GetUninitializedObject(typeof(global::Nakama.Session));
-                Field(typeof(global::Nakama.Session), "<UserId>k__BackingField", I).SetValue(session, "qa-reconnect-player");
+                var expiry = DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds();
+                var claims = Encoding.UTF8.GetBytes("{\"uid\":\"qa-reconnect-player\",\"usn\":\"offline\",\"exp\":" + expiry + "}");
+                var encodedClaims = Convert.ToBase64String(claims).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+                var session = global::Nakama.Session.Restore("offline." + encodedClaims + ".offline", null);
                 Set(boot, "<Session>k__BackingField", session); bootField.SetValue(null, boot);
                 var socketType = typeof(ServerConnectionGuardQa0312).GetNestedType("FakeSocket", BindingFlags.NonPublic);
                 object Socket() => Activator.CreateInstance(socketType, true);
@@ -86,11 +89,15 @@ namespace Project.Editor
                 var board = boardRoot.AddComponent<Match3BoardView>();
                 board.cellContainer = new GameObject("Cells", typeof(RectTransform), typeof(GridLayoutGroup)).transform; board.cellContainer.SetParent(boardRoot.transform, false); board.Build();
                 Set(manager, "_boardView", board);
+                board.CellAimChanged += (x, y, aiming) => Call(manager, "OnCellAimChanged", x, y, aiming);
+                board.CellClicked += (x, y) => Call(manager, "OnCellClicked", x, y);
                 var abilityRoot = new GameObject("AbilityPanel", typeof(RectTransform)); abilityRoot.transform.SetParent(root.transform, false);
                 var ability = abilityRoot.AddComponent<Match3AbilityPanel>(); ability.UseExpeditionStyle();
                 Button Button(string name) { var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button)); go.transform.SetParent(abilityRoot.transform, false); return go.GetComponent<Button>(); }
                 ability.crossButton = Button("Cross"); ability.squareButton = Button("Square"); ability.petardButton = Button("Petard"); ability.shieldButton = Button("Shield"); ability.furyButton = Button("Fury");
-                Set(manager, "_abilityPanel", ability); ability.OnCrossClicked += () => Call(manager, "OnCrossClicked");
+                Set(manager, "_abilityPanel", ability);
+                ability.OnCrossClicked += () => Call(manager, "OnCrossClicked");
+                ability.OnSquareClicked += () => Call(manager, "OnSquareClicked");
                 var packets = new List<Packet>(); var calls = new List<string>(); var joins = new List<string>(); var navigation = new List<string>();
                 hooks[3].SetValue(null, new Func<string, long, byte[], Task>((match, op, data) =>
                 { packets.Add(new Packet { match = match, op = op, action = op == 13 ? JsonUtility.FromJson<M3ActionRequest>(System.Text.Encoding.UTF8.GetString(data)) : null }); return Task.CompletedTask; }));
@@ -126,11 +133,49 @@ namespace Project.Editor
                         "Actual OnCellClicked sends the next swap after the" + seconds + "s recovery", report);
                     Apply(manager, Snapshot("zz-bot-mine_5", seconds + 1), report);
                     Check(Get<bool>(manager, "_inputBlocked") && !ability.crossButton.interactable, "Opponent response still blocks local controls /" + seconds, report);
-                    Apply(manager, Snapshot(session.UserId, seconds + 2), report);
-                    ability.crossButton.onClick.Invoke(); Check(Get<AbilityType?>(manager, "_pendingAbility") == AbilityType.Cross, "Production ability button accepts selection on the next own turn /" + seconds, report);
-                    Set(manager, "_boardView", null); Pump((IEnumerator)Call(manager, "SendAbilityRequestRoutine", AbilityType.Cross, 0, 0)); Set(manager, "_boardView", board);
-                    Check(packets.Count(p => p.op == 13) == before + 2 && packets.Last(p => p.op == 13).action.actionType == 2,
-                        "The selected ability emits its actual action request without replaying the old action /" + seconds, report);
+                    var ownTurn = Snapshot(session.UserId, seconds + 2);
+                    ownTurn.cheatRows = Enumerable.Repeat((int)PieceType.GemRed, Match3BoardLogic.Size * 2).ToArray();
+                    Apply(manager, ownTurn, report);
+                    Call(manager, "ShowCheatRowsOverlay");
+                    var ghostView = Get<Match3CheatRowsOverlayView>(manager, "_cheatRowsOverlayView");
+                    Check(ghostView.IsVisible, "Authorized hidden rows are visible while targeting", report);
+                    var cross = seconds == 5;
+                    var selected = cross ? AbilityType.Cross : AbilityType.Square;
+                    var button = cross ? ability.crossButton : ability.squareButton;
+                    const int aimX = 2, aimY = 0;
+                    var aimCell = board.cellContainer.Find($"Cell_{aimX}_{aimY}");
+                    var pointer = new PointerEventData(null);
+                    var beforeAbility = Get<Match3BoardLogic>(manager, "_board").ToArray();
+                    var mana = Get<PlayerStats>(manager, "_myStats").mana;
+                    var preview = Get<Image[,]>(board, "_sel");
+                    var ghostPreview = Get<Image[,]>(ghostView, "_sel");
+                    bool PreviewCleared() => preview.Cast<Image>().Concat(ghostPreview.Cast<Image>()).All(cell => !cell.gameObject.activeSelf);
+                    button.onClick.Invoke();
+                    Check(Get<AbilityType?>(manager, "_pendingAbility") == selected && packets.Count(p => p.op == 13) == before + 1,
+                        $"{selected} button enters targeting without sending an action", report);
+                    aimCell.GetComponent<IPointerEnterHandler>().OnPointerEnter(pointer);
+                    CheckPreview(preview, selected, aimX, aimY, report);
+                    CheckPreview(ghostPreview, selected, aimX, aimY, report, firstRow: -2);
+                    aimCell.GetComponent<IPointerExitHandler>().OnPointerExit(pointer);
+                    Check(PreviewCleared(), $"{selected} preview clears when the pointer leaves", report);
+                    aimCell.GetComponent<IPointerDownHandler>().OnPointerDown(pointer);
+                    button.onClick.Invoke();
+                    Check(!Get<AbilityType?>(manager, "_pendingAbility").HasValue && packets.Count(p => p.op == 13) == before + 1
+                          && PreviewCleared(), $"{selected} toggle cancels targeting and clears the preview", report);
+                    button.onClick.Invoke();
+                    aimCell.GetComponent<IPointerDownHandler>().OnPointerDown(pointer);
+                    CheckPreview(preview, selected, aimX, aimY, report);
+                    CheckPreview(ghostPreview, selected, aimX, aimY, report, firstRow: -2);
+                    var click = aimCell.GetComponent<IPointerClickHandler>();
+                    click.OnPointerClick(pointer);
+                    var action = packets.Last(p => p.op == 13).action;
+                    Check(packets.Count(p => p.op == 13) == before + 2 && action.actionType == (cross ? 2 : 3)
+                          && action.cx == aimX && action.cy == aimY, $"{selected} target click sends its exact action and coordinates synchronously", report);
+                    Check(Get<bool>(manager, "_inputBlocked") && !Get<AbilityType?>(manager, "_pendingAbility").HasValue
+                          && PreviewCleared(), $"{selected} dispatch clears targeting and waits for the server", report);
+                    click.OnPointerClick(pointer);
+                    Check(packets.Count(p => p.op == 13) == before + 2 && beforeAbility.SequenceEqual(Get<Match3BoardLogic>(manager, "_board").ToArray())
+                          && Get<PlayerStats>(manager, "_myStats").mana == mana, $"{selected} repeat tap sends nothing and the board and mana wait for the server", report);
                 }
                 hooks[1].SetValue(null, new Func<CancellationToken, Task>(_ => Task.CompletedTask));
                 Set(manager, "_match", new FixtureMatch("qa-cancel-before-ready")); Set(manager, "_gameEnded", false); Set(manager, "_matchRevealPending", true);
@@ -258,6 +303,19 @@ namespace Project.Editor
         }
         private static void QueueCallback(DuelMatch3Manager manager, string match, Action action) =>
             typeof(DuelMatch3Manager).GetMethod("QueueMatchCallback", I, null, new[] { typeof(string), typeof(Action) }, null).Invoke(manager, new object[] { match, action });
+        private static void CheckPreview(Image[,] preview, AbilityType ability, int aimX, int aimY, Report report, int firstRow = 0)
+        {
+            var matches = true;
+            for (var y = 0; y < preview.GetLength(1); y++)
+            for (var x = 0; x < preview.GetLength(0); x++)
+            {
+                var dx = Math.Abs(x - aimX);
+                var dy = Math.Abs(y + firstRow - aimY);
+                var expected = ability == AbilityType.Cross ? dx == 0 && dy <= 2 || dy == 0 && dx <= 2 : dx <= 1 && dy <= 1;
+                matches &= preview[x, y].gameObject.activeSelf == expected;
+            }
+            Check(matches, $"{ability} highlights only its in-bounds target cells in rows beginning at {firstRow} before confirming", report);
+        }
         private static void Pump(IEnumerator routine)
         { var n = 0; while (routine.MoveNext()) { if (++n > 200) throw new InvalidOperationException("Unexpected presentation wait."); if (routine.Current is IEnumerator nested) Pump(nested); } }
         private static void Drain(ConcurrentQueue<Action> queue) { while (queue.TryDequeue(out var action)) action(); }

@@ -61,9 +61,9 @@
         <p class="release-tag">Версия {{RELEASE_VERSION}} <span aria-hidden="true">·</span> {{APK_MIB}} МиБ <span aria-hidden="true">·</span> APK</p>
       </div>
       <figure class="hero-visual">
-        <div class="screen-frame"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Арена Escape с воротами дуэлей, Спуска и турниров" fetchpriority="high" decoding="async"></div>
+        <div class="screen-frame"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Герой и меню Убежища Escape на новом фоне" fetchpriority="high" decoding="async"></div>
         <span class="screen-corner a" aria-hidden="true"></span><span class="screen-corner b" aria-hidden="true"></span>
-        <figcaption>АРЕНА ESCAPE · ДУЭЛИ И ТУРНИРЫ</figcaption>
+        <figcaption>УБЕЖИЩЕ ESCAPE · ГЛАВНЫЙ ЭКРАН</figcaption>
       </figure>
     </section>
     <section class="wrap game-intro" aria-labelledby="game-title">
@@ -72,9 +72,9 @@
     </section>
     <section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
       <div class="wrap">
-        <div class="section-heading"><div><p class="micro eyebrow">Мир Escape</p><h2 id="gallery-title">Загляните в экспедицию</h2></div><p>Арена, альбом медалей и досье мирового босса. Нажмите на кадр, чтобы увеличить его.</p></div>
+        <div class="section-heading"><div><p class="micro eyebrow">Мир Escape</p><h2 id="gallery-title">Загляните в экспедицию</h2></div><p>Убежище, альбом медалей и досье мирового босса. Нажмите на кадр, чтобы увеличить его.</p></div>
         <div class="gallery">
-          <figure><a href="./assets/hub.png?v={{RELEASE_VERSION}}" data-lightbox="Арена" aria-label="Увеличить экран «Арена»"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Ворота классической дуэли, PRO, Спуска и трёх турниров" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">01 / АРЕНА</span><h3>Выберите режим боя</h3><p>Дуэли, «Спуск» и турниры получили свои ворота. На закрытых турнирах видно условие открытия.</p></figcaption></figure>
+          <figure><a href="./assets/hub.png?v={{RELEASE_VERSION}}" data-lightbox="Убежище" aria-label="Увеличить экран «Убежище»"><img src="./assets/hub.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Герой, ресурсы и кнопки главного экрана Убежища" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">01 / УБЕЖИЩЕ</span><h3>Вернитесь в Убежище</h3><p>Здесь можно проверить ресурсы, заглянуть в почту и подготовиться к следующему спуску.</p></figcaption></figure>
           <figure><a href="./assets/character.png?v={{RELEASE_VERSION}}" data-lightbox="Альбом медалей" aria-label="Увеличить экран «Альбом медалей»"><img src="./assets/character.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Альбом медалей с золотой рамкой у доступной награды" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">02 / ДОСТИЖЕНИЯ</span><h3>Соберите медали</h3><p>Нажмите на медаль, чтобы увидеть ступени и награды. Доступные награды отмечены золотой рамкой.</p></figcaption></figure>
           <figure><a href="./assets/mine.png?v={{RELEASE_VERSION}}" data-lightbox="Досье мирового босса" aria-label="Увеличить экран «Мировой босс»"><img src="./assets/mine.png?v={{RELEASE_VERSION}}" width="1080" height="1920" alt="Сердце Разлома с характеристиками, способностями и трофеями" loading="lazy" decoding="async"></a><figcaption><span class="ordinal">03 / МИРОВОЙ БОСС</span><h3>Изучите Сердце Разлома</h3><p>Проверьте характеристики, способности и трофеи босса перед боем. Вкладка «Летопись боя» показывает вклад игроков.</p></figcaption></figure>
         </div>
@@ -84,12 +84,19 @@
       <div class="release-heading"><p class="micro eyebrow">Что нового</p><h2 id="release-title">Версия {{RELEASE_VERSION}}</h2><time class="date" datetime="{{RELEASE_DATE}}" data-release-date>{{RELEASE_DATE}}</time></div>
       <div>
         <ul class="change-list">
+          <li><h3>Новый фон Убежища</h3><p>В Убежище стало меньше мелких деталей. Мягкий свет и спокойные тона помогают различать героя и кнопки.</p></li>
+          <li><h3>Разломы на поле боя</h3><p>У «Креста» линии разлома расходятся от центра, а у «Квадрата» трескается контур. Осколки продолжают рассеиваться, пока камни падают.</p></li>
+          <li><h3>Падение по рядам</h3><p>Камни снова падают по рядам. Скорость падения на 10% выше, чем в 0.3.21.</p></li>
+        </ul>
+        <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.21</span> — посмотреть изменения</summary>
+        <ul class="change-list">
           <li><h3>Альбом медалей</h3><p>В журнале появились закладки, счётчик коллекции и значки наград. Медали, за которые можно получить награду, выделены пульсирующей золотой рамкой.</p></li>
           <li><h3>Турнирные ворота и аномалия</h3><p>У дуэлей появились арки, у «Спуска» — шахтный портал, у турниров — щиты. Активную аномалию показывает сейсмограф с таймером.</p></li>
           <li><h3>Стоянки, задания и запасы</h3><p>Награды за вход можно посмотреть на карте из семи стоянок. Задания дня собраны на доске, магазин стал лавкой, запасы лежат в сундуке, а настройки открываются на пульте убежища.</p></li>
           <li><h3>Характеристики и летопись босса</h3><p>Исправлена загрузка обеих вкладок. В описании «Адаптации» теперь есть примеры усиления на первом и втором ходах.</p></li>
           <li><h3>Условия «Спуска» и расчёт наград</h3><p>Перед входом игра показывает взнос, цель по мане и приз с сервера. Данные незавершённых выплат и возвратов хранятся до расчёта. Старая история рассчитанных входов и турниров очищается автоматически.</p></li>
         </ul>
+        </details>
         <details class="previous"><summary><span class="version">ПРЕДЫДУЩАЯ ВЕРСИЯ · 0.3.20</span> — посмотреть изменения</summary>
         <ul class="change-list">
           <li><h3>Журнал достижений</h3><p>В каждой строке светлым полужирным выделено название медали, зелёным курсивом показано условие. Нажмите на строку, чтобы увидеть награду, полученные медали и следующие ступени цепочки.</p></li>

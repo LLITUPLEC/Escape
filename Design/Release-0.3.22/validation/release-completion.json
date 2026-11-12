@@ -1,0 +1,35 @@
+{
+  "version": "0.3.22",
+  "versionCode": 24,
+  "state": "published_and_verified",
+  "verifiedUtc": "2026-11-12T22:59:08.8647752+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.22-bec46055bfcd.apk",
+  "apkSha256": "bec46055bfcde715b5ac2bd062ad2a43540b80b65b34724977bff5d3c9f2c5dc",
+  "apkBytes": 130366059,
+  "previousSignerPreserved": true,
+  "physicalDeviceTested": false,
+  "sourceBaseline": "0.3.21",
+  "sourceFiles": 2177,
+  "sourceManifestSha256": "0dc713eb14b87181a273297afe914be47f320ff5138fffcb9a4798a614bdd5a4",
+  "deploymentScope": [
+    "Android APK",
+    "Escape website"
+  ],
+  "checks": {
+    "battlePlayMode": 59,
+    "reconnect": 70,
+    "bossRows": 19,
+    "shelter": 1114,
+    "shelterRenders": 12,
+    "publicFiles": 32,
+    "previousPublicApkFull": true,
+    "nativeSymbolsPassed": true
+  },
+  "backupScheduleMoscow": "04:00 daily",
+  "verifiedDailyVpsBackups": 2,
+  "retainedVersions": [
+    "0.3.22",
+    "0.3.21"
+  ]
+}

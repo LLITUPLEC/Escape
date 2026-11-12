@@ -80,7 +80,7 @@ namespace Project.Match3
             if (_remoteSyncRoutine != null) { StopCoroutine(_remoteSyncRoutine); _remoteSyncRoutine = null; }
             _pendingBoardSyncs.Clear(); _silentBoardSyncs.Clear();
             _abilityFx?.CancelTransient(); _pendingAbility = null; _selX = _selY = -1;
-            _boardView?.ClearSelections(); _boardView?.SetDimmed(true);
+            _boardView?.ClearSelections(); _boardView?.ClearAbilityImpact(); _boardView?.SetDimmed(true);
             _abilityPanel?.SetSelectedAbility(null); _abilityPanel?.ShowHint(false);
             RefreshAbilityUi(false, _gameEnded);
         }

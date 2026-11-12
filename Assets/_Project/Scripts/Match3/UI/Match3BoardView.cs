@@ -19,6 +19,8 @@ namespace Project.Match3
     public sealed class Match3BoardView : UIBehaviour
     {
         private const float InactiveOverlayAlpha = 0.84f;
+        internal static readonly Color AbilityPreviewColor = new Color(.67f, .9f, .99f, .56f);
+        private static Sprite _abilityPreviewSprite;
 
         [Header("Container with GridLayoutGroup")]
         [SerializeField] public Transform cellContainer;
@@ -66,6 +68,7 @@ namespace Project.Match3
         private RectTransform[,] _iconRt;
         private Text[,]  _lbl;  // piece symbol
         private Image _inactiveOverlay;
+        private Match3BoardImpactFx _abilityImpactFx;
         private GameObject _centerAnnouncementRoot;
         private Text _centerAnnouncementText;
         private Coroutine _centerAnnouncementRoutine;
@@ -76,6 +79,7 @@ namespace Project.Match3
         public event Action<int, int> CellClicked;
         /// <summary>Fired when the player swipes from one cell to adjacent cell.</summary>
         public event Action<int, int, int, int> CellSwiped;
+        public event Action<int, int, bool> CellAimChanged;
 
         protected override void Awake()
         {
@@ -167,7 +171,8 @@ namespace Project.Match3
                     cx,
                     cy,
                     () => CellClicked?.Invoke(cx, cy),
-                    (fx, fy, tx, ty) => CellSwiped?.Invoke(fx, fy, tx, ty));
+                    (fx, fy, tx, ty) => CellSwiped?.Invoke(fx, fy, tx, ty),
+                    aiming => CellAimChanged?.Invoke(cx, cy, aiming));
 
                 // ── Piece colour background ────────────────────────────────────────
                 var bgGo = new GameObject("Bg");
@@ -364,7 +369,11 @@ namespace Project.Match3
                     _icon[x, y].color = Color.white;
                     _icon[x, y].enabled = hasIcon;
                 }
-                if (_iconRt[x, y] != null) _iconRt[x, y].localScale = Vector3.one;
+                if (_iconRt[x, y] != null)
+                {
+                    _iconRt[x, y].localScale = Vector3.one;
+                    _iconRt[x, y].anchoredPosition = Vector2.zero;
+                }
                 if (_lbl[x, y] != null)
                 {
                     _lbl[x, y].text = hasIcon ? "" : LabelOf(t);
@@ -435,7 +444,8 @@ namespace Project.Match3
             }
         }
 
-        public IEnumerator AnimateClearByBoardDiff(int[] beforeBoard, int[] afterBoard, float duration = 1.0f)
+        public IEnumerator AnimateClearByBoardDiff(int[] beforeBoard, int[] afterBoard, float duration = 1.0f,
+            AbilityType? impactAbility = null, int impactX = -1, int impactY = -1)
         {
             if (_icon == null || beforeBoard == null || afterBoard == null) yield break;
             if (beforeBoard.Length < Size * Size || afterBoard.Length < Size * Size) yield break;
@@ -449,6 +459,7 @@ namespace Project.Match3
                 if (b != 0 && a == 0) cells.Add((x, y, (PieceType)b));
             }
             if (cells.Count == 0) yield break;
+            bool hasAbilityImpact = impactAbility.HasValue && PlayAbilityImpact(impactAbility.Value, impactX, impactY, cells);
 
             var iconStart = new Dictionary<int, Color>();
             var lblStart = new Dictionary<int, Color>();
@@ -488,7 +499,7 @@ namespace Project.Match3
                 if (_iconRt[x, y] != null) _iconRt[x, y].localScale = Vector3.one;
 
             // Optional burst VFX after the clear finished.
-            if (clearBurstFx != null)
+            if (clearBurstFx != null && !hasAbilityImpact)
             {
                 foreach (var (x, y, pieceType) in cells)
                 {
@@ -500,24 +511,41 @@ namespace Project.Match3
             }
         }
 
-        public IEnumerator AnimateDrop(int[] beforeBoard, Match3BoardLogic afterBoard, float duration = 0.48f)
+        private bool PlayAbilityImpact(AbilityType ability, int x, int y, List<(int x, int y, PieceType t)> cleared)
         {
-            if (_icon == null || _iconRt == null || afterBoard == null || duration <= 0f)
+            if (!InRange(x, y) || cellContainer is not RectTransform viewport) return false;
+            var dimmer = _inactiveOverlay != null ? _inactiveOverlay.transform : null;
+            if (_abilityImpactFx == null)
+                _abilityImpactFx = Match3BoardImpactFx.Create(dimmer != null ? dimmer.parent : transform);
+            return _abilityImpactFx.Play(ability, x, y, viewport, _iconRt, cleared, dimmer);
+        }
+
+        public void ClearAbilityImpact() => _abilityImpactFx?.Stop();
+
+        public IEnumerator AnimateDrop(int[] beforeBoard, Match3BoardLogic afterBoard, float duration = 0.48f,
+            float playbackSpeed = 1f)
+        {
+            if (_icon == null || _iconRt == null || afterBoard == null || duration <= 0f || playbackSpeed <= 0f)
                 yield break;
 
             var glg = cellContainer != null ? cellContainer.GetComponent<GridLayoutGroup>() : null;
             float stepY = glg != null ? (glg.cellSize.y + glg.spacing.y) : 78f;
+            if (stepY <= 0f) yield break;
 
             var drop = new int[Size, Size];
             var spawn = new bool[Size, Size];
             if (beforeBoard != null && beforeBoard.Length >= Size * Size)
                 BuildDropDistances(beforeBoard, afterBoard, drop, spawn);
 
+            float maxStartOffset = 0f;
             for (int y = 0; y < Size; y++)
             for (int x = 0; x < Size; x++)
             {
-                if (_iconRt[x, y] != null)
-                    _iconRt[x, y].anchoredPosition = new Vector2(0f, drop[x, y] * stepY);
+                var rt = _iconRt[x, y];
+                if (rt == null) continue;
+                float start = drop[x, y] * stepY;
+                rt.anchoredPosition = new Vector2(0f, start);
+                maxStartOffset = Mathf.Max(maxStartOffset, start);
                 if (_icon[x, y] != null && spawn[x, y])
                 {
                     var c = _icon[x, y].color;
@@ -526,65 +554,35 @@ namespace Project.Match3
                 }
             }
 
-            var startOffset = new float[Size, Size];
-            float maxStartOffset = 0f;
-            for (int y = 0; y < Size; y++)
-            for (int x = 0; x < Size; x++)
-            {
-                startOffset[x, y] = _iconRt[x, y] != null ? _iconRt[x, y].anchoredPosition.y : 0f;
-                if (startOffset[x, y] > maxStartOffset) maxStartOffset = startOffset[x, y];
-            }
-
             if (maxStartOffset <= 0.001f)
                 yield break;
 
-            // Strong visible cascade: lower rows start first, higher rows start with clear delays.
-            // Tunables below intentionally aggressive so the effect is obvious.
             float speed = maxStartOffset / duration;
-            float delayPerRow = 0.06f;
+            const float delayPerRow = 0.06f;
             float extraByDistance = duration * 0.15f;
-            float staggerMax = (Size - 1) * delayPerRow + extraByDistance;
+            float endTime = duration + (Size - 1) * delayPerRow + extraByDistance;
+
+            // Scale the whole timeline so both the row delays and the fall speed keep the same rhythm.
             float t = 0f;
-            while (t < duration + staggerMax)
+            while (t < endTime)
             {
-                t += Time.deltaTime;
+                t += Time.deltaTime * playbackSpeed;
                 for (int y = 0; y < Size; y++)
                 for (int x = 0; x < Size; x++)
                 {
                     var rt = _iconRt[x, y];
-                    if (rt == null) continue;
-                    float start = startOffset[x, y];
-                    if (start <= 0f)
+                    if (rt == null || drop[x, y] <= 0) continue;
+                    float start = drop[x, y] * stepY;
+                    float delay = (Size - 1 - y) * delayPerRow + start / maxStartOffset * extraByDistance;
+                    float localT = Mathf.Max(0f, t - delay);
+                    float cellProgress = Mathf.Clamp01(speed * localT / start);
+                    rt.anchoredPosition = new Vector2(0f, start * Mathf.Pow(1f - cellProgress, 2.2f));
+                    if (_icon[x, y] != null && spawn[x, y])
                     {
-                        rt.anchoredPosition = Vector2.zero;
-                        continue;
+                        var c = _icon[x, y].color;
+                        c.a = cellProgress;
+                        _icon[x, y].color = c;
                     }
-
-                    float rowDelay = (Size - 1 - y) * delayPerRow;
-                    float distDelay = Mathf.Clamp01(start / maxStartOffset) * extraByDistance;
-                    float delay = rowDelay + distDelay;
-                    float localT = Mathf.Max(0f, t - delay);
-                    float remaining = Mathf.Max(0f, start - speed * localT);
-                    // Tiny smooth easing near landing (keeps trailing feel without harsh snapping).
-                    float cellProgress = 1f - (remaining / start);
-                    float easedCell = 1f - Mathf.Pow(1f - cellProgress, 2.2f);
-                    rt.anchoredPosition = new Vector2(0f, start * (1f - easedCell));
-                }
-
-                for (int y = 0; y < Size; y++)
-                for (int x = 0; x < Size; x++)
-                {
-                    if (_icon[x, y] == null || !spawn[x, y]) continue;
-                    var c = _icon[x, y].color;
-                    float start = Mathf.Max(0.001f, startOffset[x, y]);
-                    float rowDelay = (Size - 1 - y) * delayPerRow;
-                    float distDelay = Mathf.Clamp01(start / maxStartOffset) * extraByDistance;
-                    float delay = rowDelay + distDelay;
-                    float localT = Mathf.Max(0f, t - delay);
-                    float remaining = Mathf.Max(0f, start - speed * localT);
-                    float cellProgress = 1f - (remaining / start);
-                    c.a = Mathf.Clamp01(cellProgress);
-                    _icon[x, y].color = c;
                 }
                 yield return null;
             }
@@ -628,6 +626,24 @@ namespace Project.Match3
             rt2.anchoredPosition = p2;
         }
 
+        public void SetAbilityPreview(AbilityType? ability, int cx = -1, int cy = -1)
+        {
+            if (_sel == null) return;
+            foreach (var overlay in _sel)
+                if (overlay != null && overlay.gameObject.activeSelf)
+                    overlay.gameObject.SetActive(false);
+
+            if (!ability.HasValue) return;
+            foreach (var (x, y) in CollectAbilityCells(ability.Value, cx, cy))
+            {
+                var overlay = _sel[x, y];
+                if (overlay == null) continue;
+                overlay.sprite = GetAbilityPreviewSprite();
+                overlay.color = AbilityPreviewColor;
+                overlay.gameObject.SetActive(true);
+            }
+        }
+
         public IEnumerator AnimateAbilityArea(AbilityType ability, int cx, int cy, float duration = 0.24f)
         {
             if (_sel == null || duration <= 0f) yield break;
@@ -638,6 +654,7 @@ namespace Project.Match3
             foreach (var (x, y) in cells)
             {
                 if (_sel[x, y] == null) continue;
+                _sel[x, y].sprite = null;
                 _sel[x, y].gameObject.SetActive(true);
                 _sel[x, y].color = new Color(1f, 0.95f, 0.25f, 0.05f);
             }
@@ -1040,6 +1057,15 @@ namespace Project.Match3
             return _gridBorderTexture;
         }
 
+        internal static Sprite GetAbilityPreviewSprite()
+        {
+            if (_abilityPreviewSprite != null) return _abilityPreviewSprite;
+            const int size = 64;
+            var texture = CreateSquareBorderTexture(size, 2);
+            _abilityPreviewSprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(.5f, .5f));
+            return _abilityPreviewSprite;
+        }
+
         private static Texture2D CreateRingTexture(int size, float innerRadius, float outerRadius)
         {
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -1088,31 +1114,58 @@ namespace Project.Match3
     internal sealed class Match3CellInput :
         MonoBehaviour,
         IPointerDownHandler,
+        IPointerUpHandler,
+        IPointerEnterHandler,
+        IPointerExitHandler,
         IPointerClickHandler,
         IDragHandler,
         IEndDragHandler
     {
         private const float SwipeThresholdPx = 22f;
+        private const float TouchAimDelaySeconds = .12f;
 
         private int _x;
         private int _y;
         private Action _onClick;
         private Action<int, int, int, int> _onSwipe;
+        private Action<bool> _onAimChanged;
         private Vector2 _pointerDownPos;
         private bool _swipeTriggered;
+        private Coroutine _touchAim;
 
-        public void Init(int x, int y, Action onClick, Action<int, int, int, int> onSwipe)
+        public void Init(int x, int y, Action onClick, Action<int, int, int, int> onSwipe, Action<bool> onAimChanged)
         {
             _x = x;
             _y = y;
             _onClick = onClick;
             _onSwipe = onSwipe;
+            _onAimChanged = onAimChanged;
         }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (!IsTouch(eventData)) _onAimChanged?.Invoke(true);
+        }
+
+        public void OnPointerExit(PointerEventData eventData) => ClearAim();
 
         public void OnPointerDown(PointerEventData eventData)
         {
             _pointerDownPos = eventData.position;
             _swipeTriggered = false;
+            if (eventData.button != PointerEventData.InputButton.Left) return;
+            if (!IsTouch(eventData))
+            {
+                _onAimChanged?.Invoke(true);
+                return;
+            }
+            ClearAim();
+            _touchAim = StartCoroutine(ShowTouchAim());
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (IsTouch(eventData)) ClearAim();
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -1131,6 +1184,7 @@ namespace Project.Match3
                 ty += delta.y >= 0f ? -1 : 1; // UI y-axis is inverted for board coordinates.
 
             _swipeTriggered = true;
+            ClearAim();
             _onSwipe?.Invoke(_x, _y, tx, ty);
         }
 
@@ -1143,6 +1197,33 @@ namespace Project.Match3
         {
             if (_swipeTriggered) return;
             _onClick?.Invoke();
+        }
+
+        private IEnumerator ShowTouchAim()
+        {
+            yield return new WaitForSecondsRealtime(TouchAimDelaySeconds);
+            _touchAim = null;
+            _onAimChanged?.Invoke(true);
+        }
+
+        private void ClearAim()
+        {
+            if (_touchAim != null)
+            {
+                StopCoroutine(_touchAim);
+                _touchAim = null;
+            }
+            _onAimChanged?.Invoke(false);
+        }
+
+        private static bool IsTouch(PointerEventData eventData)
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (eventData is UnityEngine.InputSystem.UI.ExtendedPointerEventData input)
+                return input.pointerType == UnityEngine.InputSystem.UI.UIPointerType.Touch;
+#endif
+            return EventSystem.current != null && EventSystem.current.currentInputModule is StandaloneInputModule
+                && eventData.pointerId >= 0;
         }
     }
 }

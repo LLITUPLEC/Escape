@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "sourceBaselineVersion": "0.3.21",
+  "baselineManifestSha256": "0029e3aae9d1c3cc3e8bc432e40ece782358f3bde24d29785b335f5d39003456",
+  "clientFiles": 2174,
+  "missing": [],
+  "added": [
+    "Assets/_Project/Scripts/Match3/UI/Match3BoardImpactFx.cs",
+    "Assets/_Project/Scripts/Match3/UI/Match3BoardImpactFx.cs.meta"
+  ],
+  "changed": [
+    "Assets/_Project/Editor/ExpeditionBattleReconnectQa.cs",
+    "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png",
+    "Assets/_Project/Scripts/Match3/DuelMatch3Manager.cs",
+    "Assets/_Project/Scripts/Match3/DuelMatch3Recovery.cs",
+    "Assets/_Project/Scripts/Match3/UI/Match3BoardView.cs",
+    "Assets/_Project/Scripts/Match3/UI/Match3CheatRowsOverlayView.cs",
+    "ProjectSettings/ProjectSettings.asset"
+  ]
+}
