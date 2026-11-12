@@ -16,8 +16,8 @@ local function state()
  return s
 end
 local api={get_event=function()return event end,get_player=function()return{}end,
- commit=function(uid,id,sequence,damage,snapshot,player,reason)
-  commits[#commits+1]={sequence=sequence,damage=damage,snapshot=copy(snapshot),player=player}
+ commit=function(uid,id,sequence,damage,snapshot,player,reason,critical_hit)
+  commits[#commits+1]={sequence=sequence,damage=damage,snapshot=copy(snapshot),player=player,critical_hit=critical_hit}
   if fail_commit then return nil,'storage_unavailable'end
   return{event=event,attempt={sequence=sequence,snapshot=copy(snapshot),status=reason and'finished'or'bound',end_reason=reason,actual_damage=0}}
  end}
@@ -77,6 +77,12 @@ check(not pending._boss_pending and #seen==2 and seen[2].scream and pending.stat
  'retry persists the frozen scream exactly once without repeating damage')
 check(commits[2].sequence==commits[3].sequence and commits[2].snapshot.stats.hero.hp==commits[3].snapshot.stats.hero.hp,
  'ambiguous scream settlement retries the same sequence and HP snapshot')
+local hero_crit=state();hero_crit.active_user_id=hero_crit.owner_user_id;hero_crit.stats.hero.mana=100
+hero_crit.stats.hero.base_crit=1;commits={}
+B.loop({},hero_crit,1,{{sender={user_id='hero'},op_code=E.CFG.OP_ACTION_REQUEST,
+ data={actionType=4,fromX=-1,fromY=-1,toX=-1,toY=-1,cx=-1,cy=-1}}})
+check(commits[1].player and commits[1].critical_hit and commits[1].damage>0,
+ 'boss match forwards the actual engine critical result with the player damage commit')
 local cooldown=state();cooldown.global_boss.boss_own_turn=1;cooldown.global_boss.next_scream_turn=3
 seen={};choose_calls=0;resolve_calls=0;B.loop({},cooldown,1,{});B.loop({},cooldown,cooldown.bot_turn_ready_tick,{})
 check(seen[1].adapt and not seen[1].scream and not seen[2].scream and choose_calls==1 and cooldown.global_boss.boss_own_turn==2,

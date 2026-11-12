@@ -4,7 +4,7 @@ namespace Project.Achievements
 {
     public static class AchievementUiRules
     {
-        /// <summary>The additional work for this step. Eligibility still uses CumulativeRequired.</summary>
+        /// <summary>Цель для шкалы ступени в режиме цепочки.</summary>
         public static int StepTarget(AchievementChainDefinition chain, int stepIndex)
         {
             return chain?.Thresholds != null && stepIndex >= 0 && stepIndex < chain.Thresholds.Length
@@ -13,15 +13,18 @@ namespace Project.Achievements
 
         public static int StepProgress(AchievementChainDefinition chain, int stepIndex, int statTotal)
         {
-            var previous = stepIndex > 0 ? CumulativeRequired(chain, stepIndex - 1) : 0;
+            var previous = stepIndex > 0 && chain?.UsesTotalThresholds != true
+                ? CumulativeRequired(chain, stepIndex - 1) : 0;
             return Mathf.Clamp(statTotal - previous, 0, StepTarget(chain, stepIndex));
         }
 
         public static int CumulativeRequired(AchievementChainDefinition chain, int stepIndex)
         {
-            if (chain == null || chain.Thresholds == null || stepIndex < 0)
+            if (chain?.Thresholds == null || chain.Thresholds.Length == 0 || stepIndex < 0)
                 return 0;
             var max = Mathf.Min(stepIndex, chain.Thresholds.Length - 1);
+            if (chain.UsesTotalThresholds)
+                return Mathf.Max(0, chain.Thresholds[max]);
             var sum = 0;
             for (var i = 0; i <= max; i++)
                 sum += Mathf.Max(0, chain.Thresholds[i]);

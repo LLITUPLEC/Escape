@@ -507,7 +507,7 @@ class Suite:
             and isinstance(heartbeat.get("count"), int) and time.monotonic() - began < 3,
             "actual authenticated WebSocket RPC heartbeat accepts empty JSON payload and returns the account epoch within client timeout")
         for p in (a, b):
-            self.seed_money(p, matter=100)
+            self.seed_money(p, matter=100, xp=90)
             self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "lifecycle fixture pays one real Race entry")
         mid, wa, wb, board = self.pair(a, b, "race")
         self.begin_played_match(mid, [(a, wa), (b, wb)])
@@ -533,6 +533,19 @@ class Suite:
         replay = self.rpc(b, "duel_match3_forfeit", {"match_id": mid})
         self.check(replay.get("terminal") and replay.get("winner_user_id") == b["uid"],
             "lost-ack retry after authoritative match deletion reads the bounded own terminal receipt")
+        for p, starting_balance in zip((a, b), balances):
+            inbox = self.rpc(p, "duel_mail_get")
+            level_mails = [m for m in (inbox.get("messages") or []) if m.get("kind") == "level_up"]
+            self.check(len(level_mails) == 1 and level_mails[0].get("id") == "level-up:2"
+                and level_mails[0].get("attachments") == [{"resource": "matter", "amount": 1}],
+                "played Race creates one one-matter level-two mail per player, including the loser and after result retry")
+            if not level_mails:
+                continue
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                claims = list(pool.map(lambda _: self.rpc(p, "duel_mail_claim", {"message_id": level_mails[0]["id"]}), range(3)))
+            self.check(all(reply.get("ok") and reply.get("claimed") for reply in claims)
+                and self.rpc(p, "duel_player_resources_get").get("matter") == starting_balance + 1,
+                "concurrent claims of the same level mail increase the wallet by exactly one matter")
         for p in (a, b):
             self.check(self.rpc(p, "duel_match3_race_enter").get("ok"), "both former Race participants can pay and queue again immediately")
         mid2, next_a, next_b, _ = self.pair(a, b, "race")

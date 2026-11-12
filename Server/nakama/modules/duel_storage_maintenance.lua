@@ -2,14 +2,28 @@
 local nk = require("nakama")
 local retention_ok, JournalRetention = pcall(require, "modules.duel_journal_retention")
 if not retention_ok then JournalRetention = require("duel_journal_retention") end
+local pve_retention_ok, PveRetention = pcall(require, "modules.duel_pve_retention")
+if not pve_retention_ok then PveRetention = require("duel_pve_retention") end
+local arena_retention_ok, ArenaRetention = pcall(require, "modules.duel_arena_retention")
+if not arena_retention_ok then ArenaRetention = require("duel_arena_retention") end
+local race_retention_ok, RaceRetention = pcall(require, "modules.duel_race_retention")
+if not race_retention_ok then RaceRetention = require("duel_race_retention") end
+local boss_retention_ok, BossRetention = pcall(require, "modules.duel_global_boss_attempt_retention")
+if not boss_retention_ok then BossRetention = require("duel_global_boss_attempt_retention") end
 local M = {}
 local SYSTEM = "00000000-0000-0000-0000-000000000000"
 local COLLECTION, KEY = "duel_storage_maintenance", "v1"
 local DAY, BOOTSTRAP_PAGE, PAGE, INTERVAL, LEASE = 86400, 50, 100, 60, 120
 local PAGE_BUDGET, TIME_BUDGET_MS = 10, 250
-local collections = { "arena_tournament", "duel_api_rate_limits", "duel_race_entry", "duel_pve_entry", "duel_match3_journal" }
+local owner_policies = {
+  [PveRetention.COLLECTION] = { module = PveRetention, budget = 12, name = "pve" },
+  [RaceRetention.COLLECTION] = { module = RaceRetention, budget = 8, name = "race" },
+  [BossRetention.COLLECTION] = { module = BossRetention, budget = 4, name = "boss_attempt" },
+}
+local collections = { "arena_tournament", "duel_api_rate_limits", RaceRetention.COLLECTION,
+  PveRetention.COLLECTION, "duel_match3_journal", BossRetention.COLLECTION }
 local next_try = 0
-local recovery, can_prune_receipt
+local recovery
 
 local function value(row)
   if type(row) ~= "table" then return nil end
@@ -32,7 +46,7 @@ end
 
 function M.configure(options)
   options = options or {}
-  recovery, can_prune_receipt = options.recover, options.can_prune_receipt
+  recovery = options.recover
 end
 
 local function needs_recovery(collection, row, v)
@@ -78,16 +92,6 @@ function M.bootstrap()
   return report
 end
 
-local function tournament_terminal(v, now)
-  if v.phase ~= "done" or not old(v.done_at, now, 30 * DAY) then return false end
-  if v.aborted == true then return true end
-  if type(v.reward_receipt) == "table" and old(v.reward_receipt.granted_at, now, 30 * DAY) then return true end
-  local final = type(v.final) == "table" and v.final[1]
-  local winner = type(final) == "table" and final.winner_uid
-  local meta = type(v.parts) == "table" and v.parts[winner]
-  return type(meta) == "table" and meta.bot == true and final.status == "done"
-end
-
 local function eligible(row, now)
   if type(row) ~= "table" or type(row.key) ~= "string" or type(row.version) ~= "string"
       or type(row.user_id) ~= "string" or row.user_id == ""
@@ -100,23 +104,7 @@ local function eligible(row, now)
     return row.key == "v1" and row.user_id ~= SYSTEM and old(row.update_time, now, 7 * DAY)
   end
   if row.collection == "duel_match3_journal" then return JournalRetention.can_prune(row,now) end
-  if not old(row.update_time, now, 30 * DAY) then return false end
-  if row.collection == "arena_tournament" then
-    return row.user_id == SYSTEM and tournament_terminal(v, now)
-  end
-  local is_race = row.collection == "duel_race_entry" and row.key:sub(1, 4) == "run:"
-  local is_pve = row.collection == "duel_pve_entry" and row.key:sub(1, 7) == "launch:"
-  if not (is_race or is_pve)
-      or type(row.user_id) ~= "string" or row.user_id == "" or row.user_id == SYSTEM then return false end
-  if not ((is_race and v.status == "settled" and old(v.settled_at, now, 30 * DAY))
-      or (is_pve and v.status == "consumed" and old(v.consumed_at, now, 30 * DAY))
-      or (v.status == "refunded" and old(v.refunded_at, now, 30 * DAY))) then return false end
-  local active = value(read(row.user_id, row.collection, "active"))
-  if active and ((v.run_id and active.run_id == v.run_id) or (v.receipt_id and active.receipt_id == v.receipt_id)
-      or (v.token and active.token == v.token)) then return false end
-  -- A recovery journal, if present, must prove all durable work is finished.
-  if can_prune_receipt then return can_prune_receipt(row.user_id, v) == true end
-  return v.finish_intent == nil and v.journal_id == nil and v.result_journal_id == nil
+  return false
 end
 
 function M.maybe_run()
@@ -134,6 +122,10 @@ function M.maybe_run()
     if not acquired then return false end -- another runtime won the shared lease
     local report = { at = now, scanned = 0, deleted = 0, pages = 0, conflicted_batches = 0, recovery_attempts = 0, recovered_users = 0 }
     local recovered_owners, exhausted = {}, {}
+    local owner_scans = {}
+    for collection, policy in pairs(owner_policies) do
+      owner_scans[collection] = policy.module.new(now, policy.budget)
+    end
     local started_ms = nk.time()
     local position = math.floor(tonumber(state.next_collection) or 1)
     if position < 1 or position > #collections then position = 1 end
@@ -144,14 +136,22 @@ function M.maybe_run()
       if report.pages > 0 and nk.time() - started_ms >= TIME_BUDGET_MS then break end
       local available = false
       for _ = 1, #collections do
-        if not exhausted[collections[position]] then available = true; break end
+        local collection = collections[position]
+        local scanner = owner_scans[collection]
+        if not exhausted[collection] and (not scanner or scanner.remaining_owners() > 0) then
+          available = true; break
+        end
         position = position % #collections + 1
       end
       if not available then break end
       local collection = collections[position]
-      local rows, cursor = nk.storage_list("", collection, PAGE, state.cursors[collection] or "")
+      local scanner = owner_scans[collection]
+      -- A page can contain a different owner in every row. Reserve enough
+      -- owner lookups for that page before advancing its durable cursor.
+      local limit = scanner and math.min(PAGE, scanner.remaining_owners()) or PAGE
+      local rows, cursor = nk.storage_list("", collection, limit, state.cursors[collection] or "")
       report.pages = report.pages + 1
-      local deletes = {}
+      local deletes = collection == "arena_tournament" and ArenaRetention.deletions(state, rows, now) or {}
       for _, candidate in ipairs(rows or {}) do
         report.scanned = report.scanned + 1
         local v = value(candidate)
@@ -165,7 +165,9 @@ function M.maybe_run()
             report.recovered_users = report.recovered_users + 1
           end
         end
-        if eligible(candidate, now) then
+        if scanner then
+          for _, deletion in ipairs(scanner.deletions(candidate)) do deletes[#deletes + 1] = deletion end
+        elseif collection ~= "arena_tournament" and eligible(candidate, now) then
           deletes[#deletes + 1] = { user_id = candidate.user_id, collection = collection,
             key = candidate.key, version = candidate.version }
         end
@@ -184,6 +186,10 @@ function M.maybe_run()
     if not current or value(current).lease_owner ~= token then return false end
     report.elapsed_ms = math.max(0, nk.time() - started_ms)
     report.page_budget, report.time_budget_ms = PAGE_BUDGET, TIME_BUDGET_MS
+    for collection, policy in pairs(owner_policies) do
+      report[policy.name .. "_owner_budget"] = policy.budget
+      report[policy.name .. "_owner_lookups"] = policy.budget - owner_scans[collection].remaining_owners()
+    end
     state.next_collection = position
     state.next_run_at, state.lease_until, state.last = now + INTERVAL, 0, report
     write(state, current.version)

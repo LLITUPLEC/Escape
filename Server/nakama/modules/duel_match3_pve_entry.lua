@@ -3,6 +3,8 @@
 local nk = require("nakama")
 local ok_journal, Journal = pcall(require, "modules.duel_match3_journal")
 if not ok_journal then Journal = require("duel_match3_journal") end
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
 local M = { COLLECTION = "duel_pve_entry", RESERVATION_SECONDS = 90 }
 local ORDER = { "energy", "gold", "ore", "matter", "miner_key", "dark_key" }
 local ALLOWED = {}; for _, res in ipairs(ORDER) do ALLOWED[res] = true end
@@ -230,7 +232,7 @@ function M.new(deps)
   end
 
   -- Pure read/prepare, for the SAME batch as sheet + progress + result journal.
-  function E.consume_writes(uid, token, run_id)
+  function E.consume_writes(uid, token, run_id, progress)
     local receipt, version = read(uid, "launch:" .. tostring(token or ""))
     if not receipt or receipt.run_id ~= run_id then return nil, "pve_entry_required" end
     if receipt.status == "consumed" then return {} end
@@ -238,7 +240,21 @@ function M.new(deps)
     local active, active_version = read(uid, "active")
     if not active or active.token ~= token then return nil, "pve_entry_required" end
     receipt.status, receipt.consumed_at = "consumed", now()
-    return { object(uid, "active", copy(receipt), active_version), object(uid, "launch:" .. token, receipt, version) }
+    local writes = { object(uid, "active", copy(receipt), active_version), object(uid, "launch:" .. token, receipt, version) }
+    -- A refundable reservation becomes spending only when the fight starts.
+    -- A caller already updating the wallet supplies that same CAS snapshot.
+    local wallet_version, write_wallet
+    for _, cost in ipairs(receipt.costs or {}) do
+      if ResourceMedals.is_currency(cost.resource) then
+        if not progress then
+          progress, wallet_version = progress_read(uid)
+          write_wallet = true
+        end
+        ResourceMedals.spent_currency(progress, cost.resource, cost.amount)
+      end
+    end
+    if write_wallet then writes[#writes + 1] = progress_write(uid, progress, wallet_version) end
+    return writes
   end
 
   function E.consume(uid, token, run_id)

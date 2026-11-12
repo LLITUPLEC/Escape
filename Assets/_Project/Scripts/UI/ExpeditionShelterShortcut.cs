@@ -29,7 +29,7 @@ namespace Project.UI
             colors.fadeDuration = .08f;
             button.colors = colors;
             if (action != null) button.onClick.AddListener(action);
-            var label = ExpeditionUi.Text(root, "Caption", caption, 34, .335f, .10f, .96f, .90f, TextAlignmentOptions.MidlineLeft);
+            var label = ExpeditionUi.Text(root, "Caption", caption, 34, .31f, .10f, .94f, .90f, TextAlignmentOptions.Midline);
             label.color = ExpeditionTheme.Ivory;
             label.enableAutoSizing = true;
             label.fontSizeMin = 26;

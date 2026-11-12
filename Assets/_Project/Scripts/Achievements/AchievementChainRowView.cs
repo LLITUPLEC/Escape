@@ -57,14 +57,11 @@ namespace Project.Achievements
                 var tierColor = chain.TierAccentColors != null && i < chain.TierAccentColors.Length
                     ? chain.TierAccentColors[i]
                     : Color.white;
-                var target = chain.Thresholds[i];
                 var locked = AchievementUiRules.IsSlotLocked(chain, i, stat);
                 var cumulativeNeed = AchievementUiRules.CumulativeRequired(chain, i);
                 var thresholdMet = stat >= cumulativeNeed;
-                var prevCumulative = i > 0 ? AchievementUiRules.CumulativeRequired(chain, i - 1) : 0;
-                var stepNeed = Mathf.Max(1, target);
-
-                var numerator = locked ? 0 : Mathf.Clamp(stat - prevCumulative, 0, stepNeed);
+                var stepNeed = Mathf.Max(1, AchievementUiRules.StepTarget(chain, i));
+                var numerator = locked ? 0 : AchievementUiRules.StepProgress(chain, i, stat);
 
                 var rewardClaimed = AchievementProgressStorage.IsStepClaimed(chain.ChainId, i);
                 var canClaimReward = AchievementRewardClaim.CanClaimStep(chain, i);

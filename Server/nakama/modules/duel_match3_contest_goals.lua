@@ -150,19 +150,11 @@ return function(deps)
   end
 
   function M.race_entry_costs()
-    -- The two-player stake policy must agree with enter RPC and the public UI,
-    -- even if an older stored document still contains a different price.
-    return default_entry()
+    return normalize_lines(read_doc().race.entry, default_entry())
   end
 
   function M.race_rewards()
-    local doc = read_doc()
-    local out = {}
-    for _, line in ipairs(normalize_lines(doc.race and doc.race.rewards, default_rewards())) do
-      if line.resource ~= "matter" then out[#out + 1] = line end
-    end
-    out[#out + 1] = { resource = "matter", amount = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 4)) }
-    return out
+    return normalize_lines(read_doc().race.rewards, default_rewards())
   end
 
   --- Публичный конфиг для клиента (модалка входа / HUD).

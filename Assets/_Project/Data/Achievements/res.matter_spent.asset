@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab46bee0f4e45a0419066b4de3025be7, type: 3}
+  m_Name: res.matter_spent
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Achievements.AchievementDefinition
+  achievementId: res.matter_spent
+  titleRu: "\u0426\u0435\u043d\u0430 \u0440\u0435\u0434\u043a\u043e\u0441\u0442\u0438"
+  category: resources
+  icon: {fileID: 21300000, guid: 94c49bf48acb5eb292c53e9623a5d9a4, type: 3}

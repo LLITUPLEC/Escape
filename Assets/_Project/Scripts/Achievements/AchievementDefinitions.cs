@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Project.Achievements
@@ -8,6 +9,32 @@ namespace Project.Achievements
         Obsession = 0,
         Slaughter = 1,
         Dnn = 2,
+        Resources = 3,
+    }
+
+    public readonly struct AchievementSection
+    {
+        public AchievementTab Tab { get; }
+        public string Id { get; }
+        public string TitleRu { get; }
+
+        internal AchievementSection(AchievementTab tab, string id, string titleRu)
+        {
+            Tab = tab;
+            Id = id;
+            TitleRu = titleRu;
+        }
+    }
+
+    public static class AchievementSections
+    {
+        public static IReadOnlyList<AchievementSection> All { get; } = Array.AsReadOnly(new[]
+        {
+            new AchievementSection(AchievementTab.Obsession, "obsession", "Одержимость"),
+            new AchievementSection(AchievementTab.Slaughter, "slaughter", "Бойня"),
+            new AchievementSection(AchievementTab.Dnn, "dnn", "ДНН"),
+            new AchievementSection(AchievementTab.Resources, "resources", "Ресурсы"),
+        });
     }
 
     public enum AchievementNoticeKind
@@ -30,7 +57,7 @@ namespace Project.Achievements
 
     /// <summary>
     /// Цепочка: один счётчик <see cref="StatKey"/> и несколько порогов.
-    /// Шаг i считается выполненным, когда счётчик &gt;= Thresholds[i] при этом выполнены предыдущие пороги.
+    /// Порог хранится как итоговое значение или прирост, в зависимости от режима цепочки.
     /// </summary>
     public sealed class AchievementChainDefinition
     {
@@ -40,8 +67,10 @@ namespace Project.Achievements
         public AchievementTab Tab;
         public string StatKey;
         public int[] Thresholds;
+        public bool UsesTotalThresholds;
         public string[] Descriptions;
         public string[] RewardTexts;
+        public string[][] RewardTypes;
         public Color[] TierAccentColors;
     }
 
@@ -75,13 +104,14 @@ namespace Project.Achievements
 
     public static class AchievementCatalog
     {
+        private static readonly Lazy<AchievementChainDefinition[]> FallbackChains = new Lazy<AchievementChainDefinition[]>(Build);
         private static AchievementChainDefinition[] _chains;
         private static bool _fromServer;
 
         /// <summary>Каталог подтянут с сервера (или из локального кэша RPC).</summary>
         public static bool IsFromServer => _fromServer;
 
-        public static AchievementChainDefinition[] Chains => _chains ?? Build();
+        public static AchievementChainDefinition[] Chains => _chains ?? FallbackChains.Value;
 
         /// <summary>Подменить список цепочек данными с duel_match3_achievement_catalog_get.</summary>
         public static void ApplyFromServer(AchievementChainDefinition[] chains)
@@ -466,6 +496,91 @@ namespace Project.Achievements
                         "Награда: +8% к урону",
                     },
                     new[] { G, Lb, Db, P }),
+
+                ChainFromServer("dnn.flower_bets", "dnn", "Цветочный", "dnn.arena_all_bets_lost_final_loss",
+                    new[] { 1, 5, 20, 50 },
+                    new[] { "Проиграть все возможные ставки и сыгранный финал одного турнира", "Проиграть все возможные ставки и сыгранный финал одного турнира", "Проиграть все возможные ставки и сыгранный финал одного турнира", "Проиграть все возможные ставки и сыгранный финал одного турнира" },
+                    new[] { "Награда: +1% к урону", "Награда: +2% к здоровью", "Награда: +3% к броне", "Награда: +4% к урону" }, usesTotalThresholds: true),
+
+                ChainFromServer("dnn.petard_50", "dnn", "Бешеный", "dnn.petard_50_pvp",
+                    new[] { 1, 10, 50, 250 },
+                    new[] { "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире" },
+                    new[] { "Награда: +1% к урону", "Награда: +2% к урону", "Награда: +3% к урону", "Награда: +5% к урону" }, usesTotalThresholds: true),
+
+                ChainFromServer("sl.blocked_damage", "slaughter", "Крепкий", "slaughter.damage_blocked_arena",
+                    new[] { 100, 500, 2000, 5000 },
+                    new[] { "Заблокировать бронёй и щитом 100 урона в классическом PvP или турнире", "Заблокировать бронёй и щитом 500 урона в классическом PvP или турнире", "Заблокировать бронёй и щитом 2 000 урона в классическом PvP или турнире", "Заблокировать бронёй и щитом 5 000 урона в классическом PvP или турнире" },
+                    new[] { "Награда: +50 к броне", "Награда: +150 к броне", "Награда: +300 к броне", "Награда: +5% к броне" }, usesTotalThresholds: true),
+
+                ChainFromServer("sl.critical_hits", "slaughter", "Обезумевший", "slaughter.critical_hits",
+                    new[] { 10, 100, 500, 2000 },
+                    new[] { "Нанести урон критическим ударом 10 раз в бою", "Нанести урон критическим ударом 100 раз в бою", "Нанести урон критическим ударом 500 раз в бою", "Нанести урон критическим ударом 2 000 раз в бою" },
+                    new[] { "Награда: +1% к урону", "Награда: +2% к урону", "Награда: +3% к урону", "Награда: +2 п. п. к шансу критического удара" }, usesTotalThresholds: true),
+
+                ChainFromServer("obs.cleanse_fistula", "obsession", "Обеззаразить", "pve.kill.mine_3",
+                    new[] { 20, 60, 150, 350 },
+                    new[] { "Победить «Гнилой свищ» на 3-м этаже шахты", "Победить «Гнилой свищ» на 3-м этаже шахты", "Победить «Гнилой свищ» на 3-м этаже шахты", "Победить «Гнилой свищ» на 3-м этаже шахты" },
+                    new[] { "Награда: +25 к броне", "Награда: +75 к броне", "Награда: +150 к броне", "Награда: +1% к броне" }, usesTotalThresholds: true),
+
+                ChainFromServer("obs.wipe_soot", "obsession", "Смыть копоть", "pve.kill.mine_7",
+                    new[] { 15, 45, 120, 300 },
+                    new[] { "Победить «Чёрную копоть» на 7-м этаже шахты", "Победить «Чёрную копоть» на 7-м этаже шахты", "Победить «Чёрную копоть» на 7-м этаже шахты", "Победить «Чёрную копоть» на 7-м этаже шахты" },
+                    new[] { "Награда: +15 к урону", "Награда: +40 к урону", "Награда: +90 к урону", "Награда: +1% к урону" }, usesTotalThresholds: true),
+
+                ChainFromServer("obs.sever_vein", "obsession", "Перерезать жилу", "pve.kill.mine_12",
+                    new[] { 3, 12, 40, 100 },
+                    new[] { "Победить «Жилу» на 12-м этаже шахты", "Победить «Жилу» на 12-м этаже шахты", "Победить «Жилу» на 12-м этаже шахты", "Победить «Жилу» на 12-м этаже шахты" },
+                    new[] { "Награда: +50 к здоровью", "Награда: +150 к здоровью", "Награда: +300 к здоровью", "Награда: +2% к здоровью" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.ore_earned", "resources", "Рудная жила", "res.ore_earned",
+                    new[] { 500, 5000, 25000, 500000 },
+                    new[] { "Получить 500 ед. руды", "Получить 5 000 ед. руды", "Получить 25 000 ед. руды", "Получить 500 000 ед. руды" },
+                    new[] { "Награда: +10 к броне", "Награда: +25 к броне", "Награда: +60 к броне", "Награда: +2% к броне" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.gold_earned", "resources", "Золотая россыпь", "res.gold_earned",
+                    new[] { 1000, 10000, 50000, 250000 },
+                    new[] { "Получить 1 000 ед. золота", "Получить 10 000 ед. золота", "Получить 50 000 ед. золота", "Получить 250 000 ед. золота" },
+                    new[] { "Награда: +20 к здоровью", "Награда: +50 к здоровью", "Награда: +100 к здоровью", "Награда: +2% к здоровью" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.matter_earned", "resources", "Материя разлома", "res.matter_earned",
+                    new[] { 5, 25, 100, 500 },
+                    new[] { "Получить 5 ед. материи", "Получить 25 ед. материи", "Получить 100 ед. материи", "Получить 500 ед. материи" },
+                    new[] { "Награда: +5 к урону", "Награда: +10 к урону", "Награда: +25 к урону", "Награда: +2% к урону" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.gold_spent", "resources", "Золотой оборот", "res.gold_spent",
+                    new[] { 1000, 10000, 50000, 250000 },
+                    new[] { "Потратить 1 000 ед. золота", "Потратить 10 000 ед. золота", "Потратить 50 000 ед. золота", "Потратить 250 000 ед. золота" },
+                    new[] { "Награда: +10 к броне", "Награда: +25 к броне", "Награда: +60 к броне", "Награда: +2% к броне" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.ore_spent", "resources", "Руда в дело", "res.ore_spent",
+                    new[] { 500, 5000, 25000, 150000 },
+                    new[] { "Потратить 500 ед. руды", "Потратить 5 000 ед. руды", "Потратить 25 000 ед. руды", "Потратить 150 000 ед. руды" },
+                    new[] { "Награда: +10 к лечению", "Награда: +25 к лечению", "Награда: +60 к лечению", "Награда: +2% к лечению" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.matter_spent", "resources", "Цена редкости", "res.matter_spent",
+                    new[] { 5, 25, 100, 500 },
+                    new[] { "Потратить 5 ед. материи", "Потратить 25 ед. материи", "Потратить 100 ед. материи", "Потратить 500 ед. материи" },
+                    new[] { "Награда: +5 к урону", "Награда: +10 к урону", "Награда: +25 к урону", "Награда: +1 п. п. к шансу критического удара" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.tournament_ore_earned", "resources", "Рудный трофей", "res.tournament_ore_earned",
+                    new[] { 2000, 10000, 50000, 250000 },
+                    new[] { "Выиграть 2 000 ед. руды в турнирах", "Выиграть 10 000 ед. руды в турнирах", "Выиграть 50 000 ед. руды в турнирах", "Выиграть 250 000 ед. руды в турнирах" },
+                    new[] { "Награда: +25 к здоровью", "Награда: +60 к здоровью", "Награда: +120 к здоровью", "Награда: +2% к здоровью" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.tournament_gold_earned", "resources", "Золотой трофей", "res.tournament_gold_earned",
+                    new[] { 2000, 10000, 50000, 250000 },
+                    new[] { "Выиграть 2 000 ед. золота в турнирах", "Выиграть 10 000 ед. золота в турнирах", "Выиграть 50 000 ед. золота в турнирах", "Выиграть 250 000 ед. золота в турнирах" },
+                    new[] { "Награда: +10 к броне", "Награда: +25 к броне", "Награда: +60 к броне", "Награда: +2% к броне" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.tournament_ore_spent", "resources", "Рудный взнос", "res.tournament_ore_spent",
+                    new[] { 500, 2500, 15000, 75000 },
+                    new[] { "Потратить 500 ед. руды на вступительные взносы", "Потратить 2 500 ед. руды на вступительные взносы", "Потратить 15 000 ед. руды на вступительные взносы", "Потратить 75 000 ед. руды на вступительные взносы" },
+                    new[] { "Награда: +10 к лечению", "Награда: +25 к лечению", "Награда: +60 к лечению", "Награда: +2% к лечению" }, usesTotalThresholds: true),
+
+                ChainFromServer("res.tournament_gold_spent", "resources", "Золотой взнос", "res.tournament_gold_spent",
+                    new[] { 500, 2500, 15000, 75000 },
+                    new[] { "Потратить 500 ед. золота на вступительные взносы", "Потратить 2 500 ед. золота на вступительные взносы", "Потратить 15 000 ед. золота на вступительные взносы", "Потратить 75 000 ед. золота на вступительные взносы" },
+                    new[] { "Награда: +20 к здоровью", "Награда: +50 к здоровью", "Награда: +100 к здоровью", "Награда: +2% к здоровью" }, usesTotalThresholds: true),
             };
         }
 
@@ -494,10 +609,9 @@ namespace Project.Achievements
 
         internal static AchievementTab TabFromCategoryId(string category)
         {
-            if (string.Equals(category, "slaughter", StringComparison.OrdinalIgnoreCase))
-                return AchievementTab.Slaughter;
-            if (string.Equals(category, "dnn", StringComparison.OrdinalIgnoreCase))
-                return AchievementTab.Dnn;
+            foreach (var section in AchievementSections.All)
+                if (string.Equals(category, section.Id, StringComparison.OrdinalIgnoreCase))
+                    return section.Tab;
             return AchievementTab.Obsession;
         }
 
@@ -518,9 +632,10 @@ namespace Project.Achievements
             string counterKey,
             int[] thresholdDeltas,
             string[] descriptions,
-            string[] rewardTexts)
+            string[] rewardTexts,
+            bool usesTotalThresholds = false)
         {
-            return Chain(
+            var definition = Chain(
                 TabFromCategoryId(category),
                 id,
                 titleRu,
@@ -529,6 +644,8 @@ namespace Project.Achievements
                 descriptions,
                 rewardTexts,
                 TierAccentColorsForStepCount(thresholdDeltas?.Length ?? 0));
+            definition.UsesTotalThresholds = usesTotalThresholds;
+            return definition;
         }
     }
 }

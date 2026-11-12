@@ -3,6 +3,7 @@
 local nk = require("nakama")
 local function load(n) local ok,m=pcall(require,"modules."..n);if ok then return m end;return require(n) end
 local Inventory=load("duel_match3_inventory")
+local ResourceMedals=load("duel_resource_medals")
 local M={CATALOG_COLLECTION="duel_shop_catalog",CATALOG_KEY="v1",COLLECTION="duel_shop_receipts",KEY="v1",RECEIPT_LIMIT=4,
   SYSTEM_USER_ID="00000000-0000-0000-0000-000000000000",TOKEN_ID="global_boss_teleport"}
 M.TOKEN_DEF={kind="material",tier=1,quality="legendary",max_stack=99,sale_price=0}
@@ -138,6 +139,8 @@ local function handle(ctx,payload,buy)
       for _,k in ipairs({"gold","ore","matter","energy"}) do
         assert((progress[k] or 0)<=2000000000-(o[k] or 0),"shop_wallet_overflow");progress[k]=(progress[k] or 0)+(o[k] or 0)
       end
+      ResourceMedals.spent_currency(progress,o.currency,o.price)
+      ResourceMedals.earned(progress,o.gold,o.ore,o.matter)
       if (o.energy or 0)>0 then progress.energy_updated_at=os.time() end
       local receipt={request_id=p.request_id,purchase_seq=p.purchase_seq,catalog_version=cv,offer_id=o.id,currency=o.currency,price=o.price,
         gold=o.gold or 0,ore=o.ore or 0,matter=o.matter or 0,energy=o.energy or 0,bought_at=os.time()}

@@ -1,12 +1,17 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Project.Character;
 using Project.Match3;
 using Project.Nakama;
 using Project.UI;
+using Project.Utils;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -50,6 +55,7 @@ namespace Project.Editor
         {
             if (target != null && target.StartsWith("play-", StringComparison.Ordinal)) return PlayFixture(target.Substring(5));
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Edit mode required.");
+            if (target == "reads") return VerifyReads();
             if (target == "logic") { var logic = new Report(); Protocol(logic); logic.passed = true; Directory.CreateDirectory(".cache/qa/legacy-0.3.14/global-boss"); File.WriteAllText(".cache/qa/legacy-0.3.14/global-boss/contract0314.json", JsonUtility.ToJson(logic, true)); return JsonUtility.ToJson(logic); }
             var height = target == "tall" ? 2400 : 1920; var output = ".cache/qa/legacy-0.3.14/global-boss/" + height;
             Directory.CreateDirectory(output); var report = new Report { height = height };
@@ -77,6 +83,9 @@ namespace Project.Editor
                     fixture.my_damage = ranking.self_entry?.damage ?? 0; fixture.attempts_used = ranking.self_entry?.attempts_used ?? 0; fixture.attempts_left = 3 - fixture.attempts_used;
                     fixture.eligibility_progress = fixture.my_damage; fixture.qualified = fixture.my_damage >= fixture.eligibility_required;
                     var panel = ExpeditionGlobalBossPanel.Open(canvas.transform, fixture, ranking);
+                    Require(report, panel.GetComponentsInChildren<Image>(true).Any(i => i.name == "RiftLandscape" && i.sprite != null)
+                        && !panel.GetComponentsInChildren<Image>(true).Any(i => i.name == "BossArt"),
+                        "Dossier keeps the illustrated rift free of the foreground boss sprite.");
                     var participants = variant.StartsWith("ranking", StringComparison.Ordinal) || variant == "empty" || variant == "actual-ranking";
                     if (participants) panel.SelectTab(true);
                     if (variant == "ranking-bottom") { Canvas.ForceUpdateCanvases(); panel.GetComponentInChildren<ScrollRect>().verticalNormalizedPosition = 0; }
@@ -124,6 +133,154 @@ namespace Project.Editor
                 File.WriteAllText(output + "/boss0314-report.json", JsonUtility.ToJson(report, true));
             }
             return JsonUtility.ToJson(report);
+        }
+
+        private static string VerifyReads()
+        {
+            if (NakamaBootstrap.Instance != null) throw new InvalidOperationException("Boss read fixture requires an offline Edit Mode session.");
+            const BindingFlags statics = BindingFlags.Static | BindingFlags.NonPublic;
+            const BindingFlags instance = BindingFlags.Instance | BindingFlags.NonPublic;
+            var queue = (ConcurrentQueue<Action>)typeof(MainThreadDispatcher).GetField("Queue", statics).GetValue(null);
+            if (!queue.IsEmpty) throw new InvalidOperationException("Another QA fixture has pending dispatcher work.");
+            var priorScene = SceneManager.GetActiveScene();
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            SceneManager.SetActiveScene(scene);
+            var config = ScriptableObject.CreateInstance<NakamaConnectionConfig>();
+            var bootstrapType = typeof(NakamaBootstrap);
+            var singleton = bootstrapType.GetField("<Instance>k__BackingField", statics);
+            void ResetServices()
+            {
+                typeof(GlobalBossService).GetMethod("Reset", statics).Invoke(null, null);
+                typeof(GlobalBossLeaderboardService).GetMethod("Reset", statics).Invoke(null, null);
+            }
+            using var cancelledRead = new CancellationTokenSource();
+            ExpeditionGlobalBossPanel panel = null;
+            try
+            {
+                ResetServices();
+                var ranking = ActualRanking();
+                var state = ActualState();
+                var user = ranking.self_entry.user_id;
+                var claims = "{\"uid\":\"" + user + "\",\"usn\":\"offline\",\"exp\":" + DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds() + "}";
+                var token = "offline." + Convert.ToBase64String(Encoding.UTF8.GetBytes(claims)).TrimEnd('=').Replace('+', '-').Replace('/', '_') + ".offline";
+                var owner = new GameObject("OfflineBossReadAccount");
+                owner.SetActive(false);
+                var bootstrap = owner.AddComponent<NakamaBootstrap>();
+                bootstrap.Config = config;
+                var session = global::Nakama.Session.Restore(token, token);
+                var client = DispatchProxy.Create<global::Nakama.IClient, BossReadClient>();
+                var fake = (BossReadClient)(object)client;
+                fake.StatusPayload = JsonUtility.ToJson(state);
+                fake.RankingPayload = JsonUtility.ToJson(ranking);
+                bootstrapType.GetField("<Client>k__BackingField", instance).SetValue(bootstrap, client);
+                bootstrapType.GetField("<Session>k__BackingField", instance).SetValue(bootstrap, session);
+                singleton.SetValue(null, bootstrap);
+
+                var host = new GameObject("OfflineBossReadCanvas", typeof(RectTransform), typeof(Canvas));
+                fake.Fail = true;
+                panel = ExpeditionGlobalBossPanel.Open(host.transform);
+                PumpBossRead(queue, () => !GlobalBossService.Busy && GlobalBossService.Error != null);
+                panel.SelectTab(true);
+                string ReadLabel(string name) => panel.GetComponentsInChildren<TMP_Text>(true).Single(t => t.name == name).text;
+                var report = new Report();
+                Require(report, GlobalBossService.Current == null && ReadLabel("RankingIntro").Contains("Обновить"),
+                    "A failed initial boss request gives the chronicle a retry message.");
+
+                fake.Fail = false;
+                var refresh = GlobalBossService.RefreshAsync(CancellationToken.None);
+                PumpBossRead(queue, () => refresh.IsCompleted && GlobalBossLeaderboardService.Current != null && !GlobalBossLeaderboardService.Busy);
+                refresh.GetAwaiter().GetResult();
+                Require(report, bootstrap.Socket == null && fake.StatusCalls == 2 && fake.RankingCalls == 1 &&
+                    GlobalBossService.Current?.hp_max == state.hp_max && GlobalBossLeaderboardService.Current?.event_id == state.event_id,
+                    "An authenticated HTTP session loads status and chronicle with no gameplay socket.");
+                Require(report, ReadLabel("StatValue-damage") == ExpeditionGlobalBossPanel.Number(state.base_damage)
+                    && ReadLabel("StatValue-armor") == ExpeditionGlobalBossPanel.Number(state.base_armor),
+                    "The dossier uses the server's initial stats.");
+
+                fake.Paused = true;
+                var prior = GlobalBossService.Current;
+                var pending = GlobalBossService.RefreshAsync(cancelledRead.Token);
+                PumpBossRead(queue, () => fake.StatusCalls == 3);
+                cancelledRead.Cancel();
+                PumpBossRead(queue, () => pending.IsCompleted && !GlobalBossService.Busy);
+                pending.GetAwaiter().GetResult();
+                Require(report, ReferenceEquals(prior, GlobalBossService.Current) && GlobalBossService.Error == null,
+                    "Closing a pending read leaves the last good snapshot without a spurious error.");
+
+                var timed = GlobalBossService.RefreshAsync(CancellationToken.None);
+                PumpBossRead(queue, () => timed.IsCompleted && !GlobalBossService.Busy, 14_000);
+                timed.GetAwaiter().GetResult();
+                Require(report, ReferenceEquals(prior, GlobalBossService.Current) && ReadLabel("BossStatus").Contains("Обновить"),
+                    "An unanswered read times out and preserves the last good snapshot.");
+                fake.Paused = false;
+                var retry = GlobalBossService.RefreshAsync(CancellationToken.None);
+                PumpBossRead(queue, () => retry.IsCompleted && !GlobalBossService.Busy);
+                retry.GetAwaiter().GetResult();
+                Require(report, GlobalBossService.Error == null && fake.StatusCalls == 5 && !ReferenceEquals(prior, GlobalBossService.Current),
+                    "A successful retry replaces the snapshot and clears the failure.");
+                return "PASS boss read, retry, cancellation and timeout checks with an offline HTTP fixture";
+            }
+            finally
+            {
+                if (panel != null) UnityEngine.Object.DestroyImmediate(panel.gameObject);
+                singleton.SetValue(null, null);
+                ResetServices();
+                UnityEngine.Object.DestroyImmediate(config);
+                EditorSceneManager.CloseScene(scene, true);
+                if (priorScene.IsValid() && priorScene.isLoaded) SceneManager.SetActiveScene(priorScene);
+            }
+        }
+
+        private static void PumpBossRead(ConcurrentQueue<Action> queue, Func<bool> finished, int timeout = 4000)
+        {
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            while (elapsed.ElapsedMilliseconds < timeout)
+            {
+                while (queue.TryDequeue(out var action)) action();
+                if (finished()) return;
+                Thread.Sleep(1);
+            }
+            throw new InvalidOperationException("Offline boss read did not settle.");
+        }
+
+        public class BossReadClient : DispatchProxy
+        {
+            public string StatusPayload, RankingPayload;
+            public volatile bool Fail, Paused;
+            public int StatusCalls, RankingCalls;
+
+            protected override object Invoke(MethodInfo method, object[] args)
+            {
+                if (method.Name != "RpcAsync" || args[1] is not string rpc)
+                    throw new InvalidOperationException("Unexpected boss fixture call: " + method.Name);
+                if (rpc == "duel_global_boss_get")
+                {
+                    Interlocked.Increment(ref StatusCalls);
+                    if (Fail) return Task.FromException<global::Nakama.IApiRpc>(new IOException("Offline fixture HTTP failure"));
+                    if (Paused) return Pending((CancellationToken)args.Last());
+                    return Task.FromResult<global::Nakama.IApiRpc>(new BossReadReply(rpc, StatusPayload));
+                }
+                if (rpc == "duel_global_boss_leaderboard_get")
+                {
+                    Interlocked.Increment(ref RankingCalls);
+                    return Task.FromResult<global::Nakama.IApiRpc>(new BossReadReply(rpc, RankingPayload));
+                }
+                throw new InvalidOperationException("Unexpected boss fixture RPC: " + rpc);
+            }
+
+            private static async Task<global::Nakama.IApiRpc> Pending(CancellationToken ct)
+            {
+                await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+                return null;
+            }
+        }
+
+        private sealed class BossReadReply : global::Nakama.IApiRpc
+        {
+            public string Id { get; }
+            public string Payload { get; }
+            public string HttpKey => "";
+            public BossReadReply(string id, string payload) { Id = id; Payload = payload; }
         }
         private static void Protocol(Report report)
         {

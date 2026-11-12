@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ using Project.UI;
 using Project.Utils;
 using Project.Nakama.Security;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -46,8 +48,9 @@ namespace Project.Nakama
         private readonly SessionOwnershipClaimGate _ownershipClaim = new();
         public int AuthenticationGeneration => _ownershipClaim.Generation;
 
-        public bool IsReady => Socket != null && Socket.IsConnected && Session != null;
-        internal bool GameplaySessionAllowed => !_sessionReplacedFlowActive && !_skipOnlineHeartbeat;
+        public bool IsReady => Socket != null && Socket.IsConnected && Session is { IsExpired: false };
+        internal bool EmailReauthenticationRequired => _emailReauthenticationRequired;
+        internal bool GameplaySessionAllowed => !_sessionReplacedFlowActive && !_skipOnlineHeartbeat && !EmailReauthenticationRequired;
         internal void AcceptGameplayPing(string payload) => TryConsumePingPayloadForSessionEpoch(payload);
         internal void InvalidateGameplaySocket(ISocket expected)
         {
@@ -95,6 +98,7 @@ namespace Project.Nakama
 
         private CancellationTokenSource _cts;
         private volatile bool _skipOnlineHeartbeat;
+        private volatile bool _emailReauthenticationRequired;
         private bool _sessionReplacedFlowActive;
         private string _socketBoundAuthToken;
         private bool _initialSetupRunning, _initialSetupCompleted, _initialSetupFailed;
@@ -187,13 +191,27 @@ namespace Project.Nakama
         /// <summary>Retry the initial auth gate after a genuine connection failure, without opening duplicate forms.</summary>
         internal async Task CompleteInitialSetupAsync(CancellationToken ct)
         {
-            if (_initialSetupCompleted || _initialSetupRunning) return;
+            if (_initialSetupRunning || _initialSetupCompleted && !EmailReauthenticationRequired) return;
             _initialSetupRunning = true;
             _initialSetupFailed = false;
             try
             {
-                await EnsureConnectedAsync(ct);
-                await MaybeShowEmailSetupGateAsync(ct).ConfigureAwait(true);
+                if (!EmailReauthenticationRequired)
+                {
+                    try
+                    {
+                        await EnsureConnectedAsync(ct);
+                        await MaybeShowEmailSetupGateAsync(ct);
+                    }
+                    catch (EmailReauthenticationRequiredException) { }
+                }
+
+                if (EmailReauthenticationRequired)
+                {
+                    await AuthSetupGate.ShowAndWaitAsync(this, ct);
+                    if (SceneManager.GetActiveScene().name == "DuelMatch3")
+                        SceneManager.LoadScene("MainMenu"); // The cold recovery coordinator checks the new authentication lifetime.
+                }
                 _initialSetupCompleted = true;
                 _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
             }
@@ -277,7 +295,9 @@ namespace Project.Nakama
         }
 
         /// <summary>Подключение к Nakama: единый Client, сессия (e-mail с диска или устройство), сокет.</summary>
-        public async Task EnsureConnectedAsync(CancellationToken ct)
+        public Task EnsureConnectedAsync(CancellationToken ct) => EnsureConnectedAsync(ct, null);
+
+        private async Task EnsureConnectedAsync(CancellationToken ct, ISession rejectedSession)
         {
             await _ensureConnectedGate.WaitAsync(ct).ConfigureAwait(false);
             try
@@ -290,13 +310,7 @@ namespace Project.Nakama
                 }
 
                 await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
-                if (Socket != null && Socket.IsConnected && Session != null &&
-                    !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)) &&
-                    string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal))
-                {
-                    await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
-                    return;
-                }
+                if (EmailReauthenticationRequired) throw new EmailReauthenticationRequiredException();
 
                 if (Client == null)
                 {
@@ -304,47 +318,59 @@ namespace Project.Nakama
                     Client.Timeout = 10;
                 }
 
-                await MaintainValidSessionAsync(ct).ConfigureAwait(false);
-                if (Session == null)
-                    throw new InvalidOperationException("Не удалось получить сессию Nakama.");
+                if (rejectedSession != null && ReferenceEquals(rejectedSession, Session))
+                    await RenewSessionAsync(ct).ConfigureAwait(false);
+                else
+                    await MaintainValidSessionAsync(ct).ConfigureAwait(false);
 
-                var sessionMatchesSocket = Socket != null && Socket.IsConnected &&
-                    string.Equals(_socketBoundAuthToken, Session.AuthToken, StringComparison.Ordinal) &&
-                    !Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew));
-                if (sessionMatchesSocket)
+                try
                 {
-                    await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
-                    return;
+                    await ConnectCurrentSessionAsync(ct).ConfigureAwait(false);
                 }
-
-                if (Socket != null)
+                catch (ApiResponseException e) when (e.StatusCode == 401)
                 {
-                    try
-                    {
-                        await Socket.CloseAsync();
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-
-                    Socket = null;
-                    _socketBoundAuthToken = null;
+                    // A JWT from an older server key can be rejected before its local expiry time.
+                    await RenewSessionAsync(ct).ConfigureAwait(false);
+                    await ConnectCurrentSessionAsync(ct).ConfigureAwait(false);
                 }
-
-                Socket = CreateAndWireSocket();
-                ct.ThrowIfCancellationRequested();
-                // Silent restore (JWT / refresh / linked device) не вызывает AuthenticateEmail —
-                // без claim другое устройство с тем же аккаунтом не вытесняется.
-                await ClaimEmailSessionOwnershipAsync(ct).ConfigureAwait(false);
-                await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
-                await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
-                _socketBoundAuthToken = Session?.AuthToken;
                 await Project.Character.AccountGender.RefreshAsync(ct).ConfigureAwait(false);
+            }
+            catch (EmailReauthenticationRequiredException)
+            {
+                _emailReauthenticationRequired = true;
+                Session = null;
+                InvalidateGameplaySocket(Socket);
+                throw;
             }
             finally
             {
                 _ensureConnectedGate.Release();
+            }
+        }
+
+        private async Task ConnectCurrentSessionAsync(CancellationToken ct)
+        {
+            var session = Session ?? throw new InvalidOperationException("Не удалось получить сессию Nakama.");
+            if (IsReady && string.Equals(_socketBoundAuthToken, session.AuthToken, StringComparison.Ordinal)) return;
+
+            InvalidateGameplaySocket(Socket);
+            await ClaimEmailSessionOwnershipAsync(ct).ConfigureAwait(false);
+            await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+
+            var socket = CreateAndWireSocket();
+            try
+            {
+                await socket.ConnectAsync(session, appearOnline: true, connectTimeout: 10).ConfigureAwait(false);
+                ct.ThrowIfCancellationRequested();
+                if (!socket.IsConnected) throw new InvalidOperationException("Не удалось подключить игровой сокет.");
+                Socket = socket;
+                _socketBoundAuthToken = session.AuthToken;
+            }
+            catch
+            {
+                _ = CloseStaleGameplaySocketAsync(socket);
+                throw;
             }
         }
 
@@ -362,60 +388,49 @@ namespace Project.Nakama
         }
 
         /// <summary>Вход по e-mail (другой телефон или сброс). Сохраняет токены и привязывает device id текущего телефона.</summary>
-        public async Task LoginWithEmailAsync(string email, string password, bool create, CancellationToken ct)
+        public async Task LoginWithEmailAsync(string email, string password, bool create, CancellationToken ct, bool? female = null)
         {
-            if (config == null)
+            await _ensureConnectedGate.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
                 if (config == null)
-                    throw new InvalidOperationException("NakamaConnectionConfig не найден.");
-            }
-
-            await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
-            var authenticationGeneration = _ownershipClaim.BeginAuthentication();
-            if (Client == null)
-            {
-                Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
-                Client.Timeout = 10;
-            }
-
-            if (Socket != null)
-            {
-                try
                 {
-                    if (Socket.IsConnected)
-                        await Socket.CloseAsync();
-                }
-                catch
-                {
-                    // ignored
+                    config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
+                    if (config == null)
+                        throw new InvalidOperationException("NakamaConnectionConfig не найден.");
                 }
 
-                Socket = null;
+                await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
+                Client ??= new Client(config.GetScheme(), config.host, config.port, config.serverKey) { Timeout = 10 };
+                InvalidateGameplaySocket(Socket);
+
+                var vars = create && female.HasValue
+                    ? new Dictionary<string, string> { ["gender"] = female.Value ? "female" : "male" }
+                    : null;
+                var authenticated = await Client
+                    .AuthenticateEmailAsync(email, password, username: null, create: create, vars: vars, canceller: ct)
+                    .ConfigureAwait(false);
+                await MainThreadDispatcher.RunAsync(() =>
+                {
+                    var authenticationGeneration = _ownershipClaim.BeginAuthentication();
+                    PersistEmailSessionSync(authenticated);
+                    PersistKnownLinkedEmailSync(email);
+                    PlayerPrefs.DeleteKey(PrefForceEmailSetup);
+                    PlayerPrefs.Save();
+                    Session = authenticated;
+                    // AuthenticateEmail already advances the authoritative ownership epoch.
+                    _ownershipClaim.Acknowledge(authenticated.UserId, authenticationGeneration);
+                }).ConfigureAwait(false);
+
+                await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
+                await ConnectCurrentSessionAsync(ct).ConfigureAwait(false);
+                _emailReauthenticationRequired = false;
+                await Project.Character.AccountGender.RefreshAsync(ct, force: true).ConfigureAwait(false);
             }
-
-            var authenticated = await Client
-                .AuthenticateEmailAsync(email, password, username: null, create: create, vars: null, canceller: ct)
-                .ConfigureAwait(false);
-            await MainThreadDispatcher.RunAsync(() =>
+            finally
             {
-                if (authenticationGeneration != AuthenticationGeneration) throw new OperationCanceledException("Authentication changed.");
-                PersistEmailSessionSync(authenticated);
-                PersistKnownLinkedEmailSync(email);
-                PlayerPrefs.DeleteKey(PrefForceEmailSetup);
-                PlayerPrefs.Save();
-                Session = authenticated;
-                // AuthenticateEmail already advances the authoritative ownership epoch.
-                _ownershipClaim.Acknowledge(authenticated.UserId, authenticationGeneration);
-            }).ConfigureAwait(false);
-
-            await TryLinkCurrentDeviceAsync(ct).ConfigureAwait(false);
-            await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
-
-            Socket = CreateAndWireSocket();
-            await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
-            _socketBoundAuthToken = Session?.AuthToken;
-            await Project.Character.AccountGender.RefreshAsync(ct, force: true).ConfigureAwait(false);
+                _ensureConnectedGate.Release();
+            }
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
@@ -447,40 +462,28 @@ namespace Project.Nakama
         /// </summary>
         public async Task ClearEmailPersistenceAndReconnectAsync(CancellationToken ct)
         {
-            _ownershipClaim.BeginAuthentication();
-            await MainThreadDispatcher.RunAsync(ClearAllEmailPersistenceSync).ConfigureAwait(false);
-            Session = null;
-
-            if (Socket != null)
-            {
-                try
-                {
-                    if (Socket.IsConnected)
-                        await Socket.CloseAsync();
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                Socket = null;
-            }
-
-            if (Client == null)
+            await _ensureConnectedGate.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
                 if (config == null)
                     config = Resources.Load<NakamaConnectionConfig>("NakamaConnectionConfig");
                 if (config == null)
                     throw new InvalidOperationException("NakamaConnectionConfig не найден.");
-                Client = new Client(config.GetScheme(), config.host, config.port, config.serverKey);
-                Client.Timeout = 10;
-            }
 
-            Session = await ResolveSessionAsync(ct).ConfigureAwait(false);
-            Socket = CreateAndWireSocket();
-            await SyncSessionEpochFromServerAsync(ct).ConfigureAwait(false);
-            await Socket.ConnectAsync(Session, appearOnline: true, connectTimeout: 10);
-            _socketBoundAuthToken = Session?.AuthToken;
+                await ApplyAuthEndpointScopeAsync().ConfigureAwait(false);
+                _ownershipClaim.BeginAuthentication();
+                await MainThreadDispatcher.RunAsync(ClearAllEmailPersistenceSync).ConfigureAwait(false);
+                _emailReauthenticationRequired = false;
+                Session = null;
+                InvalidateGameplaySocket(Socket);
+                Client ??= new Client(config.GetScheme(), config.host, config.port, config.serverKey) { Timeout = 10 };
+                Session = await ResolveSessionAsync(ct).ConfigureAwait(false);
+                await ConnectCurrentSessionAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                _ensureConnectedGate.Release();
+            }
             _ = AchievementCatalogService.RefreshOnLoginAsync(ct);
         }
 
@@ -550,7 +553,7 @@ namespace Project.Nakama
             {
                 hasEmail = await AccountHasLinkedEmailAsync(ct).ConfigureAwait(false);
             }
-            catch (Exception e) when (IsRefreshTokenFailure(e))
+            catch (ApiResponseException e) when (IsRejectedSession(e))
             {
                 try
                 {
@@ -573,7 +576,7 @@ namespace Project.Nakama
 
             if (!force && hasEmail)
             {
-                AuthSetupGate.HideBlockingOverlayIfAny();
+                await MainThreadDispatcher.RunAsync(AuthSetupGate.HideBlockingOverlayIfAny).ConfigureAwait(false);
                 return;
             }
 
@@ -632,13 +635,13 @@ namespace Project.Nakama
             {
                 Debug.LogError($"[Nakama] Socket error: {e?.Message}");
             };
-            socket.ReceivedNotification += OnSocketReceivedNotification;
+            socket.ReceivedNotification += notification => OnSocketReceivedNotification(socket, notification);
             return socket;
         }
 
-        private void OnSocketReceivedNotification(IApiNotification notification)
+        private void OnSocketReceivedNotification(ISocket socket, IApiNotification notification)
         {
-            if (notification == null) return;
+            if (notification == null || !ReferenceEquals(Socket, socket)) return;
 
             if (notification.Code == NotificationCodeFriendsRaceInvite
                 || notification.Code == NotificationCodeFriendsRaceUpdate)
@@ -652,7 +655,10 @@ namespace Project.Nakama
                 return;
             var epoch = TryParseEpochFromNotificationContent(notification.Content);
             if (epoch < 0) return;
-            MainThreadDispatcher.Enqueue(() => ConsiderSessionReplacedIfEpochNewer(epoch));
+            MainThreadDispatcher.Enqueue(() =>
+            {
+                if (ReferenceEquals(Socket, socket)) ConsiderSessionReplacedIfEpochNewer(epoch);
+            });
         }
 
         private static int TryParseEpochFromNotificationContent(string content)
@@ -685,6 +691,8 @@ namespace Project.Nakama
                         .RunAsync(() => PersistLocalSessionEpochSync(model.session_epoch))
                         .ConfigureAwait(false);
             }
+            catch (ApiResponseException e) when (e.StatusCode == 401) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch
             {
                 // Сервер без duel_session.lua — тихо пропускаем.
@@ -726,6 +734,8 @@ namespace Project.Nakama
                         .ConfigureAwait(false);
                 }
             }
+            catch (ApiResponseException e) when (e.StatusCode == 401) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception e)
             {
                 // Старый сервер без RPC — не блокируем вход; kick тогда только через AuthenticateEmail.
@@ -838,47 +848,47 @@ namespace Project.Nakama
 
         private async Task MaintainValidSessionAsync(CancellationToken ct)
         {
-            if (Session != null && Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
-            {
-                if (!string.IsNullOrEmpty(Session.RefreshToken) &&
-                    !Session.HasRefreshExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
-                {
-                    try
-                    {
-                        var refreshed = await Client.SessionRefreshAsync(Session, canceller: ct).ConfigureAwait(false);
-                        Session = refreshed;
-                        var persist = await MainThreadDispatcher
-                            .RunAsync(() => NakamaCredentialStore.UsesEmail)
-                            .ConfigureAwait(false);
-                        if (persist)
-                            await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(refreshed))
-                                .ConfigureAwait(false);
-                        return;
-                    }
-                    catch (CredentialStorageException) { throw; }
-                    catch (Exception e)
-                    {
-                        if (config != null && config.verboseLogging)
-                            Debug.LogWarning($"[Nakama] Не удалось обновить сессию: {e.Message}");
-                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
-                        Session = null;
-                    }
-                }
-                else
-                {
-                    // Refresh протух/отсутствует — JWT больше не используем; восстановимся через linked device.
-                    if (!string.IsNullOrEmpty(Session.RefreshToken) ||
-                        await MainThreadDispatcher.RunAsync(() => NakamaCredentialStore.UsesEmail)
-                            .ConfigureAwait(false))
-                    {
-                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
-                    }
-                    Session = null;
-                }
-            }
-
             if (Session == null)
                 Session = await ResolveSessionAsync(ct).ConfigureAwait(false);
+            else if (Session.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
+                await RenewSessionAsync(ct).ConfigureAwait(false);
+        }
+
+        private async Task RenewSessionAsync(CancellationToken ct)
+        {
+            var persist = await MainThreadDispatcher.RunAsync(() => NakamaCredentialStore.UsesEmail).ConfigureAwait(false);
+            var refreshed = await TryRefreshSessionAsync(Session, persist, ct).ConfigureAwait(false);
+            if (refreshed != null)
+            {
+                Session = refreshed;
+                return;
+            }
+
+            // Ignore only a definitively expired/rejected credential; offline/timeouts keep the saved tokens.
+            await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
+            InvalidateGameplaySocket(Socket);
+            Session = null;
+            Session = await ResolveSessionAsync(ct).ConfigureAwait(false);
+        }
+
+        private async Task<ISession> TryRefreshSessionAsync(ISession session, bool persist, CancellationToken ct)
+        {
+            if (session == null || string.IsNullOrEmpty(session.RefreshToken) || session.IsRefreshExpired)
+                return null;
+            var userId = session.UserId;
+            try
+            {
+                var refreshed = await Client.SessionRefreshAsync(session, canceller: ct).ConfigureAwait(false);
+                if (!string.Equals(userId, refreshed?.UserId, StringComparison.Ordinal))
+                    throw new EmailReauthenticationRequiredException();
+                if (persist)
+                    await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(refreshed)).ConfigureAwait(false);
+                return refreshed;
+            }
+            catch (ApiResponseException e) when (IsRejectedSession(e))
+            {
+                return null;
+            }
         }
 
         private async Task<ISession> ResolveSessionAsync(CancellationToken ct)
@@ -886,60 +896,43 @@ namespace Project.Nakama
             var saved = await MainThreadDispatcher.RunAsync(NakamaCredentialStore.Snapshot).ConfigureAwait(false);
             var useEmail = saved.useEmail || !string.IsNullOrWhiteSpace(saved.knownEmail);
             var knownEmail = saved.knownEmail;
-            var auth = saved.authToken;
-            var refresh = saved.refreshToken;
             var expectedUserId = saved.userId;
 
-            if (useEmail && !string.IsNullOrEmpty(auth))
+            if (useEmail && !string.IsNullOrEmpty(saved.authToken))
             {
-                var restored = global::Nakama.Session.Restore(auth, string.IsNullOrEmpty(refresh) ? null : refresh);
-                // Миграция старых токенов: запоминаем аккаунт до удаления expired JWT.
-                if (string.IsNullOrEmpty(expectedUserId) && !string.IsNullOrEmpty(restored?.UserId))
+                var restored = TryRestoreSavedSession(saved.authToken, saved.refreshToken);
+                if (restored != null)
                 {
-                    expectedUserId = restored.UserId;
-                    await MainThreadDispatcher.RunAsync(() =>
+                    if (string.IsNullOrEmpty(expectedUserId))
                     {
-                        NakamaCredentialStore.SetUserId(restored.UserId);
-                    }).ConfigureAwait(false);
-                }
-                if (restored != null && !restored.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
-                {
-                    // Auth ещё жив с запасом под AutoRefresh — можно использовать.
-                    if (!string.IsNullOrEmpty(restored.RefreshToken) &&
-                        !restored.HasRefreshExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
+                        // Remember the linked account before discarding an expired JWT from an older client.
+                        expectedUserId = restored.UserId;
+                        await MainThreadDispatcher.RunAsync(() => NakamaCredentialStore.SetUserId(restored.UserId))
+                            .ConfigureAwait(false);
+                    }
+                    if (!string.Equals(restored.UserId, expectedUserId, StringComparison.Ordinal))
+                        throw new EmailReauthenticationRequiredException();
+                    if (!restored.HasExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
                         return restored;
-                    // Refresh уже мёртв: не отдаём сессию в AutoRefresh.
-                    await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
+                    var refreshed = await TryRefreshSessionAsync(restored, persist: true, ct).ConfigureAwait(false);
+                    if (refreshed != null) return refreshed;
                 }
-                else if (restored != null && !string.IsNullOrEmpty(restored.RefreshToken) &&
-                         !restored.HasRefreshExpired(DateTime.UtcNow.Add(SessionRefreshSkew)))
-                {
-                    try
-                    {
-                        var refreshed = await Client.SessionRefreshAsync(restored, canceller: ct).ConfigureAwait(false);
-                        await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(refreshed)).ConfigureAwait(false);
-                        return refreshed;
-                    }
-                    catch (CredentialStorageException) { throw; }
-                    catch (Exception e)
-                    {
-                        if (config != null && config.verboseLogging)
-                            Debug.LogWarning($"[Nakama] Не удалось восстановить сессию по refresh: {e.Message}");
-                        await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
-                    }
-                }
-                else
-                {
-                    // И auth, и refresh плохие — чистим только токены, сохраняем режим email-аккаунта.
-                    await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
-                }
+                await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
             }
 
             var deviceId = await MainThreadDispatcher.RunAsync(GetDeviceId).ConfigureAwait(false);
             // Для известного email-аккаунта отсутствие linked device требует ручного входа,
             // а не создания нового гостевого профиля под свежим device id.
-            var deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, create: !useEmail, ct)
-                .ConfigureAwait(false);
+            ISession deviceSession;
+            try
+            {
+                deviceSession = await AuthenticateDeviceWithGeneratedUsernameAsync(deviceId, create: !useEmail, ct)
+                    .ConfigureAwait(false);
+            }
+            catch (ApiResponseException e) when (useEmail && e.StatusCode == 404)
+            {
+                throw new EmailReauthenticationRequiredException();
+            }
             // Device, привязанный через LinkDevice, вернёт тот же user_id; сохраняем свежие токены,
             // только если на устройстве уже был сохранённый email-вход (не помечаем чистого гостя).
             if (useEmail)
@@ -954,7 +947,7 @@ namespace Project.Nakama
                     sameAccount = string.Equals(account?.Email?.Trim(), knownEmail.Trim(), StringComparison.OrdinalIgnoreCase);
                 }
                 if (!sameAccount)
-                    throw new InvalidOperationException("Не удалось восстановить прежний аккаунт через устройство. Войдите по e-mail снова.");
+                    throw new EmailReauthenticationRequiredException();
                 await MainThreadDispatcher.RunAsync(() => PersistEmailSessionSync(deviceSession)).ConfigureAwait(false);
             }
             return deviceSession;
@@ -964,32 +957,33 @@ namespace Project.Nakama
         /// После сбоя AutoRefresh («Refresh token invalid») — сброс JWT и переподключение
         /// через ранее привязанный device id.
         /// </summary>
-        public async Task RecoverSessionAfterRefreshFailureAsync(CancellationToken ct)
-        {
-            await MainThreadDispatcher.RunAsync(ClearEmailTokenPrefsSync).ConfigureAwait(false);
-            Session = null;
-            if (Socket != null)
-            {
-                try
-                {
-                    if (Socket.IsConnected)
-                        await Socket.CloseAsync().ConfigureAwait(false);
-                }
-                catch
-                {
-                    // ignored
-                }
-                Socket = null;
-            }
+        public Task RecoverSessionAfterRefreshFailureAsync(CancellationToken ct)
+            => EnsureConnectedAsync(ct, Session);
 
-            await EnsureConnectedAsync(ct).ConfigureAwait(false);
+        private static bool IsRejectedSession(ApiResponseException error)
+            => error.StatusCode == 401 || error.StatusCode == 404;
+
+        private static ISession TryRestoreSavedSession(string auth, string refresh)
+        {
+            try
+            {
+                var session = global::Nakama.Session.Restore(auth, refresh);
+                if (session == null || string.IsNullOrEmpty(session.UserId)) return null;
+                _ = session.IsExpired;
+                _ = session.IsRefreshExpired;
+                return session;
+            }
+            catch (Exception error) when (error is ArgumentException or FormatException or IndexOutOfRangeException or
+                                          OverflowException or InvalidCastException or KeyNotFoundException or NullReferenceException)
+            {
+                // An unreadable refresh token must not discard the account ID from an otherwise readable JWT.
+                return string.IsNullOrEmpty(refresh) ? null : TryRestoreSavedSession(auth, null);
+            }
         }
 
-        private static bool IsRefreshTokenFailure(Exception e)
+        private sealed class EmailReauthenticationRequiredException : InvalidOperationException
         {
-            var msg = e?.Message ?? "";
-            return msg.IndexOf("Refresh token", StringComparison.OrdinalIgnoreCase) >= 0
-                   || msg.IndexOf("refresh token", StringComparison.OrdinalIgnoreCase) >= 0;
+            public EmailReauthenticationRequiredException() : base("Войдите в свой аккаунт по e-mail.") { }
         }
 
         private async Task<ISession> AuthenticateDeviceWithGeneratedUsernameAsync(string deviceId, bool create, CancellationToken ct)
@@ -1083,6 +1077,7 @@ namespace Project.Nakama
             if (!changed) return;
 
             _ownershipClaim.BeginAuthentication();
+            _emailReauthenticationRequired = false;
             Session = null;
             Client = null;
             _socketBoundAuthToken = null;

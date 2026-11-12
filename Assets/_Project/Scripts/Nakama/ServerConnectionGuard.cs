@@ -81,7 +81,8 @@ namespace Project.Nakama
             if (online != _lastOnline) { _lastOnline = online; Changed?.Invoke(online); }
             if (online) _wasOnline = true;
             UpdateBanner(false);
-            if (!_checking && Time.realtimeSinceStartup >= _nextAttempt && _bootstrap.Config != null && _bootstrap.GameplaySessionAllowed)
+            if (!_checking && Time.realtimeSinceStartup >= _nextAttempt && _bootstrap.Config != null &&
+                (_bootstrap.GameplaySessionAllowed || _bootstrap.EmailReauthenticationRequired))
             {
                 _nextAttempt = Time.realtimeSinceStartup + 4;
                 _ = ReconnectAndProbeAsync();
@@ -92,6 +93,11 @@ namespace Project.Nakama
             _checking = true;
             try
             {
+                if (_bootstrap.EmailReauthenticationRequired)
+                {
+                    await _bootstrap.CompleteInitialSetupAsync(_lifetime.Token);
+                    return;
+                }
                 if (Application.internetReachability == NetworkReachability.NotReachable)
                 {
                     _observedFailure = true;
@@ -146,7 +152,7 @@ namespace Project.Nakama
         private void UpdateBanner(bool force)
         {
             var tutorial = SceneManager.GetActiveScene().name == "Tutorial";
-            var visible = ShouldShowNotice(Available, force, _observedFailure, _wasOnline, tutorial);
+            var visible = !_bootstrap.EmailReauthenticationRequired && ShouldShowNotice(Available, force, _observedFailure, _wasOnline, tutorial);
             if (!visible && _banner == null) return;
             if (_banner == null)
             {

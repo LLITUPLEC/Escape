@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "updated_at": 1754301600,
+  "updated_at": 1794441600,
   "categories": [
     { "id": "obsession", "label_ru": "Одержимость", "sort": 0 },
     { "id": "slaughter", "label_ru": "Бойня", "sort": 1 },
-    { "id": "dnn", "label_ru": "ДНН", "sort": 2 }
+    { "id": "dnn", "label_ru": "ДНН", "sort": 2 },
+    { "id": "resources", "label_ru": "Ресурсы", "sort": 3, "min_journal_version": 2 }
   ],
   "chains": [
     {
@@ -325,6 +326,261 @@
         { "threshold_delta": 5, "description_ru": "Успешно поставить на все возможные пары турнира и выиграть его", "reward_text_ru": "Награда: +4% к урону", "rewards": [{ "type": "damage_pct", "value": 0.04 }] },
         { "threshold_delta": 25, "description_ru": "Успешно поставить на все возможные пары турнира и выиграть его", "reward_text_ru": "Награда: +6% к урону", "rewards": [{ "type": "damage_pct", "value": 0.06 }] },
         { "threshold_delta": 100, "description_ru": "Успешно поставить на все возможные пары турнира и выиграть его", "reward_text_ru": "Награда: +8% к урону", "rewards": [{ "type": "damage_pct", "value": 0.08 }] }
+      ]
+    },
+    {
+      "id": "dnn.flower_bets",
+      "category": "dnn",
+      "title_ru": "Цветочный",
+      "counter_key": "dnn.arena_all_bets_lost_final_loss",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "arena_all_bets_lost_final_loss"},
+      "steps": [
+        { "threshold_delta": 1, "description_ru": "Проиграть все возможные ставки и сыгранный финал одного турнира", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] },
+        { "threshold_delta": 5, "description_ru": "Проиграть все возможные ставки и сыгранный финал одного турнира", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] },
+        { "threshold_delta": 20, "description_ru": "Проиграть все возможные ставки и сыгранный финал одного турнира", "reward_text_ru": "Награда: +3% к броне", "rewards": [{ "type": "armor_pct", "value": 0.03 }] },
+        { "threshold_delta": 50, "description_ru": "Проиграть все возможные ставки и сыгранный финал одного турнира", "reward_text_ru": "Награда: +4% к урону", "rewards": [{ "type": "damage_pct", "value": 0.04 }] }
+      ]
+    },
+    {
+      "id": "dnn.petard_50",
+      "category": "dnn",
+      "title_ru": "Бешеный",
+      "counter_key": "dnn.petard_50_pvp",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "pvp_petard_damage", "min_damage": 50, "exclude_modes": ["pvp_pro", "pvp_race", "pve"]},
+      "steps": [
+        { "threshold_delta": 1, "description_ru": "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] },
+        { "threshold_delta": 10, "description_ru": "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "reward_text_ru": "Награда: +2% к урону", "rewards": [{ "type": "damage_pct", "value": 0.02 }] },
+        { "threshold_delta": 50, "description_ru": "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "reward_text_ru": "Награда: +3% к урону", "rewards": [{ "type": "damage_pct", "value": 0.03 }] },
+        { "threshold_delta": 250, "description_ru": "Нанести «Петардой» не менее 50 урона за удар в классическом PvP или турнире", "reward_text_ru": "Награда: +5% к урону", "rewards": [{ "type": "damage_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.blocked_damage",
+      "category": "slaughter",
+      "title_ru": "Крепкий",
+      "counter_key": "slaughter.damage_blocked_arena",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "arena_damage_blocked", "exclude_modes": ["pvp_pro", "pvp_race", "pve"]},
+      "steps": [
+        { "threshold_delta": 100, "description_ru": "Заблокировать бронёй и щитом 100 урона в классическом PvP или турнире", "reward_text_ru": "Награда: +50 к броне", "rewards": [{ "type": "armor_flat", "value": 50 }] },
+        { "threshold_delta": 500, "description_ru": "Заблокировать бронёй и щитом 500 урона в классическом PvP или турнире", "reward_text_ru": "Награда: +150 к броне", "rewards": [{ "type": "armor_flat", "value": 150 }] },
+        { "threshold_delta": 2000, "description_ru": "Заблокировать бронёй и щитом 2 000 урона в классическом PvP или турнире", "reward_text_ru": "Награда: +300 к броне", "rewards": [{ "type": "armor_flat", "value": 300 }] },
+        { "threshold_delta": 5000, "description_ru": "Заблокировать бронёй и щитом 5 000 урона в классическом PvP или турнире", "reward_text_ru": "Награда: +5% к броне", "rewards": [{ "type": "armor_pct", "value": 0.05 }] }
+      ]
+    },
+    {
+      "id": "sl.critical_hits",
+      "category": "slaughter",
+      "title_ru": "Обезумевший",
+      "counter_key": "slaughter.critical_hits",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "critical_damage_hit"},
+      "steps": [
+        { "threshold_delta": 10, "description_ru": "Нанести урон критическим ударом 10 раз в бою", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] },
+        { "threshold_delta": 100, "description_ru": "Нанести урон критическим ударом 100 раз в бою", "reward_text_ru": "Награда: +2% к урону", "rewards": [{ "type": "damage_pct", "value": 0.02 }] },
+        { "threshold_delta": 500, "description_ru": "Нанести урон критическим ударом 500 раз в бою", "reward_text_ru": "Награда: +3% к урону", "rewards": [{ "type": "damage_pct", "value": 0.03 }] },
+        { "threshold_delta": 2000, "description_ru": "Нанести урон критическим ударом 2 000 раз в бою", "reward_text_ru": "Награда: +2 п. п. к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "obs.cleanse_fistula",
+      "category": "obsession",
+      "title_ru": "Обеззаразить",
+      "counter_key": "pve.kill.mine_3",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "pve_bot_kill", "bot_id": "mine_3"},
+      "steps": [
+        { "threshold_delta": 20, "description_ru": "Победить «Гнилой свищ» на 3-м этаже шахты", "reward_text_ru": "Награда: +25 к броне", "rewards": [{ "type": "armor_flat", "value": 25 }] },
+        { "threshold_delta": 60, "description_ru": "Победить «Гнилой свищ» на 3-м этаже шахты", "reward_text_ru": "Награда: +75 к броне", "rewards": [{ "type": "armor_flat", "value": 75 }] },
+        { "threshold_delta": 150, "description_ru": "Победить «Гнилой свищ» на 3-м этаже шахты", "reward_text_ru": "Награда: +150 к броне", "rewards": [{ "type": "armor_flat", "value": 150 }] },
+        { "threshold_delta": 350, "description_ru": "Победить «Гнилой свищ» на 3-м этаже шахты", "reward_text_ru": "Награда: +1% к броне", "rewards": [{ "type": "armor_pct", "value": 0.01 }] }
+      ]
+    },
+    {
+      "id": "obs.wipe_soot",
+      "category": "obsession",
+      "title_ru": "Смыть копоть",
+      "counter_key": "pve.kill.mine_7",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "pve_bot_kill", "bot_id": "mine_7"},
+      "steps": [
+        { "threshold_delta": 15, "description_ru": "Победить «Чёрную копоть» на 7-м этаже шахты", "reward_text_ru": "Награда: +15 к урону", "rewards": [{ "type": "damage_flat", "value": 15 }] },
+        { "threshold_delta": 45, "description_ru": "Победить «Чёрную копоть» на 7-м этаже шахты", "reward_text_ru": "Награда: +40 к урону", "rewards": [{ "type": "damage_flat", "value": 40 }] },
+        { "threshold_delta": 120, "description_ru": "Победить «Чёрную копоть» на 7-м этаже шахты", "reward_text_ru": "Награда: +90 к урону", "rewards": [{ "type": "damage_flat", "value": 90 }] },
+        { "threshold_delta": 300, "description_ru": "Победить «Чёрную копоть» на 7-м этаже шахты", "reward_text_ru": "Награда: +1% к урону", "rewards": [{ "type": "damage_pct", "value": 0.01 }] }
+      ]
+    },
+    {
+      "id": "obs.sever_vein",
+      "category": "obsession",
+      "title_ru": "Перерезать жилу",
+      "counter_key": "pve.kill.mine_12",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "pve_bot_kill", "bot_id": "mine_12"},
+      "steps": [
+        { "threshold_delta": 3, "description_ru": "Победить «Жилу» на 12-м этаже шахты", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 12, "description_ru": "Победить «Жилу» на 12-м этаже шахты", "reward_text_ru": "Награда: +150 к здоровью", "rewards": [{ "type": "hp_flat", "value": 150 }] },
+        { "threshold_delta": 40, "description_ru": "Победить «Жилу» на 12-м этаже шахты", "reward_text_ru": "Награда: +300 к здоровью", "rewards": [{ "type": "hp_flat", "value": 300 }] },
+        { "threshold_delta": 100, "description_ru": "Победить «Жилу» на 12-м этаже шахты", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.ore_earned",
+      "category": "resources",
+      "title_ru": "Рудная жила",
+      "counter_key": "res.ore_earned",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.ore_earned"},
+      "steps": [
+        { "threshold_delta": 500, "description_ru": "Получить 500 ед. руды", "reward_text_ru": "Награда: +10 к броне", "rewards": [{ "type": "armor_flat", "value": 10 }] },
+        { "threshold_delta": 5000, "description_ru": "Получить 5 000 ед. руды", "reward_text_ru": "Награда: +25 к броне", "rewards": [{ "type": "armor_flat", "value": 25 }] },
+        { "threshold_delta": 25000, "description_ru": "Получить 25 000 ед. руды", "reward_text_ru": "Награда: +60 к броне", "rewards": [{ "type": "armor_flat", "value": 60 }] },
+        { "threshold_delta": 500000, "description_ru": "Получить 500 000 ед. руды", "reward_text_ru": "Награда: +2% к броне", "rewards": [{ "type": "armor_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.gold_earned",
+      "category": "resources",
+      "title_ru": "Золотая россыпь",
+      "counter_key": "res.gold_earned",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.gold_earned"},
+      "steps": [
+        { "threshold_delta": 1000, "description_ru": "Получить 1 000 ед. золота", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 10000, "description_ru": "Получить 10 000 ед. золота", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 50000, "description_ru": "Получить 50 000 ед. золота", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
+        { "threshold_delta": 250000, "description_ru": "Получить 250 000 ед. золота", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.matter_earned",
+      "category": "resources",
+      "title_ru": "Материя разлома",
+      "counter_key": "res.matter_earned",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.matter_earned"},
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Получить 5 ед. материи", "reward_text_ru": "Награда: +5 к урону", "rewards": [{ "type": "damage_flat", "value": 5 }] },
+        { "threshold_delta": 25, "description_ru": "Получить 25 ед. материи", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
+        { "threshold_delta": 100, "description_ru": "Получить 100 ед. материи", "reward_text_ru": "Награда: +25 к урону", "rewards": [{ "type": "damage_flat", "value": 25 }] },
+        { "threshold_delta": 500, "description_ru": "Получить 500 ед. материи", "reward_text_ru": "Награда: +2% к урону", "rewards": [{ "type": "damage_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.gold_spent",
+      "category": "resources",
+      "title_ru": "Золотой оборот",
+      "counter_key": "res.gold_spent",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.gold_spent"},
+      "steps": [
+        { "threshold_delta": 1000, "description_ru": "Потратить 1 000 ед. золота", "reward_text_ru": "Награда: +10 к броне", "rewards": [{ "type": "armor_flat", "value": 10 }] },
+        { "threshold_delta": 10000, "description_ru": "Потратить 10 000 ед. золота", "reward_text_ru": "Награда: +25 к броне", "rewards": [{ "type": "armor_flat", "value": 25 }] },
+        { "threshold_delta": 50000, "description_ru": "Потратить 50 000 ед. золота", "reward_text_ru": "Награда: +60 к броне", "rewards": [{ "type": "armor_flat", "value": 60 }] },
+        { "threshold_delta": 250000, "description_ru": "Потратить 250 000 ед. золота", "reward_text_ru": "Награда: +2% к броне", "rewards": [{ "type": "armor_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.ore_spent",
+      "category": "resources",
+      "title_ru": "Руда в дело",
+      "counter_key": "res.ore_spent",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.ore_spent"},
+      "steps": [
+        { "threshold_delta": 500, "description_ru": "Потратить 500 ед. руды", "reward_text_ru": "Награда: +10 к лечению", "rewards": [{ "type": "heal_flat", "value": 10 }] },
+        { "threshold_delta": 5000, "description_ru": "Потратить 5 000 ед. руды", "reward_text_ru": "Награда: +25 к лечению", "rewards": [{ "type": "heal_flat", "value": 25 }] },
+        { "threshold_delta": 25000, "description_ru": "Потратить 25 000 ед. руды", "reward_text_ru": "Награда: +60 к лечению", "rewards": [{ "type": "heal_flat", "value": 60 }] },
+        { "threshold_delta": 150000, "description_ru": "Потратить 150 000 ед. руды", "reward_text_ru": "Награда: +2% к лечению", "rewards": [{ "type": "heal_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.matter_spent",
+      "category": "resources",
+      "title_ru": "Цена редкости",
+      "counter_key": "res.matter_spent",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.matter_spent"},
+      "steps": [
+        { "threshold_delta": 5, "description_ru": "Потратить 5 ед. материи", "reward_text_ru": "Награда: +5 к урону", "rewards": [{ "type": "damage_flat", "value": 5 }] },
+        { "threshold_delta": 25, "description_ru": "Потратить 25 ед. материи", "reward_text_ru": "Награда: +10 к урону", "rewards": [{ "type": "damage_flat", "value": 10 }] },
+        { "threshold_delta": 100, "description_ru": "Потратить 100 ед. материи", "reward_text_ru": "Награда: +25 к урону", "rewards": [{ "type": "damage_flat", "value": 25 }] },
+        { "threshold_delta": 500, "description_ru": "Потратить 500 ед. материи", "reward_text_ru": "Награда: +1 п. п. к шансу критического удара", "rewards": [{ "type": "crit_flat", "value": 0.01 }] }
+      ]
+    },
+    {
+      "id": "res.tournament_ore_earned",
+      "category": "resources",
+      "title_ru": "Рудный трофей",
+      "counter_key": "res.tournament_ore_earned",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.tournament_ore_earned"},
+      "steps": [
+        { "threshold_delta": 2000, "description_ru": "Выиграть 2 000 ед. руды в турнирах", "reward_text_ru": "Награда: +25 к здоровью", "rewards": [{ "type": "hp_flat", "value": 25 }] },
+        { "threshold_delta": 10000, "description_ru": "Выиграть 10 000 ед. руды в турнирах", "reward_text_ru": "Награда: +60 к здоровью", "rewards": [{ "type": "hp_flat", "value": 60 }] },
+        { "threshold_delta": 50000, "description_ru": "Выиграть 50 000 ед. руды в турнирах", "reward_text_ru": "Награда: +120 к здоровью", "rewards": [{ "type": "hp_flat", "value": 120 }] },
+        { "threshold_delta": 250000, "description_ru": "Выиграть 250 000 ед. руды в турнирах", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.tournament_gold_earned",
+      "category": "resources",
+      "title_ru": "Золотой трофей",
+      "counter_key": "res.tournament_gold_earned",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.tournament_gold_earned"},
+      "steps": [
+        { "threshold_delta": 2000, "description_ru": "Выиграть 2 000 ед. золота в турнирах", "reward_text_ru": "Награда: +10 к броне", "rewards": [{ "type": "armor_flat", "value": 10 }] },
+        { "threshold_delta": 10000, "description_ru": "Выиграть 10 000 ед. золота в турнирах", "reward_text_ru": "Награда: +25 к броне", "rewards": [{ "type": "armor_flat", "value": 25 }] },
+        { "threshold_delta": 50000, "description_ru": "Выиграть 50 000 ед. золота в турнирах", "reward_text_ru": "Награда: +60 к броне", "rewards": [{ "type": "armor_flat", "value": 60 }] },
+        { "threshold_delta": 250000, "description_ru": "Выиграть 250 000 ед. золота в турнирах", "reward_text_ru": "Награда: +2% к броне", "rewards": [{ "type": "armor_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.tournament_ore_spent",
+      "category": "resources",
+      "title_ru": "Рудный взнос",
+      "counter_key": "res.tournament_ore_spent",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.tournament_ore_spent"},
+      "steps": [
+        { "threshold_delta": 500, "description_ru": "Потратить 500 ед. руды на вступительные взносы", "reward_text_ru": "Награда: +10 к лечению", "rewards": [{ "type": "heal_flat", "value": 10 }] },
+        { "threshold_delta": 2500, "description_ru": "Потратить 2 500 ед. руды на вступительные взносы", "reward_text_ru": "Награда: +25 к лечению", "rewards": [{ "type": "heal_flat", "value": 25 }] },
+        { "threshold_delta": 15000, "description_ru": "Потратить 15 000 ед. руды на вступительные взносы", "reward_text_ru": "Награда: +60 к лечению", "rewards": [{ "type": "heal_flat", "value": 60 }] },
+        { "threshold_delta": 75000, "description_ru": "Потратить 75 000 ед. руды на вступительные взносы", "reward_text_ru": "Награда: +2% к лечению", "rewards": [{ "type": "heal_pct", "value": 0.02 }] }
+      ]
+    },
+    {
+      "id": "res.tournament_gold_spent",
+      "category": "resources",
+      "title_ru": "Золотой взнос",
+      "counter_key": "res.tournament_gold_spent",
+      "threshold_mode": "absolute_total",
+      "min_journal_version": 2,
+      "event": {"primitive": "resource_transaction", "counter_key": "res.tournament_gold_spent"},
+      "steps": [
+        { "threshold_delta": 500, "description_ru": "Потратить 500 ед. золота на вступительные взносы", "reward_text_ru": "Награда: +20 к здоровью", "rewards": [{ "type": "hp_flat", "value": 20 }] },
+        { "threshold_delta": 2500, "description_ru": "Потратить 2 500 ед. золота на вступительные взносы", "reward_text_ru": "Награда: +50 к здоровью", "rewards": [{ "type": "hp_flat", "value": 50 }] },
+        { "threshold_delta": 15000, "description_ru": "Потратить 15 000 ед. золота на вступительные взносы", "reward_text_ru": "Награда: +100 к здоровью", "rewards": [{ "type": "hp_flat", "value": 100 }] },
+        { "threshold_delta": 75000, "description_ru": "Потратить 75 000 ед. золота на вступительные взносы", "reward_text_ru": "Награда: +2% к здоровью", "rewards": [{ "type": "hp_pct", "value": 0.02 }] }
       ]
     }
   ]

@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 namespace Project.UI
 {
-    /// <summary>A scrollable mobile storefront. Prices and rewards always come from the server quote.</summary>
+    /// <summary>The shelter quartermaster's shelves. Prices and rewards come from the server quote.</summary>
     public sealed class ExpeditionShopPanel : MonoBehaviour
     {
         private readonly Dictionary<string, Button> _tabs = new();
@@ -23,7 +23,7 @@ namespace Project.UI
         private RectTransform _content, _payment, _confirmation;
         private ShopPurchaseConfirmation _quote;
         private readonly object _fixtureOwner = new();
-        private TMP_Text _status, _sectionTitle;
+        private TMP_Text _status;
         private ItemCatalog _catalog;
         private ScrollRect _scroll;
         public static void Open()
@@ -49,38 +49,56 @@ namespace Project.UI
             _cts = new CancellationTokenSource(); if (_fixture == null) ShopService.Changed += Refresh;
             ExpeditionUi.Fill(transform, "ShopShade", 0, 0, 1, 1, new Color(0, 0, 0, .88f)).raycastTarget = true;
             var safe = ExpeditionUi.Rect(transform, "ShopSafeArea", 0, 0, 1, 1); safe.gameObject.AddComponent<ExpeditionSafeArea>();
-            var panel = ExpeditionUi.Panel(safe, "ShopPanel", .025f, .035f, .975f, .965f).rectTransform;
-            Label(panel, "ShopKicker", "ПРИПАСЫ ЭКСПЕДИЦИИ", 19, .055f, .955f, .88f, .98f).color = ExpeditionTheme.Amber;
-            Label(panel, "ShopTitle", "ЛАВКА УБЕЖИЩА", 38, .05f, .913f, .865f, .957f).fontStyle = FontStyles.Bold;
-            ExpeditionUi.Button(panel, "ShopClose", "×", .897f, .92f, .974f, .975f, () => Destroy(gameObject), false, 42);
+            var panel = ExpeditionShelterSurface.Inset(safe, "ShopPanel", ExpeditionShelterSurface.Timber, .025f, .035f, .975f, .965f);
+            ExpeditionShelterSurface.Illustration(panel, "QuartermasterCounter", "shelter-merchant", .01f, .785f, .99f, .993f);
+            var sign = ExpeditionShelterSurface.Inset(panel, "ShopSign", ExpeditionShelterSurface.Timber, .048f, .792f, .69f, .856f);
+            Label(sign, "ShopTitle", "ЛАВКА УБЕЖИЩА", 43, .05f, .06f, .95f, .94f).fontStyle = FontStyles.Bold;
+            ExpeditionUi.Button(panel, "ShopClose", "×", .891f, .924f, .971f, .978f, () => Destroy(gameObject), false, 42);
             var currency = new[] { "gold", "ore", "matter" };
             for (var i = 0; i < currency.Length; i++)
             {
                 var x = .045f + i * .308f;
-                var pill = ExpeditionUi.Panel(panel, "ShopBalance-" + currency[i], x, .837f, x + .292f, .902f).rectTransform;
+                var pill = ExpeditionShelterSurface.Inset(panel, "ShopBalance-" + currency[i], new Color32(24, 20, 17, 255), x, .721f, x + .292f, .775f);
                 Picture(pill, "Currency", ExpeditionResourceIcons.Get(currency[i]), .035f, .11f, .25f, .89f);
                 _balances[currency[i]] = Label(pill, "Balance", "—", 29, .28f, .10f, .95f, .90f); _balances[currency[i]].fontStyle = FontStyles.Bold;
             }
             var ids = new[] { "bundles", "resources", "supplies", "rub" }; var names = new[] { "Наборы", "Ресурсы", "Припасы", "За рубли" };
+            var icons = new[] { ExpeditionTheme.Icon("bag"), ExpeditionResourceIcons.Get("ore"), TokenIcon, ExpeditionResourceIcons.Get("matter") };
             for (var i = 0; i < ids.Length; i++)
             {
                 var id = ids[i]; var x = .045f + i * .231f;
-                _tabs[id] = ExpeditionUi.Button(panel, "ShopTab-" + id, names[i], x, .765f, x + .217f, .825f, () => SelectTab(id), false, 24); Fit(_tabs[id], 24);
+                var tab = ExpeditionUi.Button(panel, "ShopTab-" + id, names[i], x, .644f, x + .217f, .709f, () => SelectTab(id), false, 24);
+                Fit(tab, 24);
+                ExpeditionUi.SetRect(tab.GetComponentInChildren<TMP_Text>().rectTransform, .03f, .08f, .97f, .40f);
+                Picture(tab.transform, "ShelfSignIcon", icons[i], .28f, .42f, .72f, .93f);
+                _tabs[id] = tab;
             }
-            _sectionTitle = Label(panel, "ShopSection", "СОБЕРИТЕ СВОЙ ЗАПАС", 21, .055f, .727f, .945f, .758f); _sectionTitle.color = ExpeditionTheme.Muted;
-            var viewport = ExpeditionUi.Rect(panel, "ShopViewport", .04f, .14f, .96f, .722f);
-            viewport.gameObject.AddComponent<RectMask2D>(); var hit = viewport.gameObject.AddComponent<Image>(); hit.color = Color.clear; hit.raycastTarget = true;
+            var frame = ExpeditionShelterSurface.Inset(panel, "ShopCabinet", new Color32(23, 18, 16, 255), .035f, .112f, .965f, .632f);
+            var viewport = ExpeditionUi.Rect(frame, "ShopViewport", .006f, .007f, .994f, .993f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var hit = viewport.gameObject.AddComponent<Image>(); hit.color = Color.clear; hit.raycastTarget = true;
             _content = ExpeditionUi.Rect(viewport, "ShopProducts", 0, 0, 1, 1);
             _content.anchorMin = new Vector2(0, 1); _content.anchorMax = Vector2.one; _content.pivot = new Vector2(.5f, 1); _content.anchoredPosition = Vector2.zero;
             _scroll = viewport.gameObject.AddComponent<ScrollRect>(); _scroll.viewport = viewport; _scroll.content = _content;
             _scroll.horizontal = false; _scroll.vertical = true; _scroll.movementType = ScrollRect.MovementType.Clamped; _scroll.scrollSensitivity = 36;
-            _status = Label(panel, "ShopStatus", "Загружаем витрину…", 21, .055f, .025f, .73f, .12f);
+            _status = Label(panel, "ShopStatus", "Загружаем витрину…", 21, .055f, .025f, .73f, .10f);
             var refresh = ExpeditionUi.Button(panel, "ShopRefresh", "Обновить", .755f, .04f, .951f, .105f, () =>
             { _shownCatalog = null; if (_fixture != null) Refresh(); else _ = ShopService.RefreshAsync(_cts.Token); }, false, 22); Fit(refresh, 22);
+            if (Application.isPlaying) panel.gameObject.AddComponent<ExpeditionPanelArrival>();
         }
         public void SelectTab(string tab)
         {
-            if (!_tabs.ContainsKey(tab)) return; _tab = tab; _shownCatalog = null; Refresh();
+            if (!_tabs.ContainsKey(tab)) return;
+            if (tab == _tab)
+            {
+                _scroll.StopMovement();
+                _scroll.verticalNormalizedPosition = 1;
+                return;
+            }
+            _tab = tab;
+            _shownCatalog = null;
+            Refresh();
+            if (Application.isPlaying) ExpeditionUi.Ensure<ExpeditionPanelArrival>(_content.gameObject).Play();
         }
         private void Refresh()
         {
@@ -94,7 +112,6 @@ namespace Project.UI
                 if (marker == null) marker = ExpeditionUi.Fill(pair.Value.transform, "SelectedTab", .06f, .015f, .94f, .055f, ExpeditionTheme.Amber).transform;
                 marker.gameObject.SetActive(pair.Key == _tab);
             }
-            _sectionTitle.text = _tab == "rub" ? "МАТЕРИЯ И ПРИПАСЫ ДЛЯ УБЕЖИЩА" : _tab == "supplies" ? "ПОДГОТОВЬТЕСЬ К СЛЕДУЮЩЕМУ БОЮ" : _tab == "resources" ? "ДЛЯ РЕМЕСЛА И РАЗВИТИЯ" : "ВСЁ НУЖНОЕ В ОДНОМ НАБОРЕ";
             if (!ShopService.Valid(state))
             {
                 DismissConfirmation(true);
@@ -114,7 +131,7 @@ namespace Project.UI
                 entry.Button.interactable = entry.Offer.currency == "rub" || !busy && (pending == null || pending == entry.Offer.id);
             }
             var receipt = state.receipt;
-            _status.text = _fixtureMessage ?? (_fixture == null ? ShopService.Error : null) ?? (busy ? "Подтверждаем покупку…" : receipt?.pending_items?.Length > 0 ? "Покупка получена. Предметы ждут места в инвентаре." : receipt != null ? "Покупка получена. Припасы уже у вас." : _tab == "rub" ? "Выберите набор материи или ресурсов." : "Цена и полный состав указаны на карточке.");
+            _status.text = _fixtureMessage ?? (_fixture == null ? ShopService.Error : null) ?? (busy ? "Подтверждаем покупку…" : receipt?.pending_items?.Length > 0 ? "Покупка получена. Предметы ждут места в инвентаре." : receipt != null ? "Покупка получена. Припасы уже у вас." : "");
             _status.color = _status.text == ShopService.PaymentMessage ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
         }
         private void BuildProducts(ShopService.Offer[] offers)
@@ -134,10 +151,11 @@ namespace Project.UI
         }
         private void BuildCard(ShopService.Offer offer, float x0, float x1, float top, float height, bool featured)
         {
-            var image = ExpeditionUi.Panel(_content, "ShopOffer-" + offer.id, x0, 0, x1, 1); var card = image.rectTransform;
-            card.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, top, height); image.pixelsPerUnitMultiplier = 5;
+            var card = ExpeditionShelterSurface.Inset(_content, "ShopOffer-" + offer.id, ExpeditionShelterSurface.Timber, x0, 0, x1, 1);
+            card.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, top, height);
             var accent = offer.currency == "rub" ? new Color32(176, 147, 222, 255) : offer.currency == "gold" ? ExpeditionTheme.Amber : new Color32(101, 204, 208, 255);
-            ExpeditionUi.Fill(card, "OfferAccent", .035f, .97f, .965f, .985f, accent);
+            ExpeditionUi.Fill(card, "ShelfFront", .006f, .007f, .994f, .033f, new Color32(106, 64, 35, 255));
+            ExpeditionUi.Fill(card, "ShelfEdge", .008f, .029f, .992f, .037f, ExpeditionShelterSurface.Brass);
             var title = Label(card, "OfferTitle", offer.title, featured ? 32 : 27, featured ? .255f : .055f, featured ? .735f : .71f, .955f, featured ? .94f : .91f); title.fontStyle = FontStyles.Bold;
             var description = Label(card, "OfferDescription", offer.description, featured ? 22 : 20, featured ? .255f : .055f, featured ? .51f : .52f, .955f, featured ? .735f : .71f); description.color = ExpeditionTheme.Muted;
             if (!string.IsNullOrEmpty(offer.badge))
@@ -161,6 +179,7 @@ namespace Project.UI
             for (var i = 0; i < rewards.Count; i++)
             {
                 var entry = rewards[i]; var root = ExpeditionUi.Rect(parent, "ShopReward-" + entry.Id, x0 + width * i, y0, x0 + width * (i + 1), y1);
+                ExpeditionUi.Fill(root, "Felt", .04f, .03f, .96f, .97f, new Color32(19, 34, 32, 255));
                 Picture(root, "RewardIcon", Icon(entry.Id), .10f, .40f, .90f, .98f);
                 var count = Label(root, "RewardAmount", "×" + Number(entry.Amount), rewards.Count > 4 ? 21 : 25, .015f, .015f, .985f, .395f, TextAlignmentOptions.Center); count.fontStyle = FontStyles.Bold;
             }
@@ -186,7 +205,7 @@ namespace Project.UI
             var offer = quote.Offer;
             _confirmation = ExpeditionUi.Rect(transform, "ShopPurchaseConfirmation", 0, 0, 1, 1);
             ExpeditionUi.Fill(_confirmation, "ConfirmationShade", 0, 0, 1, 1, new Color(0, 0, 0, .90f)).raycastTarget = true;
-            var panel = ExpeditionUi.Panel(_confirmation, "ConfirmationCard", .065f, .20f, .935f, .80f).rectTransform;
+            var panel = ExpeditionShelterSurface.Inset(_confirmation, "ConfirmationCard", ExpeditionShelterSurface.Timber, .065f, .20f, .935f, .80f);
             Label(panel, "ConfirmationKicker", quote.IsRetry ? "ПРОВЕРКА ПОКУПКИ" : "ПОДТВЕРЖДЕНИЕ ПОКУПКИ", 21, .055f, .933f, .86f, .975f).color = ExpeditionTheme.Amber;
             Label(panel, "ConfirmationOfferTitle", offer.title, 35, .055f, .835f, .945f, .925f).fontStyle = FontStyles.Bold;
             Label(panel, "ConfirmationHint", quote.IsRetry ? "Проверим прежний запрос. Повторного списания не будет." : "Вы получите весь указанный состав одной покупкой.", 24, .055f, .755f, .945f, .835f).color = ExpeditionTheme.Muted;
@@ -196,11 +215,11 @@ namespace Project.UI
                 var entry = rewards[i]; var row = i / columns; var column = i % columns;
                 var x = .055f + column * .89f / columns; var y = .745f - (row + 1) * .35f / rows;
                 var tile = ExpeditionUi.Rect(panel, "ConfirmationReward-" + entry.Id, x + .008f, y + .008f, x + .89f / columns - .008f, y + .35f / rows - .008f);
-                ExpeditionUi.Fill(tile, "RewardWell", 0, 0, 1, 1, new Color32(20, 48, 53, 180));
+                ExpeditionShelterSurface.Inset(tile, "RewardWell", new Color32(19, 34, 32, 255), 0, 0, 1, 1);
                 Picture(tile, "ConfirmationRewardIcon", Icon(entry.Id), .12f, .32f, .88f, .97f);
                 Label(tile, "ConfirmationRewardAmount", "×" + Number(entry.Amount), 28, .025f, .025f, .975f, .31f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
             }
-            var cost = ExpeditionUi.Panel(panel, "ConfirmationTotal", .055f, .255f, .945f, .38f).rectTransform;
+            var cost = ExpeditionShelterSurface.Inset(panel, "ConfirmationTotal", new Color32(23, 18, 16, 255), .055f, .255f, .945f, .38f);
             Label(cost, "ConfirmationTotalLabel", "ИТОГО К ОПЛАТЕ", 24, .035f, .12f, .60f, .88f).fontStyle = FontStyles.Bold;
             if (offer.currency != "rub") Picture(cost, "ConfirmationCurrency", ExpeditionResourceIcons.Get(offer.currency), .61f, .13f, .73f, .87f);
             Label(cost, "ConfirmationPrice", Number(offer.price) + (offer.currency == "rub" ? " ₽" : ""), 33, offer.currency == "rub" ? .63f : .74f, .10f, .965f, .90f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
@@ -249,14 +268,14 @@ namespace Project.UI
             if (_payment != null) return;
             _payment = ExpeditionUi.Rect(transform, "ShopPaymentUnavailable", 0, 0, 1, 1);
             ExpeditionUi.Fill(_payment, "PaymentShade", 0, 0, 1, 1, new Color(0, 0, 0, .86f)).raycastTarget = true;
-            var panel = ExpeditionUi.Panel(_payment, "PaymentCard", .07f, .36f, .93f, .64f).rectTransform;
+            var panel = ExpeditionShelterSurface.Inset(_payment, "PaymentCard", ExpeditionShelterSurface.Timber, .07f, .36f, .93f, .64f);
             Label(panel, "PaymentMessage", ShopService.PaymentMessage, 34, .055f, .55f, .945f, .91f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
             Label(panel, "PaymentHint", "Выберите припасы за игровые ресурсы.", 24, .07f, .37f, .93f, .58f, TextAlignmentOptions.Center).color = ExpeditionTheme.Muted;
             ExpeditionUi.Button(panel, "PaymentUnderstood", "Понятно", .16f, .09f, .84f, .32f, () => { _payment.gameObject.SetActive(false); Destroy(_payment.gameObject); _payment = null; }, true, 28);
         }
         private static string Number(long value) => value.ToString("N0", CultureInfo.GetCultureInfo("ru-RU"));
         private static Image Picture(Transform parent, string name, Sprite sprite, float x0, float y0, float x1, float y1)
-        { var image = ExpeditionUi.Fill(parent, name, x0, y0, x1, y1, Color.white); image.sprite = sprite; image.preserveAspect = true; return image; }
+        { var image = ExpeditionUi.Fill(parent, name, x0, y0, x1, y1, Color.white); image.sprite = sprite; image.preserveAspect = true; image.enabled = sprite != null; return image; }
         private static TMP_Text Label(Transform parent, string name, string text, int size, float x0, float y0, float x1, float y1, TextAlignmentOptions alignment = TextAlignmentOptions.MidlineLeft)
         {
             var value = ExpeditionUi.Text(parent, name, text, size, x0, y0, x1, y1, alignment); value.richText = false; value.margin = Vector4.zero;

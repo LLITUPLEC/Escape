@@ -18,9 +18,9 @@ namespace Project.Achievements
         public const string RpcCatalogGet = "duel_match3_achievement_catalog_get";
         public const string RpcAchievementSync = "duel_match3_achievement_sync";
 
-        private const string CatalogCacheKey = "achievements.server_catalog.v2";
-        private const string CatalogCacheUpdatedAtKey = "achievements.server_catalog.updated_at.v2";
-        private const string CatalogCacheSourceKey = "achievements.server_catalog.source.v2";
+        private const string CatalogCacheKey = "achievements.server_catalog.v3";
+        private const string CatalogCacheUpdatedAtKey = "achievements.server_catalog.updated_at.v3";
+        private const string CatalogCacheSourceKey = "achievements.server_catalog.source.v3";
 
         private static readonly SemaphoreSlim RefreshGate = new(1, 1);
         private static long _lastAppliedUpdatedAt = -1;
@@ -93,12 +93,12 @@ namespace Project.Achievements
                 var scope = await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.Current).ConfigureAwait(false);
                 var session = bootstrap.Session;
 
+                var rpcBody = forceServerRefresh
+                    ? "{\"journal_version\":2,\"force_refresh\":true}"
+                    : "{\"journal_version\":2}";
                 IApiRpc rpc;
                 try
                 {
-                    var rpcBody = forceServerRefresh
-                        ? "{\"force_refresh\":true}"
-                        : "{}";
                     rpc = await bootstrap.Client.RpcAsync(session, RpcCatalogGet, rpcBody, canceller: ct)
                         .ConfigureAwait(false);
                 }
@@ -108,9 +108,6 @@ namespace Project.Achievements
                     await bootstrap.RecoverSessionAfterRefreshFailureAsync(ct).ConfigureAwait(false);
                     if (!bootstrap.IsReady || bootstrap.Session == null || !string.Equals(session.UserId, bootstrap.Session.UserId, StringComparison.Ordinal))
                         return false;
-                    var rpcBody = forceServerRefresh
-                        ? "{\"force_refresh\":true}"
-                        : "{}";
                     rpc = await bootstrap.Client.RpcAsync(bootstrap.Session, RpcCatalogGet, rpcBody, canceller: ct)
                         .ConfigureAwait(false);
                 }
@@ -288,6 +285,7 @@ namespace Project.Achievements
             var thresholds = new int[n];
             var descriptions = new string[n];
             var rewards = new string[n];
+            var rewardTypes = new string[n][];
             for (var i = 0; i < n; i++)
             {
                 var st = ch.steps[i];
@@ -296,16 +294,21 @@ namespace Project.Achievements
                 thresholds[i] = Mathf.Max(0, st.threshold_delta);
                 descriptions[i] = st.description_ru ?? string.Empty;
                 rewards[i] = st.reward_text_ru ?? string.Empty;
+                if (st.rewards != null)
+                    rewardTypes[i] = Array.ConvertAll(st.rewards, reward => reward?.type);
             }
 
-            return AchievementCatalog.ChainFromServer(
+            var definition = AchievementCatalog.ChainFromServer(
                 ch.id,
                 ch.category,
                 ch.title_ru,
                 ch.counter_key,
                 thresholds,
                 descriptions,
-                rewards);
+                rewards,
+                usesTotalThresholds: string.Equals(ch.threshold_mode, "absolute_total", StringComparison.Ordinal));
+            definition.RewardTypes = rewardTypes;
+            return definition;
         }
 
         private struct CatalogApplyMeta
@@ -343,6 +346,13 @@ namespace Project.Achievements
             public int threshold_delta;
             public string description_ru;
             public string reward_text_ru;
+            public AchievementRewardDto[] rewards;
+        }
+
+        [Serializable]
+        private sealed class AchievementRewardDto
+        {
+            public string type;
         }
 
         [Serializable]

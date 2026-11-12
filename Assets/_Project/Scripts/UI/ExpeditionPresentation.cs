@@ -115,7 +115,7 @@ namespace Project.UI
             _achievements = InScene<AchievementsPanelController>();
             _rating = InScene<LeaderboardPanelController>();
             _friends = InScene<FriendsPanelController>();
-            if (_achievements != null) { _achievements.AttachToShell(achievementsHost); _achievements.VisibilityChanged += AchievementsVisibility; }
+            if (_achievements != null) { _achievements.AttachToShell(achievementsHost, _modalHost); _achievements.VisibilityChanged += AchievementsVisibility; }
             if (_rating != null) { _rating.AttachToShell(ratingHost); _rating.VisibilityChanged += RatingVisibility; }
             if (_friends != null) { _friends.AttachToShell(friendsHost); _friends.VisibilityChanged += FriendsVisibility; }
             FriendsNavigationBadge.Bind(FindButton("ExpeditionOpenFriends"), _friends);
@@ -207,23 +207,9 @@ namespace Project.UI
             ExpeditionMailBadge.Bind(mail);
             if (aura != null)
             {
-                // Keep the original controller, live timer, rotation and modal callback.
-                // The real Button is on aura_btn/border, not on aura_btn itself.
                 aura.SetParent(_sceneBody, false);
-                ExpeditionUi.SetRect(aura, .075f, .480f, .215f, .565f);
-                var auraBorder = aura.Find("border") as RectTransform;
-                if (auraBorder != null) ExpeditionUi.SetRect(auraBorder, .20f, .31f, .80f, .89f);
-                var auraTimer = aura.Find("timer") as RectTransform;
-                if (auraTimer != null)
-                {
-                    ExpeditionUi.SetRect(auraTimer, 0, .12f, 1, .30f);
-                    foreach (var t in auraTimer.GetComponentsInChildren<TMP_Text>(true))
-                    { t.font = ExpeditionTheme.Font; t.fontSize = 19; t.alignment = TextAlignmentOptions.Center; t.color = ExpeditionTheme.Ivory; t.raycastTarget = false; t.margin = Vector4.zero; }
-                    foreach (var t in auraTimer.GetComponentsInChildren<Text>(true))
-                    { t.font = ExpeditionTheme.LegacyFont; t.fontSize = 19; t.alignment = TextAnchor.MiddleCenter; t.color = ExpeditionTheme.Ivory; t.raycastTarget = false; }
-                }
-                var auraTitle = ExpeditionUi.Text(aura, "ExpeditionAuraTitle", "АУРА МИРА", 18, -.05f, -.08f, 1.05f, .12f, TextAlignmentOptions.Center);
-                auraTitle.margin = Vector4.zero; auraTitle.color = ExpeditionTheme.Amber;
+                ExpeditionUi.SetRect(aura, .025f, .477f, .325f, .569f);
+                ExpeditionUi.Ensure<ServerAuraButtonView>(aura.gameObject).InstallReadout();
             }
             var online = Find("OnlinePlayersBadge");
             if (online != null)
@@ -461,40 +447,105 @@ namespace Project.UI
         private void BuildArena()
         {
             Background("arena-backdrop");
+            _embers.SetActive(true);
             var mode = Find("ModePanel") as RectTransform;
             if (mode == null) return;
+            var courtyard = ExpeditionUi.Panel(_sceneBody, "ArenaCourtyard", .024f, .57f, .976f, .896f);
+            var art = ExpeditionUi.Fill(courtyard.transform, "CourtyardPainting", .013f, .02f, .987f, .98f, Color.white);
+            art.sprite = Resources.Load<Sprite>("Expedition/Art/encounter-arena") ?? Resources.Load<Sprite>("Expedition/Art/arena-backdrop");
+            ExpeditionLocalAtmosphere.Install(art.transform, true);
             var buttons = new[] { FindButton("match3Button"), FindButton("match3ProButton"), FindButton("match3Arena_Race"), FindButton("match3Arena"), FindButton("match3Arena_Ore"), FindButton("match3Arena_Gold") };
             mode.SetParent(_sceneBody, false);
-            ExpeditionUi.SetRect(mode, .035f, .265f, .965f, .704f);
-            var list = ExpeditionUi.Rect(mode, "ExpeditionModeList", 0, 0, 1, 1);
+            mode.SetAsLastSibling();
+            ExpeditionUi.SetRect(mode, .024f, .259f, .976f, .722f);
+            var grounds = ExpeditionUi.Rect(mode, "ArenaGrounds", 0, 0, 1, 1);
+            var placement = new[]
+            {
+                Rect.MinMaxRect(0, .665f, .33f, 1),
+                Rect.MinMaxRect(.67f, .665f, 1, 1),
+                Rect.MinMaxRect(.335f, .435f, .665f, .765f),
+                Rect.MinMaxRect(0, 0, .322f, .334f),
+                Rect.MinMaxRect(.339f, 0, .661f, .334f),
+                Rect.MinMaxRect(.678f, 0, 1, .334f),
+            };
             var titles = new[] { "КЛАССИКА", "PRO", "СПУСК", "ТУРНИР КУЗНЕЦА", "ТУРНИР РУДЫ", "ТУРНИР ЗОЛОТА" };
-            var notes = new[] { "Равные характеристики · решает мастерство", "Уровень и экипировка участвуют в бою", "Кто первым наберёт 200 маны", "От 10 слитков · слитки и новые рецепты", "8 участников · ценные материалы", "8 участников · золотой приз" };
+            var notes = new[] { "Бой на равных", "Бой со своим снаряжением", "Гонка за маной", "От 10 слитков · слитки и рецепты", "8 участников · приз рудой", "8 участников · приз золотом" };
+            var icons = new[] { "swords", "shield", "mana-drop", "anvil", "ore", "gold" };
+            var accents = new[]
+            {
+                new Color32(212, 130, 87, 255), new Color32(230, 154, 98, 255), new Color32(95, 208, 214, 255),
+                new Color32(231, 147, 82, 255), new Color32(134, 197, 198, 255), new Color32(245, 198, 104, 255),
+            };
+            var entry = ExpeditionUi.Panel(grounds, "TournamentRegistration", .015f, .347f, .985f, .418f);
+            ExpeditionUi.Text(entry.transform, "TournamentRegistrationTitle", "ТУРНИРНЫЕ ВОРОТА", 28, .04f, .02f, .96f, .98f,
+                TextAlignmentOptions.Center).color = ExpeditionTheme.Amber;
             for (var i = 0; i < buttons.Length; i++)
             {
                 var button = buttons[i];
                 if (button == null) continue;
-                button.transform.SetParent(list, false);
-                var column = i % 2;
-                var row = i / 2;
-                ExpeditionUi.SetRect(button.transform as RectTransform, column * .5f + .006f, 1f - (row + 1) / 3f + .009f, (column + 1) * .5f - .006f, 1f - row / 3f - .009f);
+                button.transform.SetParent(grounds, false);
+                var gate = placement[i];
+                ExpeditionUi.SetRect(button.transform as RectTransform, gate.xMin, gate.yMin, gate.xMax, gate.yMax);
                 foreach (var graphic in button.GetComponentsInChildren<Graphic>(true)) if (graphic.transform != button.transform) graphic.enabled = false;
-                ExpeditionUi.StyleButton(button, false, 35);
-                PaintedIcon(button.transform, "ExpeditionModeIcon", i == 0 || i == 1 ? "swords" : i == 2 ? "pickaxe" : i == 3 ? "anvil" : i == 4 ? "ore" : "gold", .045f, .46f, .24f, .89f);
-                if (i == 3) ArenaMatch8Bridge.ApplySmithTournamentButtonIcons(button.transform);
-                if (i >= 3) ProgressiveContentButton.Bind(button, false);
+                ExpeditionUi.StyleButton(button, false, 28);
+                var accent = accents[i];
+                var frame = ExpeditionUi.Rect(button.transform, "GateFrame", 0, 0, 1, 1).gameObject.AddComponent<ExpeditionArenaGateFrame>();
+                frame.Configure(i < 2 ? ExpeditionArenaGateFrame.Shape.Arch : i == 2
+                    ? ExpeditionArenaGateFrame.Shape.Shaft : ExpeditionArenaGateFrame.Shape.Shield, accent);
+                frame.raycastTarget = true;
+                var oldPlate = button.targetGraphic;
+                if (oldPlate != null) oldPlate.enabled = false;
+                button.targetGraphic = frame;
+                var colors = button.colors;
+                colors.normalColor = Color.white;
+                colors.selectedColor = new Color(.85f, 1f, .96f);
+                button.colors = colors;
+
+                var crest = ExpeditionUi.Rect(button.transform, "GateCrest", .33f, .49f, .67f, .914f);
+                var inset = crest.gameObject.AddComponent<ExpeditionCircleGraphic>();
+                inset.color = new Color32(10, 20, 25, 255);
+                inset.raycastTarget = false;
+                var rim = ExpeditionUi.Rect(crest, "Rim", 0, 0, 1, 1).gameObject.AddComponent<ExpeditionCircleGraphic>();
+                rim.Ring = true;
+                rim.color = accent;
+                rim.raycastTarget = false;
+                PaintedIcon(button.transform, "ExpeditionModeIcon", icons[i], .35f, .51f, .65f, .89f);
+                if (i == 3)
+                {
+                    ArenaMatch8Bridge.ApplySmithTournamentButtonIcons(button.transform);
+                    var ingots = new[] { "Green", "Blue", "Purple" };
+                    for (var j = 0; j < ingots.Length; j++)
+                    {
+                        var ingot = button.transform.Find("ExpeditionSmithIngot" + ingots[j]) as RectTransform;
+                        ExpeditionUi.SetRect(ingot, .35f + j * .102f, .56f, .45f + j * .102f, .85f);
+                    }
+                }
                 GameplayConnectionButton.Bind(button);
-                ExpeditionUi.Text(button.transform, "ExpeditionModeTitle", titles[i], i < 3 ? 38 : 29, .25f, .48f, .95f, .9f).fontStyle = FontStyles.Bold;
-                var note = ExpeditionUi.Text(button.transform, "ExpeditionModeDescription", notes[i], 28, .045f, .06f, .95f, .47f);
+                var title = ExpeditionUi.Text(button.transform, "ExpeditionModeTitle", titles[i], i < 3 ? 37 : 27,
+                    .071f, .265f, .929f, .49f, TextAlignmentOptions.Center);
+                title.fontStyle = FontStyles.Bold;
+                title.color = accent;
+                title.enableAutoSizing = true;
+                title.fontSizeMin = 22;
+                title.fontSizeMax = title.fontSize;
+                var note = ExpeditionUi.Text(button.transform, "ExpeditionModeDescription", notes[i], 26,
+                    .076f, i < 3 ? .066f : .102f, .924f, .275f, TextAlignmentOptions.Center);
+                note.margin = Vector4.zero;
+                note.enableAutoSizing = true;
+                note.fontSizeMin = 19;
+                note.fontSizeMax = 26;
                 note.color = ExpeditionTheme.Muted;
+                if (i >= 3) ProgressiveContentButton.Bind(button, false, note);
             }
             for (var i = mode.childCount - 1; i >= 0; i--)
-                if (mode.GetChild(i) != list) mode.GetChild(i).gameObject.SetActive(false);
+                if (mode.GetChild(i) != grounds) mode.GetChild(i).gameObject.SetActive(false);
             var modeImage = mode.GetComponent<Image>();
             if (modeImage != null) { modeImage.color = Color.clear; modeImage.raycastTarget = false; }
 
-            ExpeditionUi.Text(_sceneBody, "ArenaTitle", "Арена", 62, .055f, .828f, .94f, .888f).fontStyle = FontStyles.Bold;
-            var caption = ExpeditionUi.Text(_sceneBody, "ArenaSubtitle", "Выбери свой способ победить", 30, .055f, .79f, .94f, .83f);
-            caption.color = ExpeditionTheme.Ivory;
+            var sign = ExpeditionUi.Panel(_sceneBody, "ArenaSign", .24f, .808f, .76f, .884f);
+            var arenaTitle = ExpeditionUi.Text(sign.transform, "ArenaTitle", "АРЕНА", 62, .06f, .03f, .94f, .97f, TextAlignmentOptions.Center);
+            arenaTitle.fontStyle = FontStyles.Bold;
+            arenaTitle.color = ExpeditionTheme.Amber;
             var queue = Find("queue") as RectTransform;
             if (queue != null)
             {
@@ -647,6 +698,14 @@ namespace Project.UI
 
     public sealed class ExpeditionResourceHeader : MonoBehaviour
     {
+        private static readonly (string Id, string Title, Color32 Metal)[] SupplyCompartments =
+        {
+            ("gold", "Золото", new Color32(221, 158, 72, 255)),
+            ("ore", "Руда", new Color32(191, 112, 98, 255)),
+            ("matter", "Материя", new Color32(178, 132, 218, 255)),
+            ("energy", "Энергия", new Color32(120, 187, 145, 255)),
+            ("ingots", "Слитки", new Color32(134, 168, 187, 255)),
+        };
         private TMP_Text _name, _energy, _gold, _ore, _level, _matter, _xpValue;
         private RectTransform _headerRoot, _profileBar, _resourceRow, _avatarRoot, _suppliesRoot, _settingsRoot, _xpTrack;
         private bool _shelterStyle, _shelterExpanded = true;
@@ -656,7 +715,7 @@ namespace Project.UI
         internal Action<string> EditorResourceClickOverride;
 #endif
         private TMP_Text _drawer;
-        private readonly TMP_Text[] _drawerValues = new TMP_Text[4];
+        private readonly TMP_Text[] _drawerValues = new TMP_Text[SupplyCompartments.Length];
         private Image _xp;
         private RectTransform _modalHost;
         private MainMenuController _menu;
@@ -1017,7 +1076,11 @@ namespace Project.UI
             {
                 _energy.text = _gold.text = _ore.text = "—";
                 if (_matter != null) _matter.text = "—";
-                if (_drawer != null) _drawer.text = "Загрузка запасов…";
+                if (_drawer != null)
+                {
+                    _drawer.text = "Загрузка запасов…";
+                    foreach (var amount in _drawerValues) amount.text = "—";
+                }
                 return;
             }
             _energy.text = Short(value.energy);
@@ -1026,9 +1089,12 @@ namespace Project.UI
             if (_matter != null) _matter.text = Short(value.matter);
             if (_drawer != null)
             {
-                _drawer.text = "Слитки: " + value.ingots + "    Ключи: " + value.keys + "\nКлючи шахтёра: " + value.miner_key + "\nТёмные ключи: " + value.dark_key;
-                var quantities = new long[] { value.gold, value.ore, value.matter, value.energy };
-                for (var i = 0; i < quantities.Length; i++) if (_drawerValues[i] != null) _drawerValues[i].text = Short(quantities[i]);
+                _drawer.text = "";
+                _drawerValues[0].text = _gold.text;
+                _drawerValues[1].text = _ore.text;
+                _drawerValues[2].text = Short(value.matter);
+                _drawerValues[3].text = _energy.text;
+                _drawerValues[4].text = value.ingots.ToString("N0", CultureInfo.GetCultureInfo("ru-RU"));
             }
         }
         private static string Short(long value) => CompactResourceAmount.Format(value);
@@ -1038,27 +1104,42 @@ namespace Project.UI
         {
             if (_drawerRoot == null)
             {
-                var scrim = ExpeditionUi.Panel(_modalHost, "ExpeditionSupplies", 0, 0, 1, 1, new Color(.025f, .07f, .08f, .92f));
+                var scrim = ExpeditionUi.Fill(_modalHost, "ExpeditionSupplies", 0, 0, 1, 1, new Color(.015f, .021f, .022f, .87f));
                 scrim.raycastTarget = true;
                 _drawerRoot = scrim.gameObject;
-                var panel = ExpeditionUi.Panel(scrim.transform, "SuppliesPanel", .07f, .2f, .93f, .78f);
-                ExpeditionUi.Text(panel.transform, "Title", "ЗАПАСЫ", 64, .06f, .83f, .94f, .96f).fontStyle = FontStyles.Bold;
-                var keys = new[] { "gold", "ore", "matter", "energy" };
-                var titles = new[] { "Золото", "Руда", "Материя", "Энергия" };
-                for (var i = 0; i < keys.Length; i++)
+                var safe = ExpeditionUi.Rect(scrim.transform, "SuppliesSafeArea", 0, 0, 1, 1);
+                safe.gameObject.AddComponent<ExpeditionSafeArea>();
+                var panel = ExpeditionShelterSurface.Inset(safe, "SuppliesPanel", ExpeditionShelterSurface.Timber, .06f, .118f, .94f, .887f);
+                ExpeditionShelterSurface.Illustration(panel, "QuartermasterChest", "shelter-supplies", .012f, .605f, .988f, .99f);
+                var plate = ExpeditionShelterSurface.Inset(panel, "ChestNameplate", ExpeditionShelterSurface.Timber, .055f, .595f, .55f, .66f);
+                ExpeditionUi.Text(plate, "Title", "ЗАПАСЫ", 49, .04f, .02f, .96f, .98f, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
+                ExpeditionUi.Button(panel, "ExpeditionOpenSuppliesClose", "×", .871f, .918f, .961f, .975f, () => _drawerRoot.SetActive(false), false, 42);
+                for (var i = 0; i < SupplyCompartments.Length; i++)
                 {
-                    var left = i % 2 == 0 ? .06f : .515f;
-                    var bottom = i < 2 ? .62f : .415f;
-                    var cell = ExpeditionUi.Panel(panel.transform, "Supply_" + keys[i], left, bottom, left + .425f, bottom + .18f);
-                    var icon = ExpeditionUi.Rect(cell.transform, "Icon", .08f, .31f, .37f, .91f).gameObject.AddComponent<Image>();
-                    icon.sprite = ExpeditionResourceIcons.Get(keys[i]); icon.preserveAspect = true; icon.raycastTarget = false;
-                    _drawerValues[i] = ExpeditionUi.Text(cell.transform, "Value", "—", 38, .40f, .30f, .92f, .90f, TextAlignmentOptions.Center);
-                    _drawerValues[i].enableAutoSizing = true; _drawerValues[i].fontSizeMin = 24; _drawerValues[i].fontSizeMax = 38;
-                    ExpeditionUi.Text(cell.transform, "ResourceName", titles[i], 24, .1f, .07f, .9f, .30f, TextAlignmentOptions.Center).color = ExpeditionTheme.Muted;
+                    var supply = SupplyCompartments[i];
+                    var last = i == SupplyCompartments.Length - 1;
+                    var left = last ? .20f : i % 2 == 0 ? .055f : .513f;
+                    var top = .569f - i / 2 * .166f;
+                    var cell = ExpeditionSupplyFrame.Build(panel, "Supply_" + supply.Id, ExpeditionSupplyFrame.Silhouette.Compartment,
+                        supply.Metal, left, top - .145f, last ? .80f : left + .432f, top).rectTransform;
+                    var icon = ExpeditionUi.Fill(cell, "Icon", .135f, .13f, .435f, .88f, Color.white);
+                    icon.sprite = ExpeditionResourceIcons.Get(supply.Id);
+                    icon.enabled = icon.sprite != null;
+                    icon.preserveAspect = true;
+                    _drawerValues[i] = ExpeditionUi.Text(cell, "Value", "—", 38, .455f, .47f, .86f, .86f);
+                    _drawerValues[i].enableAutoSizing = true;
+                    _drawerValues[i].fontSizeMin = last ? 16 : 24;
+                    _drawerValues[i].fontSizeMax = 38;
+                    _drawerValues[i].fontStyle = FontStyles.Bold;
+                    var label = ExpeditionUi.Text(cell, "ResourceName", supply.Title, 26, .455f, .15f, .86f, .47f);
+                    label.color = Color.Lerp(supply.Metal, ExpeditionTheme.Ivory, .50f);
+                    label.enableAutoSizing = true;
+                    label.fontSizeMin = 20;
+                    label.fontSizeMax = 26;
                 }
-                _drawer = ExpeditionUi.Text(panel.transform, "Resources", "Загрузка запасов…", 28, .08f, .19f, .92f, .395f);
-                _drawer.lineSpacing = 7;
-                ExpeditionUi.Button(panel.transform, "ExpeditionOpenSuppliesClose", "ЗАКРЫТЬ", .06f, .045f, .94f, .17f, () => _drawerRoot.SetActive(false), false, 42);
+                _drawer = ExpeditionUi.Text(panel, "Resources", "Загрузка запасов…", 26, .07f, .012f, .93f, .052f, TextAlignmentOptions.Center);
+                _drawer.color = ExpeditionTheme.Muted;
+                if (Application.isPlaying) panel.gameObject.AddComponent<ExpeditionPanelArrival>();
             }
             _drawerRoot.SetActive(true);
             _drawerRoot.transform.SetAsLastSibling();

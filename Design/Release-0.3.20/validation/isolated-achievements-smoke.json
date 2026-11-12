@@ -1,0 +1,50 @@
+{
+  "checks": [
+    {
+      "passed": true,
+      "check": "Legacy catalog request keeps original 23 chains and three categories"
+    },
+    {
+      "passed": true,
+      "check": "Catalog RPC publishes all 40 chains from isolated Storage"
+    },
+    {
+      "passed": true,
+      "check": "Catalog RPC contains every new chain ID"
+    },
+    {
+      "passed": true,
+      "check": "Resources is the fourth category and publishes all 10 resource chains"
+    },
+    {
+      "passed": true,
+      "check": "User-provided combat chain thresholds match every tier exactly"
+    },
+    {
+      "passed": true,
+      "check": "Petard tier two stays locked at 9 qualifying actions"
+    },
+    {
+      "passed": true,
+      "check": "Petard tier two claims at exactly 10 qualifying actions"
+    },
+    {
+      "passed": true,
+      "check": "Same claim cannot grant the stat bonus twice"
+    },
+    {
+      "passed": true,
+      "check": "One real daily claim and its replay add 150 earned gold and 100 earned ore exactly once"
+    },
+    {
+      "passed": true,
+      "check": "Combat and resource stats share the sync response"
+    },
+    {
+      "passed": true,
+      "check": "temporary account and its user-owned storage removed"
+    }
+  ],
+  "errors": [],
+  "catalog_sha256": "f149348501362753fac8eb56532f0f3a38c3f71c3c94705d9be1ea73994c792c"
+}

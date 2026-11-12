@@ -103,7 +103,8 @@ function M.join(dispatcher,s,tick)
  s.stats[s.bot_user_id].hp=e.hp;deadline(s,tick);sync(dispatcher,s,tick,nil,false,nil,'');return s
 end
 local function persist(dispatcher,s,tick,pending)
- local r,err=api(s).commit(s.owner_user_id,s.global_boss.attempt_id,pending.sequence,pending.damage,pending.snapshot,pending.player_action,pending.reason)
+ local r,err=api(s).commit(s.owner_user_id,s.global_boss.attempt_id,pending.sequence,pending.damage,pending.snapshot,
+  pending.player_action,pending.reason,pending.critical_hit)
  if not r then
   if err=='boss_defeated'or err=='event_expired'then
    s._boss_pending=nil;restore(s,pending.before);M.finish(dispatcher,s,tick,err);return true
@@ -162,7 +163,7 @@ local function action(dispatcher,s,tick,a,actor,pass)
   end
  end
  local p={sequence=s._boss_sequence+1,damage=s._global_boss_damage_raw or 0,snapshot=snapshot(s),before=before,
-  player_action=not boss,reason=reason,action=a,actor=actor,extra=extra,keep=keep,steps=steps}
+  player_action=not boss,critical_hit=s.last_crit==true,reason=reason,action=a,actor=actor,extra=extra,keep=keep,steps=steps}
  return persist(dispatcher,s,tick,p)
 end
 function M.loop(dispatcher,s,tick,messages)

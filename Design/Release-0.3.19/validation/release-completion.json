@@ -1,0 +1,33 @@
+{
+  "version": "0.3.19",
+  "versionCode": 21,
+  "state": "published_and_verified",
+  "verifiedUtc": "2026-11-11T22:35:57.5856014+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.19-9e83b1f133cf.apk",
+  "apkSha256": "9e83b1f133cf8ed2c1ab9243c0780dbc1e389ab2e1da1f92f345467e4c760c43",
+  "apkBytes": 128906743,
+  "previousSignerPreserved": true,
+  "physicalDeviceTested": false,
+  "sourceFiles": 2124,
+  "sourceManifestSha256": "4efd0410f9bf73b1efe2cb71748a8b5aeafad85a904ef96a205b3437893e002e",
+  "runtimeSha256": "578aa248301653db2d0f4af74989b56385238d5ad2fa21c8492c137abdeccc17",
+  "runtimeFiles": 69,
+  "checks": {
+    "localLua": 885,
+    "isolatedNetwork": 981.0,
+    "offlineAccount": 54,
+    "offlineArenaShelterAndDailyPassed": true,
+    "securitySmoke": 35,
+    "dashboardPassed": true,
+    "publicFiles": 32,
+    "nativeSymbolsPassed": true
+  },
+  "backupScheduleMoscow": "04:00 daily",
+  "verifiedDailyVpsBackups": 2,
+  "retainedVersions": [
+    "0.3.19",
+    "0.3.18"
+  ],
+  "buildRetry": "The initial Android build produced an APK but failed restoring the incomplete prior SDK path. The release was rebuilt using the validated project SDK and verified independently."
+}

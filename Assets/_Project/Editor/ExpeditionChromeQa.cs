@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using Project.Nakama;
@@ -8,11 +9,12 @@ using Project.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace Project.Editor
 {
-    /// <summary>Production chrome writers/callbacks with temporary UI state only. Never starts Play or invokes RPC.</summary>
+    /// <summary>Production chrome writers and callbacks with temporary UI state only.</summary>
     public static class ExpeditionChromeQa
     {
         private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -20,10 +22,9 @@ namespace Project.Editor
         private static ServerAuraButtonView _view;
         private static ServerAuraGetRpcResponse _originalAura;
         private static GameObject _originalModal;
-        private static bool _oldActive, _oldSpinning, _oldEnabled;
+        private static bool _oldActive, _oldAnomalyActive, _oldEnabled;
         private static long _oldEnds;
         private static float _oldAccum;
-        private static Quaternion _oldRotation;
         private static string _oldTmpTimer, _oldLegacyTimer;
         private static GameObject _closeRoot;
         private static Button _closeButton;
@@ -101,9 +102,8 @@ namespace Project.Editor
             Check(originalModal == null || !originalModal.activeSelf, "Close the real aura modal before running a fixture.");
             _menu = menu; _view = view; _originalAura = cached; _originalModal = originalModal;
             _oldActive = view.gameObject.activeSelf; _oldEnabled = view.enabled;
-            _oldSpinning = Read<bool>(view, "_spinning"); _oldEnds = Read<long>(view, "_endsAtUnix");
+            _oldAnomalyActive = Read<bool>(view, "_anomalyActive"); _oldEnds = Read<long>(view, "_endsAtUnix");
             _oldAccum = Read<float>(view, "_timerAccum");
-            var border = Read<RectTransform>(view, "border"); _oldRotation = border != null ? border.localRotation : Quaternion.identity;
             var tmp = Read<TMP_Text>(view, "timerTmp"); var legacy = Read<Text>(view, "timerText");
             _oldTmpTimer = tmp != null ? tmp.text : null; _oldLegacyTimer = legacy != null ? legacy.text : null;
             try
@@ -121,6 +121,109 @@ namespace Project.Editor
                 return "SHOWN: original aura_btn/border in scene host, SetAnomalyActive false/true, real cached-data modal via original click callback; effects unchanged, only local activity/deadline simulated. VerifyAuraAndClose(), then RestoreAura(). No RPC/spend.";
             }
             catch { RestoreAura(); throw; }
+        }
+
+        public static string RunAuraOffline()
+        {
+            var hud = new GameObject("AuraQaHud", typeof(RectTransform), typeof(Canvas));
+            try
+            {
+                var menu = hud.AddComponent<MainMenuController>();
+                ExpeditionUi.Rect(hud.transform, "OnlinePlayersBadge", 0, 0, 1, 1);
+                var logo = ExpeditionUi.Rect(hud.transform, "BottomHeaderLogo", 0, 0, 1, 1);
+                var aura = ExpeditionUi.Rect(logo, "aura_btn", .025f, .477f, .325f, .569f);
+                var button = ExpeditionUi.Button(aura, "border", "", 0, 0, 1, 1, null);
+                var oldIcon = ExpeditionUi.Fill(aura, "img", .38f, .30f, .62f, .70f, Color.white);
+                var timer = ExpeditionUi.Text(aura, "timer", "", 24, 0, 0, 1, 1);
+                typeof(MainMenuController).GetMethod("EnsureServerAuraButton", Private).Invoke(menu, null);
+                var view = Read<ServerAuraButtonView>(menu, "_serverAuraButtonView");
+                typeof(ServerAuraButtonView).GetMethod("InstallReadout", Private).Invoke(view, null);
+                Check(!view.gameObject.activeSelf, "Anomaly appeared without an active response.");
+                var fixture = new ServerAuraGetRpcResponse
+                {
+                    ok = true, active = true, title = "Резонанс кристаллов",
+                    description = "В глубинах шахты усиливаются колебания материи.",
+                    endsAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 7200,
+                    allStatsPct = 10, critPct = 5, hpPct = 12, damagePct = 7, armorPct = 6,
+                    healingPct = 8, xpBonusPct = 3, mineRespawnWaitPct = -20,
+                };
+                Set(menu, "_serverAuraLast", fixture);
+                view.SetAnomalyActive(true, fixture.endsAtUnix);
+                Check(view.gameObject.activeInHierarchy && button.IsInteractable() && timer.text.Split(':').Length == 3,
+                    "Active seismograph is missing its button or countdown.");
+                Check(!oldIcon.gameObject.activeSelf && button.GetComponentInChildren<ExpeditionAuraSignal>() != null,
+                    "Legacy crystal still covers the active seismograph.");
+                RenderAuraFixture(hud, "anomaly-seismograph.png");
+                button.onClick.Invoke();
+                var modal = Read<GameObject>(menu, "_serverAuraModalRoot");
+                Check(modal.activeSelf, "Aura callback did not open the modal.");
+                var chamber = (RectTransform)modal.transform.Find("Panel/CrystalChamber");
+                Check(chamber.anchorMin.x < .02f && chamber.anchorMin.y < .02f &&
+                    chamber.anchorMax.x > .98f && chamber.anchorMax.y > .98f, "Crystal chamber does not cover the modal.");
+                Check(chamber.Find("Painting").GetComponent<Image>().sprite != null, "Crystal chamber art missing.");
+                var stats = Read<RectTransform>(menu, "_serverAuraModalStatsRoot");
+                Check(stats.childCount == 8, "Aura modal did not display all eight effects.");
+                var positions = new HashSet<Vector2>();
+                foreach (RectTransform effect in stats)
+                {
+                    Check(effect.anchorMin.x >= 0 && effect.anchorMin.y >= 0 && effect.anchorMax.x <= 1 && effect.anchorMax.y <= 1,
+                        "An aura effect is outside the crystal grid.");
+                    Check(positions.Add(effect.anchorMin), "Two aura effects share a position.");
+                    Check(effect.Find("EffectGlyph").GetComponent<Image>().sprite != null, "An aura effect icon is missing.");
+                }
+                Check(stats.GetChild(7).Find("EffectValue").GetComponent<TMP_Text>().text == "-20%", "Aura modifier lost its sign.");
+                RenderAuraFixture(hud, "anomaly-modal.png");
+                modal.transform.Find("Panel/CloseButton").GetComponent<Button>().onClick.Invoke();
+                Check(!modal.activeSelf, "Close callback did not hide the aura modal.");
+                view.SetAnomalyActive(true, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1);
+                Check(!view.gameObject.activeSelf && timer.text.Length == 0, "Expired response reactivated the seismograph.");
+                return "PASS aura: active seismograph, expiry, full-window illustration, eight effects, signed values and original modal callbacks.";
+            }
+            finally { UnityEngine.Object.DestroyImmediate(hud); }
+        }
+
+        private static void RenderAuraFixture(GameObject hud, string name)
+        {
+            var oldTexture = RenderTexture.active;
+            var camera = new GameObject("AuraQaCamera", typeof(Camera)).GetComponent<Camera>();
+            var target = new RenderTexture(1080, 1920, 24);
+            var pixels = new Texture2D(1080, 1920, TextureFormat.RGB24, false);
+            try
+            {
+                camera.transform.position = new Vector3(0, 0, -10);
+                camera.orthographic = true;
+                camera.orthographicSize = 960;
+                camera.cullingMask = 1 << 31;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = ExpeditionTheme.Panel;
+                target.Create();
+                camera.targetTexture = target;
+                var canvas = hud.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = camera;
+                canvas.planeDistance = 1f;
+                foreach (var child in hud.GetComponentsInChildren<Transform>(true))
+                    child.gameObject.layer = 31;
+                Canvas.ForceUpdateCanvases();
+                if (GraphicsSettings.currentRenderPipeline != null)
+                    RenderPipeline.SubmitRenderRequest(camera, new RenderPipeline.StandardRequest { destination = target });
+                else camera.Render();
+                RenderTexture.active = target;
+                pixels.ReadPixels(new Rect(0, 0, 1080, 1920), 0, 0);
+                pixels.Apply();
+                const string output = ".cache/qa/aura-polish";
+                Directory.CreateDirectory(output);
+                File.WriteAllBytes(System.IO.Path.Combine(output, name), pixels.EncodeToPNG());
+            }
+            finally
+            {
+                hud.GetComponent<Canvas>().worldCamera = null;
+                RenderTexture.active = oldTexture;
+                UnityEngine.Object.DestroyImmediate(camera.gameObject);
+                target.Release();
+                UnityEngine.Object.DestroyImmediate(target);
+                UnityEngine.Object.DestroyImmediate(pixels);
+            }
         }
 
         public static string VerifyAuraAndClose()
@@ -158,14 +261,13 @@ namespace Project.Editor
             }
             if (_view != null)
             {
-                _view.SetAnomalyActive(_oldSpinning, _oldEnds); Set(_view, "_timerAccum", _oldAccum);
+                _view.SetAnomalyActive(_oldAnomalyActive, _oldEnds); Set(_view, "_timerAccum", _oldAccum);
                 _view.enabled = _oldEnabled; _view.gameObject.SetActive(_oldActive);
-                var border = Read<RectTransform>(_view, "border"); if (border != null) border.localRotation = _oldRotation;
                 var tmp = Read<TMP_Text>(_view, "timerTmp"); var legacy = Read<Text>(_view, "timerText");
                 if (tmp != null) tmp.text = _oldTmpTimer; if (legacy != null) legacy.text = _oldLegacyTimer;
             }
             _menu = null; _view = null; _originalAura = null; _originalModal = null;
-            return "RESTORED: original cached aura reference, button activity/rotation/timer and prior closed-modal state; no RPC/server mutation.";
+            return "RESTORED: original cached aura reference, button activity/timer and prior closed-modal state; no RPC/server mutation.";
         }
 
         public static string RunCloseIcon() => _closeRoot == null ? ShowCloseIcon() : VerifyCloseIcon();

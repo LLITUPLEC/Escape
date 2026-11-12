@@ -16,9 +16,11 @@ local function fixture(full)
   local f = Fixture.new(); f.install(); f.seed(uid)
   package.loaded["modules.duel_match3_pve_rewards"] = nil
   package.loaded["modules.duel_match3_economy_rpc"] = nil
+  package.loaded["modules.duel_mail"] = nil
   local I = require("modules.duel_match3_inventory")
   local Journal = require("modules.duel_match3_journal")
   local Reward = require("modules.duel_match3_pve_rewards")
+  local Mail = require("modules.duel_mail")
   local copy = Fixture.copy
   local defs = {
     helmet = { kind = "equipment", max_stack = 1 },
@@ -31,7 +33,7 @@ local function fixture(full)
   f.put("character", uid, "sheet", sheet)
   f.put("launch", uid, "token-run-a", { status = "active" })
   f.put("launch", uid, "token-run-b", { status = "active" })
-  local runtime = { Inventory = I }
+  local runtime = { Inventory = I, Mail = Mail }
   local env = setmetatable({ Runtime = runtime, nk = f.nk,
     CFG = { CHARACTER_SHEET_COLLECTION = "character", CHARACTER_SHEET_KEY = "sheet", PVE_PROGRESS_COLLECTION = "progress", PVE_PROGRESS_KEY = "profile" },
     get_merged_item_defs = function() return defs end,
@@ -40,6 +42,8 @@ local function fixture(full)
   local chunk = assert(loadstring(core_source:sub(first, last - 1) .. "\nreturn read_character_sheet, write_character_sheet"))
   setfenv(chunk, env)
   local read_sheet, write_sheet = chunk()
+  Mail.configure({read_progress = f.read_progress, read_sheet = read_sheet, get_defs = function() return defs end,
+    build_sheet_write = runtime.build_character_sheet_write, build_progress_write = f.build_progress})
   local counts = { random = 0, recipe = 0, affix = 0, build_reads = 0, consume = 0 }
   math.random = function(lo, hi)
     counts.random = counts.random + 1
@@ -81,7 +85,7 @@ local function fixture(full)
     journal = function() return journal end, is_stale = function() return false end,
   }
   local R = Reward.new(d)
-  local F = { db = f, I = I, d = d, counts = counts, defs = defs }
+  local F = { db = f, I = I, d = d, counts = counts, defs = defs, mail = Mail }
   function F.progress() return f.read_progress(uid) end
   function F.sheet() return f.get("character", uid, "sheet") end
   function F.journal() return journal end
@@ -137,6 +141,9 @@ local function pending_item(s, item)
 end
 local function counters_once(F)
   local p = F.progress(); eq(p.gold, 111); eq(p.ore, 107); eq(p.matter, 103); eq(p.xp, 10)
+  eq(p.resource_medals["res.gold_earned"], 11)
+  eq(p.resource_medals["res.ore_earned"], 7)
+  eq(p.resource_medals["res.matter_earned"], 3)
   eq(p.key_items.key_green, 1); eq(p.defeated.mine_2, 1); eq(p.mine.floor_states["easy:2"].wins, 1)
   local summary = F.db.get("stats", uid, "summary")
   eq(summary.achievement_stats["pve.kill.mine_2"], 1); eq(summary.achievement_stats["combat.cross"], 3)
@@ -296,6 +303,67 @@ test("two distinct concurrent outcomes retain wallet and pending loot through CA
   eq(pending_item(F.sheet(), "tesseract"), 2); eq(pending_item(F.sheet(), "recipe_drop_t1_green_Helmet"), 2)
   local summary = F.db.get("stats", uid, "summary")
   eq(summary.played, 2); eq(summary.achievement_stats["pve.kill.mine_2"], 2); eq(summary.achievement_stats["combat.cross"], 6)
+end)
+
+test("level-up mail commits with earned XP and can only be claimed once after a restart", function()
+  local F = fixture(false)
+  F.db.seed(uid, { xp = 90, level = 1 })
+  F.before_wallet(function() F.db.fail_before = true end)
+  assert(F.award().reward_pending)
+  eq(F.progress().xp, 90); eq(F.mail.get(uid).unread_count, 0)
+  F.db.fail_before = false; F.no_more_rolls(); F.restart()
+  F.before_wallet(function() F.db.fail_after = true end)
+  assert(F.award().reward_pending)
+  F.restart(); assert(not F.award().reward_pending)
+  local inbox = F.mail.get(uid)
+  eq(inbox.unread_count, 1); eq(F.progress().level, 2)
+  eq(inbox.messages[1].kind, "level_up"); eq(inbox.messages[1].attachments[1].amount, 1)
+  eq(F.progress().matter, 103)
+  assert(F.mail.claim(uid, inbox.messages[1].id).ok)
+  assert(F.mail.claim(uid, inbox.messages[1].id).already_claimed)
+  assert(not F.award().reward_pending)
+  eq(F.progress().matter, 104); eq(F.mail.get(uid).unread_count, 0)
+  eq(F.progress().resource_medals["res.matter_earned"], 4)
+end)
+
+test("crossing three levels pays each level and ignores earlier levels already reached", function()
+  local F = fixture(false)
+  F.db.seed(uid, { xp = 250, level = 3 })
+  eq(F.mail.get(uid).unread_count, 0)
+  F.d.get_bot_profile().reward_xp = 270
+  assert(not F.award().reward_pending)
+  local message = F.mail.get(uid).messages[1]
+  eq(F.progress().level, 6); eq(F.mail.get(uid).unread_count, 1)
+  eq(message.id, "level-up:6"); eq(message.attachments[1].amount, 3 + 4 + 5)
+end)
+
+test("concurrent distinct wins crossing the same level create just one mail", function()
+  local F = fixture(false)
+  F.db.seed(uid, { xp = 90, level = 1 })
+  F.before_wallet(function() assert(not F.award("run-b").reward_pending) end)
+  assert(not F.award("run-a").reward_pending)
+  eq(F.progress().xp, 110); eq(F.mail.get(uid).unread_count, 1)
+  eq(F.mail.get(uid).messages[1].attachments[1].amount, 1)
+end)
+
+test("new mine medals count the winning floor once, including journal replay after restart", function()
+  for _, floor in ipairs({ 1, 3, 7, 12 }) do
+    local F = fixture(false)
+    local bot_id = "mine_" .. floor
+    local run = { floor = floor, difficulty = "easy", launch_token = "token-run-a", affix = "old" }
+    local outcome = { match_stats = { mode = "mine", won = true, result_id = "run-a" } }
+    assert(not F.rewards().award(uid, bot_id, 1, run, "run-a", outcome).reward_pending)
+    F.no_more_rolls(); F.restart()
+    assert(not F.rewards().award(uid, bot_id, 1, run, "run-a", outcome).reward_pending)
+    local summary = F.db.get("stats", uid, "summary")
+    local stats = summary.achievement_stats or {}
+    for _, tracked_floor in ipairs({ 1, 2, 3, 7, 12 }) do
+      local expected = floor == tracked_floor and floor > 1 and 1 or 0
+      eq(stats["pve.kill.mine_" .. tracked_floor] or 0, expected)
+    end
+    eq(F.progress().defeated[bot_id], 1)
+    eq(summary.modes.mine.wins, 1)
+  end
 end)
 
 math.random, os.time = original_random, original_time

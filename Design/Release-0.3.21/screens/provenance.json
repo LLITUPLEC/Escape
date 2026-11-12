@@ -1,0 +1,39 @@
+{
+  "version": "0.3.21",
+  "date": "2026-11-12",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": ".cache/qa/ui-followup/previews/arena.png",
+      "sha256": "385597e89acb947be76e65657b56ea9eeda28671ec47119417e28cb4be8f511a",
+      "bytes": 2540542,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unity production Arena screen with the offline tournament-unlock fixture"
+    },
+    {
+      "file": "character.png",
+      "source": ".cache/qa/ui-followup/previews/achievement-ready.png",
+      "sha256": "2034e238397a263483a7850d60554690e0f3d41bff46f36cc9e190f185afe177",
+      "bytes": 2045154,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unity production medal album with a claimable reward in the offline Journal fixture"
+    },
+    {
+      "file": "mine.png",
+      "source": ".cache/qa/ui-followup/previews/world-boss.png",
+      "sha256": "b81aeead85cf90c25de9ee88c564288f6614208f0543ed7a9a0b669a203392cf",
+      "bytes": 1785995,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unity production World Boss dossier with the offline event fixture"
+    }
+  ]
+}

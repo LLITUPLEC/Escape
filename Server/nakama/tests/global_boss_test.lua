@@ -2,6 +2,7 @@ package.path='Server/nakama/?.lua;'..package.path
 local F=dofile('Server/nakama/tests/storage_fault_fixture.lua').new();F.install()
 local copy=dofile('Server/nakama/tests/storage_fault_fixture.lua').copy
 local Boss=require('modules.duel_global_boss');local Mail=require('modules.duel_mail');local Rules=require('modules.duel_global_boss_rules')
+local CFG=require('modules.duel_match3_config')
 local SYSTEM='00000000-0000-0000-0000-000000000000'
 local defs={global_boss_teleport={kind='material',max_stack=99},tesseract={kind='material',max_stack=99},
  elixir_assault={kind='consumable',max_stack=99},elixir_stone={kind='consumable',max_stack=99},elixir_gambit={kind='consumable',max_stack=99},scroll_pve_bounty={kind='consumable',max_stack=99}}
@@ -53,21 +54,30 @@ local cancelled,reason=Boss.refund('ready',ready.attempt_id,'admission_cancelled
 check(not cancelled and reason=='battle_already_started'and Boss.token_count(read_sheet('ready'))==4,
  'a boss reveal cancel cannot refund a durably started attempt before its first damage')
 assert(Boss.finish('ready',ready.attempt_id,'player_surrender',{value=1}))
-local hit=Boss.commit('a',a.attempt_id,1,2000,{value=2},true)
+local crit_key='slaughter.critical_hits'
+local function summary(uid)return F.get(CFG.STATS_COLLECTION,uid,CFG.STATS_KEY)end
+F.put(CFG.STATS_COLLECTION,'a',CFG.STATS_KEY,{wins=7,achievement_stats={kept=3}})
+local hit=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true)
 check(hit and hit.actual_damage==2000 and Boss.get_event(e.id).hp==e.max_hp-2000,'player damage commits to one globally shared HP row')
-local replay=Boss.commit('a',a.attempt_id,1,2000,{value=2},true)
+local replay=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true)
 check(replay.replayed and Boss.get_event(e.id).hp==e.max_hp-2000,'duplicate action sequence never repeats global damage')
+check(summary('a').achievement_stats[crit_key]==1 and summary('a').achievement_stats.kept==3 and summary('a').wins==7,
+ 'critical boss hit commits with damage exactly once and preserves other summary fields')
 local other=Boss.commit('b',b.attempt_id,1,2000,{value=2},true)
 check(other.event.hp==e.max_hp-4000,'second account attacks the same remaining global HP')
 F.before_write=function()assert(Boss.commit('b',b.attempt_id,2,100,{value=3},true))end
 local concurrent=Boss.commit('a',a.attempt_id,2,100,{value=3},true)
 check(concurrent.event.hp==e.max_hp-4200,'concurrent global CAS conflict retries without losing either contribution')
-F.fail_after=true;local ambiguous=Boss.commit('a',a.attempt_id,3,100,{value=4},true)
+F.fail_after=true;local ambiguous=Boss.commit('a',a.attempt_id,3,100,{value=4},true,nil,true)
 check(ambiguous and ambiguous.replayed and Boss.get_event(e.id).hp==e.max_hp-4300,'lost commit acknowledgement reads durable sequence instead of repeating damage')
+check(summary('a').achievement_stats[crit_key]==2,'lost acknowledgement does not duplicate the boss critical achievement')
 local bad,err=Boss.commit('a',a.attempt_id,8,999999,{value=9},true)
 check(not bad and err=='stale_action','out of order internal action sequence rejected')
 Boss.commit('low',c.attempt_id,1,1,{value=2},true)
 check(not Boss.get_player('low',e.id).qualified,'one tiny low-level hit does not qualify for legendary chest')
+assert(Boss.commit('low',c.attempt_id,2,0,{value=3},true,nil,true))
+assert(Boss.commit('low',c.attempt_id,3,0,{value=4},false,nil,true))
+check(summary('low')==nil,'blocked critical hits and boss turns do not write player achievement progress')
 check(Mail.get('a').unread_count==0,'no boss rewards before global death')
 -- Take the last global HP with a legitimate hit. Potential damage qualifies a
 -- finisher even when remaining HP is below its actual ability strength.
@@ -115,7 +125,7 @@ F.fail_after=true;local bound=Boss.bind_state({owner_user_id='bind',match_id='sa
 check(bound and bound.match_id=='same-actor','match bind survives an ambiguous committed storage acknowledgement')
 -- Service VMs have no duel-core injection. They must still refund an orphan
 -- which never acted when another participant killed the global boss.
-local CFG=require('modules.duel_match3_config');local orphan='offline-no-action'
+local orphan='offline-no-action'
 F.put(CFG.CHARACTER_SHEET_COLLECTION,orphan,CFG.CHARACTER_SHEET_KEY,{inventory={'global_boss_teleport'},inventory_counts={1},equipment={},inventory_pending_loot={}})
 F.put(Boss.PLAYER_COLLECTION,orphan,e.id,{schema=1,event_id=e.id,attempts_used=1,active_attempt_id='orphan',qualified=false,requests={}})
 F.put(Boss.ATTEMPT_COLLECTION,orphan,'orphan',{id='orphan',event_id=e.id,status='bound',player_actions=0,sequence=0})

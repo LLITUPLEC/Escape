@@ -94,6 +94,24 @@ test("started match consumes once and process loss does not refund used energy",
   local receipt = launch(f, e); assert(e.consume("a", receipt.token, "run")); assert(e.consume("a", receipt.token, "run"))
   f.matches.mid = nil; assert(e.recover("a")); assert(f.read_progress("a").energy == 85)
 end)
+test("resource medals count consumed mine fees once and ignore refunds", function(f, e)
+  local costs = {{ resource = "gold", amount = 25 }, { resource = "energy", amount = 15 }}
+  local ok, _, receipt = e.reserve("a", costs, META)
+  assert(ok and f.read_progress("a").gold == 75 and f.read_progress("a").resource_medals == nil)
+  assert(e.refund_launch("a", receipt.token, "cancelled"))
+  assert(f.read_progress("a").gold == 100 and f.read_progress("a").resource_medals == nil)
+  ok, _, receipt = e.reserve("a", costs, META)
+  assert(ok)
+  f.matches.mid = { match_id = "mid" }
+  assert(e.bind("a", receipt.token, "mid", "run"))
+  f.fail_before = true
+  assert(not e.consume("a", receipt.token, "run"))
+  assert(f.read_progress("a").resource_medals == nil)
+  f.fail_before = false
+  assert(e.consume("a", receipt.token, "run") and e.consume("a", receipt.token, "run"))
+  local p = f.read_progress("a")
+  assert(p.gold == 75 and p.resource_medals["res.gold_spent"] == 25 and p.resource_medals["res.gold_earned"] == nil)
+end)
 test("duplicate resource lines are aggregated before affordability checks", function(f, e)
   local ok, err = e.reserve("a", {{ resource = "energy", amount = 60 }, { resource = "energy", amount = 60 }}, META)
   assert(not ok and err == "not_enough_energy" and f.read_progress("a").energy == 100)

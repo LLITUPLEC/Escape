@@ -4,6 +4,7 @@ local nk = require("nakama")
 local function load(nested, root) local ok, m = pcall(require, nested); if ok then return m end return require(root) end
 local CFG = load("modules.duel_match3_config", "duel_match3_config")
 local Inventory = load("modules.duel_match3_inventory", "duel_match3_inventory")
+local ResourceMedals = load("modules.duel_resource_medals", "duel_resource_medals")
 local M = { COLLECTION = "duel_daily", KEY = "v1" }
 local deps = {}
 function M.configure(d) deps = assert(d) end
@@ -76,6 +77,7 @@ local function grant(uid, value, version, prize, day, now, summary)
   progress.gold=count(progress.gold)+prize.gold
   progress.ore=count(progress.ore)+prize.ore
   progress.matter=count(progress.matter)+prize.matter
+  ResourceMedals.earned(progress, prize.gold, prize.ore, prize.matter)
   local receipt={day=day,gold=prize.gold,ore=prize.ore,matter=prize.matter,delivered_items={},pending_items={}}
   local writes={}
   if prize.items then

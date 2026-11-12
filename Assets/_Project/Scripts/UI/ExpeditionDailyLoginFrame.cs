@@ -23,13 +23,16 @@ namespace Project.UI
             if (rect.width < 2 || rect.height < 2) return;
             if (Checkmark) { DrawCheck(mesh, rect); return; }
             var corner = Mathf.Clamp(Mathf.Min(rect.width, rect.height) * .09f, 7, 14);
-            var accent = Claimed ? new Color32(119, 190, 143, 255) : Highlighted ? ExpeditionTheme.Amber : new Color32(79, 125, 132, 255);
+            var accent = Claimed ? new Color32(112, 119, 121, 255) : Highlighted ? ExpeditionTheme.Amber : new Color32(79, 125, 132, 255);
+            var metalLight = Claimed ? new Color32(113, 120, 122, 255) : new Color32(123, 149, 148, 255);
+            var metalDark = Claimed ? new Color32(39, 42, 44, 255) : new Color32(31, 60, 69, 255);
+            var well = Claimed ? new Color32(15, 18, 20, 255) : new Color32(7, 23, 28, 255);
             Polygon(mesh, Outline(rect, corner), new Color32(3, 11, 15, 255));
             Ring(mesh, Outline(Inset(rect, 1), corner - 1), Outline(Inset(rect, 4), corner - 3),
-                new Color32(123, 149, 148, 255), new Color32(31, 60, 69, 255));
-            Polygon(mesh, Outline(Inset(rect, 4), corner - 3), new Color32(7, 23, 28, 255));
+                metalLight, metalDark);
+            Polygon(mesh, Outline(Inset(rect, 4), corner - 3), well);
             Ring(mesh, Outline(Inset(rect, 6), corner - 4), Outline(Inset(rect, 7.2f), corner - 5),
-                accent, Color.Lerp(accent, new Color32(11, 32, 37, 255), .62f));
+                accent, Color.Lerp(accent, Claimed ? well : new Color32(11, 32, 37, 255), .62f));
             var top = new Rect(rect.xMin + corner + 5, rect.yMax - 4, Mathf.Max(0, rect.width - corner * 2 - 10), 1);
             Quad(mesh, top, Color.Lerp(accent, ExpeditionTheme.Ivory, .48f));
             var bolt = Mathf.Clamp(Mathf.Min(rect.width, rect.height) * .022f, 2, 3.5f);

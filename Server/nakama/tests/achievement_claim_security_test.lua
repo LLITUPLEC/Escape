@@ -57,6 +57,7 @@ local nk = {
 local cat = {
   chain_by_id = function(chain)
     if chain == "currency" or chain == "combat" then return { counter_key = "wins" } end
+    if chain == "resources" then return { counter_key = "res.gold_spent" } end
   end,
   cumulative_need = function(_, step) if step == 0 or step == 1 then return (step + 1) * 5 end end,
   step_rewards = function(chain)
@@ -153,6 +154,28 @@ end)
 test("stat-only achievement does not rewrite progression", function()
   assert(claim("combat").ok and #writes == 1 and #writes[1] == 1)
   assert(db[progress_id].version == "1" and db[progress_id].value.gold == 100)
+end)
+test("resource sync and claim combine wallet spending and confirmed tournament fees", function()
+  assert(claim("resources").err == "threshold_not_met")
+  local p = copy(db[progress_id].value)
+  p.resource_medals = { ["res.gold_spent"] = 3, ["res.ore_earned"] = 6 }
+  put(progress_id, p)
+  local s = copy(db[summary_id].value)
+  s.achievement_stats["res.gold_spent"] = 2
+  s.achievement_stats["res.tournament_gold_spent"] = 2
+  put(summary_id, s)
+  local result = achievements.rpc_achievement_sync({ user_id = "player" }, {})
+  assert(result.ok)
+  local flat = {}
+  for _, row in ipairs(result.achievement_stats_flat) do
+    assert(flat[row.k] == nil, "duplicate achievement counter")
+    flat[row.k] = row.v
+  end
+  assert(flat["res.gold_spent"] == 5 and flat["res.ore_earned"] == 6)
+  assert(flat["res.tournament_gold_spent"] == 2 and flat.wins == 10)
+  assert(claim("resources").ok and claim("resources").err == "already_claimed")
+  assert(db[summary_id].value.achievement_stats["res.gold_spent"] == 2)
+  assert(db[progress_id].value.resource_medals["res.gold_spent"] == 3)
 end)
 test("negative fractional nonfinite steps are rejected before writing", function()
   for _, step in ipairs({ -1, 0.5, 1.5, math.huge, -math.huge, 0/0 }) do

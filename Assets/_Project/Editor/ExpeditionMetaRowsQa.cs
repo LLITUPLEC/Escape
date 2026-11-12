@@ -113,11 +113,17 @@ namespace Project.Editor
             Check(panel != null && panel.IsVisible, "Open achievements on Obsession first.");
             var chain = AchievementCatalog.FindChain("obs.cross");
             Check(chain?.Thresholds != null && chain.Thresholds.Length >= 3, "Actual obs.cross catalog missing.");
-            var row = Read<List<AchievementChainRowView>>(panel, "_spawnedRows").FirstOrDefault(r => r != null
-                && r.Slots != null && r.Slots.Length > 0 && r.Slots[0].name.EndsWith("_obs.cross", StringComparison.Ordinal));
+            var row = Read<List<ExpeditionAchievementJournalRow>>(panel, "_spawnedRows")
+                .FirstOrDefault(r => r != null && r.ChainId == chain.ChainId);
             Check(row != null, "Actual obs.cross row missing; select Obsession.");
-            var card = row.GetComponent<ExpeditionAchievementCard>();
-            Check(card != null, "Production card missing.");
+            var progress = row.transform.Find("MedalProgress")?.GetComponent<TMP_Text>();
+            var status = row.transform.Find("MedalStatus")?.GetComponent<TMP_Text>();
+            var reward = row.transform.Find("MedalReward")?.GetComponent<TMP_Text>();
+            var art = row.transform.Find("MedalIcon")?.GetComponent<Image>();
+            var button = row.GetComponent<Button>();
+            var journal = row.GetComponentInParent<ScrollRect>();
+            Check(progress != null && status != null && reward != null && art != null && button != null && journal != null,
+                "Production Journal row is missing progress, status, reward, artwork, or its click target.");
             AchievementProgressStorage.EnsureLoaded();
             var stats = typeof(AchievementProgressStorage).GetField("_stats", StaticPrivate);
             var claims = typeof(AchievementProgressStorage).GetField("_claimedStepTokens", StaticPrivate);
@@ -127,70 +133,50 @@ namespace Project.Editor
             var group = Read<CanvasGroup>(panel, "rootCanvasGroup");
             var interactive = group != null && group.interactable;
             var blocks = group != null && group.blocksRaycasts;
+            var scrollPosition = journal.verticalNormalizedPosition;
             try
             {
                 if (group != null) { group.interactable = false; group.blocksRaycasts = false; }
                 stats.SetValue(null, counters); claims.SetValue(null, claimed);
                 AchievementLifecycle.NotifyDataChanged(); Canvas.ForceUpdateCanvases();
-                Check(card.CurrentStep == 0 && card.ProgressLabel.text.Replace(" ", "") == "5/10"
-                    && card.StateLabels[0].text == "Текущая" && !card.ClaimButton.gameObject.activeSelf,
-                    "In-progress current step/claim state changed.");
-                CheckStepChain(row, card);
+                journal.verticalNormalizedPosition = 1f;
+                Canvas.ForceUpdateCanvases();
+                Check(row.CurrentStep == 0 && progress.text.Replace(" ", "") == "5/10"
+                    && status.text == $"Ступень 1 из {chain.Thresholds.Length}" && !AchievementRewardClaim.CanClaimStep(chain, 0),
+                    "In-progress Journal step or eligibility changed.");
                 counters[chain.StatKey] = 310;
                 claimed.Add(chain.ChainId + ":0"); claimed.Add(chain.ChainId + ":1");
                 AchievementLifecycle.NotifyDataChanged(); Canvas.ForceUpdateCanvases();
-                Check(card.CurrentStep == 2 && card.ProgressLabel.text.Replace(" ", "") == "250/250", "Delta progress or ordered current step changed.");
-                for (var i = 0; i < 2; i++)
-                    Check(card.StateLabels[i].text == "Получено" && card.StateLabels[i].color.g > card.StateLabels[i].color.r
-                        && card.ClaimedChecks[i].activeInHierarchy, "Claimed step lacks visible green tick/Получено.");
-                Check(card.StateLabels[2].text == "Получить" && card.ClaimButton.gameObject.activeInHierarchy && card.ClaimButton.interactable,
-                    "Eligible unclaimed reward lacks clear claim action.");
+                Check(row.CurrentStep == 2 && progress.text.Replace(" ", "") == "250/250", "Delta progress or ordered current step changed.");
+                Check(status.text == "Награда готова" && !string.IsNullOrWhiteSpace(reward.text)
+                    && AchievementRewardClaim.CanClaimStep(chain, 2), "Eligible unclaimed reward lacks a clear Journal status or reward preview.");
                 var catalog = Read<AchievementIconCatalog>(panel, "iconCatalog");
-                var art = card.transform.Find("ExpeditionChainIllustration").GetComponent<Image>();
                 Check(catalog != null && art.sprite == catalog.GetDisplayIcon(chain.ChainId), "Original achievement artwork was replaced.");
                 CheckDrawnAspect(art);
-                CheckStepChain(row, card);
                 claimed.Clear(); AchievementLifecycle.NotifyDataChanged();
-                Check(!AchievementRewardClaim.CanClaimStep(chain, 2) && card.StateLabels[2].text == "Выполнено",
-                    "Completed later step incorrectly bypasses ordered claims.");
+                Check(!AchievementRewardClaim.CanClaimStep(chain, 2) && AchievementRewardClaim.CanClaimStep(chain, 0)
+                    && row.CurrentStep == 0 && progress.text.Replace(" ", "") == "10/10" && status.text == "Награда готова",
+                    "Completed later step incorrectly bypasses the earliest unclaimed reward.");
                 for (var i = 0; i < chain.Thresholds.Length; i++) claimed.Add(chain.ChainId + ":" + i);
-                counters[chain.StatKey] = AchievementUiRules.CumulativeRequired(chain, chain.Thresholds.Length - 1);
+                var lastStep = chain.Thresholds.Length - 1;
+                var lastTarget = AchievementUiRules.StepTarget(chain, lastStep);
+                counters[chain.StatKey] = AchievementUiRules.CumulativeRequired(chain, lastStep);
                 AchievementLifecycle.NotifyDataChanged();
-                Check(!card.ClaimButton.gameObject.activeSelf && card.StateLabels.All(label => label.text == "Получено"),
-                    "All-claimed chain retains a claim action or loses its labels.");
-                Canvas.ForceUpdateCanvases(); CheckStepChain(row, card);
-                return "PASS: actual catalog current5/10, claimed+eligible250/250 at310, and all-claimed states; green ticks/Получено and explicit claim action; ordered claims retained; main artwork keeps original mesh aspect; mini-icons remain absent after repeated binds, three clear arrow connectors stay between four target/state cells. Cache/UI restored; no RPC/claim/PlayerPrefs writes.";
+                Check(row.CurrentStep == lastStep && progress.text.Replace(" ", "") == $"{lastTarget}/{lastTarget}"
+                    && status.text == "Получено" && !AchievementRewardClaim.CanClaimStep(chain, lastStep),
+                    "Completed Journal row loses its final progress or incorrectly signals a pending reward.");
+                Check(button.interactable && button.targetGraphic != null && button.targetGraphic.raycastTarget
+                    && row.GetComponentsInChildren<Button>(true).Length == 1,
+                    "Completed medal should retain one full-row detail action.");
+                return "PASS: actual Journal row shows current5/10, claimable250/250 at310, earliest unclaimed reward, and all-claimed states; ordered claims retained; the original artwork keeps its mesh aspect and completed medals retain a detail action. Cache/UI restored; no RPC/claim/PlayerPrefs writes.";
             }
             finally
             {
                 stats.SetValue(null, oldStats); claims.SetValue(null, oldClaims);
                 if (group != null) { group.interactable = interactive; group.blocksRaycasts = blocks; }
                 AchievementLifecycle.NotifyDataChanged();
-            }
-        }
-
-        private static void CheckStepChain(AchievementChainRowView row, ExpeditionAchievementCard card)
-        {
-            var count = row.Slots.Length;
-            Check(card.StepConnectors.Length == count - 1, "Expected one directional connector between every adjacent step.");
-            for (var i = 0; i < count; i++)
-            {
-                var icon = row.Slots[i].transform.Find("Icon")?.GetComponent<Image>();
-                Check(icon == null || (!icon.enabled && !icon.gameObject.activeInHierarchy), "A bind resurrected mini achievement artwork.");
-                Check(!string.IsNullOrWhiteSpace(card.TargetLabels[i].text) && !string.IsNullOrWhiteSpace(card.StateLabels[i].text),
-                    "Step target/state missing.");
-                if (i >= count - 1) continue;
-                var connector = card.StepConnectors[i];
-                Check(connector.gameObject.activeInHierarchy && !connector.raycastTarget, "Step connector absent or intercepts taps.");
-                var shaft = connector.transform.Find("Shaft").GetComponent<Image>();
-                var mesh = shaft.canvasRenderer.GetMesh();
-                Check(shaft.enabled && !shaft.raycastTarget && mesh != null && mesh.bounds.size.x > 0,
-                    "Directional connector has no actual rendered shaft.");
-                var left = new Vector3[4]; var right = new Vector3[4];
-                (row.Slots[i].transform as RectTransform).GetWorldCorners(left);
-                (row.Slots[i + 1].transform as RectTransform).GetWorldCorners(right);
-                Check(connector.transform.position.x > left[3].x && connector.transform.position.x < right[0].x,
-                    "Arrow is not inside the gap between adjacent steps.");
+                Canvas.ForceUpdateCanvases();
+                if (journal != null) journal.verticalNormalizedPosition = scrollPosition;
             }
         }
 

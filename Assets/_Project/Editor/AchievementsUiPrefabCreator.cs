@@ -208,18 +208,6 @@ public static class AchievementsUiPrefabCreator
                 so.FindProperty("rootCanvasGroup").objectReferenceValue = root.GetComponent<CanvasGroup>();
                 so.FindProperty("closeButton").objectReferenceValue = root.transform.Find("AchievementsSheet/Header/CloseButton")?.GetComponent<Button>();
                 so.FindProperty("dimmerButton").objectReferenceValue = root.transform.Find("AchievementsDimmer")?.GetComponent<Button>();
-                so.FindProperty("tabObsession").objectReferenceValue = root.transform.Find("AchievementsSheet/TabBar/TabObsession")?.GetComponent<Toggle>();
-                so.FindProperty("tabSlaughter").objectReferenceValue = root.transform.Find("AchievementsSheet/TabBar/TabSlaughter")?.GetComponent<Toggle>();
-                so.FindProperty("tabDnn").objectReferenceValue = root.transform.Find("AchievementsSheet/TabBar/TabDnn")?.GetComponent<Toggle>();
-                so.FindProperty("contentObsession").objectReferenceValue =
-                    root.transform.Find("AchievementsSheet/Pages/ScrollObsession/Viewport/Content")?.GetComponent<RectTransform>();
-                so.FindProperty("contentSlaughter").objectReferenceValue =
-                    root.transform.Find("AchievementsSheet/Pages/ScrollSlaughter/Viewport/Content")?.GetComponent<RectTransform>();
-                so.FindProperty("contentDnn").objectReferenceValue =
-                    root.transform.Find("AchievementsSheet/Pages/ScrollDnn/Viewport/Content")?.GetComponent<RectTransform>();
-                var rowTr = root.transform.Find("AchievementChainRowPrefabTemplate");
-                so.FindProperty("chainRowPrefab").objectReferenceValue =
-                    rowTr != null ? rowTr.GetComponent<AchievementChainRowView>() : null;
                 var iconCatProp = so.FindProperty("iconCatalog");
                 if (iconCatProp != null && iconCatProp.objectReferenceValue == null)
                 {

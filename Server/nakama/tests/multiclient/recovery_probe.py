@@ -46,13 +46,13 @@ def isolated_identity(project, compose_file, config, root):
 
 def validate_compose(value, project):
     services = value.get("services", {})
-    if value.get("name") != project or set(services) != {"nakama", "postgres"}:
+    if value.get("name") != project or set(services) != {"nakama", "postgres"} or value.get("volumes"):
         raise ValueError("Unexpected disposable compose identity/services")
     n, p = services["nakama"], services["postgres"]
     if (n.get("image") != IMAGE or set(n.get("ports", [])) !=
             {"127.0.0.1:28350:7350", "127.0.0.1:28351:7351"}
             or set(n.get("volumes", [])) != {"./runtime:/nakama/data/modules:ro", "./secrets:/nakama/config:ro"}
-            or p.get("volumes") != ["test-data:/var/lib/postgresql/data"] or p.get("ports")):
+            or p.get("volumes") != ["./postgres-data:/var/lib/postgresql/data"] or p.get("ports")):
         raise ValueError("Recovery restart is restricted to isolated 3.37 ports/mounts")
 
 
@@ -69,7 +69,8 @@ class IsolatedNakama:
         root = args.root.resolve(strict=True)
         if (root != args.root.absolute() or args.compose_file.resolve(strict=True) != root / "compose.yml"
                 or args.config.resolve(strict=True) != root / "secrets/server.yml"
-                or not (root / "runtime").is_dir() or (root / "runtime").resolve() != root / "runtime"):
+                or any(not (root / folder).is_dir() or (root / folder).resolve() != root / folder
+                       for folder in ("runtime", "postgres-data"))):
             raise ValueError("Symlinked or mismatched disposable paths are forbidden")
         validate_compose(json.loads(args.compose_file.read_text()), args.compose_project)
         config = json.loads(args.config.read_text())

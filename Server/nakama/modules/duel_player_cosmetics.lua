@@ -9,6 +9,7 @@ local RateLimit = load("modules.duel_api_rate_limit", "duel_api_rate_limit")
 local Mail = load("modules.duel_mail", "duel_mail")
 local Rewards = load("modules.duel_cosmetics_rewards", "duel_cosmetics_rewards")
 local Inventory = load("modules.duel_match3_inventory", "duel_match3_inventory")
+local ResourceMedals = load("modules.duel_resource_medals", "duel_resource_medals")
 local M = {}
 local COLLECTION, KEY = "duel_player_cosmetics", "appearance_v1"
 local MAX_SAFE_INTEGER = 9007199254740991
@@ -215,6 +216,7 @@ local function snapshot(uid, requested, legacy)
         local matter=number(progress.matter)
         assert(matter <= MAX_SAFE_INTEGER-matter_delta,"cosmetics_matter_overflow")
         progress.matter=matter+matter_delta; progress.updated_at=os.time()
+        ResourceMedals.earned(progress, nil, nil, matter_delta)
         if tesseract_delta>0 then
           local defs=assert(type(deps.get_defs)=="function"and deps.get_defs(),"cosmetics_item_catalog_unavailable")
           assert(type(defs.tesseract)=="table","cosmetics_tesseract_unavailable")

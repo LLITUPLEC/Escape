@@ -11,6 +11,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
@@ -31,6 +32,16 @@ RECORDS = {
     "debug-preview": ("duel_match3_cheat_whitelist", "emails"),
     "global-boss": ("duel_global_boss", "config"),
     "shop": ("duel_shop_catalog", "v1"),
+}
+DEFAULT_CATALOG_FILES = {
+    "items": "duel_match3_item_defs.json",
+    "bots-easy": "duel_match3_bots_catalog_easy.json",
+    "bots-medium": "duel_match3_bots_catalog_medium.json",
+    "bots-hard": "duel_match3_bots_catalog_hard.json",
+    "achievements": "achievement_catalog.example.json",
+    "contests": "contest_goals.example.json",
+    "shop": "duel_shop_catalog.json",
+    "global-boss": "global_boss.config.json",
 }
 MAX_JSON_BYTES = 8 * 1024 * 1024
 
@@ -81,9 +92,15 @@ def validate_value(alias, value):
     if not isinstance(value, dict):
         raise AdminError("Storage value must be a JSON object")
     if alias == "debug-preview":
-        if set(value) != {"user_ids"} or not isinstance(value["user_ids"], list):
-            raise AdminError("Debug preview requires exactly {\"user_ids\": [\"UUID\"]}; emails are unsupported")
-        ids = value["user_ids"]
+        if not value or set(value) - {"emails", "user_ids"}:
+            raise AdminError("Debug preview requires an emails list, a user_ids list, or both")
+        emails, ids = value.get("emails", []), value.get("user_ids", [])
+        if not isinstance(emails, list) or not isinstance(ids, list):
+            raise AdminError("Debug preview emails and user_ids must be lists")
+        if any(not isinstance(item, str) or not re.fullmatch(r"[^\s@]+@[^\s@]+", item.strip()) for item in emails):
+            raise AdminError("Each debug-preview email must be a single email address")
+        if len({item.strip().lower() for item in emails}) != len(emails):
+            raise AdminError("Duplicate debug-preview email")
         for item in ids:
             try:
                 parsed = uuid.UUID(item) if isinstance(item, str) else None
@@ -273,6 +290,9 @@ def make_parser():
     parser.add_argument("--config", type=Path, help="Read console credentials from JSON-formatted server.yml; never prints them")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("inventory", help="Read metadata for known global records; no values are printed")
+    seed = sub.add_parser("seed-defaults", help="Create missing static catalogs without replacing live values")
+    seed.add_argument("--catalog-dir", type=Path, required=True)
+    seed.add_argument("--global-boss-file", type=Path, help="Optional verified configuration instead of the repository default")
     read = sub.add_parser("read", help="Read one record and its version")
     read.add_argument("record", choices=RECORDS)
     read.add_argument("--out", type=Path, help="Export only its JSON value to a NEW file; print metadata only")
@@ -290,6 +310,14 @@ def make_parser():
 def main(argv=None):
     args = make_parser().parse_args(argv)
     value = None
+    defaults = {}
+    if args.command == "seed-defaults":
+        for alias, filename in DEFAULT_CATALOG_FILES.items():
+            source = args.catalog_dir / filename
+            if alias == "global-boss" and args.global_boss_file is not None:
+                source = args.global_boss_file
+            defaults[alias] = read_json(source)
+            validate_value(alias, defaults[alias])
     if args.command in ("validate", "create", "update"):
         value = read_json(args.file)
         validate_value(args.record, value)
@@ -318,6 +346,14 @@ def main(argv=None):
                     print(f"MISSING {alias:14} {collection}/{key}")
                 else:
                     print(f"PRESENT {alias:14} {collection}/{key} read={row.get('permission_read', 0)} write={row.get('permission_write', 0)} version={row['version']}")
+        elif args.command == "seed-defaults":
+            for alias, value in defaults.items():
+                collection, key = RECORDS[alias]
+                if client.read(collection, key) is None:
+                    client.write(collection, key, value, "*")
+                    print(f"CREATED {alias}")
+                else:
+                    print(f"PRESENT {alias}")
         elif args.command == "self-test":
             self_test(client)
         else:

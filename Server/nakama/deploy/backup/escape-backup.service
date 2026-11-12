@@ -1,0 +1,17 @@
+[Unit]
+Description=Create an encrypted Escape database backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 -I /usr/local/lib/escape-backup/backup.py create
+TimeoutStartSec=30min
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/escape-backup
+NoNewPrivileges=yes

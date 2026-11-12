@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Project.Achievements;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -24,12 +25,13 @@ namespace Project.Editor
             if (chain?.Thresholds == null || chain.Thresholds.Length < 3
                 || chain.Thresholds[0] != 10 || chain.Thresholds[1] != 50 || chain.Thresholds[2] != 250)
                 throw new InvalidOperationException("Current real obs.cross catalog must contain delta steps 10,50,250; no fabricated definition is substituted.");
-            var rowList = Read<List<AchievementChainRowView>>(panel, "_spawnedRows");
-            var row = rowList.FirstOrDefault(r => r != null && r.Slots != null && r.Slots.Length > 0
-                && r.Slots[0].gameObject.name.EndsWith("_" + chain.ChainId, StringComparison.Ordinal));
+            var rowList = Read<List<ExpeditionAchievementJournalRow>>(panel, "_spawnedRows");
+            var row = rowList.FirstOrDefault(r => r != null && r.ChainId == chain.ChainId);
             if (row == null) throw new InvalidOperationException("The actual obs.cross row is not rendered. Select Obsession first.");
-            var card = row.GetComponent<ExpeditionAchievementCard>();
-            if (card == null) throw new InvalidOperationException("Expedition achievement card missing.");
+            var title = Label(row, "MedalTitle");
+            var condition = Label(row, "MedalCondition");
+            var progress = Label(row, "MedalProgress");
+            var status = Label(row, "MedalStatus");
             var nav = GameObject.Find("ExpeditionNav1")?.GetComponent<Button>();
             var badge = nav != null ? nav.GetComponent<AchievementNavigationBadge>() : null;
             if (badge == null) throw new InvalidOperationException("Root must call AchievementNavigationBadge.Bind(ExpeditionNav1) first.");
@@ -90,30 +92,37 @@ namespace Project.Editor
                 claims.Add(chain.ChainId + ":0"); claims.Add(chain.ChainId + ":1");
                 AchievementLifecycle.NotifyDataChanged();
                 Check(AchievementRewardClaim.CanClaimStep(chain, 2), "Third reward not claimable after actual preceding claim tokens.");
-                Check(card.CurrentStep == 2 && card.ProgressLabel.text.Replace(" ", "") == "250/250", "Current card does not show delta250/250.");
-                Check(card.TargetLabels[0].text == "10" && card.TargetLabels[1].text == "50" && card.TargetLabels[2].text == "250", "Full chain displays cumulative targets.");
-                Check(card.DescriptionLabel.fontSizeMin >= 26, "Main criterion text became too small.");
+                Check(row.CurrentStep == 2 && progress.text.Replace(" ", "") == "250/250" && status.text == "Награда готова",
+                    "Journal row does not show the claimable delta250/250.");
+                Check(AchievementUiRules.StepTarget(chain, 0) == 10 && AchievementUiRules.StepTarget(chain, 1) == 50
+                    && AchievementUiRules.StepTarget(chain, 2) == 250, "Expected delta targets 10/50/250.");
+                Check(title.text == chain.TitleRu && (title.fontStyle & FontStyles.Bold) != 0 && title.color.grayscale >= .65f,
+                    "Medal title is not distinguished with light bold text.");
+                Check(condition.text == chain.Descriptions[2] && (condition.fontStyle & FontStyles.Italic) != 0
+                    && condition.color.g > condition.color.r && condition.color.g > condition.color.b,
+                    "Medal condition is not distinguished with green italic text.");
                 Canvas.ForceUpdateCanvases();
                 var scroll = row.GetComponentInParent<ScrollRect>();
+                Check(scroll != null && scroll.viewport != null && scroll.vertical && !scroll.horizontal,
+                    "Journal must retain a vertical viewport.");
                 var rowHeight = (row.transform as RectTransform).rect.height;
                 var visible = scroll.viewport.rect.height / Mathf.Max(1, rowHeight);
-                Check(visible >= 2 && visible <= 3.3f, "Expected about2–3 readable cards per viewport, actual ratio=" + visible);
-                for (var i = 0; i < chain.Thresholds.Length && i < row.Slots.Length; i++)
-                {
-                    var rect = row.Slots[i].transform as RectTransform;
-                    Check(rect.anchorMin.x >= 0 && rect.anchorMax.x <= 1 && rect.anchorMin.y >= 0 && rect.anchorMax.y <= .30f,
-                        "Step chain leaves the lower full-width row.");
-                }
+                Check(Mathf.Abs(rowHeight - 152f) <= 1f && visible >= 5.5f && visible <= 10f,
+                    "Expected compact Journal rows, actual row height=" + rowHeight + ", viewport ratio=" + visible);
+                var button = row.GetComponent<Button>();
+                Check(button != null && button.targetGraphic != null && button.targetGraphic.transform == row.transform
+                    && button.targetGraphic.raycastTarget && row.GetComponentsInChildren<AchievementChainSlotView>().Length == 0,
+                    "The compact Journal row does not expose a full-row action or still displays inline chain slots.");
                 fixtures[chain.StatKey] = 60; AchievementLifecycle.NotifyDataChanged();
-                Check(card.ProgressLabel.text.Replace(" ", "") == "0/250", "New third step must start0/250 at total60.");
+                Check(progress.text.Replace(" ", "") == "0/250", "New third step must start0/250 at total60.");
                 fixtures[chain.StatKey] = 309; AchievementLifecycle.NotifyDataChanged();
-                Check(card.ProgressLabel.text.Replace(" ", "") == "249/250", "In-progress card249/250 incorrect.");
+                Check(progress.text.Replace(" ", "") == "249/250", "In-progress row249/250 incorrect.");
                 for (var i = 0; i < chain.Thresholds.Length; i++) claims.Add(chain.ChainId + ":" + i);
                 fixtures[chain.StatKey] = AchievementUiRules.CumulativeRequired(chain, chain.Thresholds.Length - 1);
                 AchievementLifecycle.NotifyDataChanged();
                 Check(badge.PendingCount == 0, "Navigation badge did not clear after all fixture rewards claimed.");
-                Check(rowIds.SequenceEqual(rowList.Select(r => r.GetInstanceID())), "Live progress destroys/recreates all rendered cards.");
-                return "PASS: actual catalog deltas10/50/250 retain totals10/60/310; current0/250,249/250,250/250; completion310 emits one lifecycle event and reaches production toast without prior claims; dedup and ordered claim eligibility preserved; nav badge1→0; about" + visible.ToString("0.0") + " cards, full horizontal chain; rows reused. All cache/UI/toast state restored, no RPC/claim/PlayerPrefs writes.";
+                Check(rowIds.SequenceEqual(rowList.Select(r => r.GetInstanceID())), "Live progress destroys or recreates the rendered Journal rows.");
+                return "PASS: actual catalog deltas10/50/250 retain totals10/60/310; current0/250,249/250,250/250; completion310 emits one lifecycle event and reaches production toast without prior claims; dedup and ordered claim eligibility preserved; nav badge1→0; compact journal with about " + visible.ToString("0.0") + " rows per viewport, distinct title and condition, full-row action and reused rows. All cache/UI/toast state restored, no RPC/claim/PlayerPrefs writes.";
             }
             finally
             {
@@ -128,6 +137,13 @@ namespace Project.Editor
                 if (group != null) { group.interactable = wasInteractable; group.blocksRaycasts = wasBlocking; }
                 AchievementLifecycle.NotifyDataChanged();
             }
+        }
+
+        private static TMP_Text Label(ExpeditionAchievementJournalRow row, string name)
+        {
+            var label = row.transform.Find(name)?.GetComponent<TMP_Text>();
+            Check(label != null, "Journal label is missing: " + name);
+            return label;
         }
 
         private static T Read<T>(object target, string field) => (T)target.GetType().GetField(field, PrivateInstance).GetValue(target);

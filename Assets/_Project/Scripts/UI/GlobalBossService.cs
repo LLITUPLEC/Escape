@@ -15,6 +15,7 @@ namespace Project.UI
     {
         public const string Token = "global_boss_teleport";
         public const string Art = "Expedition/Boss/0313/global-boss-body";
+        internal const int ReadTimeoutMilliseconds = 10_000;
         [Serializable] public sealed class Attempt { public string attempt_id, match_id; public bool resumable; }
         [Serializable] public sealed class Ability { public string id, name, description; }
         [Serializable] public sealed class Reward { public string def_id, resource; public int amount; }
@@ -48,22 +49,65 @@ namespace Project.UI
         public static Task RefreshAsync(CancellationToken ct) => Request(false, ct);
         public static Task EnterAsync(CancellationToken ct) => Request(true, ct);
         public static Task PracticeAsync(CancellationToken ct) => Request(true, ct, true);
+
+        internal static async Task<global::Nakama.ISession> GetReadSessionAsync(NakamaBootstrap boot, CancellationToken ct)
+        {
+            if (boot == null || !boot.GameplaySessionAllowed)
+                throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
+
+            // These authenticated HTTP reads can use an existing session while the gameplay socket reconnects.
+            if (boot.Client == null || boot.Session is not { IsExpired: false })
+                await boot.EnsureConnectedAsync(ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            if (!boot.GameplaySessionAllowed || boot.Client == null || boot.Session is not { IsExpired: false } session)
+                throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
+            return session;
+        }
+
         private static async Task Request(bool enter, CancellationToken ct, bool practice = false)
         {
             var expected = await MainThreadDispatcher.RunAsync(() => { Observe(); return _scope; }).ConfigureAwait(false);
             try { await Gate.WaitAsync(ct).ConfigureAwait(false); } catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
-            string owner = null; global::Nakama.ISession session = null; NakamaBootstrap boot = null;
+            string owner = null;
+            var ownsRequest = false;
             try
             {
-                boot = NakamaBootstrap.Instance; if (boot == null) return;
+                var allowed = await MainThreadDispatcher.RunAsync(() =>
+                {
+                    Observe();
+                    if (expected != _scope || ct.IsCancellationRequested) return false;
+                    owner = _scope;
+                    ownsRequest = true;
+                    _busy = true;
+                    if (enter) _error = null;
+                    Changed?.Invoke();
+                    return true;
+                }).ConfigureAwait(false);
+                if (!allowed) return;
+
+                using var deadline = enter ? null : CancellationTokenSource.CreateLinkedTokenSource(ct);
+                deadline?.CancelAfter(ReadTimeoutMilliseconds);
+                var token = deadline?.Token ?? ct;
+                var boot = NakamaBootstrap.Instance;
+                if (boot == null) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
                 if (practice)
                     await MainThreadDispatcher.RunAsync(() => { if (!boot.IsReady || !ServerConnectionGuard.CanPlay) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage); }).ConfigureAwait(false);
-                else await ServerConnectionGuard.RequireAsync(ct).ConfigureAwait(false);
-                session = boot.Session;
+                else if (enter)
+                    await MainThreadDispatcher.RunAsync<Task>(() => ServerConnectionGuard.RequireAsync(token)).Unwrap().ConfigureAwait(false);
+                var session = enter ? boot.Session : await GetReadSessionAsync(boot, token).ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
                 var request = await MainThreadDispatcher.RunAsync(() =>
                 {
-                    Observe(); if (_scope == null || expected != null && expected != _scope || session == null) return null;
-                    owner = _scope; _busy = true; _error = null; Changed?.Invoke();
+                    Observe();
+                    if (expected != null && expected != _scope || !ReferenceEquals(boot, NakamaBootstrap.Instance) ||
+                        !ReferenceEquals(session, boot.Session) || !boot.GameplaySessionAllowed) return null;
+                    if (_scope == null || session == null) throw new InvalidOperationException(ServerConnectionGuard.UnavailableMessage);
+                    if (owner != _scope)
+                    {
+                        owner = _scope;
+                        _busy = true;
+                        Changed?.Invoke();
+                    }
                     if (!enter) return "{}";
                     if (practice) return JsonUtility.ToJson(new PracticeRequest { session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
                     if (_entryId == null)
@@ -74,10 +118,12 @@ namespace Project.UI
                     return JsonUtility.ToJson(new EnterRequest { request_id = _entryId, event_id = _entryEvent, session_epoch = NakamaBootstrap.GetLocalSessionEpoch() });
                 }).ConfigureAwait(false);
                 if (request == null) return;
-                var result = await boot.Client.RpcAsync(session, practice ? "duel_global_boss_practice" : enter ? "duel_global_boss_enter" : "duel_global_boss_get", request, canceller: ct).ConfigureAwait(false);
+                var result = await boot.Client.RpcAsync(session, practice ? "duel_global_boss_practice" : enter ? "duel_global_boss_enter" : "duel_global_boss_get", request, canceller: token).ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
                 await MainThreadDispatcher.RunAsync(() =>
                 {
-                    if (!LocalAccountCacheScope.IsCurrent(owner) || !ReferenceEquals(session, boot.Session)) return;
+                    if (token.IsCancellationRequested || !LocalAccountCacheScope.IsCurrent(owner) ||
+                        !ReferenceEquals(boot, NakamaBootstrap.Instance) || !ReferenceEquals(session, boot.Session) || !boot.GameplaySessionAllowed) return;
                     if (enter)
                     {
                         var reply = JsonUtility.FromJson<Entry>(result?.Payload ?? "{}");
@@ -91,7 +137,7 @@ namespace Project.UI
                     {
                         var reply = JsonUtility.FromJson<State>(result?.Payload ?? "{}");
                         if (reply == null || !reply.ok || string.IsNullOrEmpty(reply.event_id) || reply.hp_max <= 0 || reply.hp < 0 || reply.hp > reply.hp_max)
-                        { _error = Message(reply?.err); return; }
+                        { _error = "Данные события недоступны. Нажмите «Обновить»."; return; }
                         _state = reply; _received = Time.realtimeSinceStartupAsDouble; _error = null;
                     }
                 }).ConfigureAwait(false);
@@ -99,12 +145,26 @@ namespace Project.UI
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
             catch (Exception)
             {
-                if (owner != null) await MainThreadDispatcher.RunAsync(() => { if (LocalAccountCacheScope.IsCurrent(owner)) _error = practice ? "Не удалось начать пробный бой. Повторите попытку — затраты отсутствуют." : enter ? "Вход ещё не подтверждён. Повторите кнопку: жетон второй раз не спишется." : "Нет связи с сервером. Обновите событие."; }).ConfigureAwait(false);
+                if (ownsRequest) await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (ct.IsCancellationRequested || owner != LocalAccountCacheScope.Current) return;
+                    _error = practice ? "Не удалось начать пробный бой. Повторите попытку." :
+                        enter ? "Вход ещё не подтверждён. Повторите попытку с тем же жетоном." :
+                        "Не удалось загрузить событие. Нажмите «Обновить».";
+                }).ConfigureAwait(false);
             }
             finally
             {
-                if (owner != null) await MainThreadDispatcher.RunAsync(() => { if (LocalAccountCacheScope.IsCurrent(owner)) { _busy = false; Changed?.Invoke(); } }).ConfigureAwait(false);
-                Gate.Release();
+                try
+                {
+                    if (ownsRequest) await MainThreadDispatcher.RunAsync(() =>
+                    {
+                        if (owner != LocalAccountCacheScope.Current) return;
+                        _busy = false;
+                        Changed?.Invoke();
+                    }).ConfigureAwait(false);
+                }
+                finally { Gate.Release(); }
             }
         }
         private static string Message(string error) => error switch

@@ -44,12 +44,24 @@ namespace Project.UI
         private Button _settingsButton;
         private Button _nicknameButton;
         private Button _tutorialButton;
+        private Button _deviceTab;
+        private Button _accountTab;
+        private RectTransform _accountPlate;
+        private RectTransform _audioPanel;
         private CharacterNicknameEditor _nicknameEditor;
         private AccountGenderPicker _genderPicker;
         private Project.Audio.AudioSettingsBlock _audioSettings;
         private GameObject _modalGo;
         private GameObject _deleteConfirmRoot;
         private bool _busy;
+        private bool _showAccount;
+
+        private static readonly string[] AccountControls =
+        {
+            "Status", "LinkedEmailLine", "ExpeditionEmailCaption", "EmailInputSlot",
+            "ExpeditionPasswordCaption", "PasswordInputSlot", "LinkButton", "LoginButton",
+            "LogoutEmailButton", "DeleteAccountButton"
+        };
 
         /// <summary>Исходная позиция Panel до сдвига от IME (мобильная клавиатура).</summary>
         private Vector2 _modalPanelBaseAnchoredPos;
@@ -70,7 +82,7 @@ namespace Project.UI
             EnsureInputsUnderSlots();
             WireModalButtons();
             if (_modalGo != null) ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
-            EnsureNicknameSettingsAction();
+            EnsureSettingsControls();
 
             if (_modalGo != null)
                 _modalGo.SetActive(false);
@@ -92,7 +104,7 @@ namespace Project.UI
             if (_modalGo != null && _modalGo.activeSelf)
             {
                 ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
-                EnsureNicknameSettingsAction();
+                EnsureSettingsControls();
                 _ = RefreshStatusAsync(CancellationToken.None);
             }
         }
@@ -393,7 +405,7 @@ namespace Project.UI
             if (_modalGo == null) return;
             _modalGo.SetActive(true);
             ExpeditionMetaPanels.ApplySettings(_modalGo.transform, modalPanelRect);
-            EnsureNicknameSettingsAction();
+            EnsureSettingsControls();
             if (modalPanelGroup != null)
                 modalPanelGroup.alpha = 1f;
             if (modalPanelRect != null)
@@ -424,36 +436,66 @@ namespace Project.UI
             if (deleteAccountButton != null) deleteAccountButton.interactable = !busy;
             if (_nicknameButton != null) _nicknameButton.interactable = !busy;
             if (_tutorialButton != null) _tutorialButton.interactable = !busy;
+            if (_deviceTab != null) _deviceTab.interactable = !busy;
+            if (_accountTab != null) _accountTab.interactable = !busy;
             if (_genderPicker != null) _genderPicker.SetBusy(busy);
         }
 
-        private void EnsureNicknameSettingsAction()
+        private void EnsureSettingsControls()
         {
             if (_modalGo == null || modalPanelRect == null) return;
             if (_nicknameEditor == null) _nicknameEditor = ExpeditionUi.Ensure<CharacterNicknameEditor>(gameObject);
-            if (_nicknameButton == null)
-                _nicknameButton = ExpeditionUi.Button(modalPanelRect, "NicknameButton", "Изменить имя",
-                    .065f, .835f, .935f, .905f, OpenNicknameEditor, false, 34);
-            _nicknameButton.interactable = !_busy;
-            if (_tutorialButton == null)
-                _tutorialButton = ExpeditionUi.Button(modalPanelRect, "TutorialReplayButton", "Как играть · обучение", .065f, .032f, .935f, .078f, OpenTutorialReplay, false, 27);
-            _tutorialButton.interactable = !_busy;
-            var title = modalPanelRect.Find("Title")?.GetComponent<TMP_Text>();
-            if (title != null) title.text = "НАСТРОЙКИ";
-            if (_audioSettings == null) _audioSettings = ExpeditionUi.Ensure<Project.Audio.AudioSettingsBlock>(modalPanelRect.gameObject);
-            _audioSettings.Build(modalPanelRect);
-            if (statusText != null) ExpeditionUi.SetRect(statusText.rectTransform, .065f, .565f, .935f, .64f);
-            if (linkedEmailLineText != null) ExpeditionUi.SetRect(linkedEmailLineText.rectTransform, .065f, .52f, .935f, .56f);
-            if (statusText != null) { statusText.enableAutoSizing = true; statusText.fontSizeMin = 23; statusText.fontSizeMax = 30; }
-            if (linkedEmailLineText != null) { linkedEmailLineText.enableAutoSizing = true; linkedEmailLineText.fontSizeMin = 20; linkedEmailLineText.fontSizeMax = 26; }
-            SetSettingsRect("ExpeditionEmailCaption", .065f, .488f, .935f, .515f);
-            if (emailInputSlot != null) ExpeditionUi.SetRect(emailInputSlot, .065f, .415f, .935f, .48f);
-            SetSettingsRect("ExpeditionPasswordCaption", .065f, .383f, .935f, .410f);
-            if (passwordInputSlot != null) ExpeditionUi.SetRect(passwordInputSlot, .065f, .31f, .935f, .375f);
-            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, .065f, .235f, .935f, .30f);
-            if (loginButton != null) ExpeditionUi.SetRect(loginButton.transform as RectTransform, .065f, .182f, .935f, .228f);
-            if (logoutAccountButton != null) ExpeditionUi.SetRect(logoutAccountButton.transform as RectTransform, .065f, .132f, .935f, .178f);
-            if (deleteAccountButton != null) ExpeditionUi.SetRect(deleteAccountButton.transform as RectTransform, .065f, .082f, .935f, .128f);
+            if (_deviceTab == null)
+            {
+                _accountPlate = ExpeditionShelterSurface.Inset(modalPanelRect, "AccountPlate", new Color32(18, 34, 36, 255), .044f, .026f, .956f, .744f);
+                _accountPlate.SetSiblingIndex(modalPanelRect.Find("ConsoleCasing").GetSiblingIndex() + 1);
+                _deviceTab = ExpeditionUi.Button(modalPanelRect, "SettingsDeviceTab", "Устройство", .045f, .759f, .49f, .844f, () => ShowSettingsTab(false), false, 31);
+                _accountTab = ExpeditionUi.Button(modalPanelRect, "SettingsAccountTab", "Аккаунт", .51f, .759f, .955f, .844f, () => ShowSettingsTab(true), false, 31);
+                ExpeditionUi.Fill(_deviceTab.transform, "Indicator", .095f, .075f, .905f, .117f, ExpeditionTheme.Amber);
+                ExpeditionUi.Fill(_accountTab.transform, "Indicator", .095f, .075f, .905f, .117f, ExpeditionTheme.Amber);
+                _nicknameButton = BuildSettingsTool("NicknameButton", "Изменить имя", "hero", .045f, .49f, OpenNicknameEditor);
+                _tutorialButton = BuildSettingsTool("TutorialReplayButton", "Как играть", "blueprint", .51f, .955f, OpenTutorialReplay);
+                _audioSettings = ExpeditionUi.Ensure<Project.Audio.AudioSettingsBlock>(modalPanelRect.gameObject);
+                _audioSettings.Build(modalPanelRect);
+                _audioPanel = modalPanelRect.Find("ExpeditionAudioSettings") as RectTransform;
+                if (statusText != null) { statusText.fontSizeMin = 23; statusText.fontSizeMax = 30; }
+                if (linkedEmailLineText != null) { linkedEmailLineText.fontSizeMin = 20; linkedEmailLineText.fontSizeMax = 26; }
+            }
+            ShowSettingsTab(_showAccount);
+            SetBusy(_busy);
+        }
+
+        private Button BuildSettingsTool(string name, string label, string icon, float left, float right, UnityEngine.Events.UnityAction action)
+        {
+            var button = ExpeditionUi.Button(modalPanelRect, name, label, left, .043f, right, .232f, action, false, 31);
+            var text = button.GetComponentInChildren<TMP_Text>();
+            ExpeditionUi.SetRect(text.rectTransform, .045f, .09f, .955f, .34f);
+            var image = ExpeditionUi.Fill(button.transform, "Tool", .24f, .37f, .76f, .93f, Color.white);
+            image.sprite = ExpeditionTheme.Icon(icon);
+            image.enabled = image.sprite != null;
+            image.preserveAspect = true;
+            return button;
+        }
+
+        private void ShowSettingsTab(bool account)
+        {
+            _showAccount = account;
+            if (!account)
+            {
+                if (emailInput != null) emailInput.DeactivateInputField();
+                if (passwordInput != null) passwordInput.DeactivateInputField();
+            }
+            foreach (var name in AccountControls)
+            {
+                var control = modalPanelRect.Find(name);
+                if (control != null) control.gameObject.SetActive(account);
+            }
+            _accountPlate.gameObject.SetActive(account);
+            _audioPanel.gameObject.SetActive(!account);
+            _nicknameButton.gameObject.SetActive(!account);
+            _tutorialButton.gameObject.SetActive(!account);
+            _deviceTab.transform.Find("Indicator").gameObject.SetActive(!account);
+            _accountTab.transform.Find("Indicator").gameObject.SetActive(account);
             UpdateRegistrationGenderPicker();
         }
         private void OpenTutorialReplay()
@@ -465,16 +507,10 @@ namespace Project.UI
         private void UpdateRegistrationGenderPicker()
         {
             if (modalPanelRect == null) return;
-            if (_genderPicker == null) _genderPicker = AccountGenderPicker.Create(modalPanelRect, .065f, .235f, .455f, .30f);
-            var visible = Project.Character.AccountGender.CanChoose;
+            if (_genderPicker == null) _genderPicker = AccountGenderPicker.Create(modalPanelRect, .07f, .305f, .455f, .381f);
+            var visible = _showAccount && Project.Character.AccountGender.CanChoose;
             _genderPicker.gameObject.SetActive(visible);
-            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, visible ? .48f : .065f, .235f, .935f, .30f);
-        }
-
-        private void SetSettingsRect(string name, float x0, float y0, float x1, float y1)
-        {
-            var rect = modalPanelRect.Find(name) as RectTransform;
-            if (rect != null) ExpeditionUi.SetRect(rect, x0, y0, x1, y1);
+            if (linkButton != null) ExpeditionUi.SetRect(linkButton.transform as RectTransform, visible ? .48f : .07f, .305f, .93f, .381f);
         }
 
         private void OpenNicknameEditor()

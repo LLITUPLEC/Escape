@@ -20,7 +20,7 @@ namespace Project.Editor
     /// <summary>Native login card renders without accounts, reward claims or network components.</summary>
     public static class ExpeditionDailyLoginQa0313
     {
-        private const string Output = ".cache/qa/legacy-0.3.13/login-ui";
+        private const string Output = ".cache/qa/diegetic-ui/login";
         [Serializable] private sealed class Shot { public string path, state; public int width, height, checkedDays; }
         [Serializable] private sealed class Report { public bool passed, networkOrAccountActions, questLayoutChanged; public int assertions; public string checkedUtc, error; public List<Shot> screenshots = new(); }
         public static string Run(string target)
@@ -37,7 +37,7 @@ namespace Project.Editor
             }
             catch (Exception e) { report.error = e.ToString(); throw; }
             finally { File.WriteAllText(Output + "/login0313-report.json", JsonUtility.ToJson(report, true)); }
-            return "PASS: " + report.assertions + " intact login frame/claim-state checks, " + report.screenshots.Count + " native renders, no reward/account actions.";
+            return "PASS: " + report.assertions + " route, login frame and claim-state checks, " + report.screenshots.Count + " native renders, no reward/account actions.";
         }
         private static void Check(Report report, bool result, string message) { report.assertions++; if (!result) throw new InvalidOperationException(message); }
         private static void Capture(int height, Report report)
@@ -73,7 +73,18 @@ namespace Project.Editor
                     var frames = panel.GetComponentsInChildren<ExpeditionDailyLoginFrame>(true).Where(f => !f.Checkmark).ToArray();
                     var marks = panel.GetComponentsInChildren<ExpeditionDailyLoginFrame>(false).Where(f => f.Checkmark).ToArray();
                     var expectedDays = state.login.total_claimed % 7; if (state.login.claimed_today && expectedDays == 0) expectedDays = 7;
-                    Check(report, frames.Length == 8, "Expected seven intact day frames and one current reward frame.");
+                    Check(report, frames.Length == 1, "Expected one reward frame below the supply map.");
+                    var map = panel.Find("SupplyMap");
+                    var stops = map.GetComponentsInChildren<Button>().Where(button => button.name.StartsWith("LoginDayCard", StringComparison.Ordinal)).ToArray();
+                    Check(report, stops.Length == 7 && stops.All(stop => stop.IsInteractable()), "The route does not expose seven interactive stops.");
+                    for (var i = 0; i < stops.Length; i++)
+                    {
+                        var frame = stops[i].targetGraphic as ExpeditionSupplyFrame;
+                        Check(report, frame != null && frame.raycastTarget && frame.Shape == (i == 6
+                            ? ExpeditionSupplyFrame.Silhouette.Trophy : ExpeditionSupplyFrame.Silhouette.Camp),
+                            "Route stop has the wrong interactive frame.");
+                        VerifyMesh(frame, report);
+                    }
                     Check(report, marks.Length == expectedDays + (state.login.claimed_today ? 1 : 0), "Claimed green checkmarks disagree with server state.");
                     Check(report, panel.GetComponentsInChildren<Image>(true).All(i => i.name != "CardWell"), "Old rectangular card well still cuts the login bevel.");
                     foreach (var frame in frames)
@@ -89,7 +100,22 @@ namespace Project.Editor
                         VerifyMesh(mark, report);
                     }
                     var claim = panel.Find("ClaimLogin").GetComponent<Button>();
+                    var clasp = claim.targetGraphic as ExpeditionSupplyFrame;
+                    Check(report, clasp != null && clasp.raycastTarget && clasp.Shape == ExpeditionSupplyFrame.Silhouette.Claim,
+                        "Login action is missing its interactive clasp.");
+                    VerifyMesh(clasp, report);
                     Check(report, claim.interactable == state.login.can_claim, "Claim button semantics changed.");
+                    var focus = panel.Find("DailyCurrentReward");
+                    Check(report, focus.GetComponentsInChildren<Image>().Count(image => image.name == "DailyRewardIcon") == 4,
+                        "The seventh stop must show all four rewards.");
+                    stops[0].onClick.Invoke();
+                    Check(report, claim.GetComponentInChildren<TMP_Text>().text.Contains("К СЕГОДНЯШНЕЙ") &&
+                        focus.GetComponentsInChildren<Image>().Count(image => image.name == "DailyRewardIcon") == 2,
+                        "Previewing an earlier stop did not change the rewards and replace the claim action.");
+                    claim.onClick.Invoke();
+                    Check(report, claim.interactable == state.login.can_claim &&
+                        focus.GetComponentsInChildren<Image>().Count(image => image.name == "DailyRewardIcon") == 4,
+                        "Returning to today's stop did not restore its rewards and claim state.");
                     foreach (var icon in panel.GetComponentsInChildren<Image>().Where(i => i.name == "DailyRewardIcon")) Check(report, icon.sprite != null, "Reward icon missing.");
                     foreach (var text in panel.GetComponentsInChildren<TMP_Text>()) { text.ForceMeshUpdate(); Check(report, !text.isTextOverflowing, "Daily text overflows: " + text.name); }
                     if (GraphicsSettings.currentRenderPipeline != null) RenderPipeline.SubmitRenderRequest(camera, new RenderPipeline.StandardRequest { destination = target }); else camera.Render();
@@ -106,10 +132,10 @@ namespace Project.Editor
                 EditorSceneManager.CloseScene(scene, true); if (previous.IsValid() && previous.isLoaded) SceneManager.SetActiveScene(previous);
             }
         }
-        private static void VerifyMesh(ExpeditionDailyLoginFrame graphic, Report report)
+        private static void VerifyMesh(MaskableGraphic graphic, Report report)
         {
             using var vertices = new VertexHelper();
-            typeof(ExpeditionDailyLoginFrame).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
+            graphic.GetType().GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
                 null, new[] { typeof(VertexHelper) }, null).Invoke(graphic, new object[] { vertices });
             Check(report, vertices.currentVertCount > 60 && vertices.currentIndexCount > 60, "Frame/check geometry missing.");
             var bounds = graphic.GetPixelAdjustedRect(); var vertex = UIVertex.simpleVert;

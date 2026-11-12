@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "sceneCleanupAnchorsPassed": true,
+  "target": "Android",
+  "physicalDeviceTested": false,
+  "version": "0.3.21",
+  "editor": "6000.3.9f1",
+  "groups": [
+    "build scene dependencies",
+    "achievement journal",
+    "arena and shelter",
+    "shelter shortcut input",
+    "login reward states",
+    "supplies shop and settings",
+    "anomaly",
+    "boss portrait",
+    "boss tall",
+    "boss practice",
+    "boss action rows",
+    "boss authenticated reads",
+    "account and reconnect"
+  ]
+}

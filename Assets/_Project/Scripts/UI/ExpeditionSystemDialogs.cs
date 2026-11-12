@@ -81,92 +81,53 @@ namespace Project.UI
             }
         }
 
-        public static void ApplyAura(GameObject root, Text header, RectTransform stats, Text footer)
+        public static void ApplyAura(GameObject root, Text header, Text footer)
         {
-            if (root == null || stats == null) return;
-            var panel = root.transform.Find("Panel") as RectTransform;
-            if (panel == null) return;
+            if (root == null || header == null || footer == null) return;
+            var panel = header.rectTransform.parent as RectTransform;
             StyleRoot(root);
             var group = ExpeditionUi.Ensure<CanvasGroup>(root);
-            group.alpha = 1;
-            group.interactable = group.blocksRaycasts = true;
-            group.ignoreParentGroups = true;
-            StylePlate(panel);
-            SetSafeBounds(panel, .055f, .09f, .945f, .91f);
-            PlaceText(panel, "Title", 46, .055f, .90f, .945f, .975f, ExpeditionTheme.Ivory, TextAnchor.MiddleLeft);
-            if (header != null)
-            {
-                ExpeditionUi.SetRect(header.rectTransform, .055f, .65f, .945f, .87f);
-                StyleText(header, 32, ExpeditionTheme.Ivory, TextAnchor.UpperLeft);
-            }
-            if (footer != null)
-            {
-                ExpeditionUi.SetRect(footer.rectTransform, .055f, .12f, .945f, .195f);
-                StyleText(footer, 25, ExpeditionTheme.Muted, TextAnchor.UpperLeft);
-            }
-            var scrollRoot = panel.Find("ExpeditionAuraScroll") as RectTransform;
-            if (scrollRoot == null)
-            {
-                scrollRoot = ExpeditionUi.Rect(panel, "ExpeditionAuraScroll", .055f, .215f, .945f, .625f);
-                var hit = scrollRoot.gameObject.AddComponent<Image>();
-                ExpeditionUi.StylePanel(hit, new Color32(13, 33, 40, 255));
-                hit.raycastTarget = true;
-                var viewport = ExpeditionUi.Rect(scrollRoot, "Viewport", .02f, .02f, .98f, .98f);
-                viewport.gameObject.AddComponent<RectMask2D>();
-                stats.SetParent(viewport, false);
-                stats.anchorMin = new Vector2(0, 1);
-                stats.anchorMax = Vector2.one;
-                stats.pivot = new Vector2(.5f, 1);
-                stats.anchoredPosition = Vector2.zero;
-                stats.sizeDelta = Vector2.zero;
-                var stack = ExpeditionUi.Ensure<VerticalLayoutGroup>(stats.gameObject);
-                stack.enabled = true;
-                stack.padding = new RectOffset(18, 18, 12, 18);
-                stack.spacing = 12;
-                stack.childControlHeight = stack.childControlWidth = true;
-                stack.childForceExpandHeight = false;
-                stack.childForceExpandWidth = true;
-                var fitter = ExpeditionUi.Ensure<ContentSizeFitter>(stats.gameObject);
-                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                var scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
-                scroll.viewport = viewport;
-                scroll.content = stats;
-                scroll.horizontal = false;
-                scroll.vertical = true;
-                scroll.movementType = ScrollRect.MovementType.Clamped;
-                scroll.scrollSensitivity = 45;
-            }
-            for (var i = 0; i < stats.childCount; i++) StyleAuraRow(stats.GetChild(i));
-            var closeRoot = panel.Find("CloseButton");
-            var close = closeRoot != null ? closeRoot.GetComponent<Button>() : null;
-            if (close != null)
-            {
-                ExpeditionUi.SetRect(close.transform as RectTransform, .055f, .035f, .945f, .105f);
-                ExpeditionUi.StyleButton(close, true, 36);
-                StyleButtonLabels(close, true, 36);
-            }
-            LayoutRebuilder.MarkLayoutForRebuild(stats);
-            var existingScroll = scrollRoot.GetComponent<ScrollRect>();
-            if (existingScroll != null) existingScroll.verticalNormalizedPosition = 1;
+            group.interactable = group.blocksRaycasts = group.ignoreParentGroups = true;
+            SetSafeBounds(panel, .055f, .065f, .945f, .935f);
+
+            var scene = ExpeditionShelterSurface.Illustration(panel, "CrystalChamber", "encounter-anomaly", .012f, .008f, .988f, .992f);
+            scene.SetAsFirstSibling();
+            ExpeditionLocalAtmosphere.Install(scene, false);
+            ExpeditionUi.Fill(scene, "ObservationShade", 0, 0, 1, .641f, new Color32(4, 19, 24, 133));
+            ExpeditionUi.Fill(scene, "ObservationNotesBacking", .036f, .442f, .964f, .635f, new Color32(4, 19, 24, 179));
+            var plaque = ExpeditionUi.Fill(scene, "ObservationPlaque", 0, .876f, 1, 1, new Color32(7, 26, 32, 207));
+            var title = ExpeditionUi.Text(plaque.transform, "Title", "АНОМАЛИЯ СЕРВЕРА", 40, .035f, .02f, .965f, .98f, TextAlignmentOptions.Center);
+            title.fontStyle = FontStyles.Bold;
+            title.color = new Color32(185, 240, 223, 255);
+
+            StyleText(header, 32, ExpeditionTheme.Ivory, TextAnchor.MiddleCenter);
+            header.resizeTextForBestFit = true;
+            header.resizeTextMinSize = 20;
+            header.resizeTextMaxSize = 32;
+            header.verticalOverflow = VerticalWrapMode.Truncate;
+            header.supportRichText = false;
+            StyleText(footer, 25, ExpeditionTheme.Ivory, TextAnchor.MiddleCenter);
+            if (Application.isPlaying) panel.gameObject.AddComponent<ExpeditionPanelArrival>();
         }
 
-        private static void StyleAuraRow(Transform row)
+        public static void AuraEffect(Transform stats, int index, string caption, string icon, float amount)
         {
-            var height = ExpeditionUi.Ensure<LayoutElement>(row.gameObject);
-            height.minHeight = height.preferredHeight = 72;
-            var stack = row.GetComponent<HorizontalLayoutGroup>();
-            if (stack != null) stack.spacing = 20;
-            foreach (var label in row.GetComponentsInChildren<Text>(true))
-            {
-                StyleText(label, label.name == "Value" ? 31 : 28,
-                    label.name == "Value" ? ExpeditionTheme.Amber : ExpeditionTheme.Ivory,
-                    label.name == "Value" ? TextAnchor.MiddleRight : TextAnchor.MiddleLeft);
-                label.resizeTextForBestFit = true;
-                label.resizeTextMinSize = 23;
-                label.resizeTextMaxSize = label.name == "Value" ? 31 : 28;
-                label.verticalOverflow = VerticalWrapMode.Truncate;
-            }
+            var column = index % 2;
+            var top = 1f - index / 2 * .25f;
+            var stone = ExpeditionUi.Panel(stats, "Effect-" + icon, column * .508f, top - .235f, column * .508f + .492f, top);
+            stone.color = new Color32(175, 225, 224, 255);
+            var glyph = ExpeditionUi.Fill(stone.transform, "EffectGlyph", .035f, .13f, .28f, .87f, Color.white);
+            glyph.sprite = ExpeditionTheme.Icon(icon);
+            glyph.preserveAspect = true;
+            var sign = amount > 0 ? "+" : "";
+            var value = ExpeditionUi.Text(stone.transform, "EffectValue", $"{sign}{amount:0.#}%", 36, .29f, .47f, .965f, .94f);
+            value.color = amount > 0 ? new Color32(150, 235, 187, 255) : ExpeditionTheme.Coral;
+            value.fontStyle = FontStyles.Bold;
+            var label = ExpeditionUi.Text(stone.transform, "EffectName", caption, 24, .29f, .09f, .965f, .48f);
+            label.margin = Vector4.zero;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 19;
+            label.fontSizeMax = 24;
         }
 
         private static void StyleRoot(GameObject root)

@@ -20,6 +20,7 @@ local Guard = build_session_guard({ nk = nk, CFG = CFG })
 local Runtime = {}
 Runtime.Rounds = runtime_lua_require("modules.duel_match3_rounds", "duel_match3_rounds")
 Runtime.Inventory = runtime_lua_require("modules.duel_match3_inventory", "duel_match3_inventory")
+Runtime.ResourceMedals = runtime_lua_require("modules.duel_resource_medals", "duel_resource_medals")
 Runtime.ConsumableModule = runtime_lua_require("modules.duel_consumables", "duel_consumables")
 Runtime.ConsumableEffects = Runtime.ConsumableModule.Effects
 Runtime.MineRecipes = runtime_lua_require("modules.duel_mine_recipe_drops", "duel_mine_recipe_drops")
@@ -611,13 +612,17 @@ local function roll_outgoing_damage(state, board, attacker, base_damage)
   return Runtime.ConsumableEffects.damage(dmg, attacker), crit
 end
 
-local function deal_damage(state, board, attacker, target, base_damage)
-  local raw, crit = roll_outgoing_damage(state, board, attacker, base_damage)
-  local reduced = math.max(0, raw - get_armor(target))
+local function deal_damage(state, attacker_id, target_id, base_damage, action_type)
+  local attacker, target = state.stats[attacker_id], state.stats[target_id]
+  local raw, crit = roll_outgoing_damage(state, state.board, attacker, base_damage)
+  local blocked = math.min(raw, get_armor(target))
+  local reduced = raw - blocked
   if state.global_boss and target==state.stats[state.bot_user_id] then
     state._global_boss_damage_raw=(tonumber(state._global_boss_damage_raw) or 0)+reduced
   end
-  target.hp = math.max(0, (target.hp or CFG.MAX_HP) - reduced)
+  local previous_hp = target.hp or CFG.MAX_HP
+  target.hp = math.max(0, previous_hp - reduced)
+  Ach.note_combat_damage(state, attacker_id, target_id, action_type, previous_hp - target.hp, blocked, crit)
   return crit
 end
 
@@ -1820,8 +1825,7 @@ local function apply_ability_rewards(state, actor_id, opponent_id, action_type, 
       end
       return false
     end
-    local crit = deal_damage(state, state.board, actor, opp, CFG.PETARD_DAMAGE)
-    return crit
+    return deal_damage(state, actor_id, opponent_id, CFG.PETARD_DAMAGE, action_type)
   end
 
   local cells = collect_ability_cells(action_type, cx, cy)
@@ -1988,7 +1992,7 @@ local function resolve_action(state, action, actor_id, opponent_id)
 
   -- Один расчёт урона за ход: сумма бомб (все каскады) + урон способности (если был); base_damage персонажа и крит — в roll_outgoing_damage.
   if not is_pvp_race(state) and (state._action_damage_flat or 0) > 0 then
-    if deal_damage(state, state.board, state.stats[actor_id], state.stats[opponent_id], state._action_damage_flat) then
+    if deal_damage(state, actor_id, opponent_id, state._action_damage_flat, action.actionType) then
       crit_triggered = true
     end
   end
@@ -2497,7 +2501,7 @@ end
 
 -- All inventory writers carry their read version, including match rewards.
 -- Economy operations may atomically commit their currency changes in this batch.
-Runtime.build_character_sheet_writes = function(user_id, sheet, progress, progress_version)
+Runtime.build_character_sheet_writes = function(user_id, sheet, progress, progress_version, previous_level)
   if progress ~= nil then Runtime.Inventory.sync_resource_counters(sheet, progress, get_merged_item_defs()) end
   local writes = { Runtime.build_character_sheet_write(user_id, sheet) }
   if progress ~= nil then
@@ -2511,6 +2515,9 @@ Runtime.build_character_sheet_writes = function(user_id, sheet, progress, progre
       permission_write = 0,
       version = (progress_version ~= nil and progress_version ~= "") and progress_version or "*",
     }
+    if previous_level ~= nil then
+      Runtime.Mail.append_level_up_writes(writes, user_id, previous_level, progress.level)
+    end
   end
   return writes
 end
@@ -3142,43 +3149,89 @@ local function inventory_can_fit(sheet, def_id, amount)
   return space >= amount
 end
 
-local function read_cheat_whitelist_emails_for_user_id(storage_user_id)
-  -- Only the system-owned allowlist is trusted. Entries contain immutable user IDs,
-  -- never email addresses or user-editable account metadata.
-  if storage_user_id ~= "00000000-0000-0000-0000-000000000000" then return {} end
-  local ok, rows = pcall(function()
-    return nk.storage_read({
-      {
-        collection = CFG.CHEAT_WHITELIST_COLLECTION,
-        key = CFG.CHEAT_WHITELIST_KEY,
-        user_id = storage_user_id,
-      },
-    })
-  end)
-  if not ok or rows == nil or #rows == 0 then
-    return {}
-  end
+local function cheat_whitelist_storage_id()
+  if CFG.CHEAT_WHITELIST_USER_ID ~= "00000000-0000-0000-0000-000000000000" then return nil end
+  return {
+    collection = CFG.CHEAT_WHITELIST_COLLECTION,
+    key = CFG.CHEAT_WHITELIST_KEY,
+    user_id = CFG.CHEAT_WHITELIST_USER_ID,
+  }
+end
 
-  local row = rows[1]
-  local val = decode_storage_value(row) or {}
-  return type(val) == "table" and type(val.user_ids) == "table" and val.user_ids or {}
+local function normalize_preview_email(address)
+  if type(address) ~= "string" then return nil end
+  local email = address:match("^%s*([^%s@,]+@[^%s@,]+)%s*$")
+  return email and string.lower(email)
+end
+
+Runtime.seed_cheat_whitelist = function(configured_emails)
+  local id = cheat_whitelist_storage_id()
+  if not id then return end
+  local ok, rows = pcall(nk.storage_read, { id })
+  if not ok or type(rows) ~= "table" then
+    nk.logger_warn("Preview allowlist initialization: storage read failed")
+    return
+  end
+  if #rows > 0 then return end
+  local emails, seen = {}, {}
+  if type(configured_emails) == "string" then
+    for address in configured_emails:gmatch("[^,]+") do
+      local email = normalize_preview_email(address)
+      if email and not seen[email] then
+        seen[email] = true
+        emails[#emails + 1] = email
+      end
+    end
+  end
+  local written = pcall(nk.storage_write, { {
+    collection = id.collection, key = id.key, user_id = id.user_id,
+    value = { emails = emails },
+    version = "*", permission_read = 0, permission_write = 0,
+  } })
+  if not written then
+    -- A second Nakama node may have created the object during startup.
+    ok, rows = pcall(nk.storage_read, { id })
+    if not ok or type(rows) ~= "table" or #rows == 0 then
+      nk.logger_warn("Preview allowlist initialization: storage write failed")
+    end
+  end
 end
 
 local function build_cheat_whitelist_set(candidate_user_ids)
   local set = {}
-  local function absorb(list)
-    if type(list) ~= "table" then return end
-    for _, e in ipairs(list) do
-      if type(e) == "string" and e ~= "" then
-        set[string.lower(e)] = true
+  local id = cheat_whitelist_storage_id()
+  if not id then return set end
+  local ok, rows = pcall(nk.storage_read, { id })
+  if not ok or type(rows) ~= "table" or not rows[1] then return set end
+  local value = decode_storage_value(rows[1])
+  if type(value) ~= "table" then return set end
+
+  -- Existing system-owned UUID lists continue to work.
+  if type(value.user_ids) == "table" then
+    for _, uid in ipairs(value.user_ids) do
+      if type(uid) == "string" and uid ~= "" then set[string.lower(uid)] = true end
+    end
+  end
+  if type(value.emails) ~= "table" then return set end
+  local emails = {}
+  for _, address in ipairs(value.emails) do
+    local email = normalize_preview_email(address)
+    if email then emails[email] = true end
+  end
+  if next(emails) == nil then return set end
+
+  -- Match the email from Nakama's account, not profile metadata or a client payload.
+  for _, uid in ipairs(candidate_user_ids or {}) do
+    if type(uid) == "string" and uid ~= "" and uid:sub(1, 7) ~= "zz-bot-" then
+      local key = string.lower(uid)
+      if not set[key] then
+        local found, account = pcall(nk.account_get_id, uid)
+        if found and type(account) == "table" and not account.disable_time and type(account.email) == "string" then
+          set[key] = emails[string.lower(account.email)] == true
+        end
       end
     end
   end
-
-  -- Read only the system bucket; player-owned buckets cannot grant privileges.
-  local global_list = read_cheat_whitelist_emails_for_user_id(CFG.CHEAT_WHITELIST_USER_ID)
-  absorb(global_list)
-
   return set
 end
 
@@ -3295,6 +3348,7 @@ local function read_pve_progress(user_id)
     ore = math.max(0, tonumber(val.ore) or 0),
     ingots = math.max(0, tonumber(val.ingots) or 0),
     matter = math.max(0, tonumber(val.matter) or 0),
+    resource_medals = type(val.resource_medals) == "table" and val.resource_medals or nil,
     keys = math.max(0, tonumber(val.keys) or 0),
     blueprint_green = math.max(0, tonumber(val.blueprint_green) or 0),
     blueprint_blue = math.max(0, tonumber(val.blueprint_blue) or 0),
@@ -3341,6 +3395,7 @@ Runtime.build_pve_progress_write = function(user_id, progress, version)
       ore = progress.ore,
       ingots = progress.ingots,
       matter = progress.matter,
+      resource_medals = progress.resource_medals,
       keys = progress.keys,
       blueprint_green = progress.blueprint_green,
       blueprint_blue = progress.blueprint_blue,
@@ -3363,8 +3418,12 @@ Runtime.build_pve_progress_write = function(user_id, progress, version)
   return write_obj
 end
 
-local function write_pve_progress(user_id, progress, version)
-  nk.storage_write({ Runtime.build_pve_progress_write(user_id, progress, version) })
+local function write_pve_progress(user_id, progress, version, previous_level)
+  local writes = { Runtime.build_pve_progress_write(user_id, progress, version) }
+  if previous_level ~= nil then
+    Runtime.Mail.append_level_up_writes(writes, user_id, previous_level, progress.level)
+  end
+  nk.storage_write(writes)
 end
 
 function random_affix_for_floor(floor)
@@ -3431,8 +3490,8 @@ Runtime.PveRewards = runtime_lua_require("modules.duel_match3_pve_rewards", "due
   read_progress = read_pve_progress, read_sheet = read_character_sheet, get_defs = get_merged_item_defs,
   inventory = function() return Runtime.Inventory end,
   build_sheet_writes = Runtime.build_character_sheet_writes,
-  consume_writes = function(uid, token, id)
-    local writes, err = Runtime.PveEntry.consume_writes(uid, token, id)
+  consume_writes = function(uid, token, id, progress)
+    local writes, err = Runtime.PveEntry.consume_writes(uid, token, id, progress)
     assert(writes, err); return writes
   end,
   empty_keys = empty_key_items, add_blueprint = add_blueprint, level_from_xp = current_level_from_xp,
@@ -3466,10 +3525,11 @@ Runtime.award_pve_defeat = function(user_id, match_epoch_snapshot)
   local max_retries = 5
   for i = 1, max_retries do
     local progress, version = read_pve_progress(user_id)
+    local previous_level = progress.level
     progress.xp = progress.xp + defeat_xp
     progress.level = current_level_from_xp(progress.xp)
     local ok, err = pcall(function()
-      write_pve_progress(user_id, progress, version)
+      write_pve_progress(user_id, progress, version, previous_level)
     end)
     if ok then
       return {
@@ -3856,6 +3916,7 @@ local RaceApi = runtime_lua_require("modules.duel_match3_race_api", "duel_match3
   read_pve_progress = read_pve_progress,
   write_pve_progress = write_pve_progress,
   build_pve_progress_write = Runtime.build_pve_progress_write,
+  append_level_up_writes = Runtime.Mail.append_level_up_writes,
   current_level_from_xp = current_level_from_xp,
   build_resource_payload = build_resource_payload,
   race_goal_mana = race_goal_mana,
@@ -3873,13 +3934,6 @@ Runtime.RateLimit.configure_maintenance(function(ctx)
 end)
 Runtime.StorageMaintenance.configure({
   recover = function(uid) return Runtime.Recovery.maybe_recover(uid, { force = true }) end,
-  can_prune_receipt = function(uid, receipt)
-    local rows = nk.storage_read({ { user_id = uid, collection = "duel_match3_journal", key = "pending" } })
-    local value = rows and rows[1] and decode_storage_value(rows[1])
-    local entries = value and value.entries or {}
-    local id = tostring(receipt.run_id or "")
-    return id == "" or not (entries[id] or entries[id .. ":pve"] or entries[id .. ":stats"])
-  end,
 })
 
 local function duel_mine_summon(ctx, payload)
@@ -3969,6 +4023,7 @@ local function duel_mine_summon(ctx, payload)
       progress.energy = available_energy - CFG.MINE_SUMMON_ENERGY_COST
       progress.energy_updated_at = now
       progress.gold = available_gold - CFG.MINE_SUMMON_GOLD_COST
+      Runtime.ResourceMedals.spent(progress, CFG.MINE_SUMMON_GOLD_COST)
 
       local state_key = make_floor_state_key(requested_diff, requested_floor)
       local floor_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
@@ -4069,6 +4124,7 @@ function duel_mine_affix_reroll(ctx, payload)
       end
 
       PveMineCost.apply_list(progress, banish_cost)
+      Runtime.ResourceMedals.spent_costs(progress, banish_cost)
 
       local state_key = make_floor_state_key(requested_diff, requested_floor)
       local floor_state = type(progress.mine.floor_states[state_key]) == "table" and progress.mine.floor_states[state_key] or {}
@@ -5295,6 +5351,12 @@ Runtime.forfeit_match = function(dispatcher,state,uid,reason)
   if not winner then return end
   if state.mode=="pve" and state.arena_mirror==nil and not state.pvp_race then
     state.last_reward=Runtime.award_pve_defeat(state.owner_user_id,state.owner_session_epoch)
+    local ok_achi, err_achi = pcall(function()
+      Ach.flush_match_finish(state, winner, nil, nil, 0)
+    end)
+    if not ok_achi then
+      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
+    end
     Runtime.StatsApi.record_match_finish(state,winner,false)
     Runtime.emit_game_over(dispatcher,state,{winnerUserId=winner,isDraw=false,endReason=reason,
       rewardXp=state.last_reward.reward_xp or 0,newLevel=state.last_reward.level or 1})
@@ -5840,7 +5902,8 @@ Runtime.RateLimit.register_rpc(Arena.duel_arena_queue_poll, "duel_arena_queue_po
 Runtime.RateLimit.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet")
 
 if type(nk.run_once) == "function" then
-  nk.run_once(function()
+  nk.run_once(function(ctx)
+    Runtime.seed_cheat_whitelist(ctx and ctx.env and ctx.env.ESCAPE_DEBUG_PREVIEW_EMAILS)
     Runtime.StorageMaintenance.bootstrap()
     if Runtime.GlobalBoss and type(nk.match_create)=="function"then
       nk.match_create("duel_global_boss_dispatcher",{bootstrap=true})

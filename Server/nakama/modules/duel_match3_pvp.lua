@@ -1,4 +1,7 @@
 -- PvP: уровни в BoardSync и награда за победу (вынесено из duel_match3.lua).
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
+
 return function(deps)
   local nk = deps.nk
   local CFG = deps.CFG
@@ -83,9 +86,11 @@ return function(deps)
     local max_retries = 5
     for i = 1, max_retries do
       local progress, version = read_pve_progress(user_id)
+      local previous_level = progress.level
       apply_flat_rewards_to_progress(progress, flat)
+      ResourceMedals.earned(progress, flat.gold, flat.ore, flat.matter)
       local ok, err = pcall(function()
-        write_pve_progress(user_id, progress, version)
+        write_pve_progress(user_id, progress, version, previous_level)
       end)
       if ok then
         return {
@@ -157,8 +162,7 @@ return function(deps)
       xp = flat.xp,
       gold = flat.gold,
       ore = flat.ore,
-      -- Old stored/frozen reward lines must not reinstate the previous 10 matter.
-      matter = math.max(0, math.floor(tonumber(CFG.RACE_WIN_MATTER) or 4)),
+      matter = flat.matter,
       ingots = flat.ingots,
       tesseract = flat.tesseract,
       key_id = flat.key_id,
@@ -216,6 +220,9 @@ return function(deps)
       end
       if is_draw or policy.against_bot then
         for _, cost in ipairs(costs) do flat[cost.resource] = (flat[cost.resource] or 0) + cost.amount end
+      else
+        ResourceMedals.spent_costs(progress, costs)
+        ResourceMedals.earned(progress, flat.gold, flat.ore, flat.matter)
       end
       apply_flat_rewards_to_progress(progress, flat)
       if flat.energy then progress.energy = (tonumber(progress.energy) or 0) + flat.energy end

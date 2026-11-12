@@ -1,0 +1,44 @@
+{
+  "version": "0.3.20",
+  "versionCode": 22,
+  "state": "published_and_verified",
+  "verifiedUtc": "2026-11-12T00:10:10.3852055+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.20-54407b786aa3.apk",
+  "apkSha256": "54407b786aa372cd74bbc4c9d83cbe739f2d7048587262fc2b10960b1f5aeb83",
+  "apkBytes": 130379711,
+  "previousSignerPreserved": true,
+  "physicalDeviceTested": false,
+  "sourceFiles": 2196,
+  "sourceManifestSha256": "85282b6b23e8d50364d431ea5e44228470557ef534c6cdbe100a3beb04cafad7",
+  "runtimeSha256": "81f8fbfcdee8037026825e44cf63da13ec9a4d9131169ef60745de5f21e046ae",
+  "runtimeFiles": 70,
+  "publishedCatalogStorageVersion": "908159e0910fdddf62c11af7d8489972",
+  "checks": {
+    "localLua": 910,
+    "isolatedFinalRuntimeNetwork": 43,
+    "productionSecuritySmoke": 35,
+    "journalUnity": 422,
+    "journalRenders": 9,
+    "productionCatalogVersions": [
+      {
+        "journal_version": 1,
+        "categories": 3,
+        "chains": 23
+      },
+      {
+        "journal_version": 2,
+        "categories": 4,
+        "chains": 40
+      }
+    ],
+    "publicFiles": 32,
+    "nativeSymbolsPassed": true
+  },
+  "backupScheduleMoscow": "04:00 daily",
+  "verifiedDailyVpsBackups": 2,
+  "retainedVersions": [
+    "0.3.20",
+    "0.3.19"
+  ]
+}

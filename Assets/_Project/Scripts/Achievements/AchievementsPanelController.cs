@@ -9,11 +9,7 @@ using UnityEngine.UI;
 
 namespace Project.Achievements
 {
-    /// <summary>Панель достижений на главном экране: вкладки, скролл, выезд снизу.</summary>
-    /// <remarks>
-    /// Корень <see cref="PanelRootName"/>: без LayoutGroup — дочерние RectTransform’ы (Dimmer, Sheet, …) задаются якорями вручную.
-    /// Внутри <c>AchievementChainRowPrefabTemplate</c> горизонтальный ряд слотов/стрелок позиционируется вручную; вертикальный стек строк в скролле остаётся через VerticalLayoutGroup на Content + ContentSizeFitter (высота строки — LayoutElement на корне строки).
-    /// </remarks>
+    /// <summary>Журнал достижений, вкладки и получение наград за ступени.</summary>
     public sealed class AchievementsPanelController : MonoBehaviour
     {
         public const string PanelRootName = "AchievementsPanelRoot";
@@ -23,16 +19,6 @@ namespace Project.Achievements
         [SerializeField] private CanvasGroup rootCanvasGroup;
         [SerializeField] private Button closeButton;
         [SerializeField] private Button dimmerButton;
-        [SerializeField] private Toggle tabObsession;
-        [SerializeField] private Toggle tabSlaughter;
-        [SerializeField] private Toggle tabDnn;
-
-        [SerializeField] private RectTransform contentObsession;
-        [SerializeField] private RectTransform contentSlaughter;
-        [SerializeField] private RectTransform contentDnn;
-
-        [SerializeField] private AchievementChainRowView chainRowPrefab;
-
         [Header("Иконки достижений (одна на chain id)")]
         [SerializeField] private AchievementIconCatalog iconCatalog;
 
@@ -42,16 +28,16 @@ namespace Project.Achievements
         [SerializeField] private float slideDuration = 0.38f;
         [SerializeField] private float hiddenAnchoredY = -1400f;
 
-        [Header("TabBar")]
-        [SerializeField, Range(0.12f, 1f)] private float inactiveTabAlpha = 0.48f;
-
         private Button _openButton;
-        private readonly List<AchievementChainRowView> _spawnedRows = new List<AchievementChainRowView>();
+        private readonly List<ExpeditionAchievementJournalRow> _spawnedRows = new();
+        private readonly Dictionary<AchievementTab, float> _scrollPositions = new();
         private Coroutine _slideRoutine;
         private Vector2 _sheetShownPos;
         private AchievementTab _currentTab = AchievementTab.Obsession;
+        private bool _hasSelectedTab;
         private bool _wiredOpenButton;
         private AchievementStepDetailModal _stepDetailModal;
+        private RectTransform _modalHost;
         private ExpeditionAchievementsLayout _expeditionLayout;
         private bool _visible;
         private bool _shellAttached;
@@ -61,20 +47,7 @@ namespace Project.Achievements
         private RectTransform _pendingBadgeRt;
         private CanvasGroup _pendingBadgeCanvasGroup;
         private TMP_Text _pendingBadgeText;
-        private AchievementChainDefinition[] _renderedCatalog;
-        private AchievementTab _renderedTab;
-        private bool _rowsBuilt;
         private BottomButtonAchievementBadgeConfig _openButtonBadgeConfig;
-
-        private TabRewardBadgeRefs _tabBadgeObsession;
-        private TabRewardBadgeRefs _tabBadgeSlaughter;
-        private TabRewardBadgeRefs _tabBadgeDnn;
-
-        private struct TabRewardBadgeRefs
-        {
-            public GameObject Root;
-            public TMP_Text CountLabel;
-        }
 
         internal TMP_FontAsset AchievementUiFontReference => achievementUiFont;
 
@@ -91,8 +64,7 @@ namespace Project.Achievements
                 achievementUiFont,
                 Hide);
             _expeditionLayout = ExpeditionUi.Ensure<ExpeditionAchievementsLayout>(gameObject);
-            _expeditionLayout.Build(sheetRect, tabObsession, tabSlaughter, tabDnn,
-                contentObsession, contentSlaughter, contentDnn, closeButton, achievementUiFont);
+            _expeditionLayout.Build(sheetRect, SwitchTab);
             AchievementsTmpMaterialRepair.RepairHierarchy(transform, achievementUiFont);
             if (sheetRect != null)
             {
@@ -113,11 +85,9 @@ namespace Project.Achievements
             if (dimmerButton != null)
                 dimmerButton.onClick.AddListener(Hide);
 
-            WireTabs();
             TryBindOpenButton();
             EnsurePendingClaimBadge();
-            _stepDetailModal = AchievementStepDetailModal.Ensure(transform, achievementUiFont);
-            SwitchTab(AchievementTab.Obsession);
+            SwitchTab(AchievementSections.All[0].Tab);
         }
 
         private void OnEnable()
@@ -132,10 +102,17 @@ namespace Project.Achievements
         private void OnDisable()
         {
             AchievementLifecycle.OnDataChanged -= OnAchievementLifecycleChanged;
+            if (_stepDetailModal != null) _stepDetailModal.Hide();
         }
 
         private void OnDestroy()
         {
+            if (_stepDetailModal != null && !_stepDetailModal.transform.IsChildOf(transform))
+            {
+                _stepDetailModal.Hide();
+                if (Application.isPlaying) Destroy(_stepDetailModal.gameObject);
+                else DestroyImmediate(_stepDetailModal.gameObject);
+            }
             if (_openButton != null)
                 _openButton.onClick.RemoveListener(TogglePanel);
             if (closeButton != null)
@@ -146,8 +123,21 @@ namespace Project.Achievements
 
         private void OnAchievementLifecycleChanged()
         {
-            if (_visible) RefreshGrid(_currentTab);
+            if (_visible)
+            {
+                RefreshGrid(_currentTab);
+                RefreshOpenDetail();
+            }
             RefreshClaimBadges();
+        }
+
+        private void Update()
+        {
+            if (!_visible) return;
+            // Keep the rim visible between peaks so availability is readable at a glance.
+            var opacity = .82f + .18f * Mathf.Cos(Time.unscaledTime * (2f * Mathf.PI / 2.4f));
+            foreach (var row in _spawnedRows)
+                row.SetClaimFrameIntensity(opacity);
         }
 
         private void ResolveRefsBestEffort()
@@ -172,167 +162,65 @@ namespace Project.Achievements
                 var d = transform.Find("AchievementsDimmer");
                 if (d != null) dimmerButton = d.GetComponent<Button>();
             }
-
-            if (tabObsession == null)
-            {
-                var t = transform.Find("AchievementsSheet/TabBar/TabObsession");
-                if (t != null) tabObsession = t.GetComponent<Toggle>();
-            }
-
-            if (tabSlaughter == null)
-            {
-                var t = transform.Find("AchievementsSheet/TabBar/TabSlaughter");
-                if (t != null) tabSlaughter = t.GetComponent<Toggle>();
-            }
-
-            if (tabDnn == null)
-            {
-                var t = transform.Find("AchievementsSheet/TabBar/TabDnn");
-                if (t != null) tabDnn = t.GetComponent<Toggle>();
-            }
-
-            if (contentObsession == null)
-            {
-                var c = transform.Find("AchievementsSheet/Pages/ScrollObsession/Viewport/Content");
-                if (c != null) contentObsession = c as RectTransform;
-            }
-
-            if (contentSlaughter == null)
-            {
-                var c = transform.Find("AchievementsSheet/Pages/ScrollSlaughter/Viewport/Content");
-                if (c != null) contentSlaughter = c as RectTransform;
-            }
-
-            if (contentDnn == null)
-            {
-                var c = transform.Find("AchievementsSheet/Pages/ScrollDnn/Viewport/Content");
-                if (c != null) contentDnn = c as RectTransform;
-            }
-
-            if (chainRowPrefab == null)
-            {
-                var rowHost = transform.Find("AchievementChainRowPrefabTemplate");
-                if (rowHost != null)
-                    chainRowPrefab = rowHost.GetComponent<AchievementChainRowView>();
-            }
-
-            ResolveTabRewardBadge(tabObsession, ref _tabBadgeObsession);
-            ResolveTabRewardBadge(tabSlaughter, ref _tabBadgeSlaughter);
-            ResolveTabRewardBadge(tabDnn, ref _tabBadgeDnn);
-        }
-
-        private void WireTabs()
-        {
-            if (tabObsession != null)
-                tabObsession.onValueChanged.AddListener(v => { if (v) SwitchTab(AchievementTab.Obsession); });
-            if (tabSlaughter != null)
-                tabSlaughter.onValueChanged.AddListener(v => { if (v) SwitchTab(AchievementTab.Slaughter); });
-            if (tabDnn != null)
-                tabDnn.onValueChanged.AddListener(v => { if (v) SwitchTab(AchievementTab.Dnn); });
-
-            if (tabObsession != null) tabObsession.SetIsOnWithoutNotify(true);
         }
 
         private void SwitchTab(AchievementTab tab)
         {
+            if (_hasSelectedTab)
+            {
+                if (tab == _currentTab) return;
+                _scrollPositions[_currentTab] = _expeditionLayout.ScrollPosition;
+            }
             _currentTab = tab;
-            if (tabObsession != null) tabObsession.SetIsOnWithoutNotify(tab == AchievementTab.Obsession);
-            if (tabSlaughter != null) tabSlaughter.SetIsOnWithoutNotify(tab == AchievementTab.Slaughter);
-            if (tabDnn != null) tabDnn.SetIsOnWithoutNotify(tab == AchievementTab.Dnn);
-
-            var scrollObs = transform.Find("AchievementsSheet/Pages/ScrollObsession")?.gameObject;
-            var scrollSl = transform.Find("AchievementsSheet/Pages/ScrollSlaughter")?.gameObject;
-            var scrollDn = transform.Find("AchievementsSheet/Pages/ScrollDnn")?.gameObject;
-            if (scrollObs != null) scrollObs.SetActive(tab == AchievementTab.Obsession);
-            if (scrollSl != null) scrollSl.SetActive(tab == AchievementTab.Slaughter);
-            if (scrollDn != null) scrollDn.SetActive(tab == AchievementTab.Dnn);
-            RefreshTabVisuals(tab);
+            _hasSelectedTab = true;
+            _stepDetailModal?.Hide();
+            _expeditionLayout.SetActiveTab(tab);
             RefreshGrid(tab);
-        }
-
-        /// <summary>Неактивные вкладки приглушаем альфой; активная — полная яркость.</summary>
-        private void RefreshTabVisuals(AchievementTab tab)
-        {
-            ApplyToggleTabMuted(tabObsession, tab != AchievementTab.Obsession);
-            ApplyToggleTabMuted(tabSlaughter, tab != AchievementTab.Slaughter);
-            ApplyToggleTabMuted(tabDnn, tab != AchievementTab.Dnn);
-            _expeditionLayout?.SetActiveTab(tab);
-        }
-
-        private void ApplyToggleTabMuted(Toggle t, bool muted)
-        {
-            if (t == null)
-                return;
-            var cg = t.GetComponent<CanvasGroup>();
-            if (cg == null)
-                cg = t.gameObject.AddComponent<CanvasGroup>();
-            cg.alpha = muted ? inactiveTabAlpha : 1f;
-            cg.blocksRaycasts = true;
-            cg.interactable = true;
+            _expeditionLayout.RestoreScrollPosition(_scrollPositions.TryGetValue(tab, out var position) ? position : 1f);
         }
 
         private void RefreshGrid(AchievementTab tab)
         {
-            RectTransform host =
-                tab == AchievementTab.Obsession ? contentObsession :
-                tab == AchievementTab.Slaughter ? contentSlaughter : contentDnn;
-            if (host == null || chainRowPrefab == null)
-                return;
+            var host = _expeditionLayout?.Content;
+            if (host == null) return;
 
-            var catalog = AchievementCatalog.Chains;
-            var rebuild = !_rowsBuilt || _renderedTab != tab || !ReferenceEquals(_renderedCatalog, catalog);
-            if (rebuild)
-            {
-                foreach (var row in _spawnedRows)
-                    if (row != null) { row.gameObject.SetActive(false); Destroy(row.gameObject); }
-                _spawnedRows.Clear();
-                foreach (var chain in catalog)
-                {
-                    if (chain == null || chain.Tab != tab) continue;
-                    var inst = Instantiate(chainRowPrefab, host);
-                    inst.SetExpeditionPresentation();
-                    inst.gameObject.SetActive(true);
-                    _spawnedRows.Add(inst);
-                }
-                _renderedCatalog = catalog;
-                _renderedTab = tab;
-                _rowsBuilt = true;
-            }
             var rowIndex = 0;
-            foreach (var chain in catalog)
+            var collected = 0;
+            var total = 0;
+            foreach (var chain in AchievementCatalog.Chains)
             {
-                if (chain == null || chain.Tab != tab) continue;
-                var inst = _spawnedRows[rowIndex++];
-                var icon = iconCatalog != null ? iconCatalog.GetDisplayIcon(chain.ChainId) : null;
-                inst.Bind(chain, OpenStepDetail, icon);
-                _expeditionLayout?.StyleRow(inst, chain.TitleRu, chain, icon);
+                if (chain?.Thresholds == null || chain.Thresholds.Length == 0 || chain.Tab != tab) continue;
+                if (rowIndex == _spawnedRows.Count)
+                    _spawnedRows.Add(ExpeditionAchievementJournalRow.Create(host, OpenStepDetail));
+                var row = _spawnedRows[rowIndex++];
+                row.Bind(chain, GetMedalIcon(chain.ChainId));
+                row.gameObject.SetActive(true);
+                collected += row.ClaimedSteps;
+                total += chain.Thresholds.Length;
             }
-            if (rebuild) AchievementsTmpMaterialRepair.RepairHierarchy(host, achievementUiFont);
+
+            for (var i = rowIndex; i < _spawnedRows.Count; i++)
+                _spawnedRows[i].gameObject.SetActive(false);
+            _expeditionLayout.SetEmpty(rowIndex == 0);
+            _expeditionLayout.PresentCollection(collected, total);
         }
+
+        private Sprite GetMedalIcon(string chainId) => iconCatalog != null ? iconCatalog.GetDisplayIcon(chainId) : null;
 
         private void OpenStepDetail(string chainId, int stepIndex)
         {
-            var def = AchievementCatalog.FindChain(chainId);
-            if (def == null || def.Descriptions == null || stepIndex < 0 || stepIndex >= def.Descriptions.Length)
-                return;
+            var chain = AchievementCatalog.FindChain(chainId);
+            if (chain?.Thresholds == null || stepIndex < 0 || stepIndex >= chain.Thresholds.Length) return;
             if (_stepDetailModal == null)
-                _stepDetailModal = AchievementStepDetailModal.Ensure(transform, achievementUiFont);
-            var reward = def.RewardTexts != null && stepIndex < def.RewardTexts.Length ? def.RewardTexts[stepIndex] : string.Empty;
-            var claimed = AchievementProgressStorage.IsStepClaimed(def.ChainId, stepIndex);
-            var canClaim = AchievementRewardClaim.CanClaimStep(def, stepIndex);
+                _stepDetailModal = AchievementStepDetailModal.Ensure(_modalHost != null ? _modalHost : transform, achievementUiFont);
+            _stepDetailModal.Show(chain, stepIndex, GetMedalIcon(chainId), ClaimStepRoutineAsync);
+        }
 
-            Action onClaim = null;
-            if (canClaim)
-            {
-                onClaim = () => ClaimStepRoutineAsync(def.ChainId, stepIndex);
-            }
-
-            var total = AchievementProgressStorage.GetStat(def.StatKey);
-            var requirement = def.Descriptions[stepIndex] + "\n\nСтупень " + (stepIndex + 1) + " из " + def.Thresholds.Length
-                + " · " + AchievementUiRules.StepProgress(def, stepIndex, total) + "/" + AchievementUiRules.StepTarget(def, stepIndex);
-            if (!claimed && !canClaim && total >= AchievementUiRules.CumulativeRequired(def, stepIndex))
-                requirement += "\nСначала получите награды предыдущих ступеней.";
-            _stepDetailModal.Show(def.TitleRu, requirement, reward, canClaim, claimed, onClaim);
+        private void RefreshOpenDetail()
+        {
+            if (_stepDetailModal == null || !_stepDetailModal.IsVisible) return;
+            var chainId = _stepDetailModal.ChainId;
+            _stepDetailModal.Refresh(AchievementCatalog.FindChain(chainId), GetMedalIcon(chainId));
         }
 
         private async void ClaimStepRoutineAsync(string chainId, int stepIndex)
@@ -340,6 +228,7 @@ namespace Project.Achievements
             await AchievementRewardClaim.TryClaimStepAsync(chainId, stepIndex, CancellationToken.None);
             if (this == null) return;
             RefreshGrid(_currentTab);
+            RefreshOpenDetail();
             RefreshClaimBadges();
         }
 
@@ -443,64 +332,16 @@ namespace Project.Achievements
             RefreshClaimBadges();
         }
 
-        private static void ResolveTabRewardBadge(Toggle tab, ref TabRewardBadgeRefs refs)
-        {
-            if (tab == null)
-                return;
-            var rootTr = tab.transform.Find("has_revard");
-            if (rootTr == null)
-                return;
-            refs.Root = rootTr.gameObject;
-            var countTr = rootTr.Find("count_rev");
-            refs.CountLabel = countTr != null ? countTr.GetComponent<TMP_Text>() : null;
-        }
-
         private void RefreshClaimBadges()
         {
-            RefreshPendingClaimBadge();
-            RefreshTabRewardBadges();
-        }
-
-        private void RefreshPendingClaimBadge()
-        {
             EnsurePendingClaimBadge();
-            ApplyClaimCountBadge(
-                AchievementUiPending.CountEligibleClaimSteps(),
-                null,
-                _pendingBadgeText,
-                _pendingBadgeCanvasGroup);
-        }
-
-        private void RefreshTabRewardBadges()
-        {
-            ResolveTabRewardBadge(tabObsession, ref _tabBadgeObsession);
-            ResolveTabRewardBadge(tabSlaughter, ref _tabBadgeSlaughter);
-            ResolveTabRewardBadge(tabDnn, ref _tabBadgeDnn);
-
-            ApplyTabRewardBadge(AchievementTab.Obsession, _tabBadgeObsession);
-            ApplyTabRewardBadge(AchievementTab.Slaughter, _tabBadgeSlaughter);
-            ApplyTabRewardBadge(AchievementTab.Dnn, _tabBadgeDnn);
-        }
-
-        private static void ApplyTabRewardBadge(AchievementTab tab, TabRewardBadgeRefs refs)
-        {
-            var n = AchievementUiPending.CountEligibleClaimSteps(tab);
-            ApplyClaimCountBadge(n, refs.Root, refs.CountLabel, null);
-        }
-
-        private static void ApplyClaimCountBadge(
-            int count,
-            GameObject activeRoot,
-            TMP_Text countLabel,
-            CanvasGroup alphaGroup)
-        {
-            var label = count > 99 ? "99+" : count.ToString();
-            if (countLabel != null)
-                countLabel.text = label;
-            if (activeRoot != null)
-                activeRoot.SetActive(count > 0);
-            if (alphaGroup != null)
-                alphaGroup.alpha = count > 0 ? 1f : 0f;
+            if (_pendingBadgeText != null && _pendingBadgeCanvasGroup != null)
+            {
+                var count = AchievementUiPending.CountEligibleClaimSteps();
+                _pendingBadgeText.text = count > 99 ? "99+" : count.ToString();
+                _pendingBadgeCanvasGroup.alpha = count > 0 ? 1f : 0f;
+            }
+            _expeditionLayout?.RefreshBadges();
         }
 
         private static Transform FindDeepChild(Transform root, string name)
@@ -530,7 +371,8 @@ namespace Project.Achievements
             if (!_shellAttached)
             {
                 var host = GameObject.Find("ExpeditionAchievementsPageHost");
-                if (host != null) AttachToShell(host.transform as RectTransform);
+                var modalHost = GameObject.Find("ExpeditionModalHost");
+                if (host != null) AttachToShell(host.transform as RectTransform, modalHost != null ? modalHost.transform as RectTransform : null);
             }
             if (_visible) return;
             _visible = true;
@@ -558,13 +400,19 @@ namespace Project.Achievements
 
         public void Open() { Show(); }
         public void Close() { Hide(); }
-        public void AttachToShell(RectTransform pageHost)
+        public void AttachToShell(RectTransform pageHost, RectTransform modalHost = null)
         {
             if (pageHost == null) return;
             _shellAttached = true;
             transform.SetParent(pageHost, false);
             ExpeditionUi.SetRect(transform as RectTransform, 0, 0, 1, 1);
-            if (_expeditionLayout != null) _expeditionLayout.SetShellLayout(true);
+            _modalHost = modalHost;
+            if (_stepDetailModal != null && modalHost != null && _stepDetailModal.transform.parent != modalHost)
+            {
+                _stepDetailModal.transform.SetParent(modalHost, false);
+                ExpeditionUi.SetRect(_stepDetailModal.transform as RectTransform, 0, 0, 1, 1);
+            }
+            if (_expeditionLayout != null) _expeditionLayout.SetShellLayout();
         }
 
         private void Hide()

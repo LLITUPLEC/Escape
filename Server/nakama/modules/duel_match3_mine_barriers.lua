@@ -1,4 +1,6 @@
 local nk = require("nakama")
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
 
 --- Барьеры шахты + RPC смены сложности (вынесено из duel_match3.lua из‑за лимита локалей).
 --- require("modules.duel_match3_mine_barriers") → factory(deps)
@@ -171,6 +173,7 @@ return function(deps)
         progress.ore = math.max(0, (progress.ore or 0) - need_ore)
         progress.gold = math.max(0, (progress.gold or 0) - need_gold)
         progress.matter = math.max(0, (progress.matter or 0) - need_matter)
+        ResourceMedals.spent(progress, need_gold, need_ore, need_matter)
         if key_id ~= "" and key_amount > 0 then
           progress.key_items[key_id] = math.max(0, (tonumber(progress.key_items[key_id]) or 0) - key_amount)
         end

@@ -80,6 +80,7 @@ def main():
     root = parent / (".multiclient-" + suffix if recovery else project)
     root.mkdir(mode=0o700)
     os.umask(0o077)
+    (root / "postgres-data").mkdir(mode=0o700)
     shutil.copytree(escape / "runtime", root / "runtime")
     if recovery or args.scenario in ("all", "lifecycle", "smith", "daily", "consumables", "cosmetics", "guidance", "global-boss", "global-boss-practice", "equipment-sets", "reconnect-0317", "shop"):
         shutil.copy2(escape / "recovery-item-catalog.json", root / "item-catalog.json")
@@ -114,7 +115,7 @@ def main():
             "postgres": {"image": "postgres:16.15-alpine", "mem_limit": "128m", "cpus": 0.25,
                 "command": ["postgres", "-c", "shared_buffers=16MB", "-c", "max_connections=30", "-c", "work_mem=2MB", "-c", "maintenance_work_mem=16MB"],
                 "environment": {"POSTGRES_DB": "escape_test", "POSTGRES_USER": "escape_test", "POSTGRES_PASSWORD": password},
-                "volumes": ["test-data:/var/lib/postgresql/data"],
+                "volumes": ["./postgres-data:/var/lib/postgresql/data"],
                 "healthcheck": {"test": ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U escape_test -d escape_test"], "interval": "2s", "timeout": "2s", "retries": 30}},
             "nakama": {"image": "registry.heroiclabs.com/heroiclabs/nakama:3.37.0", "mem_limit": "384m", "cpus": 0.5,
                 "entrypoint": ["/bin/sh", "-ec"], "command": ["/nakama/nakama migrate up --config /nakama/config/server.yml && exec /nakama/nakama --config /nakama/config/server.yml"],
@@ -123,7 +124,7 @@ def main():
                 "ports": ["127.0.0.1:28350:7350", "127.0.0.1:28351:7351"],
                 "read_only": True, "tmpfs": ["/tmp:rw,nosuid,noexec,size=16m"],
                 "cap_drop": ["ALL"], "security_opt": ["no-new-privileges:true"]},
-        }, "volumes": {"test-data": {}},
+        },
     }
     (root / "compose.yml").write_text(json.dumps(compose), encoding="utf-8")
     cmd = ["docker", "compose", "-p", project, "-f", str(root / "compose.yml")]
@@ -158,9 +159,9 @@ def main():
         owned_recovery = recovery and root.parent == escape and root.name == ".multiclient-" + suffix and project == "escape-review-" + suffix
         owned_legacy = not recovery and root.parent == escape / "tests" and root.name == project and project.startswith("escape-multiclient-")
         if owned_recovery or owned_legacy:
-            subprocess.run(cmd + ["down", "--volumes", "--remove-orphans"], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(cmd + ["down", "--remove-orphans"], check=True, stdout=subprocess.DEVNULL)
             shutil.rmtree(root)
-            print("Removed only disposable test containers, network, DB volume and server-local test credentials", flush=True)
+            print("Removed only disposable test containers, network, bind-mounted DB directory and test credentials", flush=True)
 
 
 if __name__ == "__main__":

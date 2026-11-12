@@ -1,12 +1,14 @@
 -- Execute the actual core functions/whole-heal block, not a duplicate formula.
 package.path="Server/nakama/?.lua;"..package.path
+package.loaded.nakama={}
 local Effects=require("modules.duel_consumable_effects")
 local CFG=require("modules.duel_match3_config")
+local Ach=require("modules.duel_match3_achievements")
 local f=assert(io.open("Server/nakama/modules/duel_match3.lua"));local source=f:read("*a");f:close()
 local a=assert(source:find("local function get_shield_stacks",1,true));local b=assert(source:find("local function apply_shield_stack",a,true))
 local h=assert(source:find("  -- Одно лечение за ход",b,true));local e=assert(source:find("  -- Один расчёт урона за ход",h,true))
 local random_value=.99
-local env=setmetatable({CFG=CFG,Runtime={ConsumableEffects=Effects},is_pvp_race=function(s)return s.pvp_race==true end,
+local env=setmetatable({CFG=CFG,Ach=Ach,Runtime={ConsumableEffects=Effects},is_pvp_race=function(s)return s.pvp_race==true end,
  math=setmetatable({random=function()return random_value end},{__index=math})},{__index=_G})
 local chunk=assert(loadstring(source:sub(a,b-1).."\nlocal function heal_turn(state,actor_id)\n"..source:sub(h,e-1)..[[
  end
@@ -37,12 +39,13 @@ check("Gambit adds ten percentage points to real random threshold",function()
 end)
 check("Crit, affix and elixir factors compose once before target armor",function()
  random_value=.01;local t=actor("elixir_assault");local target=actor("elixir_stone");target.hp=1000
- local crit=Core.damage({mode="pve",pve_run={affix="bare_current"}}, {},t,target,10)
+ local s={mode="pve",pve_run={affix="bare_current"},stats={a=t,b=target}}
+ local crit=Core.damage(s,"a","b",10,1)
  assert(crit and target.hp==1000-(240-Core.armor(target)));random_value=.99
 end)
 check("Real HP damage subtracts the target's elixir-adjusted armor",function()
  local target=actor("elixir_assault");local before=target.hp
- Core.damage(state,{},actor("elixir_stone"),target,60)
+ state.stats={a=actor("elixir_stone"),b=target};Core.damage(state,"a","b",60,1)
  assert(target.hp==before-math.max(0,90-Core.armor(target)))
 end)
 check("Whole healing reduction covers all capsules plus base and shield once",function()

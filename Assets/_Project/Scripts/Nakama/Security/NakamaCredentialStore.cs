@@ -118,6 +118,8 @@ namespace Project.Nakama.Security
 
         internal static void ClearTokens()
         {
+            RequireInitialized();
+            if (string.IsNullOrEmpty(_current.authToken) && string.IsNullOrEmpty(_current.refreshToken)) return;
             var next = Snapshot();
             next.authToken = "";
             next.refreshToken = "";

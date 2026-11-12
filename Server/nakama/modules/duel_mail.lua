@@ -2,6 +2,7 @@
 local nk=require('nakama')
 local function load(n)local ok,m=pcall(require,'modules.'..n);if ok then return m end;return require(n)end
 local Inventory=load('duel_match3_inventory')
+local ResourceMedals=load('duel_resource_medals')
 local M={COLLECTION='duel_mail',INDEX_KEY='inbox',HISTORY=4}
 local deps={}
 local function copy(v)if type(v)~='table'then return v end;local o={};for k,x in pairs(v)do o[k]=copy(x)end;return o end
@@ -29,6 +30,28 @@ function M.plan_delivery_writes(uid,messages)
  if #writes>0 then writes[#writes+1]=op(uid,M.INDEX_KEY,i,iv)end
  return writes
 end
+
+-- Add mail to the same CAS batch as the XP change so a committed level
+-- cannot lose its reward and retries always use the current level as baseline.
+function M.append_level_up_writes(writes, uid, previous_level, new_level)
+  if previous_level == nil or new_level <= previous_level then return end
+  local levels_gained = new_level - previous_level
+  local matter = levels_gained * (previous_level + new_level - 1) / 2
+  local body = "Заберите материю за повышение уровня."
+  if levels_gained > 1 then
+    body = string.format("Вы повысили уровень с %d до %d. Награды за все новые уровни в этом письме.", previous_level, new_level)
+  end
+  local mail_writes = M.plan_delivery_writes(uid, {{
+    id = "level-up:" .. new_level,
+    kind = "level_up",
+    title = "Достигнут уровень " .. new_level,
+    body = body,
+    created_at = os.time(),
+    attachments = {{ resource = "matter", amount = matter }},
+  }})
+  for _, write in ipairs(mail_writes) do writes[#writes + 1] = write end
+end
+
 -- Internal only. IDs are bound to a server event, never supplied by creation RPC.
 function M.deliver(uid,message,proof_write)
  for _=1,6 do
@@ -68,6 +91,7 @@ function M.claim(uid,id)
    else error('mail_invalid_attachment')end
   end
   if sheet then Inventory.sync_resource_counters(sheet,p,defs)end
+  if p then ResourceMedals.earned(p,receipt.resources.gold,receipt.resources.ore,receipt.resources.matter)end
   i.unclaimed[id]=nil;i.claimed[#i.claimed+1]=id
   local old={};while #i.claimed>M.HISTORY do old[#old+1]=table.remove(i.claimed,1)end
   local count=0;for _ in pairs(i.unclaimed)do count=count+1 end;receipt.unread_count=count

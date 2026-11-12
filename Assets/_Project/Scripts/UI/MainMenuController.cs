@@ -734,106 +734,14 @@ namespace Project.UI
             var parent = ResolveMainMenuHudLayoutRoot();
             if (parent == null) return;
 
-            _serverAuraModalRoot = new GameObject("ServerAuraModal", typeof(RectTransform), typeof(Image));
-            var rootRt = _serverAuraModalRoot.GetComponent<RectTransform>();
-            rootRt.SetParent(parent, false);
-            rootRt.anchorMin = Vector2.zero;
-            rootRt.anchorMax = Vector2.one;
-            rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
-            var dim = _serverAuraModalRoot.GetComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.55f);
-            dim.raycastTarget = true;
-
-            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
-            var pr = panel.GetComponent<RectTransform>();
-            pr.SetParent(rootRt, false);
-            pr.anchorMin = new Vector2(0.12f, 0.22f);
-            pr.anchorMax = new Vector2(0.88f, 0.78f);
-            pr.offsetMin = pr.offsetMax = Vector2.zero;
-            panel.GetComponent<Image>().color = new Color(0.14f, 0.12f, 0.16f, 0.98f);
-
-            var titleGo = new GameObject("Title", typeof(RectTransform), typeof(Text));
-            var titleRt = titleGo.GetComponent<RectTransform>();
-            titleRt.SetParent(pr, false);
-            titleRt.anchorMin = new Vector2(0f, 0.86f);
-            titleRt.anchorMax = new Vector2(1f, 1f);
-            titleRt.offsetMin = new Vector2(16f, 0f);
-            titleRt.offsetMax = new Vector2(-16f, -8f);
-            var titleTx = titleGo.GetComponent<Text>();
-            titleTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            titleTx.fontSize = 35;
-            titleTx.fontStyle = FontStyle.Bold;
-            titleTx.alignment = TextAnchor.MiddleCenter;
-            titleTx.color = new Color(0.95f, 0.88f, 0.65f);
-            titleTx.text = "Аномалия сервера";
-
-            var headerGo = new GameObject("Header", typeof(RectTransform), typeof(Text));
-            var headerRt = headerGo.GetComponent<RectTransform>();
-            headerRt.SetParent(pr, false);
-            headerRt.anchorMin = new Vector2(0f, 0.62f);
-            headerRt.anchorMax = new Vector2(1f, 0.84f);
-            headerRt.offsetMin = new Vector2(20f, 0f);
-            headerRt.offsetMax = new Vector2(-20f, -4f);
-            _serverAuraModalHeaderText = headerGo.GetComponent<Text>();
-            _serverAuraModalHeaderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _serverAuraModalHeaderText.fontSize = 30;
-            _serverAuraModalHeaderText.alignment = TextAnchor.UpperLeft;
-            _serverAuraModalHeaderText.color = new Color(0.92f, 0.9f, 0.86f);
-            _serverAuraModalHeaderText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _serverAuraModalHeaderText.verticalOverflow = VerticalWrapMode.Overflow;
-
-            var bodyGo = new GameObject("Body", typeof(RectTransform));
-            _serverAuraModalStatsRoot = bodyGo.GetComponent<RectTransform>();
-            _serverAuraModalStatsRoot.SetParent(pr, false);
-            _serverAuraModalStatsRoot.anchorMin = new Vector2(0f, 0.22f);
-            _serverAuraModalStatsRoot.anchorMax = new Vector2(1f, 0.62f);
-            _serverAuraModalStatsRoot.offsetMin = new Vector2(20f, 4f);
-            _serverAuraModalStatsRoot.offsetMax = new Vector2(-20f, -4f);
-            var statsLayout = bodyGo.AddComponent<VerticalLayoutGroup>();
-            statsLayout.childAlignment = TextAnchor.UpperCenter;
-            statsLayout.childControlHeight = true;
-            statsLayout.childControlWidth = true;
-            statsLayout.childForceExpandHeight = false;
-            statsLayout.childForceExpandWidth = true;
-            statsLayout.spacing = 2f;
-
-            var footerGo = new GameObject("Footer", typeof(RectTransform), typeof(Text));
-            var footerRt = footerGo.GetComponent<RectTransform>();
-            footerRt.SetParent(pr, false);
-            footerRt.anchorMin = new Vector2(0f, 0.14f);
-            footerRt.anchorMax = new Vector2(1f, 0.22f);
-            footerRt.offsetMin = new Vector2(20f, 0f);
-            footerRt.offsetMax = new Vector2(-20f, 0f);
-            _serverAuraModalFooterText = footerGo.GetComponent<Text>();
-            _serverAuraModalFooterText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _serverAuraModalFooterText.fontSize = 26;
-            _serverAuraModalFooterText.alignment = TextAnchor.UpperLeft;
-            _serverAuraModalFooterText.color = new Color(0.78f, 0.76f, 0.72f);
-            _serverAuraModalFooterText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _serverAuraModalFooterText.verticalOverflow = VerticalWrapMode.Overflow;
-
-            var closeGo = new GameObject("CloseButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            var cr = closeGo.GetComponent<RectTransform>();
-            cr.SetParent(pr, false);
-            cr.anchorMin = new Vector2(0.2f, 0.04f);
-            cr.anchorMax = new Vector2(0.8f, 0.12f);
-            cr.offsetMin = cr.offsetMax = Vector2.zero;
-            closeGo.GetComponent<Image>().color = new Color(0.32f, 0.26f, 0.22f, 1f);
-            var closeBtn = closeGo.GetComponent<Button>();
-            closeBtn.onClick.AddListener(HideServerAuraModal);
-
-            var closeLabelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-            var clr = closeLabelGo.GetComponent<RectTransform>();
-            clr.SetParent(closeGo.transform, false);
-            clr.anchorMin = Vector2.zero;
-            clr.anchorMax = Vector2.one;
-            clr.offsetMin = clr.offsetMax = Vector2.zero;
-            var closeTx = closeLabelGo.GetComponent<Text>();
-            closeTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            closeTx.fontSize = 35;
-            closeTx.alignment = TextAnchor.MiddleCenter;
-            closeTx.color = Color.white;
-            closeTx.text = "Закрыть";
+            var dim = ExpeditionUi.Fill(parent, "ServerAuraModal", 0, 0, 1, 1, new Color(.02f, .045f, .055f, .96f));
+            _serverAuraModalRoot = dim.gameObject;
+            var panel = ExpeditionUi.Panel(dim.transform, "Panel", .055f, .065f, .945f, .935f).rectTransform;
+            _serverAuraModalHeaderText = ExpeditionUi.Rect(panel, "Header", .055f, .447f, .945f, .628f).gameObject.AddComponent<Text>();
+            _serverAuraModalStatsRoot = ExpeditionUi.Rect(panel, "Effects", .05f, .138f, .95f, .442f);
+            _serverAuraModalFooterText = ExpeditionUi.Rect(panel, "Footer", .055f, .087f, .945f, .134f).gameObject.AddComponent<Text>();
+            ExpeditionUi.Button(panel, "CloseButton", "ЗАКРЫТЬ", .24f, .018f, .76f, .079f, HideServerAuraModal, false, 31);
+            ExpeditionSystemDialogs.ApplyAura(_serverAuraModalRoot, _serverAuraModalHeaderText, _serverAuraModalFooterText);
 
             var canvas = _serverAuraModalRoot.AddComponent<Canvas>();
             canvas.overrideSorting = true;
@@ -846,7 +754,6 @@ namespace Project.UI
         {
             EnsureServerAuraModal();
             PopulateServerAuraModal(_serverAuraLast);
-            ExpeditionSystemDialogs.ApplyAura(_serverAuraModalRoot, _serverAuraModalHeaderText, _serverAuraModalStatsRoot, _serverAuraModalFooterText);
             _serverAuraModalRoot?.SetActive(true);
         }
 
@@ -862,7 +769,11 @@ namespace Project.UI
                 return;
 
             for (var i = _serverAuraModalStatsRoot.childCount - 1; i >= 0; i--)
-                Destroy(_serverAuraModalStatsRoot.GetChild(i).gameObject);
+            {
+                var effect = _serverAuraModalStatsRoot.GetChild(i).gameObject;
+                effect.SetActive(false);
+                Destroy(effect);
+            }
 
             if (r == null || !r.ok)
             {
@@ -883,75 +794,33 @@ namespace Project.UI
                 header.AppendLine(r.title.Trim());
             if (!string.IsNullOrWhiteSpace(r.description))
                 header.AppendLine(r.description.Trim());
-            header.AppendLine();
             if (r.endsAtUnix > 0)
             {
                 var dto = DateTimeOffset.FromUnixTimeSeconds(r.endsAtUnix).ToLocalTime();
-                header.AppendLine("До: " + dto.ToString("g", CultureInfo.CurrentCulture));
+                header.AppendLine("Рассеется " + dto.ToString("g", CultureInfo.CurrentCulture));
             }
             else if (r.durationHours > 0.5f)
-                header.AppendLine($"Длительность (в конфиге): ~{r.durationHours:0.#} ч");
+                header.AppendLine($"Длительность около {r.durationHours:0.#} ч");
 
             _serverAuraModalHeaderText.text = header.ToString().TrimEnd();
 
-            AddServerAuraStatRow("Все статы (кроме крита)", r.allStatsPct);
-            AddServerAuraStatRow("Крит", r.critPct);
-            AddServerAuraStatRow("Здоровье", r.hpPct);
-            AddServerAuraStatRow("Урон", r.damagePct);
-            AddServerAuraStatRow("Броня", r.armorPct);
-            AddServerAuraStatRow("Лечение", r.healingPct);
-            AddServerAuraStatRow("Опыт", r.xpBonusPct);
-            AddServerAuraStatRow("Таймер респавна монстров", r.mineRespawnWaitPct);
+            var effects = new (string label, string icon, float amount)[]
+            {
+                ("Все статы (кроме крита)", "hero", r.allStatsPct),
+                ("Крит", "critical", r.critPct),
+                ("Здоровье", "health", r.hpPct),
+                ("Урон", "damage", r.damagePct),
+                ("Броня", "armor", r.armorPct),
+                ("Лечение", "healing", r.healingPct),
+                ("Опыт", "blueprint", r.xpBonusPct),
+                ("Таймер возрождения монстров", "pickaxe", r.mineRespawnWaitPct),
+            };
+            var position = 0;
+            foreach (var effect in effects)
+                if (Mathf.Abs(effect.amount) >= .0001f)
+                    ExpeditionSystemDialogs.AuraEffect(_serverAuraModalStatsRoot, position++, effect.label, effect.icon, effect.amount);
 
-            _serverAuraModalFooterText.text = "Действует в боях match3 PvE (шахта) на сервере.";
-        }
-
-        private void AddServerAuraStatRow(string label, float value)
-        {
-            if (_serverAuraModalStatsRoot == null) return;
-            if (Mathf.Abs(value) < 0.0001f) return;
-
-            var rowGo = new GameObject("Row_" + label, typeof(RectTransform));
-            var rowRt = rowGo.GetComponent<RectTransform>();
-            rowRt.SetParent(_serverAuraModalStatsRoot, false);
-            var rowLayout = rowGo.AddComponent<HorizontalLayoutGroup>();
-            rowLayout.childAlignment = TextAnchor.MiddleCenter;
-            rowLayout.childControlHeight = true;
-            rowLayout.childControlWidth = true;
-            rowLayout.childForceExpandHeight = true;
-            rowLayout.childForceExpandWidth = true;
-            rowLayout.spacing = 8f;
-            var le = rowGo.AddComponent<LayoutElement>();
-            le.minHeight = 34f;
-            le.preferredHeight = 34f;
-
-            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-            labelGo.transform.SetParent(rowRt, false);
-            var labelTx = labelGo.GetComponent<Text>();
-            labelTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            labelTx.fontSize = 28;
-            labelTx.alignment = TextAnchor.MiddleLeft;
-            labelTx.color = new Color(0.92f, 0.9f, 0.86f);
-            labelTx.text = label;
-            labelTx.horizontalOverflow = HorizontalWrapMode.Wrap;
-            labelTx.verticalOverflow = VerticalWrapMode.Truncate;
-            var labelLe = labelGo.AddComponent<LayoutElement>();
-            labelLe.flexibleWidth = 1.6f;
-
-            var valueGo = new GameObject("Value", typeof(RectTransform), typeof(Text));
-            valueGo.transform.SetParent(rowRt, false);
-            var valueTx = valueGo.GetComponent<Text>();
-            valueTx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            valueTx.fontSize = 28;
-            valueTx.alignment = TextAnchor.MiddleRight;
-            valueTx.color = value > 0f
-                ? new Color(0.49f, 1f, 0.49f, 1f)   // зелёный
-                : new Color(1f, 0.55f, 0.28f, 1f);  // красно-оранжевый
-            var sign = value > 0f ? "+" : "";
-            valueTx.text = $"{sign}{value:0.#}%";
-            var valueLe = valueGo.AddComponent<LayoutElement>();
-            valueLe.flexibleWidth = 0.7f;
-            valueLe.minWidth = 90f;
+            _serverAuraModalFooterText.text = "Эффекты действуют в боях шахты (PvE).";
         }
 
         private async Task ServerAuraLoopAsync(CancellationToken ct)

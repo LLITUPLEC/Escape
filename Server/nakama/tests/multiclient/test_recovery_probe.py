@@ -25,7 +25,7 @@ def compose():
     return {"name": PROJECT, "services": {"nakama": {"image": probe.IMAGE,
         "ports": ["127.0.0.1:28350:7350", "127.0.0.1:28351:7351"],
         "volumes": ["./runtime:/nakama/data/modules:ro", "./secrets:/nakama/config:ro"]},
-        "postgres": {"volumes": ["test-data:/var/lib/postgresql/data"]}}}
+        "postgres": {"volumes": ["./postgres-data:/var/lib/postgresql/data"]}}}
 
 
 def inspector():
@@ -62,6 +62,9 @@ class RecoveryProbeSafetyTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError): probe.validate_compose(data, PROJECT)
         data = compose(); data["services"]["postgres"]["ports"] = ["5432:5432"]
         with self.assertRaises(ValueError): probe.validate_compose(data, PROJECT)
+        for mount in ("test-data:/var/lib/postgresql/data", "/opt/escape/runtime:/var/lib/postgresql/data"):
+            data = compose(); data["services"]["postgres"]["volumes"] = [mount]
+            with self.subTest(mount=mount), self.assertRaises(ValueError): probe.validate_compose(data, PROJECT)
 
     def isolated(self):
         instance = probe.IsolatedNakama.__new__(probe.IsolatedNakama)

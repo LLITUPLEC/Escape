@@ -260,11 +260,15 @@ function M.new(deps)
           local costs = costs_normalize(receipt.costs)
           if not costs then return false, "invalid_entry_receipt" end
           local progress, version = read_progress(uid)
+          local previous_level = progress.level
           local reward = mutator(progress, uid, costs, intent and intent.spec)
           receipt.status, receipt.winner, receipt.is_draw = "settled", tostring(winner or ""), is_draw == true
           receipt.reward, receipt.settled_at = reward, os.time()
           entry.status, entry.settled_at = "settled", receipt.settled_at
           writes[#writes + 1] = build_progress(uid, progress, version)
+          if deps.append_level_up_writes then
+            deps.append_level_up_writes(writes, uid, previous_level, progress.level)
+          end
           writes[#writes + 1] = object(uid, "active", entry, entry_version)
           writes[#writes + 1] = object(uid, "run:" .. run_id, receipt, receipt_version)
           if not is_draw then

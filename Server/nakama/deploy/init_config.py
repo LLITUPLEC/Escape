@@ -8,6 +8,8 @@ import secrets
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--client-key-file", type=Path, required=True)
+parser.add_argument("--debug-preview-email-file", type=Path,
+                    help="Optional private file with one default preview email per line")
 parser.add_argument("--catalog-dir", type=Path)
 parser.add_argument("--caddy-proxy-ip", required=True,
                     help="Exact gateway IP of escape_default, as seen by host Caddy requests")
@@ -56,6 +58,11 @@ config = {
         "lua_max_count": 16,
     },
 }
+if args.debug_preview_email_file:
+    addresses = [line.strip() for line in args.debug_preview_email_file.read_text(encoding="utf-8-sig").splitlines()
+                 if line.strip()]
+    if addresses:
+        config["runtime"]["env"] = ["ESCAPE_DEBUG_PREVIEW_EMAILS=" + ",".join(addresses)]
 # Only static design data is seeded, never player profiles or example inventories.
 # Keep catalogs system-owned and create-only so a redeploy preserves live edits.
 data_dir = args.catalog_dir or root.parent / "data"

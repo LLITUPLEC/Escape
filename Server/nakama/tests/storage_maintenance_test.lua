@@ -1,7 +1,10 @@
 -- Actual cleanup module with two-VM contention, transaction conflicts and faults.
 package.path = "Server/nakama/?.lua;" .. package.path
 local DAY, SYSTEM = 86400, "00000000-0000-0000-0000-000000000000"
-local now, db, revision, list_calls, delete_calls, before_delete, fail_read, recover_calls, fail_list, list_trace, elapsed_ms, list_delay_ms
+local now, db, revision, list_calls, delete_calls, before_delete, fail_read, recover_calls, fail_list, list_trace, elapsed_ms, list_delay_ms, owner_lists, matches
+local RACE, BOSS = "duel_race_entry", "duel_global_boss_attempt"
+local COLLECTIONS = { "arena_tournament", "duel_api_rate_limits", RACE,
+  "duel_pve_entry", "duel_match3_journal", BOSS }
 local function clone(v)
   if type(v) ~= "table" then return v end
   local out = {}; for k, val in pairs(v) do out[k] = clone(val) end; return out
@@ -17,6 +20,11 @@ local function exists(uid, col, id) return db[key(uid, col, id)] ~= nil end
 local nk = {
   time = function() return now * 1000 + elapsed_ms end, uuid_v4 = function() revision = revision + 1; return "lease-" .. revision end,
   logger_warn = function() end, json_decode = function() error("invalid JSON") end,
+  match_get = function(id)
+    if matches[id] == "error" then error("match registry unavailable") end
+    return matches[id]
+  end,
+  match_list = function() return matches end,
   storage_read = function(ids)
     if fail_read then error("database unavailable") end
     local rows = {}; for _, id in ipairs(ids) do local row = db[key(id.user_id, id.collection, id.key)]
@@ -33,12 +41,19 @@ local nk = {
     return ack
   end,
   storage_list = function(uid, collection, limit, cursor)
-    assert(uid == "" and (limit == 50 or limit == 100) and type(cursor) == "string")
+    assert(type(uid) == "string" and limit >= 1 and limit <= 100 and type(cursor) == "string")
     elapsed_ms = elapsed_ms + list_delay_ms
-    list_calls = list_calls + 1
-    list_trace[#list_trace + 1] = { collection = collection, cursor = cursor, limit = limit }
+    if uid == "" then
+      list_calls = list_calls + 1
+      list_trace[#list_trace + 1] = { collection = collection, cursor = cursor, limit = limit }
+    else
+      assert((collection == "duel_pve_entry" or collection == RACE or collection == BOSS) and limit == 100 and cursor == "")
+      owner_lists[#owner_lists + 1] = uid
+    end
     if fail_list == collection then error("storage list unavailable") end
-    local names = {}; for name, row in pairs(db) do if row.collection == collection then names[#names + 1] = name end end
+    local names = {}; for name, row in pairs(db) do
+      if row.collection == collection and (uid == "" or uid == row.user_id) then names[#names + 1] = name end
+    end
     table.sort(names)
     local out, last = {}, nil
     for _, name in ipairs(names) do if name > cursor then
@@ -63,10 +78,13 @@ local function reset()
   now, db, revision, list_calls, delete_calls, recover_calls = 50 * DAY, {}, 0, 0, 0, 0
   before_delete, fail_read = nil, false
   fail_list, list_trace = nil, {}
+  owner_lists, matches = {}, {}
   elapsed_ms, list_delay_ms = 0, 0
 end
 local function tournament(id, phase, other)
-  local v = { phase = phase, done_at = DAY, reward_receipt = { granted_at = DAY } }
+  local v = { id = id, kind = "gold", bet_tier = "600", phase = phase, done_at = DAY,
+    parts = { human = {} }, final = { { status = "done", winner_uid = "human" } },
+    reward_receipt = { user_id = "human", granted_at = DAY } }
   if other then for k, val in pairs(other) do v[k] = val end end
   put(SYSTEM, "arena_tournament", id, v, DAY)
 end
@@ -74,9 +92,12 @@ reset()
 tournament("closed", "done")
 tournament("active", "qf")
 tournament("no-proof", "done", { reward_receipt = false })
-tournament("aborted", "done", { reward_receipt = false, aborted = true })
-tournament("bot-final", "done", { reward_receipt = false, final = { { status = "done", winner_uid = "bot" } }, parts = { bot = { bot = true } } })
-tournament("recent", "done"); db[key(SYSTEM, "arena_tournament", "recent")].update_time = now
+tournament("aborted", "done", { done_at = 2 * DAY, reward_receipt = false, aborted = true, eliminated = { human = true } })
+tournament("bot-final", "done", { done_at = 3 * DAY, reward_receipt = false,
+  final = { { status = "done", winner_uid = "bot" } }, parts = { bot = { bot = true } } })
+tournament("recent", "done", { done_at = 4 * DAY }); db[key(SYSTEM, "arena_tournament", "recent")].update_time = now
+db[key(SYSTEM, "arena_tournament", "aborted")].value.reward_receipt = nil
+db[key(SYSTEM, "arena_tournament", "bot-final")].value.reward_receipt = nil
 put("old-user", "duel_api_rate_limits", "v1", { create = { tokens = 0, updated_ms = DAY * 1000 } }, DAY)
 put("recent-user", "duel_api_rate_limits", "v1", {}, now)
 put("old-user", "duel_api_rate_limits", "not-v1", {}, DAY)
@@ -87,10 +108,11 @@ put("race-user", "duel_race_entry", "run:unresolved", { status = "bound", run_id
 put("race-user", "duel_race_entry", "run:journal", { status = "settled", run_id = "journal", receipt_id = "journal", settled_at = DAY, journal_id = "pending" }, DAY)
 local cleanup = fresh()
 local report = assert(cleanup.maybe_run())
-assert(report.deleted == 5)
-assert(not exists(SYSTEM, "arena_tournament", "closed") and not exists("old-user", "duel_api_rate_limits", "v1"))
-for _, id in ipairs({ "active", "recent", "no-proof" }) do assert(exists(SYSTEM, "arena_tournament", id)) end
-for _, id in ipairs({ "active", "run:current", "run:unresolved", "run:journal" }) do assert(exists("race-user", "duel_race_entry", id)) end
+assert(report.deleted == 3)
+assert(not exists(SYSTEM, "arena_tournament", "closed") and not exists(SYSTEM, "arena_tournament", "aborted"))
+assert(not exists("old-user", "duel_api_rate_limits", "v1"))
+for _, id in ipairs({ "active", "recent", "no-proof", "bot-final" }) do assert(exists(SYSTEM, "arena_tournament", id)) end
+for _, id in ipairs({ "active", "run:old", "run:current", "run:unresolved", "run:journal" }) do assert(exists("race-user", RACE, id)) end
 assert(exists("recent-user", "duel_api_rate_limits", "v1") and exists("old-user", "duel_api_rate_limits", "not-v1"))
 local listed = list_calls
 assert(cleanup.maybe_run() == false and fresh().maybe_run() == false and list_calls == listed, "shared minute lease")
@@ -113,8 +135,8 @@ assert(recover_calls == 2 and report.recovery_attempts == 2 and report.recovered
 
 reset()
 for i = 1, 675 do put(string.format("u%03d", i), "duel_api_rate_limits", "v1", {}, DAY) end
-cleanup = fresh(); report = assert(cleanup.maybe_run()); assert(report.deleted == 600 and report.pages == 10)
-now = now + 61; report = assert(cleanup.maybe_run()); assert(report.deleted == 75, "cursor survives deletion of previous pages")
+cleanup = fresh(); report = assert(cleanup.maybe_run()); assert(report.deleted == 500 and report.pages == 10)
+now = now + 61; report = assert(cleanup.maybe_run()); assert(report.deleted == 175, "cursor survives deletion of previous pages")
 print("Storage maintenance: terminal-only retention, active/latest protection, shared lease, CAS race, storage faults, bounded recovery and pagination passed")
 
 -- Five-collection and startup regression cases. Run each case even if another
@@ -132,13 +154,119 @@ local function journal(uid, id, status, other, updated)
   put(uid, "duel_match3_journal", "result:" .. id, v, updated or DAY)
 end
 local function launch(uid, id, status, other, updated)
-  local v = { token = id, run_id = id, status = status, consumed_at = DAY, refunded_at = DAY }
+  local v = { token = id, run_id = id, match_id = "match:" .. id, status = status, consumed_at = DAY, refunded_at = DAY }
   for k, x in pairs(other or {}) do v[k] = x end
   put(uid, "duel_pve_entry", "launch:" .. id, v, updated or DAY)
 end
 local function pending(uid, id, updated)
   put(uid, "duel_match3_journal", "pending", { entries = { [id] = { kind = "pve" } } }, updated or DAY)
 end
+local function race(uid, id, status, ended, other)
+  local value = { run_id = id, receipt_id = "receipt-" .. uid .. "-" .. id, status = status,
+    participants = { uid }, match_id = "race-match-" .. id, paid_at = ended - 1 }
+  if status == "settled" then
+    value.settled_at, value.winner, value.is_draw = ended, uid, false
+    value.finish_intent = { run_id = id, winner = uid, is_draw = false }
+  elseif status == "refunded" then
+    value.refunded_at = ended
+  end
+  for k, v in pairs(other or {}) do value[k] = v end
+  put(uid, RACE, "run:" .. id, value, ended)
+  return value
+end
+
+test("Race keeps the newest two paid or refunded receipts per owner", function()
+  race("a", "oldest", "settled", now - 300)
+  race("a", "old", "refunded", now - 280)
+  race("a", "previous", "settled", now - 210)
+  local latest = race("a", "latest", "refunded", now - 180)
+  race("b", "only", "settled", now - 360)
+  put("a", RACE, "active", latest, now - 180)
+  local report = assert(fresh().maybe_run())
+  assert(report.deleted == 2 and report.race_owner_lookups == 2)
+  assert(not exists("a", RACE, "run:oldest") and not exists("a", RACE, "run:old"))
+  for _, key in ipairs({ "active", "run:previous", "run:latest" }) do assert(exists("a", RACE, key)) end
+  assert(exists("b", RACE, "run:only"))
+end)
+
+test("Race protects active pointers, outstanding journal work and live or unknown matches", function()
+  local active = race("u", "active-target", "settled", now - 600)
+  put("u", RACE, "active", active, now - 600)
+  race("u", "pending", "settled", now - 590)
+  pending("u", "pending:stats")
+  race("u", "open", "refunded", now - 580)
+  put("u", "duel_match3_journal", "retention_v2", {
+    schema = 2, open = { { id = "open:stats", origin = { root_result = "open" } } },
+  }, now)
+  race("u", "bound", "bound", now - 570, { finish_intent = { run_id = "bound" } })
+  race("u", "live", "settled", now - 560)
+  race("u", "unknown", "refunded", now - 550)
+  matches["race-match-live"], matches["race-match-unknown"] = {}, "error"
+  race("u", "safe-old", "settled", now - 400)
+  race("u", "previous", "refunded", now - 200)
+  race("u", "latest", "settled", now - 180)
+  assert(fresh().maybe_run().deleted == 1 and not exists("u", RACE, "run:safe-old"))
+  for _, key in ipairs({ "active-target", "pending", "open", "bound", "live", "unknown", "previous", "latest" }) do
+    assert(exists("u", RACE, "run:" .. key))
+  end
+end)
+
+test("Race keeps a receipt while another human owner can still need it for recovery", function()
+  race("a", "peer", "settled", now - 350, { participants = { "a", "b" } })
+  race("b", "peer", "bound", now - 350, { participants = { "a", "b" }, finish_intent = { run_id = "peer" } })
+  race("a", "previous", "settled", now - 200)
+  race("a", "latest", "settled", now - 180)
+  local worker = fresh()
+  assert(worker.maybe_run().deleted == 0)
+  race("b", "peer", "settled", now - 350, { participants = { "a", "b" } })
+  now = now + 61
+  assert(worker.maybe_run().deleted == 1 and not exists("a", RACE, "run:peer") and exists("b", RACE, "run:peer"))
+  race("b", "previous", "settled", now - 200)
+  race("b", "latest", "settled", now - 180)
+  now = now + 61
+  assert(worker.maybe_run().deleted == 1 and not exists("b", RACE, "run:peer"))
+end)
+
+test("Race legacy receipt requires an idle registry and a versioned delete", function()
+  local old = race("u", "old", "refunded", now - 330)
+  old.match_id = nil
+  put("u", RACE, "run:old", old, now - 330)
+  race("u", "previous", "settled", now - 200)
+  race("u", "latest", "refunded", now - 180)
+  matches.unrelated = {}
+  local worker = fresh()
+  assert(worker.maybe_run().deleted == 0)
+  now = now + 61
+  matches.unrelated = nil
+  before_delete = function() put("u", RACE, "run:old", old, now) end
+  local report = assert(worker.maybe_run())
+  assert(report.deleted == 0 and report.conflicted_batches == 1 and exists("u", RACE, "run:old"))
+  now = now + 121
+  assert(worker.maybe_run().deleted == 1)
+end)
+
+test("boss attempts retain two closed snapshots and preserve active, live and unproved requests", function()
+  local requests = {}
+  for index, state in ipairs({ "finished", "refunded", "finished", "finished", "finished", "finished", "finished", "reserved" }) do
+    local id, request = "week-100:a" .. index, "request" .. index
+    if index ~= 5 then requests[request] = id end
+    local mid = "boss-match-" .. index
+    if index == 3 then matches[mid] = {} end
+    local attempt = { schema = 1, id = id, event_id = "week-100", request_id = request,
+      status = state, created_at = now - 400 + index, finished_at = now - 300 + index,
+      match_id = mid, sequence = 0, player_actions = 0 }
+    if index == 2 then attempt.match_id = nil end
+    put("u", BOSS, id, attempt, now - 300 + index)
+  end
+  local weekly = { schema = 1, event_id = "week-100", requests = requests, active_attempt_id = "week-100:a4",
+    reward_mail_created = false, total_damage = 1234 }
+  put("u", "duel_global_boss_player", "week-100", weekly, now)
+  assert(fresh().maybe_run().deleted == 2)
+  assert(not exists("u", BOSS, "week-100:a1") and not exists("u", BOSS, "week-100:a2"))
+  for index = 3, 8 do assert(exists("u", BOSS, "week-100:a" .. index)) end
+  local untouched = db[key("u", "duel_global_boss_player", "week-100")].value
+  assert(untouched.requests.request1 == "week-100:a1" and untouched.total_damage == 1234 and not untouched.reward_mail_created)
+end)
 
 test("journal prunes only result complete or aborted with a terminal timestamp", function()
   journal("u", "complete", "complete"); journal("u", "aborted", "aborted")
@@ -177,15 +305,17 @@ test("public or unversioned journal metadata never reaches deletion", function()
   assert(fresh().maybe_run().deleted == 0 and delete_calls == 0)
 end)
 
-test("PvE consumed and refunded receipts age out while active latest is retained", function()
-  put("u", "duel_pve_entry", "active", { status = "consumed", token = "latest", run_id = "latest-run" }, DAY)
-  launch("u", "latest", "consumed", { run_id = "latest-run" })
-  launch("u", "same-run", "consumed", { run_id = "latest-run" })
-  launch("u", "old", "consumed"); launch("u", "refund", "refunded")
+test("PvE keeps two settled launches and protects the active target even if older", function()
+  put("u", "duel_pve_entry", "active", { status = "consumed", token = "protected", run_id = "protected" }, DAY)
+  launch("u", "latest", "consumed", { consumed_at = now - 130 }, now - 130)
+  launch("u", "previous", "consumed", { consumed_at = now - 140 }, now - 140)
+  launch("u", "old", "consumed"); launch("u", "refund", "refunded"); launch("u", "protected", "consumed")
   for _, status in ipairs({ "reserved", "bound", "refund_pending" }) do launch("u", status, status) end
   put("u", "duel_pve_entry", "refunds", { tokens = { refund_pending = true } }, DAY)
   local report = assert(fresh().maybe_run()); assert(report.deleted == 2)
-  for _, id in ipairs({ "latest", "same-run", "reserved", "bound", "refund_pending" }) do assert(exists("u", "duel_pve_entry", "launch:" .. id)) end
+  assert(#owner_lists == 1 and report.pve_owner_lookups == 1)
+  assert(not exists("u", "duel_pve_entry", "launch:old") and not exists("u", "duel_pve_entry", "launch:refund"))
+  for _, id in ipairs({ "latest", "previous", "protected", "reserved", "bound", "refund_pending" }) do assert(exists("u", "duel_pve_entry", "launch:" .. id)) end
   assert(exists("u", "duel_pve_entry", "active") and exists("u", "duel_pve_entry", "refunds"))
 end)
 
@@ -194,23 +324,30 @@ test("terminal statuses are exact for each receipt collection", function()
   launch("u", "wrong-settled", "settled", { settled_at = DAY })
   put("u", "duel_race_entry", "run:valid", { status = "settled", settled_at = DAY, run_id = "valid" }, DAY)
   launch("u", "valid", "consumed")
-  local report = assert(fresh().maybe_run()); assert(report.deleted == 2)
+  local report = assert(fresh().maybe_run()); assert(report.deleted == 0)
   assert(exists("u", "duel_race_entry", "run:wrong-consumed") and exists("u", "duel_pve_entry", "launch:wrong-settled"))
+  assert(exists("u", "duel_pve_entry", "launch:valid"), "a lone terminal PvE receipt is retained")
 end)
 
-test("PvE receipts require thirty days for consumed or refunded timestamp", function()
-  launch("u", "recent-consume", "consumed", { consumed_at = now - 30 * DAY + 1 })
-  launch("u", "recent-refund", "refunded", { refunded_at = now - 30 * DAY + 1 })
+test("PvE protects newly updated receipts during the grace window", function()
+  launch("u", "newer", "consumed", { consumed_at = now - 180 }, now - 180)
+  launch("u", "newest", "consumed", { consumed_at = now - 170 }, now - 170)
+  launch("u", "recent-update", "refunded", { refunded_at = now - 240 }, now)
   launch("u", "missing-time", "consumed", { consumed_at = false })
-  assert(fresh().maybe_run().deleted == 0)
+  cleanup = fresh(); assert(cleanup.maybe_run().deleted == 0)
+  now = now + 121; assert(cleanup.maybe_run().deleted == 1)
+  assert(not exists("u", "duel_pve_entry", "launch:recent-update") and exists("u", "duel_pve_entry", "launch:missing-time"))
 end)
 
-test("receipt prune callback must explicitly prove durable work is finished", function()
+test("PvE receipt keeps its pending journal reference until delivery finishes", function()
   launch("u", "protected", "consumed", { journal_id = "pending-result" })
-  cleanup = fresh(); cleanup.configure({ can_prune_receipt = function(uid, receipt) assert(uid == "u" and receipt.token == "protected"); return false end })
+  launch("u", "previous", "consumed", { consumed_at = now - 180 })
+  launch("u", "latest", "consumed", { consumed_at = now - 170 })
+  pending("u", "pending-result")
+  cleanup = fresh()
   assert(cleanup.maybe_run().deleted == 0)
-  cleanup.configure({ can_prune_receipt = function() return true end })
-  now = now + 3601; assert(cleanup.maybe_run().deleted == 1)
+  put("u", "duel_match3_journal", "pending", { entries = {} }, now)
+  now = now + 61; assert(cleanup.maybe_run().deleted == 1)
 end)
 
 test("changed journal version rejects its whole deletion batch", function()
@@ -223,13 +360,29 @@ test("changed journal version rejects its whole deletion batch", function()
   assert(exists("u", "duel_match3_journal", "result:a") and exists("u", "duel_match3_journal", "result:b"))
 end)
 
-test("one minute pass is bounded to ten hundred-row pages across five collections", function()
-  for _, collection in ipairs({ "arena_tournament", "duel_api_rate_limits", "duel_race_entry", "duel_pve_entry", "duel_match3_journal" }) do
+test("one minute pass is bounded to ten pages across six collections", function()
+  for _, collection in ipairs(COLLECTIONS) do
     for i = 1, 240 do put("u", collection, string.format("opaque-%03d", i), {}, DAY) end
   end
   local report = assert(fresh().maybe_run())
-  assert(list_calls == 10 and report.pages == 10 and report.scanned == 1000 and report.deleted == 0)
-  for i, call in ipairs(list_trace) do assert((i <= 5 and call.cursor == "" or i > 5 and call.cursor ~= "") and call.limit == 100) end
+  assert(list_calls == 10 and report.pages == 10 and report.scanned == 544 and report.deleted == 0)
+  local limits = { [RACE] = report.race_owner_budget, ["duel_pve_entry"] = report.pve_owner_budget,
+    [BOSS] = report.boss_attempt_owner_budget }
+  for i, call in ipairs(list_trace) do
+    assert(i <= 6 and call.cursor == "" or i > 6 and call.cursor ~= "")
+    assert(call.limit == (limits[call.collection] or 100))
+  end
+end)
+
+test("exhausted PvE owner budget resumes at the next owner on the following pass", function()
+  for i = 1, 18 do launch(string.format("u%02d", i), "only", "consumed") end
+  cleanup = fresh()
+  local first = assert(cleanup.maybe_run())
+  assert(first.pve_owner_lookups == first.pve_owner_budget and first.deleted == 0 and #owner_lists == 12)
+  assert(owner_lists[1] == "u01" and owner_lists[12] == "u12")
+  now = now + 61; owner_lists = {}
+  local second = assert(cleanup.maybe_run())
+  assert(second.pve_owner_lookups == 6 and second.deleted == 0 and owner_lists[1] == "u13" and owner_lists[6] == "u18")
 end)
 
 test("wall-clock budget persists round-robin position instead of starving later collections", function()
@@ -261,7 +414,7 @@ test("hourly callback exceptions and false results do not abort remaining collec
   put("a", "duel_pve_entry", "active", { status = "bound" }, DAY); pending("b", "r")
   cleanup = fresh(); cleanup.configure({ recover = function(uid) recover_calls = recover_calls + 1; if uid == "a" then error("one user unavailable") end; return false end })
   local report = assert(cleanup.maybe_run())
-  assert(report.recovery_attempts == 2 and report.recovered_users == 0 and recover_calls == 2 and list_calls == 5)
+  assert(report.recovery_attempts == 2 and report.recovered_users == 0 and recover_calls == 2 and list_calls == 6)
 end)
 
 test("fresh unresolved work is deferred hourly but is eligible at bootstrap", function()
@@ -303,7 +456,7 @@ test("one bootstrap callback error cannot prevent the next owner recovery", func
 end)
 
 test("minute cursor continues journal recovery beyond the startup and run budgets", function()
-  for i = 1, 1000 do journal(string.format("u%04d", i), "complete", "complete", nil, now) end
+  for i = 1, 900 do journal(string.format("u%04d", i), "complete", "complete", nil, now) end
   pending("z-offline", "unpaid-result")
   cleanup = fresh(); cleanup.configure({ recover = function(uid) assert(uid == "z-offline"); recover_calls = recover_calls + 1; return true end })
   assert(cleanup.bootstrap().attempted_users == 0)
@@ -329,19 +482,20 @@ test("actual core run-once hook calls configured bootstrap and tolerates absent 
   local start = assert(source:find('if type(nk.run_once) == "function" then', 1, true))
   local stop = assert(source:find("\nreturn {", start, true))
   assert(source:find("Runtime.StorageMaintenance.configure({", 1, true) < start)
-  local calls, boot = 0, 0
+  local calls, boot, seeded = 0, 0, 0
   local env = setmetatable({ nk = { run_once = function(fn) calls = calls + 1; fn() end },
-    Runtime = { StorageMaintenance = { bootstrap = function() boot = boot + 1 end } } }, { __index = _G })
+    Runtime = { StorageMaintenance = { bootstrap = function() boot = boot + 1 end },
+      seed_cheat_whitelist = function() seeded = seeded + 1 end } }, { __index = _G })
   local chunk = assert(loadstring(source:sub(start, stop - 1))); setfenv(chunk, env); chunk()
-  assert(calls == 1 and boot == 1)
+  assert(calls == 1 and boot == 1 and seeded == 1)
   local dispatches = 0
   env.Runtime.GlobalBoss = {}
   env.nk.match_create = function(name, params)
     assert(name == "duel_global_boss_dispatcher" and params.bootstrap == true)
     dispatches = dispatches + 1
   end
-  chunk(); assert(calls == 2 and boot == 2 and dispatches == 1)
-  env.nk.run_once = nil; chunk(); assert(calls == 2 and boot == 2 and dispatches == 1)
+  chunk(); assert(calls == 2 and boot == 2 and seeded == 2 and dispatches == 1)
+  env.nk.run_once = nil; chunk(); assert(calls == 2 and boot == 2 and seeded == 2 and dispatches == 1)
 end)
 
 print("Storage maintenance extended: " .. passed .. " passed, " .. #failures .. " failed; original baseline passed")

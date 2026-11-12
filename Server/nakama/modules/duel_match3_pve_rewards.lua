@@ -1,6 +1,9 @@
 -- Freeze loot once, then atomically commit its delivery and a durable receipt.
 local nk = require("nakama")
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
 local M = {}
+local MINE_KILL_MEDALS = { mine_2 = true, mine_3 = true, mine_7 = true, mine_12 = true }
 
 function M.new(d)
   local R = {}
@@ -32,7 +35,7 @@ function M.new(d)
       reward_ore = math.ceil((tonumber(bot.reward_ore) or 0) * mul), reward_matter = 0,
       reward_key_id = tostring(bot.reward_key_id or ""), reward_key_amount = math.max(0, tonumber(bot.reward_key_amount) or 0),
       next_spawn_at = os.time() + d.respawn_seconds(boss), next_affix = d.next_affix(floor, run.affix),
-      achievement_deltas = tostring(bot_id) == "mine_2" and { ["pve.kill.mine_2"] = 1 } or {} }
+      achievement_deltas = MINE_KILL_MEDALS[bot_id] and { ["pve.kill." .. bot_id] = 1 } or {} }
     for stat, delta in pairs(outcome and outcome.achievement_deltas or {}) do
       plan.achievement_deltas[stat] = (plan.achievement_deltas[stat] or 0) + delta
     end
@@ -76,10 +79,12 @@ function M.new(d)
     local progress, version = d.read_progress(uid)
     local sheet = d.read_sheet(uid)
     local defs = d.get_defs()
+    local previous_level = progress.level
     progress.xp = (tonumber(progress.xp) or 0) + plan.reward_xp
     progress.gold = (tonumber(progress.gold) or 0) + plan.reward_gold
     progress.ore = (tonumber(progress.ore) or 0) + plan.reward_ore
     progress.matter = (tonumber(progress.matter) or 0) + plan.reward_matter
+    ResourceMedals.earned(progress, plan.reward_gold, plan.reward_ore, plan.reward_matter)
     if plan.reward_key_id ~= "" and plan.reward_key_amount > 0 then
       progress.key_items = progress.key_items or d.empty_keys()
       progress.key_items[plan.reward_key_id] = (tonumber(progress.key_items[plan.reward_key_id]) or 0) + plan.reward_key_amount
@@ -122,10 +127,12 @@ function M.new(d)
       end
     end
     d.inventory().sync_resource_counters(sheet, progress, defs)
-    local writes = d.build_sheet_writes(uid, sheet, progress, version)
+    local admission_writes = {}
     if plan.launch_token and plan.launch_token ~= "" and d.consume_writes then
-      for _, op in ipairs(d.consume_writes(uid, plan.launch_token, plan.run_id)) do writes[#writes + 1] = op end
+      admission_writes = d.consume_writes(uid, plan.launch_token, plan.run_id, progress)
     end
+    local writes = d.build_sheet_writes(uid, sheet, progress, version, previous_level)
+    for _, op in ipairs(admission_writes) do writes[#writes + 1] = op end
     return writes, receipt
   end
 

@@ -12,6 +12,7 @@ end
 
 local CFG = runtime_lua_require_nested("modules.duel_match3_config", "duel_match3_config")
 local AchCat = runtime_lua_require_nested("modules.duel_match3_achievement_catalog", "duel_match3_achievement_catalog")
+local ResourceMedals = runtime_lua_require_nested("modules.duel_resource_medals", "duel_resource_medals")
 
 local M = {}
 
@@ -73,6 +74,9 @@ local ACH_STAT_BETS_PLACED = "slaughter.arena_bets_placed"
 local ACH_STAT_BETS_WON = "slaughter.arena_bets_won"
 local ACH_STAT_BETS_LOST = "slaughter.arena_bets_lost"
 local ACH_STAT_PERFECT_BETS = "dnn.arena_perfect_bets_win"
+local ACH_STAT_PETARD_50 = "dnn.petard_50_pvp"
+local ACH_STAT_BLOCKED_DAMAGE = "slaughter.damage_blocked_arena"
+local ACH_STAT_CRITICAL_HITS = "slaughter.critical_hits"
 
 function M.is_human(uid)
   if uid == nil or uid == "" then return false end
@@ -94,6 +98,19 @@ function M.inc_session(state, uid, key, delta)
   end
   local prev = tonumber(state._ach_counters[uid][key]) or 0
   state._ach_counters[uid][key] = prev + delta
+end
+
+function M.note_combat_damage(state, attacker_id, target_id, action_type, damage, blocked_damage, crit)
+  if state._sim_metrics ~= nil or state.global_boss ~= nil or state.pvp_race == true then return end
+  if crit and damage > 0 then
+    M.inc_session(state, attacker_id, ACH_STAT_CRITICAL_HITS, 1)
+  end
+  if state.pvp_pro == true or (state.mode ~= "pvp" and state.arena_mirror == nil) then return end
+
+  if action_type == 4 and damage >= 50 then
+    M.inc_session(state, attacker_id, ACH_STAT_PETARD_50, 1)
+  end
+  M.inc_session(state, target_id, ACH_STAT_BLOCKED_DAMAGE, blocked_damage)
 end
 
 function M.map_action_to_stat(action_type)
@@ -186,6 +203,11 @@ local function increment_stats_in_val(val, delta_map)
     end
   end
   return changed == true
+end
+
+function M.apply_boss_critical_hit(summary)
+  increment_stats_in_val(summary, { [ACH_STAT_CRITICAL_HITS] = 1 })
+  summary.updated_at = os.time()
 end
 
 local function persistent_merge_increment(user_id, delta_map)
@@ -488,6 +510,9 @@ function M.rpc_achievement_sync(ctx, payload)
       claimed = val.achievement_claimed
     end
 
+    if type(deps.read_pve_progress) == "function" then
+      ast = ResourceMedals.merged_stats(ast, read_pv(user_id))
+    end
     local flat = M.flatten_stats_for_client(ast)
     return nk.json_encode({
       ok = true,
@@ -552,6 +577,11 @@ function M.rpc_achievement_claim_step(ctx, payload)
       if type(ast) ~= "table" then ast = {} end
 
       local cur = tonumber(ast[key]) or 0
+      local progress, progress_ver
+      if ResourceMedals.uses_progress(key) then
+        progress, progress_ver = read_pv(user_id)
+        cur = ResourceMedals.total(ast, progress, key)
+      end
       if cur ~= cur or cur == math.huge or cur == -math.huge or cur < need then
         return nk.json_encode({ ok = false, err = "threshold_not_met" })
       end
@@ -581,7 +611,7 @@ function M.rpc_achievement_claim_step(ctx, payload)
       -- Currency lives in progression storage, not Nakama's account wallet.
       -- Commit the claim and its reward together, with a CAS for each object.
       -- A concurrent grant/spend must retry from both fresh snapshots.
-      local progress, progress_ver = read_pv(user_id)
+      if not progress then progress, progress_ver = read_pv(user_id) end
       local rewards = AchCat.step_rewards(chain_id, step_ix)
       local wallet_changed = AchCat.apply_wallet_rewards(rewards, progress)
 

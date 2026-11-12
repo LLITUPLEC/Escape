@@ -145,10 +145,24 @@ namespace Project.Editor
                         var bars = panel.GetComponentsInChildren<Image>().Where(i => i.name == "DailyQuestProgressFill").ToArray(); report.progressBars = bars.Length;
                         Require(bars.Length == 3, "Progress bars are missing.");
                         for (var i = 0; i < 3; i++) Require(bars[i].type == Image.Type.Filled && Mathf.Approximately(bars[i].fillAmount, Mathf.Clamp01((float)_snapshot.quests[i].progress / _snapshot.quests[i].target)), "Progress bar disagrees with server snapshot.");
+                        var contract = panel.Find("PinnedContract");
+                        var claim = contract.Find("ClaimQuest").GetComponent<Button>();
+                        var contractProgress = contract.Find("ContractProgress").GetComponent<TMP_Text>();
+                        var initiallySelected = Array.FindIndex(_snapshot.quests, quest => quest.ready && !quest.claimed);
+                        for (var i = 0; i < cards.Length; i++)
+                        {
+                            cards[i].GetComponent<Button>().onClick.Invoke();
+                            var quest = _snapshot.quests[i];
+                            Require(claim.IsInteractable() == (quest.ready && !quest.claimed) &&
+                                contractProgress.text == $"{Math.Min(quest.progress, quest.target)} / {quest.target}",
+                                "Selecting a notice must show that quest's progress and claim state.");
+                        }
+                        cards[Math.Max(0, initiallySelected)].GetComponent<Button>().onClick.Invoke();
                     }
                     else
                     {
-                        Require(panel.Cast<Transform>().Count(t => t.name.StartsWith("LoginDayCard", StringComparison.Ordinal)) == 7, "Seven login cards are missing.");
+                        var map = panel.Find("SupplyMap");
+                        Require(map != null && map.Cast<Transform>().Count(t => t.name.StartsWith("LoginDayCard", StringComparison.Ordinal)) == 7, "Seven route stops are missing.");
                         if (_mode == "show-login-seven" || _mode == "show-login-claimed")
                             Require(panel.Find("DailyCurrentReward").GetComponentsInChildren<Image>().Count(i => i.name == "DailyRewardIcon") == 3, "Day7 current reward does not display all three items.");
                     }
@@ -162,7 +176,7 @@ namespace Project.Editor
                         var expected = id == "gold" || id == "ore" || id == "matter" ? ExpeditionResourceIcons.Get(id) : ConsumablePresentation.IsKnown(id) ? ConsumablePresentation.Icon(id) : catalog.GetDisplayIcon(catalog.Get(id));
                         Require(image.sprite == expected, "Reward icon differs from the real item: " + id); WithinViewport(image.rectTransform, viewport);
                     }
-                    Require(report.rewardIcons >= 6, "Reward icon trays are missing.");
+                    Require(report.rewardIcons >= (_mode.StartsWith("show-login", StringComparison.Ordinal) ? 1 : 6), "Reward icon trays are missing.");
                 }
                 else
                 {
@@ -188,7 +202,7 @@ namespace Project.Editor
                 Require(report.textCount >= (_badgeOnly ? 2 : 14) && report.buttons >= (_badgeOnly ? 1 : 3), "Production daily controls are missing."); report.passed = true;
             }
             catch (Exception ex) { report.error = ex.Message; }
-            var path = ".cache/qa/legacy-0.3.10/daily-ui-" + (_mode ?? "none").Replace("show-", "") + ".json";
+            var path = ".cache/qa/diegetic-ui/daily-" + (_mode ?? "none").Replace("show-", "") + ".json";
             Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllText(path, JsonUtility.ToJson(report, true));
             if (!report.passed) throw new InvalidOperationException(report.error);
             return JsonUtility.ToJson(report);

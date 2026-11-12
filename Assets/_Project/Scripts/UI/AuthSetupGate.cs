@@ -72,6 +72,7 @@ namespace Project.UI
         private static void BuildUi(NakamaBootstrap bootstrap, CancellationToken ct, TaskCompletionSource<bool> tcs)
         {
             HideBlockingOverlayIfAny();
+            var reauthentication = bootstrap != null && bootstrap.EmailReauthenticationRequired;
 
             var root = new GameObject("AuthSetupGate", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             UnityEngine.Object.DontDestroyOnLoad(root);
@@ -106,16 +107,19 @@ namespace Project.UI
             v.childControlWidth = true;
             v.childForceExpandWidth = true;
 
-            NewText(panel.transform, "Title", "Сохранение прогресса", 40, FontStyle.Bold)
+            NewText(panel.transform, "Title", reauthentication ? "Вход в аккаунт" : "Сохранение прогресса", 40, FontStyle.Bold)
                 .alignment = TextAnchor.MiddleCenter;
-            NewText(panel.transform, "Hint",
-                "Укажите e-mail и пароль.\n" +
+            NewText(panel.transform, "Hint", reauthentication
+                ? "Не удалось восстановить вход автоматически. Введите e-mail и пароль вашего аккаунта."
+                : "Укажите e-mail и пароль.\n" +
                 "• Новый аккаунт — привяжем к этому устройству.\n" +
                 "• Уже играли на другом телефоне — войдёте и восстановите прогресс.\n" +
                 "Пол героя выбирается один раз.",
                 30, FontStyle.Normal).alignment = TextAnchor.MiddleCenter;
 
             var email = CreateInput(panel.transform, "Email", "E-mail", false);
+            if (reauthentication)
+                email.text = PlayerPrefs.GetString(NakamaBootstrap.PrefKnownLinkedEmail, "");
             var pass = CreateInput(panel.transform, "Pass", "Пароль (мин. 8)", true);
             var status = NewText(panel.transform, "Status", "", 15, FontStyle.Normal);
             status.alignment = TextAnchor.MiddleCenter;
@@ -140,11 +144,14 @@ namespace Project.UI
                 status.text = preferRestore ? "Вход и восстановление…" : "Регистрация…";
                 try
                 {
-                    await bootstrap.EnsureConnectedAsync(ct);
                     if (preferRestore)
                     {
-                        // Явный вход в существующий аккаунт + LinkDevice текущего телефона.
+                        // The credential form must work even when there is no current session.
                         await bootstrap.LoginWithEmailAsync(em, pw, create: false, ct);
+                    }
+                    else if (reauthentication)
+                    {
+                        await bootstrap.LoginWithEmailAsync(em, pw, create: true, ct, gender != null && gender.SelectedFemale);
                     }
                     else
                     {
@@ -173,10 +180,18 @@ namespace Project.UI
                 }
             }
 
-            AddActionButton(panel.transform, "Создать / привязать", new Color(0.25f, 0.55f, 0.35f, 1f),
-                () => _ = SubmitAsync(preferRestore: false));
-            AddActionButton(panel.transform, "У меня уже есть аккаунт", new Color(0.28f, 0.35f, 0.55f, 1f),
-                () => _ = SubmitAsync(preferRestore: true));
+            var createColor = new Color(0.25f, 0.55f, 0.35f, 1f);
+            var signInColor = new Color(0.28f, 0.35f, 0.55f, 1f);
+            if (reauthentication)
+            {
+                AddActionButton(panel.transform, "Войти", signInColor, () => _ = SubmitAsync(preferRestore: true));
+                AddActionButton(panel.transform, "Создать новый аккаунт", createColor, () => _ = SubmitAsync(preferRestore: false));
+            }
+            else
+            {
+                AddActionButton(panel.transform, "Создать / привязать", createColor, () => _ = SubmitAsync(preferRestore: false));
+                AddActionButton(panel.transform, "У меня уже есть аккаунт", signInColor, () => _ = SubmitAsync(preferRestore: true));
+            }
             ExpeditionSystemDialogs.ApplyAuth(root, panelRt, email, pass, status);
             gender = AccountGenderPicker.Create(panel.transform, .23f, .335f, .77f, .425f);
             ExpeditionUi.SetRect(status.rectTransform, .055f, .275f, .945f, .33f);

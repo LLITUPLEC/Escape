@@ -1,0 +1,39 @@
+{
+  "version": "0.3.19",
+  "date": "2026-11-12",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": ".cache/qa/release0319/ui/shelter-c-1080x1920.png",
+      "sha256": "939a5fc4d2a87a6d603ab27d899ae6bfa6a522f04b1803788d9237387e392d69",
+      "bytes": 3189451,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Native Unity production-component render of the 0.3.19 Shelter with offline data fixture"
+    },
+    {
+      "file": "character.png",
+      "source": "Design/Release-0.3.18/screens/character.png",
+      "sha256": "2f44bbc7baa6d26afaf13e02b0bb97ecc4341ee10d744eb9389d1ec536765242",
+      "bytes": 2450677,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Reused 0.3.18 native Unity production-component render of the unchanged appearance catalog"
+    },
+    {
+      "file": "mine.png",
+      "source": "Design/Release-0.3.18/screens/mine.png",
+      "sha256": "5377ecc1c9d274e2a0e324b6604d5c3afef014582f4d86acd0152b0f25d006ff",
+      "bytes": 2255324,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Reused 0.3.18 native Unity production-component render of the unchanged monster dossier"
+    }
+  ]
+}

@@ -54,6 +54,8 @@ end)
 test("purchase atomic receipt debit and two resource grants",function()
   local r=buy();assert(r.ok and r.receipt.price==10 and r.next_sequence==2)
   local p=wallet("alice");assert(p.gold==102500 and p.ore==2500 and p.matter==990 and writes==1)
+  local earned=p.resource_medals
+  assert(earned["res.gold_earned"]==2500 and earned["res.ore_earned"]==2500 and earned["res.matter_spent"]==10)
   assert(db[key(Shop.COLLECTION,Shop.KEY,"alice")].value.last_seq==1)
 end)
 test("same request exact once even after admin catalog update",function()
@@ -104,6 +106,7 @@ test("lost acknowledgement resolves committed receipt without second charge",fun
   lost_ack=true;local p=request("boss_teleport");local r=buy(p)
   assert(r.ok and r.already_purchased and total(Shop.TOKEN_ID)==1 and wallet("alice").gold==70000 and writes==1)
   assert(buy(p).ok and writes==1 and total(Shop.TOKEN_ID)==1)
+  assert(wallet("alice").resource_medals["res.gold_spent"]==30000)
 end)
 test("racing different offers cannot overspend or bypass sequence admission",function()
   before_write=function() assert(buy(request("resources_2500",1,"concurrent_winner")).ok) end

@@ -58,7 +58,7 @@ local CFG = {  SIZE = 6,
   CHEAT_ROWS_TOTAL = 6 * 2,
   CHEAT_WHITELIST_COLLECTION = "duel_match3_cheat_whitelist",
   CHEAT_WHITELIST_KEY = "emails",
-  -- Debug preview access is granted only by a server-owned user-ID allowlist.
+  -- Debug preview access is granted only by the system-owned allowlist.
   CHEAT_WHITELIST_USER_ID = "00000000-0000-0000-0000-000000000000",
   OP_BOARD_SYNC = 10,
   OP_GAME_OVER = 11,

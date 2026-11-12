@@ -1,6 +1,8 @@
 local nk = require("nakama")
 local inventory_ok, Inventory = pcall(require, "modules.duel_match3_inventory")
 if not inventory_ok then Inventory = require("duel_match3_inventory") end
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
 return function(deps)
   local M = {}
   local function execute(ctx, payload, buying)
@@ -20,6 +22,7 @@ return function(deps)
         local ok, why = Inventory.unlock_slot(sheet, progress, p.slot_index, p.request_id)
         if not ok then return nk.json_encode({ ok = false, err = why }) end
         status = why
+        if status == "purchased" then ResourceMedals.spent(progress, nil, nil, Inventory.SLOT_PRICE_MATTER) end
       end
       local defs = deps.get_merged_item_defs()
       local drained = Inventory.drain(sheet, defs)

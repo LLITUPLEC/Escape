@@ -1,0 +1,39 @@
+{
+  "version": "0.3.20",
+  "date": "2026-11-12",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": "Design/Release-0.3.19/screens/hub.png",
+      "sha256": "939a5fc4d2a87a6d603ab27d899ae6bfa6a522f04b1803788d9237387e392d69",
+      "bytes": 3189451,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Reused the verified native Unity production-component render published with 0.3.19"
+    },
+    {
+      "file": "character.png",
+      "source": ".cache/qa/achievement-journal/1080x1920-resources.png",
+      "sha256": "ae5bb702146ca41ad0f92531b15f278b9c1d27113ecb2775e69ae3329f4937a5",
+      "bytes": 2465219,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Native Unity production Journal prefab, Resources selected, with temporary offline test data and test-scene framing"
+    },
+    {
+      "file": "mine.png",
+      "source": "Design/Release-0.3.19/screens/mine.png",
+      "sha256": "5377ecc1c9d274e2a0e324b6604d5c3afef014582f4d86acd0152b0f25d006ff",
+      "bytes": 2255324,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Reused the verified native Unity production-component render published with 0.3.19"
+    }
+  ]
+}

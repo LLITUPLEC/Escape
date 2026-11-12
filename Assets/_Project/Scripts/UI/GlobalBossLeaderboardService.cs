@@ -35,37 +35,63 @@ namespace Project.UI
         {
             if(string.IsNullOrEmpty(eventId)||eventId.Length>128||cursor?.Length>4096)return;
             if(!Gate.Wait(0))return;
-            string owner=null;global::Nakama.ISession session=null;NakamaBootstrap boot=null;
+            string owner = null;
+            var ownsRequest = false;
             try
             {
                 ct.ThrowIfCancellationRequested();
-                var expected=await MainThreadDispatcher.RunAsync(()=>{Observe();if(_scope!=null){owner=_scope;_busy=true;_error=null;Changed?.Invoke();}return _scope;}).ConfigureAwait(false);
-                if(expected==null)return;
-                boot=NakamaBootstrap.Instance;if(boot==null)return;
-                await ServerConnectionGuard.RequireAsync(ct).ConfigureAwait(false);session=boot.Session;
-                var allowed=await MainThreadDispatcher.RunAsync(()=>
+                var allowed = await MainThreadDispatcher.RunAsync(() =>
                 {
-                    Observe();if(_scope==null||expected!=null&&expected!=_scope||session==null)return false;
-                    owner=_scope;_busy=true;_error=null;if(_page?.event_id!=eventId)_page=null;Changed?.Invoke();return true;
+                    Observe();
+                    if (_scope == null || ct.IsCancellationRequested) return false;
+                    owner = _scope;
+                    ownsRequest = true;
+                    _busy = true;
+                    if (_page != null && _page.event_id != eventId) { _page = null; _error = null; }
+                    Changed?.Invoke();
+                    return true;
                 }).ConfigureAwait(false);
-                if(!allowed)return;
-                var rpc=await boot.Client.RpcAsync(session,"duel_global_boss_leaderboard_get",JsonUtility.ToJson(new Request{event_id=eventId,cursor=cursor}),canceller:ct).ConfigureAwait(false);
-                var page=JsonUtility.FromJson<Page>(rpc?.Payload??"{}");
+                if (!allowed) return;
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                deadline.CancelAfter(GlobalBossService.ReadTimeoutMilliseconds);
+                var token = deadline.Token;
+                var boot = NakamaBootstrap.Instance;
+                var session = await GlobalBossService.GetReadSessionAsync(boot, token).ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
+                if (!await MainThreadDispatcher.RunAsync(() => LocalAccountCacheScope.IsCurrent(owner)).ConfigureAwait(false)) return;
+                var request = JsonUtility.ToJson(new Request { event_id = eventId, cursor = cursor });
+                var rpc = await boot.Client.RpcAsync(session, "duel_global_boss_leaderboard_get", request, canceller: token).ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
+                var page = JsonUtility.FromJson<Page>(rpc?.Payload ?? "{}");
                 await MainThreadDispatcher.RunAsync(()=>
                 {
-                    if(!LocalAccountCacheScope.IsCurrent(owner)||!ReferenceEquals(session,boot.Session))return;
-                    if(!Valid(page,eventId)||page.self_entry!=null&&page.self_entry.user_id!=session.UserId){_error=page?.err=="event_changed"?"Началось новое событие. Обновите окно босса.":"Не удалось загрузить участников. Нажмите «Обновить».";return;}
+                    if (token.IsCancellationRequested || !LocalAccountCacheScope.IsCurrent(owner) ||
+                        !ReferenceEquals(boot, NakamaBootstrap.Instance) || !ReferenceEquals(session, boot.Session) || !boot.GameplaySessionAllowed) return;
+                    if(!Valid(page,eventId)||page.self_entry!=null&&page.self_entry.user_id!=session.UserId){_error=page?.err=="event_changed"?"Началось новое событие. Нажмите «Обновить».":"Не удалось загрузить летопись. Нажмите «Обновить».";return;}
                     _page=page;_error=null;
                 }).ConfigureAwait(false);
             }
             catch(OperationCanceledException)when(ct.IsCancellationRequested){}
             catch(Exception)
             {
-                if(owner!=null)await MainThreadDispatcher.RunAsync(()=>{if(LocalAccountCacheScope.IsCurrent(owner))_error="Нет связи с сервером. Рейтинг обновится после подключения.";}).ConfigureAwait(false);
+                if (ownsRequest) await MainThreadDispatcher.RunAsync(() =>
+                {
+                    if (!ct.IsCancellationRequested && LocalAccountCacheScope.IsCurrent(owner))
+                        _error = "Не удалось загрузить летопись. Нажмите «Обновить».";
+                }).ConfigureAwait(false);
             }
             finally
             {
-                if(owner!=null)await MainThreadDispatcher.RunAsync(()=>{if(LocalAccountCacheScope.IsCurrent(owner)){_busy=false;Changed?.Invoke();}}).ConfigureAwait(false);Gate.Release();
+                try
+                {
+                    if (ownsRequest) await MainThreadDispatcher.RunAsync(() =>
+                    {
+                        if (!LocalAccountCacheScope.IsCurrent(owner)) return;
+                        _busy = false;
+                        Changed?.Invoke();
+                    }).ConfigureAwait(false);
+                }
+                finally { Gate.Release(); }
             }
         }
         public static bool Valid(Page page,string eventId)=>page!=null&&page.ok&&page.event_id==eventId&&(page.entries==null||page.entries.Length<=50&&page.entries.All(ValidEntry))&&(page.self_entry==null||ValidFields(page.self_entry)&&page.self_entry.is_self&&page.self_entry.rank>=0)&&(page.next_cursor?.Length??0)<=4096&&(page.prev_cursor?.Length??0)<=4096;

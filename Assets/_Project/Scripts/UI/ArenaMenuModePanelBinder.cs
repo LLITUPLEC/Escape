@@ -16,7 +16,6 @@ namespace Project.UI
     [DisallowMultipleComponent]
     public sealed class ArenaMenuModePanelBinder : MonoBehaviour
     {
-        private const int RaceEntryMatterFallback = 2;
         private const string RpcRaceEnter = "duel_match3_race_enter";
         private const string RpcRaceInfo = "duel_match3_race_info";
 
@@ -82,7 +81,8 @@ namespace Project.UI
         private RectTransform _raceCostRow;
         private RectTransform _raceRewardRow;
         private LayoutElement _racePanelLayout;
-        private RaceInfoRpcResponse _cachedRaceInfo;
+        private Button _raceConfirmButton;
+        private int _raceInfoRequest;
 
 #if UNITY_EDITOR
         private void OnValidate()
@@ -218,42 +218,32 @@ namespace Project.UI
         {
             if (_raceBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
             EnsureRaceConfirmModal();
+            if (_raceConfirmRoot == null) return;
             EnsureRaceIcons();
 
-            if (_raceConfirmText != null)
-                _raceConfirmText.text = "За спуск нужно заплатить!";
-            if (_raceErrorText != null)
-            {
-                _raceErrorText.text = string.Empty;
-                _raceErrorText.gameObject.SetActive(false);
-            }
-            if (_raceCostCaption != null) _raceCostCaption.text = "Стоимость";
-            if (_raceRewardCaption != null) _raceRewardCaption.text = "Награда за победу";
-            if (_raceGoalText != null)
-            {
-                _raceGoalText.text = "Цель - набрать первым 200 маны";
-                _raceGoalText.gameObject.SetActive(true);
-            }
-            PopulateResourceRow(_raceCostRow, FallbackEntry());
-            PopulateResourceRow(_raceRewardRow, FallbackRewards());
-
-            if (_raceConfirmRoot != null)
-            {
-                _raceConfirmRoot.transform.SetAsLastSibling();
-                _raceConfirmRoot.SetActive(true);
-                ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
-            }
+            var request = ++_raceInfoRequest;
+            var cancellation = _cts.Token;
+            _raceConfirmButton.interactable = false;
+            _raceConfirmText.text = "Загружаем условия спуска…";
+            _raceErrorText.gameObject.SetActive(false);
+            SetRaceDetailsVisible(false);
+            _raceConfirmRoot.transform.SetAsLastSibling();
+            _raceConfirmRoot.SetActive(true);
+            ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
 
             try
             {
-                if (NakamaBootstrap.Instance == null) return;
-                await NakamaBootstrap.Instance.EnsureConnectedAsync(_cts.Token);
-                var rpc = await NakamaBootstrap.Instance.Client.RpcAsync(
-                    NakamaBootstrap.Instance.Session, RpcRaceInfo, "{}", canceller: _cts.Token);
+                var nakama = NakamaBootstrap.Instance;
+                if (nakama == null) throw new InvalidOperationException("nakama_not_initialized");
+                await nakama.EnsureConnectedAsync(cancellation);
+                var scope = LocalAccountCacheScope.Current;
+                var rpc = await nakama.Client.RpcAsync(nakama.Session, RpcRaceInfo, "{}", canceller: cancellation);
+                if (request != _raceInfoRequest || cancellation.IsCancellationRequested || !LocalAccountCacheScope.IsCurrent(scope)) return;
                 var info = JsonUtility.FromJson<RaceInfoRpcResponse>(rpc?.Payload ?? "");
-                if (info == null || !info.ok) return;
-                _cachedRaceInfo = info;
+                if (info == null || !info.ok || info.goal_mana <= 0 || info.entry == null || info.entry.Length == 0 || info.rewards == null)
+                    throw new InvalidOperationException("invalid_race_info");
                 ApplyRaceInfoToModal(info);
+                _raceConfirmButton.interactable = true;
             }
             catch (OperationCanceledException)
             {
@@ -261,29 +251,30 @@ namespace Project.UI
             catch (Exception e)
             {
                 Debug.LogWarning("[ArenaMenu] race_info failed: " + e.Message);
+                if (request == _raceInfoRequest && !cancellation.IsCancellationRequested)
+                    _raceConfirmText.text = "Условия спуска недоступны. Откройте табличку снова.";
             }
+        }
+
+        private void SetRaceDetailsVisible(bool visible)
+        {
+            _raceCostCaption.gameObject.SetActive(visible);
+            _raceCostRow.gameObject.SetActive(visible);
+            _raceRewardCaption.gameObject.SetActive(visible);
+            _raceRewardRow.gameObject.SetActive(visible);
+            _raceGoalText.gameObject.SetActive(visible);
         }
 
         private void ApplyRaceInfoToModal(RaceInfoRpcResponse info)
         {
-            if (info == null) return;
-            var entry = info.entry != null && info.entry.Length > 0 ? info.entry : FallbackEntry();
-            var rewards = info.rewards != null && info.rewards.Length > 0 ? info.rewards : FallbackRewards();
-            if (_raceConfirmText != null)
-                _raceConfirmText.text = "За спуск нужно заплатить!";
-            if (_raceCostCaption != null)
-                _raceCostCaption.text = FormatCostCaption(entry);
-            if (_raceRewardCaption != null)
-                _raceRewardCaption.text = "Победа над игроком";
-            if (_raceGoalText != null)
-            {
-                var goal = info.goal_mana > 0 ? info.goal_mana : 200;
-                _raceGoalText.text = $"Первым набрать {goal} маны. С ботом — возврат взноса.";
-                _raceGoalText.gameObject.SetActive(true);
-            }
-            PopulateResourceRow(_raceCostRow, entry);
-            PopulateResourceRow(_raceRewardRow, rewards);
-            if (_raceConfirmRoot != null) ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
+            _raceConfirmText.text = "За спуск нужно заплатить!";
+            _raceCostCaption.text = FormatCostCaption(info.entry);
+            _raceRewardCaption.text = "Победа над игроком";
+            _raceGoalText.text = $"Первым набрать {info.goal_mana} маны. С ботом — возврат взноса.";
+            PopulateResourceRow(_raceCostRow, info.entry);
+            PopulateResourceRow(_raceRewardRow, info.rewards);
+            SetRaceDetailsVisible(true);
+            ExpeditionArenaOverlays.ApplyRace(_raceConfirmRoot.transform);
         }
 
         private static string FormatCostCaption(RaceResourceLine[] entry)
@@ -296,7 +287,7 @@ namespace Project.UI
 
         private async void ConfirmRaceEnterAndGo()
         {
-            if (_raceBusy || ArenaMatch8Bridge.IsParticipationLocked) return;
+            if (_raceBusy || _raceConfirmButton == null || !_raceConfirmButton.interactable || ArenaMatch8Bridge.IsParticipationLocked) return;
             _raceBusy = true;
             if (_match3Race != null) _match3Race.interactable = false;
             if (_raceErrorText != null)
@@ -325,7 +316,7 @@ namespace Project.UI
                 if (model == null || !model.ok)
                 {
                     var err = model != null && !string.IsNullOrEmpty(model.err) ? model.err : "unknown";
-                    ShowRaceEnterError(err, model != null ? model.required : RaceEntryMatterFallback, model != null ? model.resource : "matter");
+                    ShowRaceEnterError(err, model?.required ?? 0, model?.resource);
                     return;
                 }
 
@@ -366,7 +357,7 @@ namespace Project.UI
             }
             catch (Exception e)
             {
-                ShowRaceEnterError(e.Message, RaceEntryMatterFallback, "matter");
+                ShowRaceEnterError(e.Message, 0, null);
             }
             finally
             {
@@ -382,7 +373,9 @@ namespace Project.UI
             if (!string.IsNullOrEmpty(err) && err.StartsWith("not_enough_", StringComparison.OrdinalIgnoreCase))
             {
                 var res = string.IsNullOrEmpty(resource) ? err.Substring("not_enough_".Length) : resource;
-                msg = $"Недостаточно: {ResourceRuName(res)} (нужно {Mathf.Max(1, required)}).";
+                msg = required > 0
+                    ? $"Недостаточно {ResourceRuName(res)}. Нужно {required}."
+                    : $"Недостаточно {ResourceRuName(res)}.";
             }
             else
                 msg = "Не удалось войти: " + err;
@@ -453,7 +446,7 @@ namespace Project.UI
             _raceRewardCaption = CreateTmp(panel.transform, "RewardCaption", "Награда за победу", 22f, FontStyles.Normal);
             _raceRewardCaption.color = new Color(0.55f, 0.9f, 0.7f, 1f);
             _raceRewardRow = CreateResourceRow(panel.transform, "RewardRow");
-            _raceGoalText = CreateTmp(panel.transform, "GoalText", "Цель - набрать первым 200 маны", 28f, FontStyles.Bold);
+            _raceGoalText = CreateTmp(panel.transform, "GoalText", "", 28f, FontStyles.Bold);
             _raceGoalText.color = new Color(0xF0 / 255f, 1f, 0f, 1f); // #F0FF00
 
             _raceErrorText = CreateTmp(panel.transform, "Error", "", 20f, FontStyles.Normal);
@@ -471,7 +464,7 @@ namespace Project.UI
             h.childForceExpandWidth = true;
 
             EnsureRaceButtonSprites();
-            AddModalBtn(
+            _raceConfirmButton = AddModalBtn(
                 yn.transform,
                 "Чёрт с ним, паэхали",
                 ConfirmRaceEnterAndGo,
@@ -615,20 +608,6 @@ namespace Project.UI
             return Resources.Load<Sprite>(resourcesPath);
         }
 
-        private static RaceResourceLine[] FallbackEntry()
-        {
-            return new[] { new RaceResourceLine { resource = "matter", amount = RaceEntryMatterFallback } };
-        }
-
-        private static RaceResourceLine[] FallbackRewards()
-        {
-            return new[]
-            {
-                new RaceResourceLine { resource = "xp", amount = 200 },
-                new RaceResourceLine { resource = "matter", amount = 4 },
-            };
-        }
-
         private static string ResourceRuName(string resource)
         {
             switch ((resource ?? "").Trim().ToLowerInvariant())
@@ -682,6 +661,9 @@ namespace Project.UI
 
         private void HideRaceConfirm()
         {
+            ++_raceInfoRequest;
+            if (_raceConfirmButton != null)
+                _raceConfirmButton.interactable = false;
             if (_raceConfirmRoot != null)
                 _raceConfirmRoot.SetActive(false);
         }
@@ -703,7 +685,7 @@ namespace Project.UI
             return tmp;
         }
 
-        private static void AddModalBtn(Transform parent, string label, Action onClick, Color tint, Sprite bg)
+        private static Button AddModalBtn(Transform parent, string label, Action onClick, Color tint, Sprite bg)
         {
             var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
@@ -737,6 +719,7 @@ namespace Project.UI
             var labelLe = labelTmp.GetComponent<LayoutElement>();
             if (labelLe != null)
                 UnityEngine.Object.Destroy(labelLe);
+            return btn;
         }
 
         private async void GoBots()

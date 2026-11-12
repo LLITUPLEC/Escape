@@ -12,6 +12,8 @@ namespace Project.UI
         [SerializeField] private Sprite gold;
         [SerializeField] private Sprite matter;
         [SerializeField] private Sprite energy;
+        [SerializeField] private Sprite ingots;
+        [SerializeField] private Sprite keys;
 
         private static ExpeditionResourceIcons _instance;
         private static bool _loaded;
@@ -32,6 +34,8 @@ namespace Project.UI
                 else if (string.Equals(key, "gold", StringComparison.OrdinalIgnoreCase)) icon = _instance.gold;
                 else if (string.Equals(key, "matter", StringComparison.OrdinalIgnoreCase)) icon = _instance.matter;
                 else if (string.Equals(key, "energy", StringComparison.OrdinalIgnoreCase)) icon = _instance.energy;
+                else if (string.Equals(key, "ingots", StringComparison.OrdinalIgnoreCase)) icon = _instance.ingots;
+                else if (string.Equals(key, "keys", StringComparison.OrdinalIgnoreCase)) icon = _instance.keys;
             }
             return icon != null ? icon : ExpeditionTheme.Icon(key);
         }

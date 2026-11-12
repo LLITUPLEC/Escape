@@ -282,12 +282,31 @@ function M.apply_wallet_rewards(rewards, progress)
   return changed
 end
 
+local function visible_journal_entries(entries, journal_version)
+  local visible = {}
+  if type(entries) ~= "table" then return visible end
+  local array = #entries > 0
+  local iterate = array and ipairs or pairs
+  for key, entry in iterate(entries) do
+    local required = type(entry) == "table" and tonumber(entry.min_journal_version) or 1
+    if required <= journal_version then
+      visible[array and (#visible + 1) or key] = entry
+    end
+  end
+  return visible
+end
+
 function M.rpc_achievement_catalog_get(ctx, payload)
   local ok, result = pcall(function()
+    local journal_version = 1
     if payload ~= nil and payload ~= "" then
       local p = nk.json_decode(payload)
-      if type(p) == "table" and p.force_refresh == true then
-        M.invalidate_cache()
+      if type(p) == "table" then
+        if p.force_refresh == true then M.invalidate_cache() end
+        local requested = tonumber(p.journal_version)
+        if requested and requested >= 1 and requested < math.huge and requested == math.floor(requested) then
+          journal_version = requested
+        end
       end
     end
     local cat, source = M.get_catalog()
@@ -299,8 +318,8 @@ function M.rpc_achievement_catalog_get(ctx, payload)
       catalog_source = source,
       schema_version = tonumber(cat.schema_version) or 1,
       updated_at = tonumber(cat.updated_at) or 0,
-      categories = cat.categories or {},
-      chains = cat.chains or {},
+      categories = visible_journal_entries(cat.categories, journal_version),
+      chains = visible_journal_entries(cat.chains, journal_version),
     })
   end)
   if not ok then

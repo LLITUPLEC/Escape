@@ -12,6 +12,7 @@ local Smith = runtime_lua_require("modules.arena_smith_rewards", "arena_smith_re
 local Inventory = runtime_lua_require("modules.duel_match3_inventory", "duel_match3_inventory")
 local Guidance = runtime_lua_require("modules.duel_player_guidance", "duel_player_guidance")
 local PublicAppearance = runtime_lua_require("modules.duel_public_appearance", "duel_public_appearance")
+local ResourceMedals = runtime_lua_require("modules.duel_resource_medals", "duel_resource_medals")
 
 --- Турнир арены (отдельный chunk — не упирается в лимит локалей duel_match3.lua).
 return function(deps)
@@ -289,6 +290,15 @@ local function arena_count_side_bets_placed(T, uid)
   return n
 end
 
+local function arena_finalist_bets_all(T, uid, won)
+  arena_ensure_side_bet_tables(T)
+  local expected = arena_expected_side_bets_for_finalist(T.bracket_size)
+  local matching = won and T.bet_wins or T.bet_losses
+  local opposite = won and T.bet_losses or T.bet_wins
+  return expected > 0 and (tonumber(matching[uid]) or 0) == expected
+    and (tonumber(opposite[uid]) or 0) == 0 and arena_count_side_bets_placed(T, uid) == expected
+end
+
 local function arena_pack_my_side_bets(T, user_id, rk)
   local out = {}
   if T == nil or rk == nil or rk == "" then
@@ -536,12 +546,12 @@ local function advance(T, rk, writes)
     if not progress then progress, version = read_pve_progress(winner) end
     progress.gold = math.max(0, (tonumber(progress.gold) or 0) + g)
     progress.ore = math.max(0, (tonumber(progress.ore) or 0) + o)
+    ResourceMedals.earned(progress, g, o)
+    if g > 0 then achievement(writes, winner, "res.tournament_gold_earned", g) end
+    if o > 0 then achievement(writes, winner, "res.tournament_ore_earned", o) end
     if reward_sheet then Inventory.sync_resource_counters(reward_sheet, progress, deps.get_item_defs()) end
     writes[#writes + 1] = build_progress_write(winner, progress, version)
-    local expected = arena_expected_side_bets_for_finalist(T.bracket_size)
-    if (tonumber(T.bet_wins[winner]) or 0) == expected
-      and (tonumber(T.bet_losses[winner]) or 0) == 0
-      and arena_count_side_bets_placed(T, winner) == expected then
+    if arena_finalist_bets_all(T, winner, true) then
       achievement(writes, winner, "dnn.arena_perfect_bets_win", 1)
     end
     T.reward_receipt = { user_id = winner, gold = g, ore = o, granted_at = os.time() }
@@ -631,8 +641,13 @@ local function on_match_finished(state, winner_uid)
     if not uid_is_bot(T, loser) then T.eliminated[loser] = true end
     -- Two absent humans may supply a bracket placeholder winner, but neither
     -- is eligible for a champion payout or to keep an abandoned event alive.
-    for uid in pairs(state.arena_no_show_users or {}) do
+    local no_shows = state.arena_no_show_users or {}
+    for uid in pairs(no_shows) do
       if uid==pr.uid_a or uid==pr.uid_b then T.eliminated[uid]=true end
+    end
+    -- This belongs to the final result even when the last human loses to a bot.
+    if rk == "final" and not uid_is_bot(T, loser) and not no_shows[loser] and arena_finalist_bets_all(T, loser, false) then
+      achievement(writes, loser, "dnn.arena_all_bets_lost_final_loss", 1)
     end
     local consolation_sheet, consolation_progress, consolation_version = grant_smith(T, loser, false, writes)
     if consolation_sheet then sync_inventory_progress(loser, consolation_sheet, writes, consolation_progress, consolation_version) end
@@ -803,6 +818,12 @@ local function pop_full(registry, q, writes)
         local bag = summary.arena_tournaments[q.kind] or {}
         bag.played, bag.updated_at = (tonumber(bag.played) or 0) + 1, os.time()
         summary.arena_tournaments[q.kind] = bag
+        local cost = T.parts[p.uid].entry_cost
+        if cost.resource then
+          value.achievement_stats = type(value.achievement_stats) == "table" and value.achievement_stats or {}
+          ResourceMedals.add_counter(value.achievement_stats, "res." .. cost.resource .. "_spent", cost.amount)
+          ResourceMedals.add_counter(value.achievement_stats, "res.tournament_" .. cost.resource .. "_spent", cost.amount)
+        end
       end)
     end
   end

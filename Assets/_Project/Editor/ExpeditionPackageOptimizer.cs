@@ -23,7 +23,6 @@ namespace Project.Editor
             "Assets/_Project/Prefabs/UI/Leaderboard/LeaderboardPanel.prefab",
             "Assets/_Project/Prefabs/UI/Achievements/AchievementsPanel.prefab",
             "Assets/_Project/Prefabs/UI/Achievements/AchievementChainRowPrefabTemplate.prefab",
-            "Assets/_Project/Prefabs/CharacterUI/AchievementChainRowPrefabTemplate(Clone).prefab",
             "Assets/_Project/Prefabs/MainMenu/ArenaMenuWorld.prefab"
         };
         private static readonly string[] SceneOwners =

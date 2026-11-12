@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Project.Match3;
@@ -60,6 +61,7 @@ namespace Project.Editor
                 VerifyGate(report);
                 var identity = new GameObject("DisabledRecoveryAccountIdentity"); identity.SetActive(false);
                 var boot = identity.AddComponent<NakamaBootstrap>(); config = ScriptableObject.CreateInstance<NakamaConnectionConfig>(); config.host = "offline.invalid"; boot.Config = config;
+                VerifyDelayedSignIn(boot, queue, report);
                 Set(boot, "<Session>k__BackingField", Session("qa-user-a")); bootField.SetValue(null, boot); epochField.SetValue(null, 7);
                 var gate = Get<SessionOwnershipClaimGate>(boot, "_ownershipClaim");
                 var calls = new List<(string rpc, Wire payload)>();
@@ -149,6 +151,108 @@ namespace Project.Editor
             var next = gate.BeginAuthentication(); Check(next > generation && gate.NeedsClaim("a") && !gate.Acknowledge("a", generation), "Explicit same-user login rejects an old claim acknowledgement", report);
             Check(gate.Acknowledge("a", next) && !gate.NeedsClaim("a"), "New explicit-login claim can settle exactly its own generation", report);
             var logout = gate.BeginAuthentication(); Check(!gate.Acknowledge("a", next) && logout > next && gate.NeedsClaim("b"), "Logout invalidates delayed acknowledgements and the next account starts unclaimed", report);
+        }
+
+        private static void VerifyDelayedSignIn(NakamaBootstrap boot, ConcurrentQueue<Action> queue, Report report)
+        {
+            var bootstrap = typeof(NakamaBootstrap);
+            var store = bootstrap.Assembly.GetType("Project.Nakama.Security.NakamaCredentialStore", throwOnError: true);
+            var current = Field(store, "_current", S);
+            var previous = current.GetValue(null);
+            var record = Activator.CreateInstance(current.FieldType, nonPublic: true);
+            var profile = (string)bootstrap.GetMethod("GetDevelopmentProfileKey", S).Invoke(null, null);
+            Set(record, "scope", $"escape.credentials.v1|{boot.Config.GetScheme()}://{boot.Config.host}:{boot.Config.port}|{profile}");
+            Set(record, "useEmail", true);
+            Set(record, "userId", "qa-delayed-player");
+            Set(record, "knownEmail", "offline@example.invalid");
+            Set(record, "deviceId", "gen-offline-delay-test");
+            var proxy = DispatchProxy.Create<global::Nakama.IClient, DelayedSignInClient>();
+            var client = (DelayedSignInClient)(object)proxy;
+            current.SetValue(null, record);
+            Set(boot, "<Client>k__BackingField", proxy);
+            try
+            {
+                var now = DateTimeOffset.UtcNow;
+                var access = Token("qa-delayed-player", now.AddDays(-1));
+                var refresh = Token("qa-delayed-player", now.AddDays(5));
+                var restore = bootstrap.GetMethod("TryRestoreSavedSession", S);
+                var old = (global::Nakama.ISession)restore.Invoke(null, new object[] { access, refresh });
+                Check(old.IsExpired && !old.IsRefreshExpired, "A day-old access token remains eligible for refresh", report);
+                var damagedRefresh = (global::Nakama.ISession)restore.Invoke(null, new object[] { access, "broken" });
+                Check(damagedRefresh.UserId == old.UserId && damagedRefresh.IsRefreshExpired &&
+                    restore.Invoke(null, new object[] { "broken", "broken" }) == null,
+                    "Damaged tokens cannot strand startup; a readable access token retains the known account ID", report);
+
+                var renew = bootstrap.GetMethod("TryRefreshSessionAsync", I);
+                client.Reply = (_, _) => Task.FromResult(global::Nakama.Session.Restore(Token(old.UserId, now.AddHours(2)), refresh));
+                var accepted = (Task<global::Nakama.ISession>)renew.Invoke(boot, new object[] { old, false, CancellationToken.None });
+                Settle(accepted, queue);
+                Check(accepted.Result.UserId == old.UserId && !accepted.Result.IsExpired, "A valid refresh renews the same account", report);
+
+                client.Reply = (_, _) => Rejected(401);
+                var revoked = (Task<global::Nakama.ISession>)renew.Invoke(boot, new object[] { old, false, CancellationToken.None });
+                Settle(revoked, queue);
+                Check(revoked.Result == null, "A definitive refresh rejection permits linked-device recovery", report);
+
+                client.Reply = (_, _) => Rejected(503);
+                var transient = (Task)renew.Invoke(boot, new object[] { old, false, CancellationToken.None });
+                Check(SettleAuthFailure(transient, queue) is global::Nakama.ApiResponseException retry && retry.StatusCode == 503,
+                    "A transient server failure is preserved for retry instead of being treated as bad credentials", report);
+
+                var resolve = bootstrap.GetMethod("ResolveSessionAsync", I);
+                client.Reply = (method, args) =>
+                {
+                    Check(method == "AuthenticateDeviceAsync" && args[2] is false, "Known email account disables automatic device account creation", report);
+                    return Task.FromResult(global::Nakama.Session.Restore(Token("qa-other-device-owner", now.AddHours(2)), refresh));
+                };
+                var mismatch = (Task)resolve.Invoke(boot, new object[] { CancellationToken.None });
+                Check(SettleAuthFailure(mismatch, queue).GetType().Name == "EmailReauthenticationRequiredException",
+                    "A mismatched linked device cannot switch accounts silently", report);
+
+                client.Reply = (method, args) => method == "AuthenticateDeviceAsync" && args[2] is false
+                    ? Rejected(404) : throw new InvalidOperationException("Expected create-disabled device lookup.");
+                var missing = boot.EnsureConnectedAsync(CancellationToken.None);
+                Check(SettleAuthFailure(missing, queue).GetType().Name == "EmailReauthenticationRequiredException" &&
+                    Get<bool>(boot, "_emailReauthenticationRequired") && boot.Session == null && boot.Socket == null,
+                    "A missing linked device enters the reauthentication state and stops exposing a stale session", report);
+
+                client.Reply = (method, args) =>
+                {
+                    Check(method == "AuthenticateEmailAsync" && args[3] is false, "Email sign-in is direct and never creates an account", report);
+                    return Rejected(401);
+                };
+                var signIn = boot.LoginWithEmailAsync("offline@example.invalid", "offline-pass", create: false, CancellationToken.None);
+                Check(SettleAuthFailure(signIn, queue) is global::Nakama.ApiResponseException badPassword && badPassword.StatusCode == 401 &&
+                    Get<bool>(boot, "_emailReauthenticationRequired"), "Manual sign-in reaches authentication without an old session and permits retry after a wrong password", report);
+            }
+            finally
+            {
+                current.SetValue(null, previous);
+                Set(boot, "_emailReauthenticationRequired", false);
+                Set(boot, "<Client>k__BackingField", null);
+            }
+        }
+
+        public class DelayedSignInClient : DispatchProxy
+        {
+            internal Func<string, object[], object> Reply;
+            protected override object Invoke(MethodInfo targetMethod, object[] args) => Reply(targetMethod.Name, args);
+        }
+
+        private static Task<global::Nakama.ISession> Rejected(long status) =>
+            Task.FromException<global::Nakama.ISession>(new global::Nakama.ApiResponseException(status, "offline auth response", 0));
+
+        private static string Token(string user, DateTimeOffset expiry)
+        {
+            var json = "{\"uid\":\"" + user + "\",\"usn\":\"offline\",\"exp\":" + expiry.ToUnixTimeSeconds() + "}";
+            return "offline." + Convert.ToBase64String(Encoding.UTF8.GetBytes(json)).TrimEnd('=').Replace('+', '-').Replace('/', '_') + ".offline";
+        }
+
+        private static Exception SettleAuthFailure(Task task, ConcurrentQueue<Action> queue)
+        {
+            try { Settle(task, queue); }
+            catch (Exception error) when (task.IsFaulted) { return error; }
+            throw new InvalidOperationException("Expected an authentication failure.");
         }
 
         private static void VerifyLaunch(NakamaBootstrap boot, SessionOwnershipClaimGate gate, List<(string rpc, Wire payload)> calls, Report report)

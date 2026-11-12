@@ -5,6 +5,8 @@ local guidance_ok, Guidance = pcall(require, "modules.duel_player_guidance")
 if not guidance_ok then Guidance = require("duel_player_guidance") end
 local quote_ok, WorkshopQuote = pcall(require, "modules.duel_workshop_quote")
 if not quote_ok then WorkshopQuote = require("duel_workshop_quote") end
+local resources_ok, ResourceMedals = pcall(require, "modules.duel_resource_medals")
+if not resources_ok then ResourceMedals = require("duel_resource_medals") end
 
 --- Character / workshop / resources RPCs (вынесено из duel_match3.lua из‑за лимита локалей).
 return function(deps)
@@ -394,6 +396,7 @@ end
         if modern then Inventory.remember_sale(sheet, receipt) end
         local progress, version = read_pve_progress(uid)
         progress.gold = (tonumber(progress.gold) or 0) + gain
+        ResourceMedals.earned(progress, gain)
         local committed, err = pcall(commit_sheet, uid, sheet, progress, version)
         if committed then return encode_sale(sheet, progress, uid, receipt, false) end
         if not modern then error(err) end
@@ -549,6 +552,7 @@ end
 
       progress.ore = (tonumber(progress.ore) or 0) - ore_c
       progress.gold = (tonumber(progress.gold) or 0) - gold_c
+      ResourceMedals.spent(progress, gold_c, ore_c)
 
         if ingot_n > 0 then
           if not inventory_remove_def_total(sheet, ingot_def, ingot_n) then
@@ -804,6 +808,7 @@ end
           return nk.json_encode({ ok = false, err = "energy_full" })
         end
         progress.matter = m - matter_cost
+        ResourceMedals.spent(progress, nil, nil, matter_cost)
         progress.energy = e + add
       else
         local g = math.max(0, tonumber(progress.gold) or 0)
@@ -815,6 +820,7 @@ end
           return nk.json_encode({ ok = false, err = "energy_full" })
         end
         progress.gold = g - gold_cost
+        ResourceMedals.spent(progress, gold_cost)
         progress.energy = e + add
       end
       progress.energy = CFG.clamp_int(progress.energy, 0, energy_max)
@@ -881,6 +887,7 @@ end
         return nk.json_encode({ ok = false, err = "craft_already_ready" })
       end
       progress.gold = (tonumber(progress.gold) or 0) - rush_gold
+      ResourceMedals.spent(progress, rush_gold)
       wend = wend - rush_sec
       if wend < os.time() then
         wend = os.time()
@@ -1019,6 +1026,7 @@ end
 
         if cost > 0 then
           progress.gold = gold - cost
+          ResourceMedals.spent(progress, cost)
         end
         progress.nickname_changes = changes + 1
 

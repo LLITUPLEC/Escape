@@ -9,6 +9,7 @@ local CFG=load("duel_match3_config")
 local Shop=load("duel_shop")
 local Ranking=load("duel_global_boss_ranking")
 local Practice=load("duel_global_boss_practice")
+local Ach=load("duel_match3_achievements")
 local M={COLLECTION="duel_global_boss",PLAYER_COLLECTION="duel_global_boss_player",ATTEMPT_COLLECTION="duel_global_boss_attempt"}
 local SYSTEM="00000000-0000-0000-0000-000000000000"
 local DAY,WEEK=86400,604800
@@ -233,7 +234,7 @@ function M.start(uid,attempt_id,snapshot,consumable_receipt,sheet)
     nk.storage_write(writes);return a
   end)
 end
-function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal_reason)
+function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal_reason,critical_hit)
   local result,err=retry(function()
     local a,av=read(uid,M.ATTEMPT_COLLECTION,attempt_id);if not a then return nil,"attempt_not_found"end
     local e,ev=read(SYSTEM,M.COLLECTION,a.event_id)
@@ -261,6 +262,15 @@ function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal
     writes[#writes+1]=op(SYSTEM,M.COLLECTION,e.id,e,ev)
     writes[#writes+1]=op(uid,M.PLAYER_COLLECTION,e.id,p,pv)
     writes[#writes+1]=op(uid,M.ATTEMPT_COLLECTION,a.id,a,av)
+    if player_action and critical_hit and actual > 0 then
+      -- The attempt sequence protects this counter from lost-ack retries.
+      local summary,version=read(uid,CFG.STATS_COLLECTION,CFG.STATS_KEY)
+      summary=summary or{}
+      Ach.apply_boss_critical_hit(summary)
+      local summary_write=op(uid,CFG.STATS_COLLECTION,CFG.STATS_KEY,summary,version)
+      summary_write.permission_read=1
+      writes[#writes+1]=summary_write
+    end
     nk.storage_write(writes)
     return{attempt=a,event=e,actual_damage=actual,qualified=p.qualified,my_damage=p.total_damage}
   end)

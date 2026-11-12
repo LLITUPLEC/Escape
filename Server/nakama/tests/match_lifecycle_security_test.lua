@@ -59,9 +59,22 @@ local function test(name,fn)
     active=s;return s
   end
   local function rpc(u,s,p)local x={match_id=s.match_id,session_epoch=7};for k,v in pairs(p or {})do x[k]=v end;return F.nk.json_decode(L.rpc({user_id=u},F.nk.json_encode(x)))end
-  local ok,err=pcall(fn,F,R,LM,E,D,L,state,rpc,leave,loop,sent,function()return arena end,function()active=nil end)
+  local ok,err=pcall(fn,F,R,LM,E,D,L,state,rpc,leave,loop,sent,function()return arena end,function()active=nil end,Ach,J)
   assert(ok,name..": "..tostring(err));passed=passed+1;print("PASS "..name)
 end
+
+test("played mine surrender preserves damaging critical hits exactly once",function(F,R,M,E,D,L,state,rpc,leave,loop,sent,arena,drop,Ach,J)
+  package.loaded["modules.duel_match3_achievements"]=nil
+  local achievements=require("modules.duel_match3_achievements")
+  achievements.configure({finalization_journal=J})
+  Ach.flush_match_finish=achievements.flush_match_finish
+  R.award_pve_defeat=function()return{reward_xp=0,level=1}end
+  local s=state(false,true)
+  achievements.note_combat_damage(s,"a",s.bot_user_id,1,35,0,true)
+  assert(rpc("a",s).terminal and rpc("a",s).terminal and #sent==1)
+  local summary=F.get("stats","a","summary")
+  assert(summary.losses==1 and summary.achievement_stats["slaughter.critical_hits"]==1)
+end)
 
 test("reliable Race surrender settles both entries and broadcasts one shared terminal result",function(F,R,M,E,D,L,state,rpc,leave,loop,sent)
   local s=state(true);local result=rpc("a",s)

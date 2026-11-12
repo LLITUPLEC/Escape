@@ -298,23 +298,34 @@ namespace Project.UI
         {
             DisableLayout(panel);
             StyleOpaqueSurface(panel, ExpeditionTheme.Panel);
+            var casing = ExpeditionShelterSurface.Inset(panel, "ConsoleCasing", ExpeditionShelterSurface.Iron, .007f, .009f, .993f, .991f);
+            casing.SetSiblingIndex(panel.Find("ExpeditionOpaqueFill") == null ? 0 : 1);
+            var art = ExpeditionShelterSurface.Illustration(casing, "ShelterControlConsole", "shelter-console", .007f, .77f, .993f, .994f);
+            if (Application.isPlaying) art.gameObject.AddComponent<ExpeditionPanelArrival>();
+            ExpeditionShelterSurface.Inset(casing, "TitlePlate", ExpeditionShelterSurface.Iron, .045f, .856f, .64f, .927f);
             foreach (var label in panel.GetComponentsInChildren<TMP_Text>(true)) Text(label, 32, ExpeditionTheme.Ivory);
-            Place(panel, "Title", .06f, .91f, .82f, .98f);
+            Place(panel, "Title", .065f, .858f, .626f, .921f);
             var title = panel.Find("Title")?.GetComponent<TMP_Text>();
-            if (title != null) { title.text = "АККАУНТ"; Text(title, 44, ExpeditionTheme.Ivory); }
-            Place(panel, "Status", .065f, .765f, .935f, .89f);
-            Place(panel, "LinkedEmailLine", .065f, .68f, .935f, .765f);
-            Place(panel, "EmailInputSlot", .065f, .575f, .935f, .64f);
-            Place(panel, "PasswordInputSlot", .065f, .455f, .935f, .52f);
-            var emailLabel = ExpeditionUi.Text(panel, "ExpeditionEmailCaption", "E-MAIL", 23, .065f, .642f, .935f, .675f);
-            emailLabel.color = ExpeditionTheme.Muted;
-            var passwordLabel = ExpeditionUi.Text(panel, "ExpeditionPasswordCaption", "ПАРОЛЬ", 23, .065f, .522f, .935f, .555f);
-            passwordLabel.color = ExpeditionTheme.Muted;
-            Place(panel, "LinkButton", .065f, .35f, .935f, .425f);
-            Place(panel, "LoginButton", .065f, .252f, .935f, .327f);
-            Place(panel, "LogoutEmailButton", .065f, .154f, .935f, .229f);
-            Place(panel, "DeleteAccountButton", .065f, .047f, .935f, .105f);
-            Place(panel, "CloseButton", .855f, .922f, .955f, .982f);
+            if (title != null)
+            {
+                title.text = "НАСТРОЙКИ";
+                Text(title, 44, ExpeditionTheme.Ivory);
+                title.fontStyle = FontStyles.Bold;
+                title.alignment = TextAlignmentOptions.MidlineLeft;
+            }
+            Place(panel, "Status", .07f, .655f, .93f, .735f);
+            Place(panel, "LinkedEmailLine", .07f, .603f, .93f, .652f);
+            Place(panel, "EmailInputSlot", .07f, .504f, .93f, .564f);
+            Place(panel, "PasswordInputSlot", .07f, .397f, .93f, .457f);
+            var emailLabel = ExpeditionUi.Text(panel, "ExpeditionEmailCaption", "E-MAIL", 23, .07f, .568f, .93f, .597f);
+            emailLabel.color = ExpeditionTheme.Amber;
+            var passwordLabel = ExpeditionUi.Text(panel, "ExpeditionPasswordCaption", "ПАРОЛЬ", 23, .07f, .461f, .93f, .49f);
+            passwordLabel.color = ExpeditionTheme.Amber;
+            Place(panel, "LinkButton", .07f, .305f, .93f, .381f);
+            Place(panel, "LoginButton", .07f, .220f, .93f, .291f);
+            Place(panel, "LogoutEmailButton", .07f, .134f, .93f, .205f);
+            Place(panel, "DeleteAccountButton", .07f, .042f, .93f, .109f);
+            Place(panel, "CloseButton", .855f, .923f, .955f, .982f);
             foreach (var input in panel.GetComponentsInChildren<InputField>(true)) StyleInput(input);
             foreach (var button in panel.GetComponentsInChildren<Button>(true))
             {

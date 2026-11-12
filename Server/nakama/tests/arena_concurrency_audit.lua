@@ -240,6 +240,8 @@ reset("final")
 a, b = instance(), instance()
 interleave(function() finish(a, "final", 1) end, function() finish(b, "final", 1) end)
 assert(gold() == 3000 and wallet_writes == 1) pass("concurrent final pays exactly one prize")
+assert(ach("user-1", "res.tournament_gold_earned") == 3000)
+assert(get(cfg.PVE_PROGRESS_COLLECTION, "profile", "user-1").resource_medals["res.gold_earned"] == 3000)
 
 betting() a = instance()
 for _ = 1, 10 do bet(a) end
@@ -331,6 +333,7 @@ local l1, l2
 interleave(function() l1 = a.duel_arena_queue_leave({ user_id = "alice" }) end,
   function() l2 = b.duel_arena_queue_leave({ user_id = "alice" }) end, "queue")
 assert(l1.ok ~= l2.ok and gold("alice") == 5000 and #get("arena_queue", "state").queues["gold:600"].entries == 0)
+assert(ach("alice", "res.tournament_gold_spent") == 0 and ach("alice", "res.gold_spent") == 0)
 pass("cross-VM duplicate cancellation refunds exactly once")
 reset() a = instance()
 put(cfg.PVE_PROGRESS_COLLECTION, "profile", "alice", { gold = 5000, ore = 0 })
@@ -388,6 +391,7 @@ pass("new bracket never invents full HP before authoritative fight stats exist")
 for i = 1, 8 do
   assert(registry.users["player-" .. i].tid == tid and gold("player-" .. i) == 4400)
   assert(get(cfg.STATS_COLLECTION, "summary", "player-" .. i).summary.arena_tournaments.gold.played == 1)
+  assert(ach("player-" .. i, "res.tournament_gold_spent") == 600 and ach("player-" .. i, "res.gold_spent") == 600)
 end
 assert(#registry.queues["gold:600"].entries == 0)
 pass("eight concurrent VM joins form one shared bracket and charge every entrant once")
@@ -491,6 +495,75 @@ do
   assert(ach("user-1","slaughter.arena_bets_won") == 1 and ach("user-1","slaughter.arena_bets_lost") == 1)
   assert(wallet_writes == 0)
   pass("terminal polling settles known outcomes and never invents an unfinished forecast result")
+end
+
+do
+  local flower = "dnn.arena_all_bets_lost_final_loss"
+  local player = "user-2"
+  local function start_round(round)
+    local tour = get("arena_tournament", "audit")
+    tour.phase = round
+    for slot, pair in ipairs(tour[round]) do
+      pair.status, pair.match_id = "fighting", "match-" .. slot
+    end
+    return tour[round]
+  end
+  local function reach_final(side, missing_semifinal_pick)
+    betting()
+    local api = instance()
+    for slot = 2, 4 do bet(api, player, { slot = slot, side = side }) end
+    for slot, pair in ipairs(start_round("qf")) do
+      api.on_match_finished(state("qf", slot), slot == 1 and player or pair.uid_a)
+    end
+    local tour = get("arena_tournament", "audit")
+    for slot, pair in ipairs(tour.sf) do
+      if not missing_semifinal_pick and pair.uid_a ~= player and pair.uid_b ~= player then
+        bet(api, player, { slot = slot, side = side })
+      end
+    end
+    for slot, pair in ipairs(start_round("sf")) do
+      local own_pair = pair.uid_a == player or pair.uid_b == player
+      api.on_match_finished(state("sf", slot), own_pair and player or pair.uid_a)
+    end
+    local pair = start_round("final")[1]
+    local opponent = pair.uid_a == player and pair.uid_b or pair.uid_a
+    local final_state = state("final", 1)
+    final_state.started = true
+    return api, opponent, final_state
+  end
+
+  local api, opponent, final_state = reach_final("b")
+  assert(ach(player, "slaughter.arena_bets_lost") == 4 and ach(player, flower) == 0)
+  fail_next = "injected finalist settlement outage"
+  assert(not pcall(api.on_match_finished, final_state, opponent))
+  assert(ach(player, flower) == 0 and get("arena_tournament", "audit").phase == "final")
+  local other = instance()
+  interleave(function() api.on_match_finished(final_state, opponent) end,
+    function() other.on_match_finished(final_state, opponent) end)
+  api.on_match_finished(final_state, opponent)
+  assert(ach(player, flower) == 1 and get("arena_tournament", "audit").phase == "done")
+  pass("four settled losing forecasts and a lost final count once through outage and concurrent replay")
+
+  api, opponent, final_state = reach_final("b", true)
+  api.on_match_finished(final_state, opponent)
+  assert(ach(player, "slaughter.arena_bets_lost") == 3 and ach(player, flower) == 0)
+  api, opponent, final_state = reach_final("a")
+  api.on_match_finished(final_state, opponent)
+  assert(ach(player, "slaughter.arena_bets_won") == 4 and ach(player, flower) == 0)
+  api, opponent, final_state = reach_final("b")
+  final_state.started, final_state.arena_no_show_users = false, { [player] = true }
+  api.on_match_finished(final_state, opponent)
+  assert(ach(player, flower) == 0)
+  pass("missing or winning forecasts and a finalist no-show cannot qualify for Flower")
+
+  api, opponent, final_state = reach_final("b")
+  get("arena_tournament", "audit").parts[opponent].bot = true
+  api.on_match_finished(final_state, opponent)
+  assert(get("arena_tournament", "audit").aborted and ach(player, flower) == 1)
+  api, opponent, final_state = reach_final("a")
+  api.on_match_finished(final_state, player)
+  assert(ach(player, "dnn.arena_perfect_bets_win") == 1 and ach(player, flower) == 0)
+  pass("Flower qualifies against a bot finalist and the all-winning champion keeps Totalizator")
 end
 
 do

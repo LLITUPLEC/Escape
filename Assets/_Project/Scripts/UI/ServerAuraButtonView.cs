@@ -5,26 +5,16 @@ using UnityEngine.UI;
 
 namespace Project.UI
 {
-    /// <summary>
-    /// Висит на <c>aura_btn</c>: показ при активной серверной аномалии, вращение <c>border</c>, таймер в <c>timer</c>.
-    /// </summary>
+    /// <summary>Показывает сейсмограф убежища и оставшееся время активной аномалии.</summary>
     public sealed class ServerAuraButtonView : MonoBehaviour
     {
         [SerializeField] private RectTransform border;
         [SerializeField] private TMP_Text timerTmp;
         [SerializeField] private Text timerText;
-        [Tooltip("Скорость вращения border против часовой стрелки (градусы/сек).")]
-        [SerializeField] private float borderRotationSpeedDegreesPerSecond = 45f;
-
-        private bool _spinning;
+        private bool _anomalyActive;
+        private bool _readoutInstalled;
         private long _endsAtUnix;
         private float _timerAccum;
-
-        public float BorderRotationSpeedDegreesPerSecond
-        {
-            get => borderRotationSpeedDegreesPerSecond;
-            set => borderRotationSpeedDegreesPerSecond = value;
-        }
 
         private void Awake()
         {
@@ -39,14 +29,7 @@ namespace Project.UI
 
         private void Update()
         {
-            if (!_spinning) return;
-
-            if (border != null)
-            {
-                // Положительный Z в Unity UI — против часовой стрелки.
-                border.Rotate(0f, 0f, borderRotationSpeedDegreesPerSecond * Time.unscaledDeltaTime, Space.Self);
-            }
-
+            if (!_anomalyActive) return;
             _timerAccum += Time.unscaledDeltaTime;
             if (_timerAccum >= 0.25f)
             {
@@ -55,42 +38,89 @@ namespace Project.UI
             }
         }
 
-        /// <summary>Показать/скрыть кнопку, вращение border и обратный отсчёт до <paramref name="endsAtUnix"/>.</summary>
+        internal void InstallReadout()
+        {
+            if (_readoutInstalled) return;
+            EnsureRefs();
+            var button = border != null ? border.GetComponentInChildren<Button>(true) : null;
+            if (button == null) return;
+            _readoutInstalled = true;
+            var oldIcon = transform.Find("img");
+            if (oldIcon != null) oldIcon.gameObject.SetActive(false);
+
+            ExpeditionUi.SetRect(button.transform as RectTransform, 0, 0, 1, 1);
+            ExpeditionUi.StyleButton(button);
+            var screen = ExpeditionUi.Rect(button.transform, "AnomalySeismograph", .06f, .16f, .372f, .84f);
+            var waveform = screen.gameObject.AddComponent<ExpeditionAuraSignal>();
+            waveform.raycastTarget = false;
+
+            var title = ExpeditionUi.Text(button.transform, "ExpeditionAuraTitle", "АНОМАЛИЯ", 25,
+                .427f, .50f, .956f, .89f, TextAlignmentOptions.MidlineLeft);
+            title.fontStyle = FontStyles.Bold;
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 18;
+            title.fontSizeMax = 25;
+            title.textWrappingMode = TextWrappingModes.NoWrap;
+            title.margin = Vector4.zero;
+            title.color = new Color32(179, 243, 220, 255);
+
+            if (timerTmp != null)
+            {
+                timerTmp.transform.SetParent(button.transform, false);
+                ExpeditionUi.SetRect(timerTmp.rectTransform, .427f, .13f, .956f, .50f);
+                timerTmp.font = ExpeditionTheme.Font;
+                timerTmp.fontSize = 27;
+                timerTmp.enableAutoSizing = true;
+                timerTmp.fontSizeMin = 17;
+                timerTmp.fontSizeMax = 27;
+                timerTmp.textWrappingMode = TextWrappingModes.NoWrap;
+                timerTmp.alignment = TextAlignmentOptions.MidlineLeft;
+                timerTmp.margin = Vector4.zero;
+                timerTmp.color = ExpeditionTheme.Ivory;
+                timerTmp.raycastTarget = false;
+            }
+            if (timerText != null)
+            {
+                timerText.transform.SetParent(button.transform, false);
+                ExpeditionUi.SetRect(timerText.rectTransform, .427f, .13f, .956f, .50f);
+                timerText.font = ExpeditionTheme.LegacyFont;
+                timerText.fontSize = 25;
+                timerText.alignment = TextAnchor.MiddleLeft;
+                timerText.color = ExpeditionTheme.Ivory;
+                timerText.raycastTarget = false;
+            }
+        }
+
         public void SetAnomalyActive(bool active, long endsAtUnix = 0)
         {
             EnsureRefs();
-            _spinning = active;
-            _endsAtUnix = endsAtUnix;
+            _anomalyActive = active;
+            _endsAtUnix = active ? endsAtUnix : 0;
             _timerAccum = 0f;
-            if (!active && border != null)
-                border.localRotation = Quaternion.identity;
-            if (!active)
-                SetTimerLabel("");
-            else
-                RefreshTimerLabel();
-            gameObject.SetActive(active);
+            RefreshTimerLabel();
+            gameObject.SetActive(_anomalyActive);
         }
 
         private void RefreshTimerLabel()
         {
-            if (!_spinning || _endsAtUnix <= 0)
+            if (!_anomalyActive || _endsAtUnix <= 0)
             {
-                SetTimerLabel(_spinning ? "00:00:00" : "");
+                SetTimerLabel(_anomalyActive ? "Активна" : "");
                 return;
             }
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var remain = Math.Max(0L, _endsAtUnix - now);
+            var remain = _endsAtUnix - now;
+            if (remain <= 0)
+            {
+                SetAnomalyActive(false);
+                return;
+            }
             var h = remain / 3600L;
             var m = (remain % 3600L) / 60L;
             var s = remain % 60L;
             SetTimerLabel($"{h:00}:{m:00}:{s:00}");
 
-            if (remain <= 0)
-            {
-                // Время вышло — прячем до следующего RPC-обновления.
-                SetAnomalyActive(false);
-            }
         }
 
         private void SetTimerLabel(string value)
@@ -147,8 +177,6 @@ namespace Project.UI
         private void OnValidate()
         {
             EnsureRefs();
-            if (borderRotationSpeedDegreesPerSecond < 0f)
-                borderRotationSpeedDegreesPerSecond = 0f;
         }
 #endif
     }

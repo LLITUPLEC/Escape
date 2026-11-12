@@ -36,7 +36,7 @@ Battle.configure({api=Boss,CFG=CFG,new_stats=Engine.new_stats,new_board=Engine.n
  effects={normalize=function()error('practice cannot normalize consumables')end,apply=function()error('practice cannot apply consumables')end},
  apply_player=function(actor,uid,read_only)
   assert(read_only and uid=='hero');player_applied=player_applied+1
-  actor.hp=100000;actor.max_hp=100000;actor.initial_hp=100000;actor.base_damage=5000;actor.base_armor=0;actor.base_crit=0;actor.mana=100
+  actor.hp=100000;actor.max_hp=100000;actor.initial_hp=100000;actor.base_damage=5000;actor.base_armor=0;actor.base_crit=1;actor.mana=100
  end,choose=Engine.choose,validate=Engine.validate,resolve=Engine.resolve,action_cost=Engine.action_cost,
  tick_buffs=Engine.tick_buffs,tick_cooldowns=Engine.tick_cooldowns,parse=function(v)return v end,
  filter_messages=function(_,m)return m end,stale=function()return false end,reject=function(_,_,why)error(why)end,
@@ -54,6 +54,7 @@ check(not s._consumable_bindings,'practice leaves armed consumables and bounty c
 -- A real petard action uses the actual shipping resolve and mana/cooldown rules.
 Battle.loop({},s,1,message(17));Battle.loop({},s,2,message(CFG.OP_ACTION_REQUEST,{actionType=4,fromX=-1,fromY=-1,toX=-1,toY=-1,cx=-1,cy=-1}))
 check(s.global_boss.my_damage>0 and s.stats[s.bot_user_id].hp<50000,'actual engine damage is recorded only in the private practice HP')
+check(s.last_crit and not s._ach_counters,'practice critical hit leaves no player achievement progress')
 check(s.stats.hero.petard_cd>0 and s._boss_sequence==1,'practice uses real ability cooldown and authoritative sequence')
 local damage=s.global_boss.my_damage
 Battle.join({},s,3)

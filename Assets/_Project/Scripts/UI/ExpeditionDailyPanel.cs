@@ -14,16 +14,32 @@ namespace Project.UI
     public sealed class ExpeditionDailyPanel : MonoBehaviour
     {
         private static readonly Color Ink = new Color32(7, 23, 28, 255), Green = new Color32(132, 185, 151, 255);
+        private static readonly Color ClaimedText = new Color32(184, 186, 187, 255), ClaimedIcon = new Color32(175, 175, 175, 255);
+        private static readonly Vector2[] Camps =
+        {
+            new(.18f, .77f), new(.48f, .83f), new(.80f, .71f), new(.69f, .48f),
+            new(.33f, .49f), new(.18f, .23f), new(.70f, .19f),
+        };
+        private static readonly string[] CampRewards =
+        {
+            "Надёжный запас", "Металл для мастерской", "Редкая материя", "Сила перед спуском",
+            "Большой запас", "Стойкость и металл", "Трофей экспедиции",
+        };
         private bool _quests, _fixture, _resetRequested;
+        private int _selectedQuest = -1, _previewDay = -1, _displayedToday;
         private ItemCatalog _catalog;
         private TMP_Text _subtitle, _status, _focusKicker, _focusTitle, _focusStatus, _bonusStatus;
-        private RewardStrip _focusRewards;
+        private TMP_Text _contractTitle, _contractDescription, _contractProgress, _contractStatus;
+        private Image _contractIcon;
+        private RewardStrip _focusRewards, _contractRewards;
         private Image _bonusFrame;
         private ExpeditionDailyLoginFrame _focusFrame, _focusClaimed;
+        private ExpeditionSupplyFrame _loginClaimFrame;
+        private ExpeditionPanelArrival _focusArrival, _contractArrival;
         private readonly QuestCard[] _questCards = new QuestCard[3];
         private readonly DayCard[] _days = new DayCard[7];
-        private readonly Image[] _path = new Image[7];
-        private Button _loginClaim, _bonusClaim;
+        private readonly List<Image>[] _trail = new List<Image>[Camps.Length - 1];
+        private Button _loginClaim, _bonusClaim, _questClaim;
         private CancellationTokenSource _cts;
         private DailyRewardsService.State _fixtureState;
 
@@ -49,7 +65,8 @@ namespace Project.UI
             _cts = new CancellationTokenSource(); DailyRewardsService.Changed += Refresh;
             ExpeditionUi.Fill(transform, "Shade", 0, 0, 1, 1, new Color(0, 0, 0, .84f)).raycastTarget = true;
             var panel = ExpeditionUi.Panel(transform, "DailyPanel", .035f, .075f, .965f, .925f).rectTransform;
-            Label(panel, "Title", _quests ? "ЗАДАНИЯ ЭКСПЕДИЦИИ" : "ПРИПАСЫ ЗА ВХОД", 36, .055f, .925f, .875f, .977f).fontStyle = FontStyles.Bold;
+            if (Application.isPlaying) panel.gameObject.AddComponent<ExpeditionPanelArrival>();
+            Label(panel, "Title", _quests ? "Доска заданий" : "Маршрут снабжения", 43, .055f, .925f, .875f, .977f).fontStyle = FontStyles.Bold;
             ExpeditionUi.Button(panel, "Close", "×", .895f, .925f, .973f, .979f, () => Destroy(gameObject), false, 42);
             _subtitle = Label(panel, "DayReset", "Загрузка…", 22, .06f, .88f, .94f, .922f); _subtitle.color = ExpeditionTheme.Muted;
             if (_quests) BuildQuests(panel); else BuildLogin(panel);
@@ -59,26 +76,43 @@ namespace Project.UI
         }
         private void BuildQuests(RectTransform parent)
         {
+            ExpeditionShelterSurface.Illustration(parent, "GuildBoard", "daily-contract-board", .035f, .611f, .965f, .869f);
             for (var i = 0; i < 3; i++)
             {
-                var index = i; var y = .642f - .222f * i;
-                var frame = Card(parent, "DailyQuestCard" + i, .045f, y, .955f, y + .212f); var root = frame.rectTransform;
-                var icon = Picture(root, "QuestEmblem", null, .03f, .66f, .155f, .94f);
-                var title = Label(root, "QuestName", "", 31, .18f, .775f, .96f, .94f); title.fontStyle = FontStyles.Bold;
-                var description = Label(root, "QuestDescription", "", 23, .18f, .56f, .96f, .775f); description.color = ExpeditionTheme.Muted;
-                var progress = Label(root, "QuestProgress", "", 22, .04f, .455f, .34f, .55f);
-                var status = Label(root, "QuestState", "", 20, .36f, .455f, .96f, .55f, TextAlignmentOptions.Right);
-                var track = ExpeditionUi.Fill(root, "QuestProgressTrack", .04f, .399f, .96f, .433f, new Color32(3, 15, 19, 255)); track.sprite = ModalPanelCloseButton.WhiteSprite();
+                var index = i;
+                var x = .055f + .301f * i;
+                var notice = ExpeditionUi.Button(parent, "DailyQuestCard" + i, "", x, .621f, x + .287f, .791f,
+                    () => SelectQuest(index), false);
+                var root = (RectTransform)notice.transform;
+                ExpeditionUi.Fill(root, "NoticePaper", .026f, .032f, .974f, .968f, new Color32(44, 30, 21, 255));
+                var title = Label(root, "QuestName", "", 23, .10f, .50f, .90f, .78f, TextAlignmentOptions.Center);
+                title.fontStyle = FontStyles.Bold;
+                var icon = Picture(root, "QuestEmblem", null, .34f, .77f, .66f, 1.17f);
+                var status = Label(root, "QuestState", "", 18, .055f, .381f, .945f, .51f, TextAlignmentOptions.Center);
+                var track = ExpeditionUi.Fill(root, "QuestProgressTrack", .07f, .344f, .93f, .375f, new Color32(3, 15, 19, 255));
                 var fill = ExpeditionUi.Fill(track.transform, "DailyQuestProgressFill", 0, 0, 1, 1, ExpeditionTheme.Amber);
                 fill.sprite = ModalPanelCloseButton.WhiteSprite(); fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.fillOrigin = 0;
-                var rewards = new RewardStrip(this, root, "QuestRewards", .035f, .065f, .625f, .35f, RewardStyle.Compact);
-                var claim = ExpeditionUi.Button(root, "ClaimQuest", "ПОЛУЧИТЬ", .65f, .08f, .966f, .335f, () => Claim("quest", index), true, 24); FitButton(claim, 24);
-                _questCards[i] = new QuestCard { Frame = frame, Icon = icon, Title = title, Description = description, Progress = progress, Status = status,
-                    Fill = fill, Rewards = rewards, Claim = claim };
+                var rewards = new RewardStrip(this, root, "QuestRewards", .06f, .045f, .94f, .323f, RewardStyle.Mini);
+                _questCards[i] = new QuestCard { Notice = notice, Icon = icon, Title = title, Status = status, Fill = fill, Rewards = rewards };
             }
-            _bonusFrame = Card(parent, "DailyCompletionBonus", .045f, .077f, .955f, .188f, true); var bonus = _bonusFrame.rectTransform;
+
+            var contract = Card(parent, "PinnedContract", .045f, .245f, .955f, .605f).rectTransform;
+            if (Application.isPlaying) _contractArrival = contract.gameObject.AddComponent<ExpeditionPanelArrival>();
+            _contractIcon = Picture(contract, "ContractEmblem", null, .035f, .685f, .19f, .951f);
+            _contractTitle = Label(contract, "ContractTitle", "", 37, .207f, .805f, .96f, .955f);
+            _contractTitle.fontStyle = FontStyles.Bold;
+            _contractDescription = Label(contract, "ContractDescription", "", 26, .207f, .64f, .96f, .803f);
+            _contractDescription.color = ExpeditionTheme.Ivory;
+            _contractProgress = Label(contract, "ContractProgress", "", 25, .053f, .495f, .40f, .602f);
+            _contractStatus = Label(contract, "ContractStatus", "", 23, .402f, .495f, .945f, .602f, TextAlignmentOptions.Right);
+            _contractRewards = new RewardStrip(this, contract, "ContractRewards", .05f, .10f, .62f, .46f, RewardStyle.Compact);
+            _questClaim = ExpeditionUi.Button(contract, "ClaimQuest", "ПОЛУЧИТЬ", .65f, .135f, .958f, .405f,
+                () => Claim("quest", _selectedQuest), true, 26);
+            FitButton(_questClaim, 26);
+
+            _bonusFrame = Card(parent, "DailyCompletionBonus", .045f, .079f, .955f, .233f, true); var bonus = _bonusFrame.rectTransform;
             Picture(bonus, "CompletionEmblem", ConsumablePresentation.Icon(ConsumablePresentation.Bounty), .035f, .14f, .16f, .86f);
-            Label(bonus, "BonusKicker", "НАГРАДА ЗА ВСЕ ТРИ ЗАДАНИЯ", 19, .19f, .73f, .965f, .93f).color = ExpeditionTheme.Amber;
+            Label(bonus, "BonusKicker", "Награда за все три задания", 21, .19f, .73f, .965f, .93f).color = ExpeditionTheme.Amber;
             Label(bonus, "BonusName", "Свиток щедрой добычи ×1", 27, .19f, .48f, .965f, .74f).fontStyle = FontStyles.Bold;
             Label(bonus, "BonusDescription", "Золото и руда PvE ×1,5 на 1 час", 20, .19f, .24f, .66f, .47f).color = ExpeditionTheme.Muted;
             _bonusStatus = Label(bonus, "BonusState", "", 18, .19f, .045f, .66f, .24f);
@@ -86,28 +120,53 @@ namespace Project.UI
         }
         private void BuildLogin(RectTransform parent)
         {
-            var focus = LoginCard(parent, "DailyCurrentReward", .045f, .61f, .955f, .865f, out _focusFrame).rectTransform;
+            var map = ExpeditionShelterSurface.Illustration(parent, "SupplyMap", "daily-supply-map", .035f, .382f, .965f, .87f);
+            ExpeditionUi.Fill(map, "MapInk", 0, 0, 1, 1, new Color32(26, 14, 8, 97));
+            for (var segment = 0; segment < _trail.Length; segment++)
+            {
+                var dots = _trail[segment] = new List<Image>();
+                for (var dot = 1; dot <= 8; dot++)
+                {
+                    var p = Vector2.Lerp(Camps[segment], Camps[segment + 1], dot / 9f);
+                    var pin = ExpeditionUi.Fill(map, "RouteDot", p.x, p.y, p.x, p.y, ExpeditionTheme.Muted);
+                    pin.rectTransform.sizeDelta = Vector2.one * 8;
+                    dots.Add(pin);
+                }
+            }
+
+            var focus = LoginCard(parent, "DailyCurrentReward", .045f, .154f, .955f, .374f, out _focusFrame).rectTransform;
+            ExpeditionUi.Fill(focus, "ChestInterior", .014f, .024f, .986f, .976f, Ink).transform.SetAsFirstSibling();
+            if (Application.isPlaying) _focusArrival = focus.gameObject.AddComponent<ExpeditionPanelArrival>();
             _focusKicker = Label(focus, "CurrentDay", "", 22, .035f, .84f, .89f, .96f); _focusKicker.color = ExpeditionTheme.Amber;
             _focusClaimed = ClaimedMark(focus, .905f, .835f, .967f, .96f);
             _focusTitle = Label(focus, "CurrentRewardName", "", 32, .035f, .69f, .965f, .84f); _focusTitle.fontStyle = FontStyles.Bold;
             _focusRewards = new RewardStrip(this, focus, "CurrentRewardItems", .04f, .17f, .96f, .68f, RewardStyle.Featured);
             _focusStatus = Label(focus, "CurrentRewardState", "", 21, .035f, .035f, .965f, .16f, TextAlignmentOptions.Center);
-            for (var i = 0; i < 7; i++)
+            for (var i = 0; i < Camps.Length; i++)
             {
-                _path[i] = ExpeditionUi.Fill(parent, "CycleStep" + (i + 1), .05f + i * .13f, .592f, .17f + i * .13f, .599f, ExpeditionTheme.Teal); _path[i].sprite = ModalPanelCloseButton.WhiteSprite();
-                var final = i == 6; var column = i % 3; var row = i / 3;
-                var x = .045f + column * .308f; var y = .447f - row * .113f;
-                var frame = LoginCard(parent, "LoginDayCard" + (i + 1), final ? .045f : x, final ? .219f : y, final ? .955f : x + .292f, final ? .326f : y + .105f, out var border);
-                var card = frame.rectTransform;
-                var title = Label(card, "DayName", "ДЕНЬ " + (i + 1), final ? 27 : 22, .04f, final ? .52f : .73f, final ? .24f : .50f, .94f);
-                title.fontStyle = FontStyles.Bold; title.color = final ? ExpeditionTheme.Amber : ExpeditionTheme.Ivory;
-                var state = Label(card, "DayState", "", final ? 18 : 16, final ? .035f : .50f, final ? .14f : .73f, final ? .24f : .96f, final ? .49f : .94f, TextAlignmentOptions.Center);
-                var rewards = new RewardStrip(this, card, "DayItems", final ? .27f : .03f, .075f, .97f, final ? .93f : .71f, RewardStyle.Mini);
-                var check = final ? ClaimedMark(card, .20f, .17f, .248f, .47f) : ClaimedMark(card, .845f, .745f, .96f, .96f);
-                _days[i] = new DayCard { Frame = frame, Border = border, Check = check, Status = state, Rewards = rewards };
+                var index = i;
+                var final = i == Camps.Length - 1;
+                var p = Camps[i];
+                var halfWidth = final ? .158f : .110f;
+                var camp = ExpeditionUi.Button(map, "LoginDayCard" + (i + 1), "", p.x - halfWidth, p.y - .082f, p.x + halfWidth, p.y + .082f,
+                    () => PreviewCamp(index + 1));
+                var frame = ExpeditionSupplyFrame.Install(camp,
+                    final ? ExpeditionSupplyFrame.Silhouette.Trophy : ExpeditionSupplyFrame.Silhouette.Camp);
+                var root = (RectTransform)camp.transform;
+                var title = Label(root, "DayName", final ? "День 7 · Трофей" : "День " + (i + 1),
+                    25, .075f, .48f, .925f, .89f, TextAlignmentOptions.Center);
+                title.fontStyle = FontStyles.Bold;
+                var state = Label(root, "DayState", "", 18, .13f, .19f, .87f, .48f, TextAlignmentOptions.Center);
+                var check = ClaimedMark(root, .43f, .025f, .57f, .21f);
+                _days[i] = new DayCard { Camp = camp, Frame = frame, Check = check, Title = title, Status = state };
             }
-            Label(parent, "CycleHint", "Пропуски не сбрасывают путь. После 7 получений начнётся новый цикл.", 21, .06f, .172f, .94f, .211f, TextAlignmentOptions.Center).color = ExpeditionTheme.Muted;
-            _loginClaim = ExpeditionUi.Button(parent, "ClaimLogin", "ПОЛУЧИТЬ НАГРАДУ", .12f, .091f, .88f, .16f, () => Claim("login", -1), true, 30); FitButton(_loginClaim, 30);
+            _loginClaim = ExpeditionUi.Button(parent, "ClaimLogin", "ПОЛУЧИТЬ НАГРАДУ", .12f, .079f, .88f, .144f,
+                () => { if (_previewDay > 0 && _previewDay != _displayedToday) PreviewCamp(_displayedToday); else Claim("login", -1); }, false, 30);
+            _loginClaimFrame = ExpeditionSupplyFrame.Install(_loginClaim, ExpeditionSupplyFrame.Silhouette.Claim);
+            FitButton(_loginClaim, 30);
+            var claimLabel = _loginClaim.GetComponentInChildren<TMP_Text>();
+            claimLabel.fontStyle = FontStyles.Bold;
+            ExpeditionUi.SetRect(claimLabel.rectTransform, .075f, .08f, .925f, .92f);
         }
         private void Refresh()
         {
@@ -117,36 +176,59 @@ namespace Project.UI
             if (state == null)
             {
                 _status.text = DailyRewardsService.Error ?? "Загрузка наград…";
-                if (_loginClaim != null) _loginClaim.interactable = false;
-                foreach (var card in _questCards) if (card != null) card.Claim.interactable = false;
+                if (_loginClaim != null)
+                {
+                    _loginClaim.interactable = false;
+                    _loginClaimFrame.Present(false);
+                }
+                if (_questClaim != null) _questClaim.interactable = false;
+                foreach (var card in _questCards) if (card != null) card.Notice.interactable = false;
+                foreach (var day in _days) if (day != null) day.Camp.interactable = false;
                 if (_bonusClaim != null) _bonusClaim.interactable = false;
                 return;
             }
             if (_fixture || DailyRewardsService.EstimatedServerTime < state.reset_at) _resetRequested = false;
             RefreshTime(state);
             _status.text = !_fixture && DailyRewardsService.Error != null ? DailyRewardsService.Error : busy ? "Обновляем награды…" :
-                _quests ? "Три цели на сегодня. Каждая награда — отдельно." : state.login.can_claim ? "Награда готова — заберите припасы." : "Сегодняшние припасы уже получены.";
+                _quests ? "Награды за задания можно забрать по отдельности." : "Пропуски сохраняют маршрут. После седьмой стоянки он начнётся заново.";
             if (state.receipt?.pending_items?.Length > 0) _status.text = "Предметы ждут свободного места в инвентаре.";
             if (_quests) RefreshQuests(state, busy); else RefreshLogin(state, busy);
         }
         private void RefreshQuests(DailyRewardsService.State state, bool busy)
         {
+            if (_selectedQuest < 0)
+            {
+                _selectedQuest = Array.FindIndex(state.quests, quest => quest.ready && !quest.claimed);
+                if (_selectedQuest < 0) _selectedQuest = 0;
+            }
             var claimed = 0;
             for (var i = 0; i < 3; i++)
             {
-                var q = state.quests[i]; var card = _questCards[i];
-                card.Title.text = QuestName(q); card.Description.text = QuestDescription(q);
-                card.Icon.sprite = ExpeditionTheme.Icon(q.id == "mine" ? "mine" : q.id == "abilities" ? "energy" : "arena");
-                card.Progress.text = Math.Min(q.progress, q.target) + " / " + q.target;
-                card.Status.text = q.claimed ? "Награда получена" : q.ready ? "Готово к получению" : "Выполняется";
+                var q = state.quests[i];
+                var card = _questCards[i];
+                var selected = i == _selectedQuest;
+                card.Notice.interactable = true;
+                card.Title.text = QuestName(q);
+                card.Title.color = selected ? ExpeditionTheme.Amber : ExpeditionTheme.Ivory;
+                card.Icon.sprite = QuestIcon(q);
+                card.Status.text = q.claimed ? "Получено" : q.ready ? "Готово" : "В работе";
                 card.Status.color = q.claimed ? Green : q.ready ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
                 card.Fill.fillAmount = q.target > 0 ? Mathf.Clamp01((float)q.progress / q.target) : 0; card.Fill.color = q.claimed ? Green : ExpeditionTheme.Amber;
-                Accent(card.Frame, q.ready && !q.claimed);
-                card.Rewards.Bind(q.reward); card.Claim.interactable = !busy && q.ready && !q.claimed;
-                card.Claim.GetComponentInChildren<TMP_Text>().text = q.claimed ? "ПОЛУЧЕНО" : q.ready ? "ПОЛУЧИТЬ" : "В ПРОЦЕССЕ";
+                Accent(card.Notice.image, selected);
+                card.Rewards.Bind(q.reward, q.claimed);
                 if (q.claimed) claimed++;
             }
-            _bonusStatus.text = state.completion_claimed ? "Бонус получен" : state.completion_ready ? "Все награды получены — бонус ваш" : "Получено наград: " + claimed + " / 3";
+            var current = state.quests[_selectedQuest];
+            _contractTitle.text = QuestName(current);
+            _contractDescription.text = QuestDescription(current);
+            _contractIcon.sprite = QuestIcon(current);
+            _contractProgress.text = $"{Math.Min(current.progress, current.target)} / {current.target}";
+            _contractStatus.text = current.claimed ? "Награда получена" : current.ready ? "Готово к получению" : "Задание выполняется";
+            _contractStatus.color = current.claimed ? Green : current.ready ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
+            _contractRewards.Bind(current.reward, current.claimed);
+            _questClaim.interactable = !busy && current.ready && !current.claimed;
+            _questClaim.GetComponentInChildren<TMP_Text>().text = current.claimed ? "ПОЛУЧЕНО" : current.ready ? "ПОЛУЧИТЬ" : "В ПРОЦЕССЕ";
+            _bonusStatus.text = state.completion_claimed ? "Бонус получен" : state.completion_ready ? "Бонус готов к получению" : $"Получено наград {claimed} / 3";
             _bonusStatus.color = state.completion_claimed ? Green : ExpeditionTheme.Amber;
             _bonusClaim.interactable = !busy && state.completion_ready && !state.completion_claimed;
             _bonusClaim.GetComponentInChildren<TMP_Text>().text = state.completion_claimed ? "ПОЛУЧЕНО" : state.completion_ready ? "ЗАБРАТЬ" : "ЗАКРЫТО";
@@ -157,25 +239,56 @@ namespace Project.UI
             var login = state.login;
             var today = login.claimed_today && login.total_claimed > 0 ? (login.total_claimed - 1) % 7 + 1 : login.next_day;
             var completed = login.total_claimed % 7; if (login.claimed_today && completed == 0) completed = 7;
-            _focusKicker.text = (login.claimed_today ? "ПОЛУЧЕНО СЕГОДНЯ" : "СЕГОДНЯ") + " · ДЕНЬ " + today + " ИЗ 7";
-            _focusTitle.text = new[] { "Надёжный запас", "Металл для мастерской", "Редкая материя", "Сила перед спуском", "Большой запас", "Стойкость и металл", "Трофей экспедиции" }[today - 1];
-            _focusRewards.Bind(login.rewards[today - 1]);
-            _focusStatus.text = login.claimed_today ? "Припасы получены. Следующая награда — в новый день." : today == 7 ? "Особая награда за завершение пути" : "Ваш подарок за возвращение в убежище";
-            _focusStatus.color = login.claimed_today ? Green : ExpeditionTheme.Muted;
-            _focusFrame.Configure(true, login.claimed_today); _focusClaimed.gameObject.SetActive(login.claimed_today);
+            if (_displayedToday != today) _previewDay = today;
+            _displayedToday = today;
+            var preview = _previewDay != today;
+            var collected = _previewDay <= completed;
+            _focusKicker.text = $"Стоянка {_previewDay} из 7" + (preview ? "" : " · сегодня");
+            _focusKicker.color = collected ? ClaimedText : ExpeditionTheme.Amber;
+            _focusTitle.text = CampRewards[_previewDay - 1];
+            _focusTitle.color = collected ? ClaimedText : ExpeditionTheme.Ivory;
+            _focusRewards.Bind(login.rewards[_previewDay - 1], collected);
+            _focusStatus.text = collected ? "Припасы получены" : preview ? "Припасы ждут на этой стоянке" :
+                today == 7 ? "Особая награда за завершение маршрута" : "Припасы готовы к получению";
+            _focusStatus.color = collected ? Green : ExpeditionTheme.Muted;
+            _focusFrame.Configure(!preview || _previewDay == 7, collected);
+            _focusClaimed.gameObject.SetActive(collected);
             for (var i = 0; i < 7; i++)
             {
                 var past = i < completed; var current = i + 1 == today;
-                _days[i].Rewards.Bind(login.rewards[i]);
-                _days[i].Status.text = past ? "Получено" : current ? "Сегодня" : i == 6 ? "Особый день" : "Далее";
-                _days[i].Status.color = past ? Green : current || i == 6 ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
-                _days[i].Border.Configure(current || i == 6, past); _days[i].Check.gameObject.SetActive(past);
-                if (i < 6) ExpeditionUi.SetRect(_days[i].Status.rectTransform, past ? .45f : .50f, .73f, past ? .83f : .96f, .94f);
-                _path[i].color = past ? Green : current ? ExpeditionTheme.Amber : ExpeditionTheme.Teal;
+                var selected = i + 1 == _previewDay;
+                var day = _days[i];
+                day.Camp.interactable = true;
+                day.Frame.Present(selected || current, past);
+                day.Title.color = selected || i == 6 || current ? ExpeditionTheme.Amber : ExpeditionTheme.Ivory;
+                day.Status.text = past ? "Получено" : current ? "Сегодня" : i == 6 ? "Финиш" : "Впереди";
+                day.Status.color = past ? Green : current ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
+                day.Check.gameObject.SetActive(past);
+                if (i < _trail.Length)
+                    foreach (var dot in _trail[i])
+                        dot.color = i + 1 < completed ? Green : i + 2 == today ? ExpeditionTheme.Amber : new Color32(199, 173, 127, 190);
             }
-            _loginClaim.interactable = !busy && login.can_claim;
-            _loginClaim.GetComponentInChildren<TMP_Text>().text = login.can_claim ? "ПОЛУЧИТЬ · ДЕНЬ " + login.next_day : "СЕГОДНЯ ПОЛУЧЕНО";
+            _loginClaim.interactable = preview || !busy && login.can_claim;
+            _loginClaimFrame.Present(_loginClaim.interactable, !preview && login.claimed_today);
+            _loginClaim.GetComponentInChildren<TMP_Text>().text = preview ? "К СЕГОДНЯШНЕЙ СТОЯНКЕ" :
+                login.can_claim ? "ЗАБРАТЬ ПРИПАСЫ" : "СЕГОДНЯ ПОЛУЧЕНО";
         }
+        private void SelectQuest(int index)
+        {
+            if (_selectedQuest == index) return;
+            _selectedQuest = index;
+            Refresh();
+            _contractArrival?.Play();
+        }
+        private void PreviewCamp(int day)
+        {
+            if (_previewDay == day || day < 1 || day > Camps.Length) return;
+            _previewDay = day;
+            Refresh();
+            _focusArrival?.Play();
+        }
+        private static Sprite QuestIcon(DailyRewardsService.Quest q) =>
+            ExpeditionTheme.Icon(q.id == "mine" ? "mine" : q.id == "abilities" ? "energy" : "arena");
         private static string QuestName(DailyRewardsService.Quest q) => q.id == "mine" ? "Разведка шахты" : q.id == "abilities" ? "Боевая практика" : q.id == "pvp" ? "Проверка в бою" : q.label;
         private static string QuestDescription(DailyRewardsService.Quest q) => q.id == "mine" ? "Побеждайте монстров на любых доступных этажах шахты." :
             q.id == "abilities" ? "Применяйте способности. Прогресс учитывается после завершения боя." :
@@ -244,15 +357,15 @@ namespace Project.UI
             id == "ingot_green" ? "Зелёные слитки" : id == "ingot_blue" ? "Синие слитки" : id == "ingot_purple" ? "Фиолетовые слитки" : id == "global_boss_teleport" ? "Телепорт к боссу" :
             ConsumablePresentation.IsKnown(id) ? ConsumablePresentation.Name(id) : id;
         private enum RewardStyle { Mini, Compact, Featured }
-        private sealed class QuestCard { public Image Frame, Icon, Fill; public TMP_Text Title, Description, Progress, Status; public RewardStrip Rewards; public Button Claim; }
-        private sealed class DayCard { public Image Frame; public ExpeditionDailyLoginFrame Border, Check; public TMP_Text Status; public RewardStrip Rewards; }
+        private sealed class QuestCard { public Button Notice; public Image Icon, Fill; public TMP_Text Title, Status; public RewardStrip Rewards; }
+        private sealed class DayCard { public Button Camp; public ExpeditionSupplyFrame Frame; public ExpeditionDailyLoginFrame Check; public TMP_Text Title, Status; }
         private sealed class RewardStrip
         {
             private readonly ExpeditionDailyPanel _owner; private readonly RectTransform _root; private readonly RewardStyle _style;
             private readonly List<RewardTile> _tiles = new List<RewardTile>();
             public RewardStrip(ExpeditionDailyPanel owner, Transform parent, string name, float x0, float y0, float x1, float y1, RewardStyle style)
             { _owner = owner; _root = ExpeditionUi.Rect(parent, name, x0, y0, x1, y1); _style = style; }
-            public void Bind(DailyRewardsService.Reward reward)
+            public void Bind(DailyRewardsService.Reward reward, bool claimed = false)
             {
                 var entries = new List<DailyRewardsService.Item>();
                 if (reward != null)
@@ -269,7 +382,9 @@ namespace Project.UI
                     var item = entries[i]; var gap = entries.Count == 1 ? 0 : .018f;
                     ExpeditionUi.SetRect(tile.Root, i / (float)entries.Count + gap, 0, (i + 1f) / entries.Count - gap, 1);
                     tile.Root.name = "DailyReward-" + item.def_id; tile.Icon.sprite = _owner.RewardIcon(item.def_id);
+                    tile.Icon.color = claimed ? ClaimedIcon : Color.white;
                     tile.Amount.text = (item.def_id == "gold" || item.def_id == "ore" || item.def_id == "matter" ? "" : "×") + item.amount;
+                    tile.Amount.color = claimed ? ClaimedText : ExpeditionTheme.Amber;
                     if (tile.Caption != null) tile.Caption.text = _style == RewardStyle.Featured ? FullName(item.def_id) : ShortName(item.def_id);
                 }
             }
@@ -278,13 +393,14 @@ namespace Project.UI
                 var root = ExpeditionUi.Rect(_root, "Reward", 0, 0, 1, 1);
                 if (_style != RewardStyle.Mini) ExpeditionUi.Fill(root, "RewardWell", 0, 0, 1, 1, new Color32(20, 48, 53, 150));
                 var featured = _style == RewardStyle.Featured; var mini = _style == RewardStyle.Mini;
-                var icon = featured ? Picture(root, "DailyRewardIcon", null, .08f, .43f, .92f, .98f) : Picture(root, "DailyRewardIcon", null, .015f, .08f, mini ? .64f : .36f, .94f);
-                var amount = featured ? Label(root, "RewardAmount", "", 31, .035f, .245f, .965f, .445f, TextAlignmentOptions.Center) :
+                var icon = featured ? Picture(root, "DailyRewardIcon", null, .08f, .50f, .92f, .98f) : Picture(root, "DailyRewardIcon", null, .015f, .08f, mini ? .64f : .36f, .94f);
+                var amount = featured ? Label(root, "RewardAmount", "", 29, .035f, .245f, .965f, .50f, TextAlignmentOptions.Center) :
                     Label(root, "RewardAmount", "", mini ? 22 : 26, mini ? .60f : .39f, mini ? .18f : .42f, .98f, mini ? .86f : .91f, TextAlignmentOptions.Center);
                 amount.fontStyle = FontStyles.Bold; amount.color = ExpeditionTheme.Amber; amount.textWrappingMode = TextWrappingModes.NoWrap;
                 TMP_Text caption = null;
                 if (!mini) caption = featured ? Label(root, "RewardName", "", 19, .025f, .005f, .975f, .245f, TextAlignmentOptions.Center) :
                     Label(root, "RewardName", "", 18, .39f, .055f, .98f, .42f, TextAlignmentOptions.Center);
+                if (featured) caption.fontSizeMin = 14;
                 return new RewardTile { Root = root, Icon = icon, Amount = amount, Caption = caption };
             }
         }

@@ -223,18 +223,21 @@ test("bot refund failure is atomic and retry returns the stake once", function()
   fail_write = false; assert(Pvp.apply_game_over_rewards(match, "zz-bot-race_bot", {}))
   assert(wallet("a").matter == 100 and receipt("a", "run").status == "settled")
 end)
-test("stored old entry and 10-matter prize cannot override public 2-to-4 policy", function()
+test("public goal, charged entry and prizes follow the stored configuration", function()
   local uid = "system"
-  put(uid, "config", { race = { goal_mana = 200, entry = { { resource = "matter", amount = 7 } },
-    rewards = { { resource = "xp", amount = 200 }, { resource = "matter", amount = 10 }, { resource = "matter", amount = 10 } } } }, "goals")
+  put(uid, "config", { race = { goal_mana = 202, entry = { { resource = "matter", amount = 7 } },
+    rewards = { { resource = "xp", amount = 220 }, { resource = "matter", amount = 5 }, { resource = "ore", amount = 3 } } } }, "goals")
   local goals = require("duel_match3_contest_goals")({ nk = nk,
     CFG = { RACE_ENTRY_MATTER = 2, RACE_WIN_MATTER = 4, CONTEST_GOALS_COLLECTION = "goals", CONTEST_GOALS_KEY = "config", CONTEST_GOALS_STORAGE_USER_ID = uid },
     decode_storage_value = function(row) return row.value end })
   local public = goals.race_public_config()
-  assert(#public.entry == 1 and public.entry[1].resource == "matter" and public.entry[1].amount == 2)
-  assert(goals.flatten_reward_lines(public.rewards).matter == 4 and public.bot_entry_refund)
+  assert(public.goal_mana == 202 and goals.race_goal_mana() == 202 and public.bot_entry_refund)
+  assert(#public.entry == 1 and public.entry[1].resource == "matter" and public.entry[1].amount == 7)
+  assert(Entry.pay("a", goals.race_entry_costs()) and wallet("a").matter == 93)
+  local prizes = goals.flatten_reward_lines(public.rewards)
+  assert(prizes.matter == 5 and prizes.xp == 220 and prizes.ore == 3)
 end)
-test("actual reward flattener cannot restore an old frozen 10-matter prize", function()
+test("settlement pays the prize frozen from storage when the match started", function()
   local deps = copy(pvp_deps)
   deps.ContestGoals = require("duel_match3_contest_goals")({ nk = nk, CFG = {}, decode_storage_value = function(row) return row.value end })
   local pvp = require("duel_match3_pvp")(deps)
@@ -243,7 +246,7 @@ test("actual reward flattener cannot restore an old frozen 10-matter prize", fun
   match.race_reward_lines = { { resource = "xp", amount = 200 }, { resource = "matter", amount = 10 } }
   local payload = {}
   assert(pvp.apply_game_over_rewards(match, "a", payload))
-  assert(payload.rewardMatter == 4 and wallet("a").matter == 102 and wallet("b").matter == 98)
+  assert(payload.rewardMatter == 10 and wallet("a").matter == 108 and wallet("b").matter == 98)
 end)
 test("unpaid result cannot award winner or draw prizes", function()
   assert(not Pvp.apply_game_over_rewards(state("run"), "a", {}))
