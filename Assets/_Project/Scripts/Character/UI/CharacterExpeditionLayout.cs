@@ -66,6 +66,7 @@ namespace Project.Character.UI
         private Rect _lastSafeArea;
         private CharacterAppearancePanel _appearancePanel;
         private readonly Button[] _heroTabs = new Button[2];
+        private readonly Sprite[] _heroTabFrames = new Sprite[2];
         public int CurrentHeroTab { get; private set; }
 
         public void SelectHeroTab(int tab)
@@ -79,8 +80,36 @@ namespace Project.Character.UI
             _statsBar.gameObject.SetActive(tab == 0);
             _bag.gameObject.SetActive(tab == 0);
             if (tab == 0) _appearancePanel.Hide(); else _appearancePanel.Show();
-            for (var i = 0; i < _heroTabs.Length; i++) ExpeditionUi.StyleButton(_heroTabs[i], i == tab, 27);
+            for (var i = 0; i < _heroTabs.Length; i++) StyleHeroTab(i, i == tab);
             RefreshLayout();
+        }
+
+        private void StyleHeroTab(int index, bool active)
+        {
+            var button = _heroTabs[index];
+            var frame = _heroTabFrames[index];
+            if (frame == null)
+            {
+                ExpeditionUi.StyleButton(button, active, 32);
+                return;
+            }
+
+            var image = (Image)button.targetGraphic;
+            image.sprite = frame;
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 2.4f;
+            image.color = Color.white;
+            var colors = button.colors;
+            colors.normalColor = active ? Color.white : new Color(.62f, .65f, .69f);
+            colors.highlightedColor = active ? new Color(1.08f, 1.05f, .98f) : new Color(.82f, .84f, .88f);
+            colors.selectedColor = colors.normalColor;
+            colors.pressedColor = new Color(.74f, .71f, .67f);
+            colors.disabledColor = active ? new Color(.92f, .91f, .88f) : new Color(.62f, .65f, .69f);
+            button.colors = colors;
+            if (Application.isPlaying)
+                ExpeditionUi.Ensure<ExpeditionButtonFeedback>(button.gameObject).Configure(false);
+            var label = button.GetComponentInChildren<TMP_Text>();
+            label.color = active ? new Color(1f, .9f, .67f) : ExpeditionTheme.Ivory;
         }
 
         public void Build(RectTransform panel, RectTransform equipment, RectTransform bag,
@@ -355,13 +384,16 @@ namespace Project.Character.UI
             _appearancePanel = ExpeditionUi.Ensure<CharacterAppearancePanel>(gameObject);
             _appearancePanel.Build(panel);
             var tabNames = new[] { "Снаряжение", "Образы" };
+            _heroTabFrames[0] = Resources.Load<Sprite>("Expedition/Frames/hero-equipment-frame");
+            _heroTabFrames[1] = Resources.Load<Sprite>("Expedition/Frames/hero-appearance-frame");
             for (var i = 0; i < _heroTabs.Length; i++)
             {
                 var index = i;
                 _heroTabs[i] = ExpeditionUi.Button(panel, "ExpeditionHeroTab" + i, tabNames[i],
-                    .025f + i * .485f, .944f, .49f + i * .485f, .996f, () => SelectHeroTab(index), i == 0, 27);
+                    .025f + i * .485f, .944f, .49f + i * .485f, .996f, () => SelectHeroTab(index), i == 0, 32);
                 var tabLabel = _heroTabs[i].GetComponentInChildren<TMP_Text>();
-                tabLabel.enableAutoSizing = true; tabLabel.fontSizeMin = 18; tabLabel.fontSizeMax = 27;
+                Area(tabLabel.rectTransform, .13f, .10f, .87f, .90f);
+                tabLabel.enableAutoSizing = true; tabLabel.fontSizeMin = 20; tabLabel.fontSizeMax = 32;
                 tabLabel.textWrappingMode = TextWrappingModes.NoWrap;
                 tabLabel.margin = Vector4.zero;
             }

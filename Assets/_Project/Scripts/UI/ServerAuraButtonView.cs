@@ -8,6 +8,8 @@ namespace Project.UI
     /// <summary>Показывает сейсмограф убежища и оставшееся время активной аномалии.</summary>
     public sealed class ServerAuraButtonView : MonoBehaviour
     {
+        private const string FrameResource = "Expedition/Frames/anomaly-button-frame";
+
         [SerializeField] private RectTransform border;
         [SerializeField] private TMP_Text timerTmp;
         [SerializeField] private Text timerText;
@@ -40,6 +42,7 @@ namespace Project.UI
 
         internal void InstallReadout()
         {
+            ExpeditionUi.SetRect(transform as RectTransform, .025f, .493f, .365f, .553f);
             if (_readoutInstalled) return;
             EnsureRefs();
             var button = border != null ? border.GetComponentInChildren<Button>(true) : null;
@@ -50,45 +53,57 @@ namespace Project.UI
 
             ExpeditionUi.SetRect(button.transform as RectTransform, 0, 0, 1, 1);
             ExpeditionUi.StyleButton(button);
-            var screen = ExpeditionUi.Rect(button.transform, "AnomalySeismograph", .06f, .16f, .372f, .84f);
+            var frame = Resources.Load<Sprite>(FrameResource);
+            if (frame != null && button.targetGraphic is Image plate)
+            {
+                plate.sprite = frame;
+                plate.type = frame.border.sqrMagnitude > 0 ? Image.Type.Sliced : Image.Type.Simple;
+            }
+
+            var screen = ExpeditionUi.Rect(button.transform, "AnomalySeismograph", .078f, .23f, .316f, .77f);
             var waveform = screen.gameObject.AddComponent<ExpeditionAuraSignal>();
             waveform.raycastTarget = false;
 
-            var title = ExpeditionUi.Text(button.transform, "ExpeditionAuraTitle", "АНОМАЛИЯ", 25,
-                .427f, .50f, .956f, .89f, TextAlignmentOptions.MidlineLeft);
+            var title = ExpeditionUi.Text(button.transform, "ExpeditionAuraTitle", "АНОМАЛИЯ", 25, .36f, .51f, .91f, .82f);
             title.fontStyle = FontStyles.Bold;
-            title.enableAutoSizing = true;
-            title.fontSizeMin = 18;
-            title.fontSizeMax = 25;
-            title.textWrappingMode = TextWrappingModes.NoWrap;
-            title.margin = Vector4.zero;
-            title.color = new Color32(179, 243, 220, 255);
+            StyleReadoutText(title, 25, new Color32(179, 243, 220, 255));
 
             if (timerTmp != null)
             {
                 timerTmp.transform.SetParent(button.transform, false);
-                ExpeditionUi.SetRect(timerTmp.rectTransform, .427f, .13f, .956f, .50f);
-                timerTmp.font = ExpeditionTheme.Font;
-                timerTmp.fontSize = 27;
-                timerTmp.enableAutoSizing = true;
-                timerTmp.fontSizeMin = 17;
-                timerTmp.fontSizeMax = 27;
-                timerTmp.textWrappingMode = TextWrappingModes.NoWrap;
-                timerTmp.alignment = TextAlignmentOptions.MidlineLeft;
-                timerTmp.margin = Vector4.zero;
-                timerTmp.color = ExpeditionTheme.Ivory;
-                timerTmp.raycastTarget = false;
+                ExpeditionUi.SetRect(timerTmp.rectTransform, .36f, .18f, .91f, .50f);
+                StyleReadoutText(timerTmp, 23, ExpeditionTheme.Ivory);
             }
             if (timerText != null)
             {
                 timerText.transform.SetParent(button.transform, false);
-                ExpeditionUi.SetRect(timerText.rectTransform, .427f, .13f, .956f, .50f);
+                ExpeditionUi.SetRect(timerText.rectTransform, .36f, .18f, .91f, .50f);
                 timerText.font = ExpeditionTheme.LegacyFont;
-                timerText.fontSize = 25;
+                timerText.fontSize = 23;
+                timerText.resizeTextForBestFit = true;
+                timerText.resizeTextMinSize = 10;
+                timerText.resizeTextMaxSize = 23;
                 timerText.alignment = TextAnchor.MiddleLeft;
+                timerText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                timerText.verticalOverflow = VerticalWrapMode.Truncate;
                 timerText.color = ExpeditionTheme.Ivory;
                 timerText.raycastTarget = false;
             }
+        }
+
+        private static void StyleReadoutText(TMP_Text label, float size, Color tint)
+        {
+            label.font = ExpeditionTheme.Font;
+            label.fontSize = size;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 10;
+            label.fontSizeMax = size;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Truncate;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            label.margin = Vector4.zero;
+            label.color = tint;
+            label.raycastTarget = false;
         }
 
         public void SetAnomalyActive(bool active, long endsAtUnix = 0)

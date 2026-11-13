@@ -11,7 +11,7 @@ namespace Project.Achievements
     public sealed class ExpeditionAchievementsLayout : MonoBehaviour
     {
         public static readonly Color ConditionColor = new Color32(169, 206, 172, 255);
-        private static readonly Color JournalSurface = new Color32(34, 25, 20, 248);
+        private static readonly Color JournalSurface = new Color32(24, 45, 51, 255);
         private readonly Dictionary<AchievementTab, JournalTab> _tabs = new();
         private RectTransform _sheet;
         private ScrollRect _scroll;
@@ -101,7 +101,7 @@ namespace Project.Achievements
             var scrollSurface = ExpeditionUi.Fill(sheet, "JournalScroll", .03f, .018f, .97f, .748f, JournalSurface);
             scrollSurface.raycastTarget = true;
             _scroll = scrollSurface.gameObject.AddComponent<ScrollRect>();
-            ExpeditionUi.Fill(scrollSurface.transform, "AlbumBinding", .493f, .003f, .507f, .997f, new Color32(20, 13, 10, 255));
+            ExpeditionUi.Fill(scrollSurface.transform, "AlbumBinding", .493f, .003f, .507f, .997f, new Color32(13, 27, 31, 255));
             ExpeditionUi.Fill(scrollSurface.transform, "AlbumBindingSeam", .499f, .003f, .501f, .997f, new Color32(123, 78, 45, 170));
             var viewport = ExpeditionUi.Rect(scrollSurface.transform, "Viewport", .009f, .008f, .991f, .992f);
             viewport.gameObject.AddComponent<RectMask2D>();

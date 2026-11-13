@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-11-13T04:39:48.677287+00:00",
+  "previous": {
+    "apk": "Escape-Expedition-0.3.22-20261112-224551.apk",
+    "sha256": "bec46055bfcde715b5ac2bd062ad2a43540b80b65b34724977bff5d3c9f2c5dc",
+    "bytes": 130366059,
+    "il2cppMetadata": {
+      "Expedition/Frames/anomaly-button-frame": false,
+      "Expedition/Frames/hero-equipment-frame": false,
+      "Expedition/Frames/hero-appearance-frame": false,
+      "Expedition/Shop/Frames/shelf-tab": false,
+      "Expedition/Shop/Frames/product-frame": false,
+      "AlbumPocketGoldRim": false,
+      "ClaimReadyFrame": true,
+      "Match3BoardImpactFx": true,
+      "shelter-mine-light": true
+    },
+    "unityFsResourceKeys": {
+      "Expedition/Frames/anomaly-button-frame": false,
+      "Expedition/Frames/hero-equipment-frame": false,
+      "Expedition/Frames/hero-appearance-frame": false,
+      "Expedition/Shop/Frames/shelf-tab": false,
+      "Expedition/Shop/Frames/product-frame": false,
+      "Expedition/Art/encounter-anomaly": true,
+      "Expedition/Art/shelter-mine-light": true
+    },
+    "unityFsAnomalyTextures": [
+      {
+        "width": 508,
+        "height": 337,
+        "unityTextureFormat": 50
+      }
+    ]
+  },
+  "current": {
+    "apk": "Escape-Expedition-0.3.23-20261113-042755.apk",
+    "sha256": "7ab77831ae33396d31f8bc125312898c5ec6484577ba7e32a43f6d0a0a50e772",
+    "bytes": 132807363,
+    "il2cppMetadata": {
+      "Expedition/Frames/anomaly-button-frame": true,
+      "Expedition/Frames/hero-equipment-frame": true,
+      "Expedition/Frames/hero-appearance-frame": true,
+      "Expedition/Shop/Frames/shelf-tab": true,
+      "Expedition/Shop/Frames/product-frame": true,
+      "AlbumPocketGoldRim": true,
+      "ClaimReadyFrame": true,
+      "Match3BoardImpactFx": true,
+      "shelter-mine-light": true
+    },
+    "unityFsResourceKeys": {
+      "Expedition/Frames/anomaly-button-frame": true,
+      "Expedition/Frames/hero-equipment-frame": true,
+      "Expedition/Frames/hero-appearance-frame": true,
+      "Expedition/Shop/Frames/shelf-tab": true,
+      "Expedition/Shop/Frames/product-frame": true,
+      "Expedition/Art/encounter-anomaly": true,
+      "Expedition/Art/shelter-mine-light": true
+    },
+    "unityFsAnomalyTextures": [
+      {
+        "width": 1024,
+        "height": 1536,
+        "unityTextureFormat": 48
+      }
+    ]
+  },
+  "buildReportResources": {
+    "Assets/_Project/Resources/Expedition/Frames/anomaly-button-frame.png": true,
+    "Assets/_Project/Resources/Expedition/Frames/hero-equipment-frame.png": true,
+    "Assets/_Project/Resources/Expedition/Frames/hero-appearance-frame.png": true,
+    "Assets/_Project/Resources/Expedition/Shop/Frames/shelf-tab.png": true,
+    "Assets/_Project/Resources/Expedition/Shop/Frames/product-frame.png": true,
+    "Assets/_Project/Resources/Expedition/Art/encounter-anomaly.jpg": true,
+    "Assets/_Project/Resources/Expedition/Art/shelter-mine-light.png": true
+  }
+}

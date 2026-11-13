@@ -10,7 +10,8 @@ namespace Project.Achievements
     public sealed class ExpeditionAchievementJournalRow : MonoBehaviour
     {
         private static readonly Color ProgressTrack = new Color32(60, 46, 33, 255);
-        private Image _icon, _mount, _accent, _fill, _claimFrame, _claimTag;
+        private static Sprite _pocketSprite, _claimFrameSprite;
+        private Image _icon, _mount, _accent, _fill, _claimFrame;
         private TMP_Text _title, _condition, _progress, _status;
         private AchievementRewardDisplay _reward;
         private Coroutine _mountMotion;
@@ -24,7 +25,12 @@ namespace Project.Achievements
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = rect.gameObject.AddComponent<Image>();
             ExpeditionUi.StyleButton(button);
-            button.image.color = new Color32(194, 156, 112, 255);
+            if (_pocketSprite == null) _pocketSprite = CreatePocketSprite(false);
+            SetPocketSprite(button.image, _pocketSprite);
+            var colors = button.colors;
+            colors.normalColor = colors.selectedColor = colors.highlightedColor = Color.white;
+            colors.pressedColor = new Color32(206, 193, 178, 255);
+            button.colors = colors;
             var row = rect.gameObject.AddComponent<ExpeditionAchievementJournalRow>();
             row.Build(rect);
             button.onClick.AddListener(() => open(row.ChainId, row.CurrentStep));
@@ -33,8 +39,10 @@ namespace Project.Achievements
 
         private void Build(RectTransform root)
         {
-            _claimFrame = ReadyPlate(root, "ClaimReadyFrame", 0, 0, 1, 1);
-            ExpeditionUi.Fill(root, "LeatherPocket", .022f, .031f, .978f, .969f, new Color32(41, 29, 23, 255));
+            if (_claimFrameSprite == null) _claimFrameSprite = CreatePocketSprite(true);
+            _claimFrame = ExpeditionUi.Fill(root, "ClaimReadyFrame", 0, 0, 1, 1, Color.white);
+            SetPocketSprite(_claimFrame, _claimFrameSprite);
+            _claimFrame.enabled = false;
             _mount = ExpeditionUi.Panel(root, "MedalMount", .045f, .35f, .307f, .93f);
             _accent = ExpeditionUi.Fill(root, "MedalAccent", .333f, .705f, .951f, .716f, ExpeditionTheme.Amber);
             _icon = ExpeditionUi.Fill(_mount.transform, "MedalIcon", .045f, .045f, .955f, .955f, Color.white);
@@ -51,7 +59,6 @@ namespace Project.Achievements
             _progress.fontStyle = FontStyles.Bold;
             var track = ExpeditionUi.Fill(root, "MedalProgressTrack", .051f, .195f, .301f, .222f, ProgressTrack);
             _fill = ExpeditionUi.Fill(track.transform, "MedalProgressFill", 0, 0, 0, 1, ExpeditionTheme.Amber);
-            _claimTag = ReadyPlate(root, "ClaimReadyTag", .04f, .036f, .312f, .184f);
             _status = Label(root, "MedalStatus", 19, 15, .04f, .037f, .312f, .191f, TextAlignmentOptions.Center, wrap: true);
         }
 
@@ -78,11 +85,11 @@ namespace Project.Achievements
             _progress.text = $"{progress} / {target}";
             if (_claimFrame.enabled != claimable)
             {
-                _claimFrame.enabled = _claimTag.enabled = claimable;
+                _claimFrame.enabled = claimable;
                 _claimFrame.canvasRenderer.SetAlpha(1f);
             }
-            _status.text = completed ? "Получено" : claimable ? "ЗАБРАТЬ" : $"Ступень {CurrentStep + 1} из {count}";
-            _status.color = completed ? ExpeditionAchievementsLayout.ConditionColor : claimable ? new Color32(38, 24, 13, 255) : ExpeditionTheme.Muted;
+            _status.text = completed ? "Получено" : claimable ? "Награда готова" : $"Ступень {CurrentStep + 1} из {count}";
+            _status.color = completed ? ExpeditionAchievementsLayout.ConditionColor : claimable ? ExpeditionTheme.Amber : ExpeditionTheme.Muted;
             _status.fontStyle = claimable ? FontStyles.Bold : FontStyles.Normal;
             _fill.color = completed ? ExpeditionAchievementsLayout.ConditionColor : ExpeditionTheme.Amber;
             _fill.rectTransform.anchorMax = new Vector2(target > 0 ? (float)progress / target : completed ? 1 : 0, 1);
@@ -105,14 +112,63 @@ namespace Project.Achievements
                 _claimFrame.canvasRenderer.SetAlpha(opacity);
         }
 
-        private static Image ReadyPlate(Transform root, string name, float x0, float y0, float x1, float y1)
+        private static void SetPocketSprite(Image image, Sprite sprite)
         {
-            var plate = ExpeditionUi.Panel(root, name, x0, y0, x1, y1);
-            var brass = ExpeditionArt.Frame(true);
-            plate.sprite = brass != null ? brass : ExpeditionTheme.Plate;
-            plate.color = brass != null ? Color.white : ExpeditionTheme.Amber;
-            plate.enabled = false;
-            return plate;
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 1f;
+        }
+
+        private static Sprite CreatePocketSprite(bool highlight)
+        {
+            // One rounded outline for both layers. The glow falls inward and stays inside the scroll mask.
+            const int side = 56;
+            const float radius = 15f;
+            const float straight = side * .5f - radius - 1f;
+            var name = highlight ? "AlbumPocketGoldRim" : "AlbumLeatherPocket";
+            var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
+            {
+                name = name,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            Color leather = new Color32(48, 35, 29, 255);
+            Color bronze = new Color32(158, 117, 80, 255);
+            Color shadow = new Color32(42, 33, 27, 255);
+            Color halo = new Color32(242, 132, 39, 255);
+            Color gold = new Color32(255, 221, 139, 255);
+            var pixels = new Color32[side * side];
+            for (var y = 0; y < side; y++)
+            for (var x = 0; x < side; x++)
+            {
+                var corner = new Vector2(Mathf.Max(0f, Mathf.Abs(x + .5f - side * .5f) - straight),
+                    Mathf.Max(0f, Mathf.Abs(y + .5f - side * .5f) - straight));
+                var depth = radius - corner.magnitude;
+                var coverage = Mathf.Clamp01(depth + .5f);
+                Color pixel;
+                if (highlight)
+                {
+                    var line = 1f - Mathf.Clamp01((Mathf.Abs(depth - 3.3f) - 1.25f) / 1.1f);
+                    var glow = .65f * (1f - Mathf.SmoothStep(0f, 1f, depth / 12f));
+                    pixel = Color.Lerp(halo, gold, line);
+                    pixel.a = coverage * Mathf.Max(line, glow);
+                }
+                else
+                {
+                    var bevel = Color.Lerp(shadow, bronze, Mathf.Clamp01(depth / 2.4f));
+                    pixel = Color.Lerp(bevel, leather, Mathf.SmoothStep(0f, 1f, (depth - 3f) / 4f));
+                    pixel.a = coverage;
+                }
+                pixels[y * side + x] = pixel;
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            var sprite = Sprite.Create(texture, new Rect(0, 0, side, side), new Vector2(.5f, .5f), 100f, 0,
+                SpriteMeshType.FullRect, new Vector4(18f, 18f, 18f, 18f));
+            sprite.name = name;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            return sprite;
         }
 
         private IEnumerator MountMedal()

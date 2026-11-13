@@ -131,11 +131,12 @@ namespace Project.Achievements
             RefreshClaimBadges();
         }
 
-        private void Update()
+        private void Update() => UpdateClaimFrames(Time.unscaledTime);
+
+        private void UpdateClaimFrames(float unscaledTime)
         {
             if (!_visible) return;
-            // Keep the rim visible between peaks so availability is readable at a glance.
-            var opacity = .82f + .18f * Mathf.Cos(Time.unscaledTime * (2f * Mathf.PI / 2.4f));
+            var opacity = .62f + .38f * Mathf.Cos(unscaledTime * (2f * Mathf.PI / 2.4f));
             foreach (var row in _spawnedRows)
                 row.SetClaimFrameIntensity(opacity);
         }

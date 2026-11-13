@@ -1,7 +1,7 @@
 """Create once after final QA, then compare every client source/asset used by a release.
 
 This command never builds, imports, publishes, contacts a server, or copies file
-contents into evidence. --inventory is read-only and does not freeze a snapshot.
+contents into evidence. --inventory and --compare-project are read-only.
 """
 import argparse
 from datetime import datetime, timezone
@@ -30,30 +30,37 @@ def manifest_sha(rows):
     return hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def safe_regular(path):
-    if not path.is_file() or not path.resolve(strict=True).is_relative_to(ROOT):
+def safe_regular(path, root=ROOT):
+    if not path.is_file() or not path.resolve(strict=True).is_relative_to(root):
         raise ValueError('Source is missing or outside the workspace: ' + str(path))
     for ancestor in (path, *path.parents):
-        if ancestor == ROOT:
+        if ancestor == root:
             break
         if ancestor.is_symlink() or ancestor.is_junction():
             raise ValueError('Source symlinks/junctions cannot be frozen: ' + str(ancestor))
     return path
 
 
-def selected(version, require_screens=True):
+def selected_client(root):
     files = set()
     for name in ('Assets', 'ProjectSettings'):
-        directory = ROOT / name
+        directory = root / name
+        if directory.is_symlink() or directory.is_junction():
+            raise ValueError('Source selection contains a link: ' + str(directory))
         if not directory.is_dir():
             raise FileNotFoundError(directory)
         for path in directory.rglob('*'):
             if path.is_symlink() or path.is_junction():
                 raise ValueError('Source selection contains a link: ' + str(path))
             if path.is_file():
-                files.add(safe_regular(path))
+                files.add(safe_regular(path, root))
     for name in ('manifest.json', 'packages-lock.json'):
-        files.add(safe_regular(ROOT / 'Packages' / name))
+        files.add(safe_regular(root / 'Packages' / name, root))
+    return files
+
+
+def selected(version, require_screens=True):
+    files = selected_client(ROOT)
     screens = [ROOT / 'Design' / ('Release-' + version) / 'screens' / (name + '.png')
                for name in ('hub', 'character', 'mine')]
     missing = [str(path.relative_to(ROOT)).replace('\\', '/') for path in screens if not path.is_file()]
@@ -70,10 +77,35 @@ def selected(version, require_screens=True):
     return sorted(files), missing
 
 
+def file_entries(files, root):
+    return [{'path': path.relative_to(root).as_posix(), 'bytes': path.stat().st_size,
+             'sha256': sha(path)} for path in sorted(files)]
+
+
 def entries(version):
     files, _ = selected(version)
-    return [{'path': path.relative_to(ROOT).as_posix(), 'bytes': path.stat().st_size,
-             'sha256': sha(path)} for path in files]
+    return file_entries(files, ROOT)
+
+
+def compare_client_projects(reference, candidate):
+    source = file_entries(selected_client(reference), reference)
+    copy = file_entries(selected_client(candidate), candidate)
+    expected = {row['path']: row for row in source}
+    actual = {row['path']: row for row in copy}
+    missing = sorted(expected.keys() - actual.keys())
+    added = sorted(actual.keys() - expected.keys())
+    changed = sorted(path for path in expected.keys() & actual.keys() if expected[path] != actual[path])
+    return {
+        'passed': not (missing or added or changed),
+        'checkedUtc': datetime.now(timezone.utc).isoformat(),
+        'referenceFiles': len(source),
+        'candidateFiles': len(copy),
+        'referenceManifestSha256': manifest_sha(source),
+        'candidateManifestSha256': manifest_sha(copy),
+        'missing': missing,
+        'added': added,
+        'changed': changed,
+    }
 
 
 def read_snapshot(path, version):
@@ -90,8 +122,14 @@ def main():
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--create', action='store_true', help='Create a new exclusive snapshot after final sources/art/screens/QA')
     actions.add_argument('--inventory', action='store_true', help='List selection counts and pending screenshots without freezing anything')
+    actions.add_argument('--compare-project', type=Path,
+                         help='Check a complete Unity clone against this worktree, including untracked assets; exclude screenshots')
     actions.add_argument('--record-sdk-restore', action='store_true', help='Record only the exact expected whole-file SDK36-to-0 cleanup before build')
     args = parser.parse_args()
+    if args.compare_project:
+        result = compare_client_projects(ROOT, args.compare_project.resolve(strict=True))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        raise SystemExit(0 if result['passed'] else 1)
     if not re.fullmatch(r'\d+\.\d+\.\d+', args.version):
         parser.error('--version must be a three-part numeric release version')
     validation = ROOT / 'Design' / ('Release-' + args.version) / 'validation'

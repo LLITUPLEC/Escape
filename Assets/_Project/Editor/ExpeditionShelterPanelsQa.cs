@@ -91,12 +91,42 @@ namespace Project.Editor
             var intentions = 0;
             var panel = ExpeditionShopPanel.Open(canvas, state, AssetDatabase.LoadAssetAtPath<ItemCatalog>("Assets/_Project/Data/Character/Items/MainItemCatalog.asset"), _ => intentions++);
             RequireImage(panel.transform, "QuartermasterCounter");
-            Capture(canvas, camera, target, "shop");
+            var tabFrame = Resources.Load<Sprite>("Expedition/Shop/Frames/shelf-tab");
+            var productFrame = Resources.Load<Sprite>("Expedition/Shop/Frames/product-frame");
+            Require(tabFrame != null && tabFrame.border != Vector4.zero && productFrame != null && productFrame.border != Vector4.zero,
+                "Shop signs and product frames must import with nine-slice borders.");
+            var tabs = new[] { "bundles", "resources", "rub", "supplies" };
             var products = Find(panel.transform, "ShopProducts");
-            while (products.childCount > 0) UnityEngine.Object.DestroyImmediate(products.GetChild(0).gameObject);
-            Click(panel.transform, "ShopTab-supplies");
+            foreach (var selected in tabs)
+            {
+                if (selected != "bundles")
+                {
+                    while (products.childCount > 0) UnityEngine.Object.DestroyImmediate(products.GetChild(0).gameObject);
+                    Click(panel.transform, "ShopTab-" + selected);
+                }
+                Canvas.ForceUpdateCanvases();
+                foreach (var tab in tabs)
+                {
+                    var sign = Find(panel.transform, "ShopTab-" + tab);
+                    var frame = sign.GetComponent<Image>();
+                    var label = sign.Find("Label").GetComponent<TMP_Text>();
+                    label.ForceMeshUpdate();
+                    Require(frame.sprite == tabFrame && frame.type == Image.Type.Sliced && frame.raycastTarget &&
+                        (frame.color == Color.white) == (tab == selected) &&
+                        !label.isTextOverflowing && label.textInfo.lineCount == 1,
+                        "Shop sign frame, selection or label does not fit: " + tab);
+                }
+                Require(products.childCount == state.offers.Count(item => item.tab == selected), "The shelf sign did not select its inventory.");
+                foreach (Transform product in products)
+                {
+                    var frame = product.GetComponent<Image>();
+                    Require(frame.sprite == productFrame && frame.type == Image.Type.Sliced && !frame.raycastTarget,
+                        "Product should use its own decorative frame: " + product.name);
+                }
+                if (selected == "bundles" || selected == "supplies")
+                    Capture(canvas, camera, target, selected == "bundles" ? "shop" : "shop-supplies");
+            }
             var offer = state.offers.First(item => item.tab == "supplies");
-            Require(products.childCount == state.offers.Count(item => item.tab == "supplies"), "The shelf sign did not select its inventory.");
             Click(panel.transform, "ShopBuy-" + offer.id);
             var quote = Find(panel.transform, "ShopPurchaseConfirmation");
             Require(Find(quote, "ConfirmationOfferTitle").GetComponent<TMP_Text>().text == offer.title && intentions == 0,

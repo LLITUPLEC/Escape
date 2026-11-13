@@ -44,6 +44,11 @@ python Tools/Release/source_snapshot.py --version 0.3.18 --inventory
 `--inventory` is read-only. For a new release, `--create` freezes an exclusive
 snapshot after final QA, assets and screenshots exist. Running without an action
 compares the live sources against that snapshot and writes its check report.
+For a release that must include the full current worktree, use
+`--compare-project <clone>` from the reference project before freezing the clone.
+It compares `Assets`, `ProjectSettings` and the package manifest and lockfile
+byte for byte, including local untracked files. Its JSON reports missing, extra
+and changed paths. Screenshots are checked separately by the release snapshot.
 Do not recreate or update historical snapshots after cleanup. The optional
 `--record-sdk-restore` action records only the precise temporary Android SDK36
 to original0 whole-file restoration used by the build.

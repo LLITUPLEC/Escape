@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "sourceBaselineVersion": "0.3.22",
+  "baselineManifestSha256": "0dc713eb14b87181a273297afe914be47f320ff5138fffcb9a4798a614bdd5a4",
+  "sourceVersion": "0.3.23",
+  "sourceManifestSha256": "8dff049baf8fc8d23939d2266c5da15b5bb4cc24592a32211950f73325f75dd6",
+  "clientFiles": 2186,
+  "missing": [],
+  "added": [
+    "Assets/_Project/Resources/Expedition/Frames.meta",
+    "Assets/_Project/Resources/Expedition/Frames/anomaly-button-frame.png",
+    "Assets/_Project/Resources/Expedition/Frames/anomaly-button-frame.png.meta",
+    "Assets/_Project/Resources/Expedition/Frames/hero-appearance-frame.png",
+    "Assets/_Project/Resources/Expedition/Frames/hero-appearance-frame.png.meta",
+    "Assets/_Project/Resources/Expedition/Frames/hero-equipment-frame.png",
+    "Assets/_Project/Resources/Expedition/Frames/hero-equipment-frame.png.meta",
+    "Assets/_Project/Resources/Expedition/Shop/Frames.meta",
+    "Assets/_Project/Resources/Expedition/Shop/Frames/product-frame.png",
+    "Assets/_Project/Resources/Expedition/Shop/Frames/product-frame.png.meta",
+    "Assets/_Project/Resources/Expedition/Shop/Frames/shelf-tab.png",
+    "Assets/_Project/Resources/Expedition/Shop/Frames/shelf-tab.png.meta"
+  ],
+  "changed": [
+    "Assets/_Project/Editor/ExpeditionAchievementJournalQa.cs",
+    "Assets/_Project/Editor/ExpeditionAppearanceCapture.cs",
+    "Assets/_Project/Editor/ExpeditionChromeQa.cs",
+    "Assets/_Project/Editor/ExpeditionShelterPanelsQa.cs",
+    "Assets/_Project/Resources/Expedition/Art/encounter-anomaly.jpg",
+    "Assets/_Project/Resources/Expedition/Art/encounter-anomaly.jpg.meta",
+    "Assets/_Project/Scripts/Achievements/AchievementsPanelController.cs",
+    "Assets/_Project/Scripts/Achievements/ExpeditionAchievementJournalRow.cs",
+    "Assets/_Project/Scripts/Achievements/ExpeditionAchievementsLayout.cs",
+    "Assets/_Project/Scripts/Character/UI/CharacterExpeditionLayout.cs",
+    "Assets/_Project/Scripts/UI/ExpeditionPresentation.cs",
+    "Assets/_Project/Scripts/UI/ExpeditionShopPanel.cs",
+    "Assets/_Project/Scripts/UI/ExpeditionSystemDialogs.cs",
+    "Assets/_Project/Scripts/UI/ServerAuraButtonView.cs",
+    "ProjectSettings/ProjectSettings.asset"
+  ]
+}

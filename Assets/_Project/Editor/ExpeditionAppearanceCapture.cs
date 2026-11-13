@@ -225,8 +225,17 @@ namespace Project.Editor
                 {
                     text.ForceMeshUpdate();
                     var parent = text.transform.parent;
+                    var heroTab = parent != null && parent.name.StartsWith("ExpeditionHeroTab", StringComparison.Ordinal);
+                    if (heroTab)
+                    {
+                        var frame = parent.GetComponent<Image>();
+                        var expected = parent.name == "ExpeditionHeroTab0" ? "hero-equipment-frame" : "hero-appearance-frame";
+                        Require(frame != null && frame.sprite != null && frame.sprite.name == expected &&
+                            frame.type == Image.Type.Sliced && frame.sprite.border.x > 0,
+                            "Hero tab did not bind its custom sliced frame: " + parent.name);
+                    }
                     var critical = text.name == "AppearanceTitle" || text.name == "AppearanceDescription" || text.name == "AppearanceStatus" || text.name == "AppearanceRequirements" || text.name == "AppearanceCardProgress" ||
-                        parent != null && (parent.name.StartsWith("AppearanceTheme", StringComparison.Ordinal) || parent.name.StartsWith("ExpeditionHeroTab", StringComparison.Ordinal));
+                        heroTab || parent != null && parent.name.StartsWith("AppearanceTheme", StringComparison.Ordinal);
                     if (critical && text.isTextOverflowing)
                     {
                         var canvas = text.canvas;

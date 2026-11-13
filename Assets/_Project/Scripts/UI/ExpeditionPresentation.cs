@@ -208,7 +208,6 @@ namespace Project.UI
             if (aura != null)
             {
                 aura.SetParent(_sceneBody, false);
-                ExpeditionUi.SetRect(aura, .025f, .477f, .325f, .569f);
                 ExpeditionUi.Ensure<ServerAuraButtonView>(aura.gameObject).InstallReadout();
             }
             var online = Find("OnlinePlayersBadge");

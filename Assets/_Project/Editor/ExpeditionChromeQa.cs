@@ -7,6 +7,7 @@ using Project.Nakama;
 using Project.Match3;
 using Project.UI;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
@@ -153,14 +154,37 @@ namespace Project.Editor
                     "Active seismograph is missing its button or countdown.");
                 Check(!oldIcon.gameObject.activeSelf && button.GetComponentInChildren<ExpeditionAuraSignal>() != null,
                     "Legacy crystal still covers the active seismograph.");
-                RenderAuraFixture(hud, "anomaly-seismograph.png");
+                var frame = Resources.Load<Sprite>("Expedition/Frames/anomaly-button-frame");
+                Check(frame != null && frame.border.x > 0 && button.targetGraphic is Image plate && plate.sprite == frame &&
+                    plate.type == Image.Type.Sliced && plate.raycastTarget,
+                    "The original anomaly button is missing its dedicated frame or hit target.");
+                var caption = button.transform.Find("ExpeditionAuraTitle").GetComponent<TMP_Text>();
+                Check(caption.text == "АНОМАЛИЯ", "The anomaly caption changed.");
+                Action verifyReadout = () =>
+                {
+                    VerifyAuraText(button, caption);
+                    VerifyAuraText(button, timer);
+                };
+                RenderAuraFixture(hud, "anomaly-seismograph.png", verifyReadout);
+                RenderAuraFixture(hud, "anomaly-seismograph-tall.png", verifyReadout, 1080, 2400);
+                view.SetAnomalyActive(true);
+                Check(timer.text == "Активна", "The active state without a deadline lost its label.");
+                RenderAuraFixture(hud, "anomaly-seismograph-no-deadline.png", verifyReadout, 1080, 2400);
+                view.SetAnomalyActive(true, fixture.endsAtUnix);
+
                 button.onClick.Invoke();
                 var modal = Read<GameObject>(menu, "_serverAuraModalRoot");
                 Check(modal.activeSelf, "Aura callback did not open the modal.");
                 var chamber = (RectTransform)modal.transform.Find("Panel/CrystalChamber");
                 Check(chamber.anchorMin.x < .02f && chamber.anchorMin.y < .02f &&
                     chamber.anchorMax.x > .98f && chamber.anchorMax.y > .98f, "Crystal chamber does not cover the modal.");
-                Check(chamber.Find("Painting").GetComponent<Image>().sprite != null, "Crystal chamber art missing.");
+                var painting = chamber.Find("Painting").GetComponent<Image>();
+                Check(painting.sprite != null && painting.sprite.rect.width >= 1024 && painting.sprite.rect.height >= 1536 &&
+                    painting.sprite.rect.width < painting.sprite.rect.height, "Crystal chamber needs a high-resolution portrait illustration.");
+                var importer = (TextureImporter)AssetImporter.GetAtPath("Assets/_Project/Resources/Expedition/Art/encounter-anomaly.jpg");
+                var android = importer.GetPlatformTextureSettings("Android");
+                Check(android.overridden && android.maxTextureSize >= painting.sprite.rect.height &&
+                    android.format == TextureImporterFormat.ASTC_4x4, "Android import downscales or overcompresses the crystal chamber.");
                 var stats = Read<RectTransform>(menu, "_serverAuraModalStatsRoot");
                 Check(stats.childCount == 8, "Aura modal did not display all eight effects.");
                 var positions = new HashSet<Vector2>();
@@ -172,27 +196,56 @@ namespace Project.Editor
                     Check(effect.Find("EffectGlyph").GetComponent<Image>().sprite != null, "An aura effect icon is missing.");
                 }
                 Check(stats.GetChild(7).Find("EffectValue").GetComponent<TMP_Text>().text == "-20%", "Aura modifier lost its sign.");
-                RenderAuraFixture(hud, "anomaly-modal.png");
+                Action verifyPainting = () => VerifyAuraCover(chamber, painting);
+                RenderAuraFixture(hud, "anomaly-modal.png", verifyPainting);
+                RenderAuraFixture(hud, "anomaly-modal-tall.png", verifyPainting, 1080, 2400);
                 modal.transform.Find("Panel/CloseButton").GetComponent<Button>().onClick.Invoke();
                 Check(!modal.activeSelf, "Close callback did not hide the aura modal.");
                 view.SetAnomalyActive(true, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1);
                 Check(!view.gameObject.activeSelf && timer.text.Length == 0, "Expired response reactivated the seismograph.");
-                return "PASS aura: active seismograph, expiry, full-window illustration, eight effects, signed values and original modal callbacks.";
+                return "PASS aura: dedicated button frame, fitted caption and timer at two phone ratios, expiry, sharp aspect-preserving cover, eight effects, signed values and original modal callbacks.";
             }
             finally { UnityEngine.Object.DestroyImmediate(hud); }
         }
 
-        private static void RenderAuraFixture(GameObject hud, string name)
+        private static void VerifyAuraText(Button button, TMP_Text text)
+        {
+            text.ForceMeshUpdate();
+            Check(!text.isTextOverflowing && !text.isTextTruncated && text.textInfo.characterCount == text.text.Length,
+                "Anomaly readout text is clipped: " + text.text);
+            for (var i = 0; i < text.textInfo.characterCount; i++)
+                Check(text.textInfo.characterInfo[i].isVisible, "Anomaly readout glyph is hidden: " + text.text);
+
+            var bounds = text.textBounds;
+            var plate = (RectTransform)button.transform;
+            var lower = plate.InverseTransformPoint(text.rectTransform.TransformPoint(bounds.min));
+            var upper = plate.InverseTransformPoint(text.rectTransform.TransformPoint(bounds.max));
+            Check(lower.x > plate.rect.xMin + plate.rect.width * .33f && upper.x < plate.rect.xMax - 6 &&
+                lower.y > plate.rect.yMin + 6 && upper.y < plate.rect.yMax - 6,
+                "Anomaly readout ink crosses the instrument frame: " + text.text);
+        }
+
+        private static void VerifyAuraCover(RectTransform chamber, Image painting)
+        {
+            var aperture = chamber.rect;
+            var art = painting.rectTransform.rect;
+            var ratio = painting.sprite.rect.width / painting.sprite.rect.height;
+            Check(art.width >= aperture.width - 1 && art.height >= aperture.height - 1 &&
+                Mathf.Abs(art.width / art.height - ratio) < .01f,
+                "The crystal chamber has an uncovered edge or a stretched painting.");
+        }
+
+        private static void RenderAuraFixture(GameObject hud, string name, Action verify, int width = 1080, int height = 1920)
         {
             var oldTexture = RenderTexture.active;
             var camera = new GameObject("AuraQaCamera", typeof(Camera)).GetComponent<Camera>();
-            var target = new RenderTexture(1080, 1920, 24);
-            var pixels = new Texture2D(1080, 1920, TextureFormat.RGB24, false);
+            var target = new RenderTexture(width, height, 24);
+            var pixels = new Texture2D(width, height, TextureFormat.RGB24, false);
             try
             {
                 camera.transform.position = new Vector3(0, 0, -10);
                 camera.orthographic = true;
-                camera.orthographicSize = 960;
+                camera.orthographicSize = height * .5f;
                 camera.cullingMask = 1 << 31;
                 camera.clearFlags = CameraClearFlags.SolidColor;
                 camera.backgroundColor = ExpeditionTheme.Panel;
@@ -205,11 +258,12 @@ namespace Project.Editor
                 foreach (var child in hud.GetComponentsInChildren<Transform>(true))
                     child.gameObject.layer = 31;
                 Canvas.ForceUpdateCanvases();
+                verify();
                 if (GraphicsSettings.currentRenderPipeline != null)
                     RenderPipeline.SubmitRenderRequest(camera, new RenderPipeline.StandardRequest { destination = target });
                 else camera.Render();
                 RenderTexture.active = target;
-                pixels.ReadPixels(new Rect(0, 0, 1080, 1920), 0, 0);
+                pixels.ReadPixels(new Rect(0, 0, width, height), 0, 0);
                 pixels.Apply();
                 const string output = ".cache/qa/aura-polish";
                 Directory.CreateDirectory(output);

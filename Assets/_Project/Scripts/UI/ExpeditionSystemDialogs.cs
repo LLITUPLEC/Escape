@@ -90,7 +90,7 @@ namespace Project.UI
             group.interactable = group.blocksRaycasts = group.ignoreParentGroups = true;
             SetSafeBounds(panel, .055f, .065f, .945f, .935f);
 
-            var scene = ExpeditionShelterSurface.Illustration(panel, "CrystalChamber", "encounter-anomaly", .012f, .008f, .988f, .992f);
+            var scene = ExpeditionShelterSurface.Illustration(panel, "CrystalChamber", "encounter-anomaly", 0, 0, 1, 1);
             scene.SetAsFirstSibling();
             ExpeditionLocalAtmosphere.Install(scene, false);
             ExpeditionUi.Fill(scene, "ObservationShade", 0, 0, 1, .641f, new Color32(4, 19, 24, 133));

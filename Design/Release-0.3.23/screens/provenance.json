@@ -1,0 +1,39 @@
+{
+  "version": "0.3.23",
+  "date": "2026-11-13",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": "Design/Release-0.3.22/screens/hub.png",
+      "sha256": "78ea1ab233ede68049d3ca55ed89793d64a774f4c628c9053d4578fdac801fe7",
+      "bytes": 2724437,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Unity Shelter capture from 0.3.22 with the current Shelter background and offline character data"
+    },
+    {
+      "file": "character.png",
+      "source": ".cache/release-work/0.3.23/editor/.cache/qa/achievement-journal/1080x1920-claimable.png",
+      "sha256": "e5dc0866db49d71f1d54d79af2613f50eafa170ae67e8d88f3c593b007809f44",
+      "bytes": 1736521,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Native Unity capture of the 0.3.23 achievement album with a claimable reward and the corrected gold frame"
+    },
+    {
+      "file": "mine.png",
+      "source": "Design/Release-0.3.22/screens/mine.png",
+      "sha256": "b81aeead85cf90c25de9ee88c564288f6614208f0543ed7a9a0b669a203392cf",
+      "bytes": 1785995,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Retained Unity World Boss dossier capture with offline event data"
+    }
+  ]
+}

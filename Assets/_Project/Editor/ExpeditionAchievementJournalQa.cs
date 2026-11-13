@@ -235,9 +235,8 @@ namespace Project.Editor
                 var crossRow = Button(scroll.content, "JournalRow-" + chain.ChainId);
                 var targetCount = AchievementUiRules.StepTarget(chain, current);
                 var claimFrame = Find(crossRow.transform, "ClaimReadyFrame").GetComponent<Image>();
-                var claimTag = Find(crossRow.transform, "ClaimReadyTag").GetComponent<Image>();
                 Check(Progress(crossRow.transform).Contains($"{targetCount - 1}/{targetCount}"), "Journal shows the delta for the first unclaimed step", report);
-                Check(!claimFrame.enabled && !claimTag.enabled, "An in-progress medal has no claim highlight", report);
+                Check(!claimFrame.enabled, "An in-progress medal has no claim highlight", report);
                 Capture(canvas, camera, target, $"{width}x{height}-journal", report);
                 Click(crossRow, events);
                 var detail = OpenModal(modalHost);
@@ -262,10 +261,38 @@ namespace Project.Editor
                 counters[chain.StatKey]++;
                 Call(controller, "OnAchievementLifecycleChanged");
                 Check(crossRow == Button(scroll.content, "JournalRow-" + chain.ChainId), "Progress refresh reuses the visible row", report);
-                Check(claimFrame.enabled && claimTag.enabled && !claimFrame.raycastTarget && !claimTag.raycastTarget
-                    && Label(crossRow.transform, "MedalStatus").text == "ЗАБРАТЬ",
-                    "Claimable medal shows a full gold frame and an action label without blocking the row", report);
+                Check(claimFrame.enabled && !claimFrame.raycastTarget && crossRow.transform.Find("ClaimReadyTag") == null
+                    && crossRow.GetComponentsInChildren<Button>().Length == 1 && Label(crossRow.transform, "MedalStatus").text == "Награда готова",
+                    "Claimable medal has a gold frame and plain readiness status, with one row action", report);
+                Check(crossRow.image.type == Image.Type.Sliced && claimFrame.type == Image.Type.Sliced
+                    && crossRow.image.sprite.border == claimFrame.sprite.border && claimFrame.rectTransform.rect == ((RectTransform)crossRow.transform).rect,
+                    "Gold frame follows the row's sliced outline", report);
+                Check(FrameFitsViewport(scroll, claimFrame), "The first medal's whole outline fits at the top of the viewport", report);
+                Call(controller, "UpdateClaimFrames", 0f);
+                var peak = claimFrame.canvasRenderer.GetAlpha();
                 Capture(canvas, camera, target, $"{width}x{height}-claimable", report);
+                Call(controller, "UpdateClaimFrames", .6f);
+                var midpoint = claimFrame.canvasRenderer.GetAlpha();
+                Call(controller, "UpdateClaimFrames", 1.2f);
+                var trough = claimFrame.canvasRenderer.GetAlpha();
+                Check(peak > .95f && midpoint is > .5f and < .75f && trough is > .15f and < .35f,
+                    "The gold rim moves smoothly between distinct, visible brightness levels", report);
+                Capture(canvas, camera, target, $"{width}x{height}-claimable-rest", report);
+
+                var last = catalog.Last(entry => entry.Tab == AchievementTab.Obsession);
+                counters[last.StatKey] = AchievementUiRules.CumulativeRequired(last, 0);
+                Call(controller, "OnAchievementLifecycleChanged");
+                var lastFrame = Find(Button(scroll.content, "JournalRow-" + last.ChainId).transform, "ClaimReadyFrame").GetComponent<Image>();
+                scroll.verticalNormalizedPosition = 0f;
+                Flush(scroll);
+                Call(controller, "UpdateClaimFrames", 0f);
+                Check(lastFrame.enabled && FrameFitsViewport(scroll, lastFrame),
+                    "The last claimable medal's whole outline fits at the bottom of the viewport", report);
+                Capture(canvas, camera, target, $"{width}x{height}-claimable-bottom", report);
+                counters.Remove(last.StatKey);
+                Call(controller, "OnAchievementLifecycleChanged");
+                scroll.verticalNormalizedPosition = 1f;
+                Flush(scroll);
                 Click(crossRow, events);
                 detail = OpenModal(modalHost);
                 Check(AchievementRewardClaim.CanClaimStep(chain, current) && ClaimAvailable(detail.transform), "Eligible current reward has a claim action", report);
@@ -286,7 +313,7 @@ namespace Project.Editor
                 for (var i = 0; i < chain.Thresholds.Length; i++) claims.Add(chain.ChainId + ":" + i);
                 counters[chain.StatKey] = AchievementUiRules.CumulativeRequired(chain, chain.Thresholds.Length - 1);
                 Call(controller, "OnAchievementLifecycleChanged");
-                Check(!claimFrame.enabled && !claimTag.enabled, "The claimed medal loses its claim highlight", report);
+                Check(!claimFrame.enabled, "The claimed medal loses its claim highlight", report);
                 Click(crossRow, events);
                 detail = OpenModal(modalHost);
                 Check(Label(detail.transform, "MedalCondition").text.Contains(chain.Descriptions.Last()) && !ClaimAvailable(detail.transform),
@@ -342,6 +369,14 @@ namespace Project.Editor
             Canvas.ForceUpdateCanvases();
         }
 
+        private static bool FrameFitsViewport(ScrollRect scroll, Image frame)
+        {
+            var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, frame.rectTransform);
+            var viewport = scroll.viewport.rect;
+            return !frame.canvasRenderer.cull && bounds.min.x > viewport.xMin && bounds.max.x < viewport.xMax
+                && bounds.min.y > viewport.yMin && bounds.max.y < viewport.yMax;
+        }
+
         private static void Capture(Canvas canvas, Camera camera, RenderTexture target, string name, Report report)
         {
             foreach (var child in canvas.GetComponentsInChildren<Transform>(true))
@@ -370,7 +405,8 @@ namespace Project.Editor
             field.SetValue(null, value);
         }
 
-        private static void Call(object target, string method) => target.GetType().GetMethod(method, Instance).Invoke(target, null);
+        private static void Call(object target, string method, params object[] arguments) =>
+            target.GetType().GetMethod(method, Instance).Invoke(target, arguments);
 
         private static void Check(bool passed, string message, Report report)
         {

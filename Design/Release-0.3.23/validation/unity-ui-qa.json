@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "version": "0.3.23",
+  "editor": "6000.3.9f1",
+  "target": "Android",
+  "groups": [
+    "Android version and upgrade code",
+    "achievement album and claim",
+    "shop shelves and quotes",
+    "anomaly background and label",
+    "hero frame imports",
+    "hero tabs on production prefab"
+  ]
+}
