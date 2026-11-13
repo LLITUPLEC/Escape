@@ -5,6 +5,10 @@ work products default to `.cache/release-work`; published release evidence under
 `Design/Release-<version>/validation` is retained separately. Use `--help` (or
 PowerShell `Get-Help`) before invoking an unfamiliar command.
 
+The public source tree uses the pre-ElevenLabs WAVs at the same Unity paths.
+The official APK includes the locally installed ElevenLabs set, checked by
+`Tools/Audio/validate_selected_assets.py` against its ignored local manifest.
+
 ## Android
 
 `prepare-android-sdk.ps1` creates or verifies the owned SDK copy at

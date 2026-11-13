@@ -100,10 +100,22 @@ namespace Project.Editor
                         ExpeditionUi.Text(safe,"PreviewNotice","Опора на полу · offline-предпросмотр",27,.06f,.08f,.94f,.13f,TextAlignmentOptions.Center);
                         Canvas.ForceUpdateCanvases();
                         foreach(var sprite in heroes){left.BindPreview(sprite,true);left.RefreshGrounding();Verify(left,sprite,background.rectTransform,safe,leftHeader,.27f,camera,profile,cases);}
+                        foreach (var sprite in heroes)
+                        {
+                            var drawnFacingRight = sprite.name.StartsWith("phoenix-", StringComparison.Ordinal) ||
+                                                   sprite.name.StartsWith("alchemist-", StringComparison.Ordinal);
+                            left.BindPreview(sprite, true);
+                            right.BindPreview(sprite, false);
+                            Require((left.transform.localScale.x > 0) == drawnFacingRight &&
+                                    (right.transform.localScale.x < 0) == drawnFacingRight,
+                                    "Battle figures must face each other: " + sprite.name);
+                            Verify(right, sprite, background.rectTransform, safe, rightHeader, .73f, camera, profile, cases);
+                        }
                         foreach(var sprite in monsters){right.BindPreview(sprite,false);right.RefreshGrounding();Verify(right,sprite,background.rectTransform,safe,rightHeader,.73f,camera,profile,cases);}
                         var theme=index==0?"dawnwarden-male":index==1?"railwarden-female":index==2?"beastbreaker-male":"phoenix-female";
                         left.BindPreview(Resources.Load<Sprite>(CharacterAppearance.ResourceRoot+theme+"-body"),true);
-                        right.BindPreview(index%2==0?monsters[7]:monsters[2],false);
+                        right.BindPreview(index == 3 ? Resources.Load<Sprite>(CharacterAppearance.ResourceRoot + theme + "-body") :
+                            index % 2 == 0 ? monsters[7] : monsters[2], false);
                         left.RefreshGrounding();right.RefreshGrounding();
                         var leftPoint=camera.WorldToScreenPoint(left.FootWorld);var rightPoint=camera.WorldToScreenPoint(right.FootWorld);
                         Require(Mathf.Abs(leftPoint.y-rightPoint.y)<.05f,"Both feet do not share the illustrated floor.");

@@ -1,0 +1,33 @@
+{
+  "version": "0.3.25",
+  "versionCode": 27,
+  "state": "published_and_verified",
+  "verifiedUtc": "2026-11-13T18:13:22.6552928+00:00",
+  "url": "https://prokrust-play.ru/escape/",
+  "apkUrl": "https://prokrust-play.ru/escape/downloads/Escape-0.3.25-fc744e76ffec.apk",
+  "apkSha256": "fc744e76ffec189e162a0dc5200a9a9f3dd8d52fdc95b732eaa421e4e36801a5",
+  "apkBytes": 132734755,
+  "previousSignerPreserved": true,
+  "physicalDeviceTested": false,
+  "sourceFiles": 2191,
+  "sourceManifestSha256": "eb28816177c6da2a430585939faaef91bd8b716af7d292ef6086b2e4a1c490b1",
+  "wholeProjectParityFiles": 2188,
+  "deploymentScope": [
+    "Android APK",
+    "Escape website"
+  ],
+  "checks": {
+    "replacementAudioClipsInApk": 20,
+    "protectedAudioClipsCompared": 3,
+    "extraTurnSeconds": 0.65,
+    "nativeSymbolsPassed": true,
+    "publicFiles": 32,
+    "previousPublicApkFull": true
+  },
+  "retainedVersions": [
+    "0.3.25",
+    "0.3.24"
+  ],
+  "verifiedDailyVpsBackups": 2,
+  "publicGitUsesPreviousAudio": true
+}

@@ -82,8 +82,19 @@ Runtime.apply_result_rewards = function(state, winner, is_draw, payload)
   return true
 end
 
+Runtime.flush_match_achievements = function(state, winner, actor, opponent, action_type)
+  local ok, delivered = pcall(Ach.flush_match_finish, state, winner, actor, opponent, action_type)
+  if not ok or delivered ~= true then
+    state._achievement_pending_result = { winner = winner, actor = actor, opponent = opponent, action_type = action_type }
+    if not ok then nk.logger_error("achievement_flush_match_finish failed: " .. tostring(delivered)) end
+    return false
+  end
+  state._achievement_pending_result = nil
+  return true
+end
+
 Runtime.emit_game_over = function(dispatcher, state, payload)
-  if state._arena_pending_result or state._race_pending_result or state._pve_pending_result then
+  if state._arena_pending_result or state._race_pending_result or state._pve_pending_result or state._achievement_pending_result then
     state._pending_game_over = payload
     return false
   end
@@ -131,7 +142,8 @@ Runtime.retry_pending_results = function(dispatcher, state, tick)
     end
     return state._prestart_cancel_pending==true or state._terminal_pending==true
   end
-  if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result and not state._terminal_pending then return false end
+  if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result
+      and not state._achievement_pending_result and not state._terminal_pending then return false end
   if tick >= (state._next_result_retry_tick or 0) then
     state._next_result_retry_tick = tick + CFG.TICK_RATE
     if state._arena_pending_result then Runtime.finish_arena_result(state, state._arena_pending_result.winner) end
@@ -148,11 +160,17 @@ Runtime.retry_pending_results = function(dispatcher, state, tick)
         if state._pending_game_over then Runtime.assign_pve_reward_payload(state._pending_game_over, receipt) end
       end
     end
-    if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result and state._pending_game_over then
+    if state._achievement_pending_result then
+      local p = state._achievement_pending_result
+      Runtime.flush_match_achievements(state, p.winner, p.actor, p.opponent, p.action_type)
+    end
+    if not state._arena_pending_result and not state._race_pending_result and not state._pve_pending_result
+        and not state._achievement_pending_result and state._pending_game_over then
       Runtime.emit_game_over(dispatcher, state, state._pending_game_over)
     end
   end
-  return state._arena_pending_result ~= nil or state._race_pending_result ~= nil or state._pve_pending_result ~= nil or state._terminal_pending==true
+  return state._arena_pending_result ~= nil or state._race_pending_result ~= nil or state._pve_pending_result ~= nil
+    or state._achievement_pending_result ~= nil or state._terminal_pending==true
 end
 
 Runtime.assign_pve_reward_payload = function(payload, receipt)
@@ -205,9 +223,11 @@ local PveMineCost = build_pve_mine_cost({
   pve_energy_max_for_user = pve_energy_max_for_user,
   empty_key_items = empty_key_items,
 })
+Runtime.MinePrices = runtime_lua_require("modules.duel_mine_prices", "duel_mine_prices")
 
-function build_floor_bot_entry(floor)
+function build_floor_bot_entry(floor, difficulty)
   local f = CFG.clamp_int(floor, 1, CFG.PVE_MAX_LEVEL)
+  local attack, banish = Runtime.MinePrices.for_floor(difficulty, f)
   local boss = is_boss_floor(f)
   local hp = 80 + f * 20
   local damage = 3 + f
@@ -231,8 +251,6 @@ function build_floor_bot_entry(floor)
     armor = armor * 2
     crit = crit * 2
     start_mana = start_mana * 2
-    reward_matter_min = 5
-    reward_matter_max = 10
     if f == 4 then
       reward_xp = 200
       reward_gold = 150
@@ -253,13 +271,12 @@ function build_floor_bot_entry(floor)
       reward_xp = 500
       reward_gold = 350
       reward_ore = 500
+      reward_matter_min = 5
+      reward_matter_max = 10
       reward_blueprint = "purple"
       reward_ingots = 3
       reward_tesseract_chance = 0.10
     end
-  else
-    reward_matter_min = 1
-    reward_matter_max = 3
   end
 
   local hp_bonus = math.max(0, hp - CFG.MAX_HP)
@@ -289,8 +306,8 @@ function build_floor_bot_entry(floor)
     base_armor = armor,
     base_crit = crit,
     base_heal = 0,
-    cost_attack = PveMineCost.clone_list(PveMineCost.DEFAULT_ATTACK),
-    cost_banish = PveMineCost.clone_list(PveMineCost.DEFAULT_BANISH),
+    cost_attack = attack,
+    cost_banish = banish,
   }
 end
 
@@ -1295,6 +1312,7 @@ local function make_sync_msg(state, action, extra_turn, anim_steps, cheatRowsFor
     extraTurn = extra_turn or false,
     activeUserId = state.active_user_id,
     roundNumber = Runtime.Rounds.number(state),
+    arenaRound = state.arena_mirror and state.arena_mirror.round or nil,
     actionActorUserId = sync_action_actor_uid or "",
     serverNowUnixMs = server_now_unix_ms,
     turnEndsAtUnixMs = turn_ends_at_unix_ms,
@@ -1392,12 +1410,7 @@ local function broadcast_pvp_game_over(dispatcher, state, winner, actor, opponen
     game_over_payload.rewardMatter = 0
   end
   if is_pvp_race(state) ~= true then
-    local ok_achi, err_achi = pcall(function()
-      Ach.flush_match_finish(state, winner, actor, opponent, action_type)
-    end)
-    if not ok_achi then
-      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
-    end
+    Runtime.flush_match_achievements(state, winner, actor, opponent, action_type)
   end
   Runtime.StatsApi.record_match_finish(state, winner, is_draw)
   Runtime.emit_game_over(dispatcher, state, game_over_payload)
@@ -1674,11 +1687,8 @@ local function finish_turn_and_broadcast(dispatcher, state, action, extra_turn, 
       game_over_payload.rewardOre = tonumber(ro) or 0
     end
     Runtime.finish_arena_result(state, winner)
-    local ok_achi, err_achi = pcall(function()
-      Ach.flush_match_finish(state, winner, actor, opponent, action_type)
-    end)
-    if not ok_achi then
-      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
+    if state.pvp_race ~= true then
+      Runtime.flush_match_achievements(state, winner, actor, opponent, action_type)
     end
     Runtime.StatsApi.record_match_finish(state, winner, false)
     Runtime.emit_game_over(dispatcher, state, game_over_payload)
@@ -2245,10 +2255,10 @@ local BOTS_CACHE_TTL_SEC = 30
 local _bots_merged_by_diff = {}
 local _bots_merged_at_by_diff = {}
 
-local function normalize_stored_bot(id_key, def)
+local function normalize_stored_bot(id_key, def, difficulty)
   if type(def) ~= "table" then return nil end
   local floor = CFG.clamp_int(def.floor ~= nil and def.floor or def.difficulty, 1, CFG.PVE_MAX_LEVEL)
-  local fallback = build_floor_bot_entry(floor)
+  local fallback = build_floor_bot_entry(floor, difficulty)
   local bid = mine_bot_id_for_floor(floor)
   local name = CFG.mine_monster_name(floor, tostring(def.name or fallback.name or ""))
   if name == "" then return nil end
@@ -2298,7 +2308,7 @@ local function normalize_stored_bot(id_key, def)
   }
 end
 
-local function read_bots_from_storage_key(storage_key)
+local function read_bots_from_storage_key(storage_key, difficulty)
   local uid = CFG.BOTS_STORAGE_USER_ID
   if uid == nil or uid == "" then return nil end
   if storage_key == nil or storage_key == "" then return nil end
@@ -2318,7 +2328,7 @@ local function read_bots_from_storage_key(storage_key)
   local out = {}
   for id, def in pairs(bots) do
     if type(id) == "string" then
-      local n = normalize_stored_bot(id, def)
+      local n = normalize_stored_bot(id, def, difficulty)
       if n ~= nil then out[n.id] = n end
     end
   end
@@ -2336,7 +2346,7 @@ local function get_merged_bots(difficulty)
     return cached
   end
   local merged = {}
-  local from_legacy = read_bots_from_storage_key(CFG.BOTS_KEY)
+  local from_legacy = read_bots_from_storage_key(CFG.BOTS_KEY, diff)
   if from_legacy ~= nil then
     for kid, bot in pairs(from_legacy) do
       merged[kid] = bot
@@ -2344,7 +2354,7 @@ local function get_merged_bots(difficulty)
   end
   local diff_key = CFG.BOTS_KEYS_BY_DIFFICULTY and CFG.BOTS_KEYS_BY_DIFFICULTY[diff] or nil
   if diff_key ~= nil and diff_key ~= "" then
-    local from_diff = read_bots_from_storage_key(diff_key)
+    local from_diff = read_bots_from_storage_key(diff_key, diff)
     if from_diff ~= nil then
       for kid, bot in pairs(from_diff) do
         merged[kid] = bot
@@ -2363,7 +2373,7 @@ local function get_merged_bots(difficulty)
   for floor = 1, CFG.PVE_MAX_LEVEL do
     local id = mine_bot_id_for_floor(floor)
     if merged[id] == nil then
-      merged[id] = build_floor_bot_entry(floor)
+      merged[id] = build_floor_bot_entry(floor, diff)
     end
   end
   _bots_merged_by_diff[diff] = merged
@@ -3581,6 +3591,11 @@ Runtime.Pvp = build_pvp({
   empty_key_items = empty_key_items,
   get_race_entry = function() return Runtime.RaceEntry end,
   build_match_finish_effects = function(...) return Runtime.StatsApi.build_match_finish_effects(...) end,
+  build_achievement_finish_effects = Ach.build_match_finish_effects,
+  deliver_finish_effects = function(uid, id)
+    if not Runtime.Journal.read(uid, id) then return true end
+    return Runtime.Journal.deliver_effects(uid, id)
+  end,
 })
 
 -- Stats RPC / arena tournament counters: отдельный chunk (лимит 200 local).
@@ -5302,12 +5317,7 @@ local function finalize_pvp_forfeit_win(dispatcher, state, winner, reason_tag)
   local tag = tostring(reason_tag or "forfeit")
   Runtime.finish_arena_result(state, winner)
   if is_pvp_race(state) ~= true then
-    local ok_achi, err_achi = pcall(function()
-      Ach.flush_match_finish(state, winner, nil, nil, 0)
-    end)
-    if not ok_achi then
-      nk.logger_error("achievement_flush_match_finish failed (" .. tag .. "): " .. tostring(err_achi))
-    end
+    Runtime.flush_match_achievements(state, winner)
   end
   local game_over_payload = {
     winnerUserId = winner,
@@ -5351,12 +5361,7 @@ Runtime.forfeit_match = function(dispatcher,state,uid,reason)
   if not winner then return end
   if state.mode=="pve" and state.arena_mirror==nil and not state.pvp_race then
     state.last_reward=Runtime.award_pve_defeat(state.owner_user_id,state.owner_session_epoch)
-    local ok_achi, err_achi = pcall(function()
-      Ach.flush_match_finish(state, winner, nil, nil, 0)
-    end)
-    if not ok_achi then
-      nk.logger_error("achievement_flush_match_finish failed: " .. tostring(err_achi))
-    end
+    Runtime.flush_match_achievements(state, winner)
     Runtime.StatsApi.record_match_finish(state,winner,false)
     Runtime.emit_game_over(dispatcher,state,{winnerUserId=winner,isDraw=false,endReason=reason,
       rewardXp=state.last_reward.reward_xp or 0,newLevel=state.last_reward.level or 1})
@@ -5904,6 +5909,11 @@ Runtime.RateLimit.register_rpc(Arena.duel_arena_place_bet, "duel_arena_place_bet
 if type(nk.run_once) == "function" then
   nk.run_once(function(ctx)
     Runtime.seed_cheat_whitelist(ctx and ctx.env and ctx.env.ESCAPE_DEBUG_PREVIEW_EMAILS)
+    local prices_ok, upgraded = Runtime.MinePrices.upgrade_catalogs(CFG.BOTS_COLLECTION, CFG.BOTS_STORAGE_USER_ID,
+      CFG.BOTS_KEYS_BY_DIFFICULTY)
+    if not prices_ok then
+      nk.logger_error("mine_prices_upgrade: " .. tostring(upgraded))
+    end
     Runtime.StorageMaintenance.bootstrap()
     if Runtime.GlobalBoss and type(nk.match_create)=="function"then
       nk.match_create("duel_global_boss_dispatcher",{bootstrap=true})

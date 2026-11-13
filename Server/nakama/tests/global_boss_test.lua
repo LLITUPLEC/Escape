@@ -57,20 +57,25 @@ assert(Boss.finish('ready',ready.attempt_id,'player_surrender',{value=1}))
 local crit_key='slaughter.critical_hits'
 local function summary(uid)return F.get(CFG.STATS_COLLECTION,uid,CFG.STATS_KEY)end
 F.put(CFG.STATS_COLLECTION,'a',CFG.STATS_KEY,{wins=7,achievement_stats={kept=3}})
-local hit=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true)
+local medals={['uses.cross']=1,['matches.line5']=1,['matches.line6']=1}
+local hit=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true,medals)
 check(hit and hit.actual_damage==2000 and Boss.get_event(e.id).hp==e.max_hp-2000,'player damage commits to one globally shared HP row')
-local replay=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true)
+local replay=Boss.commit('a',a.attempt_id,1,2000,{value=2},true,nil,true,medals)
 check(replay.replayed and Boss.get_event(e.id).hp==e.max_hp-2000,'duplicate action sequence never repeats global damage')
 check(summary('a').achievement_stats[crit_key]==1 and summary('a').achievement_stats.kept==3 and summary('a').wins==7,
  'critical boss hit commits with damage exactly once and preserves other summary fields')
+check(summary('a').achievement_stats['matches.line6']==1 and summary('a').achievement_stats['uses.cross']==1,
+ 'World Boss commits ability and match medals with the action sequence')
 local other=Boss.commit('b',b.attempt_id,1,2000,{value=2},true)
 check(other.event.hp==e.max_hp-4000,'second account attacks the same remaining global HP')
 F.before_write=function()assert(Boss.commit('b',b.attempt_id,2,100,{value=3},true))end
 local concurrent=Boss.commit('a',a.attempt_id,2,100,{value=3},true)
 check(concurrent.event.hp==e.max_hp-4200,'concurrent global CAS conflict retries without losing either contribution')
-F.fail_after=true;local ambiguous=Boss.commit('a',a.attempt_id,3,100,{value=4},true,nil,true)
+F.fail_after=true;local ambiguous=Boss.commit('a',a.attempt_id,3,100,{value=4},true,nil,true,medals)
 check(ambiguous and ambiguous.replayed and Boss.get_event(e.id).hp==e.max_hp-4300,'lost commit acknowledgement reads durable sequence instead of repeating damage')
 check(summary('a').achievement_stats[crit_key]==2,'lost acknowledgement does not duplicate the boss critical achievement')
+check(summary('a').achievement_stats['matches.line6']==2 and summary('a').achievement_stats['uses.cross']==2,
+ 'lost acknowledgement does not duplicate World Boss line or ability medals')
 local bad,err=Boss.commit('a',a.attempt_id,8,999999,{value=9},true)
 check(not bad and err=='stale_action','out of order internal action sequence rejected')
 Boss.commit('low',c.attempt_id,1,1,{value=2},true)

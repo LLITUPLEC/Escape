@@ -21,10 +21,21 @@ end
 test("pure builders preserve full effects even when owner is journal-managed", function(f, j, ach, stats, state)
   state._finalization_managed = { a = true }
   local effects = ach.build_match_finish_effects(state, "a", "a", "zz-bot-mine_2", 2)
-  assert(effects.a["uses.cross"] == 3 and effects.a["dnn.win_at_one_hp"] == 1)
+  assert(effects.a["uses.cross"] == 3 and not effects.a["dnn.win_at_one_hp"])
   local result = stats.build_match_finish_effects(state, "a", false)
   assert(result.a.match_stats.mode == "mine" and result.a.match_stats.won and result.a.match_stats.result_id == "finish")
   assert(#f.writes == 0)
+end)
+test("mode and participation rules isolate Phoenix and technical tournament results", function(f, j, ach, stats, state)
+  state.arena_mirror={round="final",kind="smith"}
+  assert(ach.build_match_finish_effects(state,"a").a["dnn.win_at_one_hp"]==1)
+  state.arena_no_show_users={a=true};state.started=false
+  local loss=ach.build_match_finish_effects(state,state.players_sorted[2]).a
+  assert(loss["uses.cross"]==3 and not loss["slaughter.tournament_final_loss"])
+  state.arena_mirror=nil;state.pvp_race=true
+  local race=ach.build_match_finish_effects(state,"a").a
+  assert(race["uses.cross"]==3 and not race["dnn.win_at_one_hp"])
+  assert(ach.build_match_finish_effects(state,"").a["uses.cross"]==3)
 end)
 test("managed owner bypasses both legacy writes without dropping frozen outcome effects", function(f, j, ach, stats, state)
   local effects = ach.build_match_finish_effects(state, "a", "a", "zz-bot-mine_2", 2).a
@@ -59,6 +70,15 @@ test("ordinary flush is idempotent across reconstructed state and outbox retry",
   assert(ach.flush_match_finish(state, "a", "a", "zz-bot-mine_2", 2))
   assert(ach.flush_match_finish(Fixture.copy(state), "a", "a", "zz-bot-mine_2", 2))
   assert(f.get("stats", "a", "summary").achievement_stats["uses.cross"] == 3)
+end)
+test("already durable effects can recover after storage reads resume", function(f, j, ach, stats, state)
+  local raw_read=f.nk.storage_read
+  f.nk.storage_read=function(keys) if keys[1].collection=="stats" then error("temporary read outage") end;return raw_read(keys) end
+  assert(ach.flush_match_finish(state, "a"))
+  assert(j.read("a", "finish").status=="committed")
+  f.nk.storage_read=raw_read
+  assert(j.recover("a", {}))
+  assert(f.get("stats", "a", "summary").achievement_stats["uses.cross"]==3)
 end)
 test("stats outbox read failure recovers both disconnected participants once", function(f, j, ach, stats, state)
   state.mode, state.players_sorted = "pvp", { "a", "b" }

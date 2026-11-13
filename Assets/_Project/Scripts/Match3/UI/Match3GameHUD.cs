@@ -42,6 +42,7 @@ namespace Project.Match3
         private bool _expeditionStyle;
         private bool _moveResolving;
         private TMP_Text _compactTurnSeparator;
+        private TMP_Text _arenaStageText;
         private int _roundNumber;
         public int RoundNumber => _roundNumber;
 
@@ -56,6 +57,40 @@ namespace Project.Match3
             ApplyAffixTooltipChrome();
             LayoutAffixTooltip();
             ApplyCompactPhaseVisibility();
+        }
+
+        public void SetTournamentStage(string round)
+        {
+            var stage = round switch
+            {
+                "qf" => "1/4 финала",
+                "sf" => "Полуфинал",
+                "final" => "Финал",
+                _ => string.Empty
+            };
+            if (_arenaStageText == null)
+            {
+                if (stage.Length == 0) return;
+                EnsureRoundText();
+                _arenaStageText = ExpeditionUi.Text(transform, "ArenaStageText", "", 20, .05f, .80f, .53f, .99f,
+                    TextAlignmentOptions.Center);
+                _arenaStageText.color = ExpeditionTheme.Amber;
+                _arenaStageText.fontStyle = FontStyles.Bold;
+                _arenaStageText.margin = Vector4.zero;
+                _arenaStageText.textWrappingMode = TextWrappingModes.NoWrap;
+                _arenaStageText.enableAutoSizing = true;
+                _arenaStageText.fontSizeMin = 13;
+                _arenaStageText.fontSizeMax = 20;
+            }
+
+            var showStage = stage.Length > 0;
+            if (_expeditionStyle)
+            {
+                var rect = roundText.rectTransform;
+                rect.anchorMin = new Vector2(showStage ? .53f : .05f, rect.anchorMin.y);
+            }
+            _arenaStageText.text = stage;
+            _arenaStageText.gameObject.SetActive(showStage);
         }
 
         private void EnsureRoundText()

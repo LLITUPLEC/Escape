@@ -7,8 +7,8 @@ namespace Project.Audio
     {
         LineClear, CascadeFall, AbilitySquare, AbilityCross, AbilityPetard,
         DamageHit, ExtraTurn, TimerEnd, Victory, Defeat,
-        UiClick, UiBack, UiBlocked, QueueEnter, MatchReady,
-        CraftStart, CraftReady, RewardClaim, BarrierUnlock
+        UiClick, UiBack, UiBlocked, QueueEnter, BattleStart,
+        CraftStart, CraftReady, RewardClaim, BarrierUnlock, TournamentCountdown
     }
 
     /// <summary>Selected, imported clips only. Excludes fury, shield, critical hit, and elevator.</summary>

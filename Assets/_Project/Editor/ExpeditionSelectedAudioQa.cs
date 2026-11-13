@@ -12,17 +12,7 @@ namespace Project.Editor
         public static string Run()
         {
             if (!Application.isPlaying) throw new InvalidOperationException("Play mode required");
-            var bank = Resources.Load<ExpeditionAudioBank>("Expedition/Audio/SelectedSfx");
-            if (bank == null) throw new InvalidOperationException("Selected audio bank missing");
-            foreach (ExpeditionCue cue in Enum.GetValues(typeof(ExpeditionCue)))
-            {
-                var clip = bank.Find(cue);
-                if (clip == null || clip.samples <= 0 || clip.frequency < 16000 || clip.length <= 0)
-                    throw new InvalidOperationException("Invalid imported selected clip: " + cue);
-                var path = AssetDatabase.GetAssetPath(clip);
-                if (!path.StartsWith("Assets/_Project/Audio/SFX/", StringComparison.Ordinal))
-                    throw new InvalidOperationException("Audio bank refers to a demo/source path: " + path);
-            }
+            CheckImportedClips();
             var listeners = 0;
             foreach (var listener in UnityEngine.Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
                 if (listener.enabled && listener.gameObject.activeInHierarchy) listeners++;
@@ -38,9 +28,34 @@ namespace Project.Editor
                     throw new InvalidOperationException("Audio feedback duplicated after restyling");
                 button.onClick.Invoke();
                 if (clicks != 1) throw new InvalidOperationException("Gameplay callback changed by binding");
-                return "PASS: all19 imported selected bank clips resolve to production SFX; one scene listener; ten restyles preserve one feedback component and one original callback. UI-click test only; no RPC.";
+                return "PASS: all imported bank clips resolve to production SFX; one scene listener; ten restyles preserve one feedback component and one original callback. UI-click test only; no RPC.";
             }
             finally { UnityEngine.Object.DestroyImmediate(fixture); }
+        }
+
+        public static void CheckImportedClips()
+        {
+            var bank = Resources.Load<ExpeditionAudioBank>("Expedition/Audio/SelectedSfx");
+            if (bank == null) throw new InvalidOperationException("Selected audio bank missing");
+            foreach (ExpeditionCue cue in Enum.GetValues(typeof(ExpeditionCue)))
+            {
+                var clip = bank.Find(cue);
+                if (clip == null || clip.samples <= 0 || clip.frequency < 16000 || clip.length <= 0)
+                    throw new InvalidOperationException("Invalid imported selected clip: " + cue);
+                var path = AssetDatabase.GetAssetPath(clip);
+                if (!path.StartsWith("Assets/_Project/Audio/SFX/", StringComparison.Ordinal))
+                    throw new InvalidOperationException("Audio bank refers to a demo/source path: " + path);
+            }
+            foreach (var expected in new[]
+            {
+                (ExpeditionCue.TournamentCountdown, "tik_timer.wav"), (ExpeditionCue.BattleStart, "start_battle_2.wav"),
+                (ExpeditionCue.CascadeFall, "fall.wav"), (ExpeditionCue.ExtraTurn, "5+.wav")
+            })
+            {
+                var path = "Assets/_Project/Audio/SFX/Match3/" + expected.Item2;
+                if (AssetDatabase.GetAssetPath(bank.Find(expected.Item1)) != path)
+                    throw new InvalidOperationException("Wrong active battle audio for " + expected.Item1);
+            }
         }
     }
 }

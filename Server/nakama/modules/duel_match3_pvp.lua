@@ -197,10 +197,19 @@ return function(deps)
       nk.logger_error("race settlement unavailable")
       return false
     end
-    local spec = state._race_recovery_spec or { win_rewards = resolve_race_reward_opts(state),
-      draw_xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200)), loss_xp = state.mode ~= "pve" and 10 or 0,
-      mode = state.mode, against_bot = against_bot,
-      finish_effects = type(deps.build_match_finish_effects) == "function" and deps.build_match_finish_effects(state, winner, is_draw) or nil }
+    local spec = state._race_recovery_spec
+    if not spec then
+      local effects = deps.build_match_finish_effects and deps.build_match_finish_effects(state, winner, is_draw) or {}
+      local achievements = deps.build_achievement_finish_effects and deps.build_achievement_finish_effects(state, winner) or {}
+      for uid, deltas in pairs(achievements) do
+        local plan = effects[uid] or {}
+        plan.achievement_deltas = deltas
+        effects[uid] = plan
+      end
+      spec = { win_rewards = resolve_race_reward_opts(state),
+        draw_xp = math.max(0, math.floor(tonumber(CFG.RACE_DRAW_XP) or 200)), loss_xp = state.mode ~= "pve" and 10 or 0,
+        mode = state.mode, against_bot = against_bot, finish_effects = effects }
+    end
     local ok, err, rewards = entry.settle(state.players_sorted, state.stats_result_id, winner, is_draw, function(progress, uid, costs, frozen)
       local policy = frozen or spec
       local flat = { xp = 0, gold = 0, ore = 0, matter = 0, ingots = 0, tesseract = 0 }
@@ -239,6 +248,17 @@ return function(deps)
       nk.logger_error("race settlement rejected: " .. tostring(err))
       if type(game_over_payload) == "table" then game_over_payload.rewardError = err end
       return false
+    end
+    if deps.deliver_finish_effects then
+      -- The frozen outbox already owns these counters even if delivery fails.
+      -- Recovery will deliver it without rerunning the paid settlement.
+      for uid in pairs(rewards) do
+        local delivered, done = pcall(deps.deliver_finish_effects, uid, state.stats_result_id .. ":stats")
+        if not delivered or done ~= true then
+          nk.logger_warn("race effects pending: " .. tostring(uid) .. "/" .. state.stats_result_id)
+        end
+      end
+      state._finalization_managed = rewards
     end
     state.race_rewards_by_user = rewards
     local reward = rewards[winner or ""]

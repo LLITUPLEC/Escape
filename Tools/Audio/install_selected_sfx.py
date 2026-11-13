@@ -1,11 +1,10 @@
-"""Install the explicit user's 19 A/B choices; --write required for production Assets.
+"""Install historical A/B choices or rebuild their bank with active SFX overrides.
 
-Keeps existing battle AudioImporter/GUID files, and protects fury/shield/critical.
-Creates a Resources bank referencing the nine new UI/action clips in Audio/SFX.
+Requires --write for changes. The ElevenLabs clips and original archive are
+verified in place when the current runtime manifest exists.
 """
 from __future__ import annotations
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import re
@@ -13,15 +12,10 @@ import shutil
 import uuid
 import wave
 
-ROOT = Path(__file__).resolve().parents[2]
-AUDITIONS = ROOT / "Design/Audio"
+from runtime_sfx import (ARCHIVE_KEYS, AUDITIONS, CURRENT_OVERRIDES, ROOT, SFX, digest,
+                         load_overrides, verify_protected, verify_wav)
+
 CHOICES = ROOT / "Design/Audio/Escape-audio-choices-0.3.5.txt"
-ENUM_KEYS = ["line_clear", "cascade_fall", "ability_square", "ability_cross", "ability_petard", "damage_hit", "extra_turn", "timer_end", "victory", "defeat", "ui_click", "ui_back", "ui_blocked", "queue_enter", "match_ready", "craft_start", "craft_ready", "reward_claim", "barrier_unlock"]
-PROTECTED = ["Bloodlust_cast.ogg", "Heroism_Cast.ogg", "Match3/m3_damage_crit.wav", "Match3/Bloodlust.wav", "Match3/m3_ability_shield.wav"]
-
-
-def digest(path: Path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def guid(path: Path):
@@ -48,24 +42,28 @@ def main():
     raw = CHOICES.read_text(encoding="utf-8-sig")
     choices = {key: value for value, key in re.findall(r": (A|B|не выбран) \[([a-z_]+)\]", raw)}
     assert len(choices) == 20 and choices.get("mine_elevator") == "не выбран", "Expected exactly 19 choices and unselected lift"
-    assert set(choices) == set(ENUM_KEYS) | {"mine_elevator"}
-    assert all(choices[key] in ("A", "B") for key in ENUM_KEYS)
+    assert set(choices) == set(ARCHIVE_KEYS) | {"mine_elevator"}
+    assert all(choices[key] in ("A", "B") for key in ARCHIVE_KEYS)
+    selected_metadata = json.loads((AUDITIONS / "selected-metadata.json").read_text(encoding="utf-8"))
     if (AUDITIONS / "metadata.json").exists():
         metadata = json.loads((AUDITIONS / "metadata.json").read_text(encoding="utf-8"))
         catalogue = {effect["id"]: effect for effect in metadata["effects"]}
     else:
-        metadata = json.loads((AUDITIONS / "selected-metadata.json").read_text(encoding="utf-8"))
-        catalogue = {effect["id"]: {"title": effect["title"], "variants": {effect["choice"]: effect}} for effect in metadata["selected"]}
-    sfx = ROOT / "Assets/_Project/Audio/SFX"
-    protected_paths = [p for name in PROTECTED for p in (sfx / name, Path(str(sfx / name) + ".meta"))]
-    protected = {p.relative_to(ROOT).as_posix(): digest(p) for p in protected_paths}
-    battle_importers = {p.relative_to(ROOT).as_posix(): digest(p) for p in (sfx / "Match3").glob("*.meta")}
+        catalogue = {effect["id"]: {"title": effect["title"], "variants": {effect["choice"]: effect}} for effect in selected_metadata["selected"]}
+    overrides = load_overrides()
+    protected = selected_metadata["protected_sha256"]
+    verify_protected(selected_metadata, overrides)
+    for row in overrides.values():
+        verify_wav(row)
+    battle_importers = {p.relative_to(ROOT).as_posix(): digest(p) for p in (SFX / "Match3").glob("*.meta")}
+    update_archive = args.write and not CURRENT_OVERRIDES.exists()
     entries = []
-    for index, key in enumerate(ENUM_KEYS):
+    for index, key in enumerate(ARCHIVE_KEYS):
         variant = catalogue[key]["variants"][choices[key]]
         source = AUDITIONS / variant["file"]
+        archive_file = "selected/" + key + ".wav"
         assert digest(source) == variant["sha256"], source
-        target = sfx / ("Match3/m3_" + key + ".wav" if index < 10 else "Expedition/" + key + ".wav")
+        target = SFX / ("Match3/m3_" + key + ".wav" if index < 10 else "Expedition/" + key + ".wav")
         with wave.open(str(source), "rb") as file:
             assert file.getparams()[:3] == (1, 2, 48000)
         entries.append({"id": key, "cue_index": index, "choice": choices[key], "title": catalogue[key]["title"],
@@ -73,7 +71,12 @@ def main():
                         "file": "selected/" + key + ".wav", "sha256": variant["sha256"],
                         "duration_seconds": variant["duration_seconds"], "peak_dbfs": variant["peak_dbfs"],
                         "rms_dbfs": variant["rms_dbfs"], "source": variant["source"]})
-        if args.write:
+        if update_archive:
+            (AUDITIONS / "selected").mkdir(exist_ok=True)
+            destination = AUDITIONS / archive_file
+            if source.resolve() != destination.resolve():
+                shutil.copyfile(source, destination)
+        if args.write and key not in overrides:
             if index >= 10:
                 folder(target.parent)
             shutil.copyfile(source, target)
@@ -88,20 +91,25 @@ def main():
         script_guid = guid(ROOT / "Assets/_Project/Scripts/Audio/ExpeditionAudioBank.cs")
         bank_text = "%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!114 &11400000\nMonoBehaviour:\n  m_ObjectHideFlags: 0\n  m_CorrespondingSourceObject: {fileID: 0}\n  m_PrefabInstance: {fileID: 0}\n  m_PrefabAsset: {fileID: 0}\n  m_GameObject: {fileID: 0}\n  m_Enabled: 1\n  m_EditorHideFlags: 0\n  m_Script: {fileID: 11500000, guid: " + script_guid + ", type: 3}\n  m_Name: SelectedSfx\n  m_EditorClassIdentifier: \n  entries:\n"
         for entry in entries:
-            bank_text += f'  - cue: {entry["cue_index"]}\n    clip: {{fileID: 8300000, guid: {guid(ROOT / entry["production"])}, type: 3}}\n'
-        bank.write_text(bank_text, encoding="utf-8")
+            replacement = overrides.get(entry["id"])
+            production = SFX / replacement["file"] if replacement else ROOT / entry["production"]
+            bank_text += f'  - cue: {entry["cue_index"]}\n    clip: {{fileID: 8300000, guid: {guid(production)}, type: 3}}\n'
+        for key, replacement in overrides.items():
+            if key in ARCHIVE_KEYS or replacement["cue_index"] is None:
+                continue
+            production = SFX / replacement["file"]
+            bank_text += f'  - cue: {replacement["cue_index"]}\n    clip: {{fileID: 8300000, guid: {guid(production)}, type: 3}}\n'
+        if not bank.exists() or bank.read_text(encoding="utf-8") != bank_text:
+            bank.write_text(bank_text, encoding="utf-8")
         new_meta(bank, "NativeFormatImporter:\n  externalObjects: {}\n  mainObjectFileID: 11400000\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n")
-        (AUDITIONS / "selected").mkdir(exist_ok=True)
-        for entry in entries:
-            shutil.copyfile(ROOT / entry["production"], AUDITIONS / entry["file"])
-    assert protected == {p.relative_to(ROOT).as_posix(): digest(p) for p in protected_paths}
+    verify_protected(selected_metadata, overrides)
     assert all(digest(ROOT / relative) == previous for relative, previous in battle_importers.items())
     report = {"audition_version": "0.3.5", "status": "selected_assets_installed" if args.write else "dry_run",
               "selection_sha256": digest(CHOICES), "selected_count": len(entries), "selected": entries,
               "unselected": [{"id": "mine_elevator", "action": "existing audio and behavior unchanged"}],
               "protected_sha256": protected, "protected_unchanged": True, "existing_battle_importers_unchanged": True,
               "resource_bank": "Assets/_Project/Resources/Expedition/Audio/SelectedSfx.asset"}
-    if args.write:
+    if update_archive:
         (AUDITIONS / "selected-metadata.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"written": args.write, "selected_count": len(entries), "protected_unchanged": True,
                       "existing_battle_importers_unchanged": True, "choices": {e["id"]: e["choice"] for e in entries}}, ensure_ascii=False))

@@ -88,6 +88,10 @@ namespace Project.UI
         private Transform _rowsRoot;
         private TMP_Text _bracketTitle;
         private TMP_Text _cdText;
+        private string _countdownTournamentId;
+        private string _countdownRound;
+        private double _countdownDeadline;
+        private int _displayedCountdownSecond;
         private TMP_Text _prizeFooterText;
         private TMP_Text _headerTemplate;
         private Transform _pairRowTemplate;
@@ -751,6 +755,7 @@ namespace Project.UI
             if (m.tournament != null && m.tournament.active && !m.tournament.eliminated)
             {
                 EnsureMyUserId();
+                ApplyCountdownSnapshot(m.tournament);
                 _lastTournament = m.tournament;
                 var sig = BuildBracketSignature(m.tournament);
                 if (sig != _lastBracketSignature || _bracketRoot == null || !_bracketRoot.activeSelf)
@@ -816,13 +821,44 @@ namespace Project.UI
             var cd = _bracketRoot.transform.Find("ArenaCd")?.GetComponent<TMP_Text>();
             if (cd != null)
             {
-                if (t.phase == "countdown")
-                    cd.text = "До начала боя · " + Mathf.Max(0, t.countdown_left) + " сек";
-                else
-                    cd.text = PhaseTitle(t.phase);
+                cd.text = t.phase == "countdown" ? CountdownLabel(_displayedCountdownSecond) : PhaseTitle(t.phase);
             }
             UpdatePrizeFooter(t);
         }
+
+        private void ApplyCountdownSnapshot(ArenaTournamentState tournament)
+        {
+            if (tournament.phase != "countdown")
+            {
+                _countdownTournamentId = null;
+                return;
+            }
+
+            var now = Time.realtimeSinceStartupAsDouble;
+            if (_countdownTournamentId != tournament.id || _countdownRound != tournament.next_round)
+            {
+                _countdownTournamentId = tournament.id;
+                _countdownRound = tournament.next_round;
+                _displayedCountdownSecond = Mathf.Max(0, tournament.countdown_left) + 1;
+                _countdownDeadline = now + Mathf.Max(0, tournament.countdown_left);
+                return;
+            }
+            // The server sends whole seconds. Accept a faster correction without
+            // rewinding the visible second or replaying its tick on a repeated poll.
+            _countdownDeadline = Math.Min(_countdownDeadline, now + Mathf.Max(0, tournament.countdown_left));
+        }
+
+        private void Update()
+        {
+            if (string.IsNullOrEmpty(_countdownTournamentId) || _bracketRoot == null || !_bracketRoot.activeInHierarchy) return;
+            var second = Math.Max(0, (int)Math.Ceiling(_countdownDeadline - Time.realtimeSinceStartupAsDouble));
+            if (second >= _displayedCountdownSecond) return;
+            _displayedCountdownSecond = second;
+            if (_cdText != null) _cdText.text = CountdownLabel(second);
+            if (second > 0) ExpeditionAudio.Play(ExpeditionCue.TournamentCountdown);
+        }
+
+        private static string CountdownLabel(int seconds) => "До начала боя · " + Mathf.Max(0, seconds) + " сек";
 
         // Размеры блока приза/ставок (PrizeFooter). Править здесь — или в префабе ArenaBracketOverlay → PrizeFooter.
         private const float PrizeFooterFontSize = 30f;
@@ -1162,7 +1198,8 @@ namespace Project.UI
             var myUid = NakamaBootstrap.Instance?.Session?.UserId;
             var oppHint = ResolveArenaOpponentDisplay(t, myUid);
             var oppUid = ResolveArenaOpponentUserId(t, myUid);
-            Match3LaunchContext.ArmArenaJoin(t.join_match_id, oppHint, t.join_opponent_is_bot, oppUid);
+            var round = ResolveArenaMatchRound(t, myUid);
+            Match3LaunchContext.ArmArenaJoin(t.join_match_id, oppHint, t.join_opponent_is_bot, oppUid, round);
 
             if (!string.IsNullOrEmpty(duelMatch3SceneName))
             {
@@ -1196,6 +1233,15 @@ namespace Project.UI
             return ScanArenaRowsForOpponentUid(t.qf, mid, myUserId)
                    ?? ScanArenaRowsForOpponentUid(t.sf, mid, myUserId)
                    ?? ScanArenaRowsForOpponentUid(t.final_pairs, mid, myUserId);
+        }
+
+        private static string ResolveArenaMatchRound(ArenaTournamentState t, string myUserId)
+        {
+            var matchId = t.join_match_id?.Trim();
+            if (string.IsNullOrEmpty(matchId) || string.IsNullOrEmpty(myUserId)) return null;
+            if (ScanArenaRowsForOpponentUid(t.qf, matchId, myUserId) != null) return "qf";
+            if (ScanArenaRowsForOpponentUid(t.sf, matchId, myUserId) != null) return "sf";
+            return ScanArenaRowsForOpponentUid(t.final_pairs, matchId, myUserId) != null ? "final" : null;
         }
 
         private static string ScanArenaRowsForOpponent(ArenaPairRow[] rows, string matchId, string myUid)
@@ -2034,7 +2080,7 @@ namespace Project.UI
             if (_cdText != null)
             {
                 if (t.phase == "countdown")
-                    _cdText.text = "До начала боя · " + Mathf.Max(0, t.countdown_left) + " сек";
+                    _cdText.text = CountdownLabel(t.countdown_left);
                 else
                     _cdText.text = PhaseTitle(t.phase);
             }
@@ -2344,6 +2390,7 @@ namespace Project.UI
 
         private void HideBracket()
         {
+            _countdownTournamentId = null;
             if (_bracketRoot != null)
                 _bracketRoot.SetActive(false);
         }

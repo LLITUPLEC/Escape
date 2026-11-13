@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System;
 
 namespace Project.Match3
 {
@@ -81,8 +82,6 @@ namespace Project.Match3
             _figure.sprite = sprite;
             _figure.enabled = sprite != null;
             ExpeditionCombatantGrounding.TryGet(sprite,out _footprint);_dirty=true;
-            // New mine bodies face left in their source art. Keep the opponent
-            // unmirrored; turn the local hero toward it. Other art keeps its prior rule.
             _mirror = ShouldMirror(sprite);
             _rect.localScale = new Vector3(_mirror ? -1 : 1, 1, 1);
             if(_shadow!=null)_shadow.enabled=sprite!=null;
@@ -90,10 +89,15 @@ namespace Project.Match3
         }
         private bool ShouldMirror(Sprite sprite)
         {
-            if (_player) return true;
-            if (sprite != null && sprite.name.StartsWith("mine-",System.StringComparison.Ordinal) &&
-                int.TryParse(sprite.name.Substring(5),out var floor) && floor>=1 && floor<=12) return false;
-            return sprite != _explorer;
+            if (sprite == null) return false;
+            var name = sprite.name;
+            if (name.StartsWith("mine-", StringComparison.Ordinal)) return false;
+            // These bodies were drawn looking to the right. The other hero bodies
+            // face left. Flip only this floor figure, leaving the HUD portrait intact.
+            var facesRight = name.StartsWith("phoenix-", StringComparison.Ordinal) ||
+                             name.StartsWith("alchemist-", StringComparison.Ordinal) ||
+                             name == "global-boss-body";
+            return facesRight != _player;
         }
         public void RefreshGrounding()
         {

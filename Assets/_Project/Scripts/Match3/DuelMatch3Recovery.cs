@@ -119,6 +119,8 @@ namespace Project.Match3
                     if (!recovery.active || recovery.terminal) { FinishUnavailableMatch(); return; }
                     if (recovery.match_id != matchId) throw new InvalidOperationException("recovery_match_changed");
                     ApplyRecoveredMetadata(recovery);
+                    if (recovery.started && recovery.battle_started)
+                        _audioBattleStartedMatchId = matchId;
                 }
                 var socket = NakamaBootstrap.Instance.Socket;
                 ReplaceMatchSocketHooks(socket);
@@ -170,6 +172,13 @@ namespace Project.Match3
             _launchMode = _isSoloBotMode ? Match3LaunchMode.SoloBot : Match3LaunchMode.Multiplayer;
             _pvpRaceQueue = info.pvp_race; _pvpProQueue = info.pvp_pro && !_pvpRaceQueue;
             _isArenaTournamentMatch = !string.IsNullOrEmpty(info.arena_tournament_id);
+            if (_isArenaTournamentMatch)
+            {
+                var round = !string.IsNullOrEmpty(info.arena_round) ? info.arena_round :
+                    Match3LaunchContext.PeekArenaRound(info.match_id);
+                if (!string.IsNullOrEmpty(round)) _hud?.SetTournamentStage(round);
+            }
+            else _hud?.SetTournamentStage(null);
             _isGlobalBoss = info.is_global_boss; _isGlobalBossPractice = false;
             _activePveBotFloor = info.is_global_boss ? 0 : Mathf.Clamp(info.floor, 1, 12);
             _activePveAffix = info.affix ?? string.Empty;
@@ -261,9 +270,12 @@ namespace Project.Match3
             if (!BattleOwnerIsCurrent || !ReferenceEquals(socket, NakamaBootstrap.Instance.Socket)) throw new OperationCanceledException("Transport changed.", ct);
             _match = match; _admissionMatchId = reply.match_id; _snapshotTransportReady = true;
             Match3LaunchContext.ClearRecoveredMatch();
-            if (Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out _, out _, out _) && arenaMatchId == reply.match_id)
+            var enteringFromBracket = Match3LaunchContext.TryPeekArenaJoin(out var arenaMatchId, out _, out _, out _) && arenaMatchId == reply.match_id;
+            if (enteringFromBracket)
                 Match3LaunchContext.ConsumeArenaJoinArm();
-            if (reply.battle_started || reply.started && !reply.can_cancel)
+            if (!enteringFromBracket && reply.started && reply.battle_started)
+                _audioBattleStartedMatchId = reply.match_id;
+            if (!enteringFromBracket && (reply.battle_started || reply.started && !reply.can_cancel))
             {
                 _matchRevealPending = false; StartGameWaitingServer();
                 _searchingPanel?.Show("Восстанавливаем текущий бой…");

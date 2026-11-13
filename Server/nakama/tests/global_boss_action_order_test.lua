@@ -16,8 +16,9 @@ local function state()
  return s
 end
 local api={get_event=function()return event end,get_player=function()return{}end,
- commit=function(uid,id,sequence,damage,snapshot,player,reason,critical_hit)
-  commits[#commits+1]={sequence=sequence,damage=damage,snapshot=copy(snapshot),player=player,critical_hit=critical_hit}
+ commit=function(uid,id,sequence,damage,snapshot,player,reason,critical_hit,achievement_deltas)
+  commits[#commits+1]={sequence=sequence,damage=damage,snapshot=copy(snapshot),player=player,critical_hit=critical_hit,
+   achievement_deltas=copy(achievement_deltas)}
   if fail_commit then return nil,'storage_unavailable'end
   return{event=event,attempt={sequence=sequence,snapshot=copy(snapshot),status=reason and'finished'or'bound',end_reason=reason,actual_damage=0}}
  end}
@@ -83,6 +84,8 @@ B.loop({},hero_crit,1,{{sender={user_id='hero'},op_code=E.CFG.OP_ACTION_REQUEST,
  data={actionType=4,fromX=-1,fromY=-1,toX=-1,toY=-1,cx=-1,cy=-1}}})
 check(commits[1].player and commits[1].critical_hit and commits[1].damage>0,
  'boss match forwards the actual engine critical result with the player damage commit')
+check(commits[1].achievement_deltas and commits[1].achievement_deltas['uses.petard']==1,
+ 'boss match includes the actual ability use in the durable action payload')
 local cooldown=state();cooldown.global_boss.boss_own_turn=1;cooldown.global_boss.next_scream_turn=3
 seen={};choose_calls=0;resolve_calls=0;B.loop({},cooldown,1,{});B.loop({},cooldown,cooldown.bot_turn_ready_tick,{})
 check(seen[1].adapt and not seen[1].scream and not seen[2].scream and choose_calls==1 and cooldown.global_boss.boss_own_turn==2,

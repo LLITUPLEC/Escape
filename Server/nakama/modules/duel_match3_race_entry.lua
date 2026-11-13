@@ -271,9 +271,9 @@ function M.new(deps)
           end
           writes[#writes + 1] = object(uid, "active", entry, entry_version)
           writes[#writes + 1] = object(uid, "run:" .. run_id, receipt, receipt_version)
-          if not is_draw then
-            local frozen_effects = intent and type(intent.spec) == "table" and intent.spec.finish_effects
-            local plan = type(frozen_effects) == "table" and frozen_effects[uid] or nil
+          local frozen_effects = intent and type(intent.spec) == "table" and intent.spec.finish_effects
+          local plan = type(frozen_effects) == "table" and frozen_effects[uid] or nil
+          if plan or not is_draw then
             -- Old prepared intents retain their original narrow plan. New
             -- live and recovered results use the exact frozen StatsApi plan.
             plan = plan or { match_stats = { mode = "race", won = uid == winner, result_id = run_id } }

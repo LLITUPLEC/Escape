@@ -484,7 +484,9 @@ test("actual core run-once hook calls configured bootstrap and tolerates absent 
   assert(source:find("Runtime.StorageMaintenance.configure({", 1, true) < start)
   local calls, boot, seeded = 0, 0, 0
   local env = setmetatable({ nk = { run_once = function(fn) calls = calls + 1; fn() end },
+    CFG = { BOTS_KEYS_BY_DIFFICULTY = {} },
     Runtime = { StorageMaintenance = { bootstrap = function() boot = boot + 1 end },
+      MinePrices = { upgrade_catalogs = function() return true, 0 end },
       seed_cheat_whitelist = function() seeded = seeded + 1 end } }, { __index = _G })
   local chunk = assert(loadstring(source:sub(start, stop - 1))); setfenv(chunk, env); chunk()
   assert(calls == 1 and boot == 1 and seeded == 1)

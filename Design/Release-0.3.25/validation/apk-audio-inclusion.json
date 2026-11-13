@@ -1,0 +1,944 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-11-13T18:10:12.552427+00:00",
+  "protectedWorkspaceHashes": 11,
+  "previousApk": {
+    "filename": "Escape-Expedition-0.3.24-20261113-150418.apk",
+    "bytes": 132925359,
+    "sha256": "fa4b722ff011621197b55b97208ce44cdd1d13b3274bf5edf37661faa85337b2"
+  },
+  "currentApk": {
+    "filename": "Escape-Expedition-0.3.25-20261113-175523.apk",
+    "bytes": 132734755,
+    "sha256": "fc744e76ffec189e162a0dc5200a9a9f3dd8d52fdc95b732eaa421e4e36801a5"
+  },
+  "runtimeAudio": [
+    {
+      "clip": "5+",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/5+.wav",
+        "sha256": "1dd50f1cd92a1ca8d2b58852efda24759b2c3ba1c86f229a19b1234159607ced",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 31200,
+        "seconds": 0.65
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 31232,
+        "seconds": 0.650667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 17664,
+        "fsbSha256": "d5ce0779d62e164df189650f846098cc1d42be5c3eb9a84a5e1cbeee09bcbd0a",
+        "resource": "resources.resource",
+        "resourceOffset": 263168
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 48000,
+        "seconds": 1.0,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 27104,
+        "fsbSha256": "d84b94dc9b3eb0faa07b2ee5fd15b06dc130c541882a54f433309f202c149df9",
+        "resource": "resources.resource",
+        "resourceOffset": 356032
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "barrier_unlock",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/barrier_unlock.wav",
+        "sha256": "23db27619203682b204c2ce566bc3de74a14f3dc8a4ab6fae4a85276638ea695",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 44208,
+        "seconds": 0.921
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 44224,
+        "seconds": 0.921333,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 24992,
+        "fsbSha256": "3754b6f8b4285fc98c1b3566ddf5114ac24b01a1818a75c9dd6bd27fb7d1a54d",
+        "resource": "resources.resource",
+        "resourceOffset": 42304
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 58560,
+        "seconds": 1.22,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 33056,
+        "fsbSha256": "db816c53ca89cfcea7c5f0aacef05160d1192e0755c29ca0aeaba60e7e12bb1d",
+        "resource": "resources.resource",
+        "resourceOffset": 55072
+      },
+      "codecPaddingFrames": 16,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "craft_ready",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/craft_ready.wav",
+        "sha256": "00f4448d66fa0f0219f087694985c98ce9721eebcef30a7e541fe84f3a38bb15",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 20160,
+        "seconds": 0.42
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 20160,
+        "seconds": 0.42,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 11456,
+        "fsbSha256": "b6661e1932a600af2ac52fbe4e4c991d596f22317be67a8e0a4ec7b3aa9b33ff",
+        "resource": "resources.resource",
+        "resourceOffset": 178976
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 38400,
+        "seconds": 0.8,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 21696,
+        "fsbSha256": "2fd34ffab122017b0692080dd62a9ebbaebc50e550ac99a51e86e3bcd6aed17e",
+        "resource": "resources.resource",
+        "resourceOffset": 242848
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "craft_start",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/craft_start.wav",
+        "sha256": "54bd81049471371af3d6a037b1afc7a17d4030fda7b1716d9b1d5350a8cf4b3e",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 23424,
+        "seconds": 0.488
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 23424,
+        "seconds": 0.488,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 13280,
+        "fsbSha256": "1de94e218d5732847a03aad4a5a9d1ab98cc52966f218940e7506d59480c9b30",
+        "resource": "resources.resource",
+        "resourceOffset": 89056
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 37440,
+        "seconds": 0.78,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 21184,
+        "fsbSha256": "85fd533528073f8d63e41daf58520b152da0198c6389c268ed00a5f5eb84afb2",
+        "resource": "resources.resource",
+        "resourceOffset": 116064
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "fall",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/fall.wav",
+        "sha256": "3f7befe85eb527a891891f46d02a027463ba38005d53c977c7ed50858a3f5162",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 20448,
+        "seconds": 0.426
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 20480,
+        "seconds": 0.426667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 11616,
+        "fsbSha256": "613218bd03fbfe1d89b920ee1c2171315e6e53d3a0a7b88abb7ce70091b5832e",
+        "resource": "resources.resource",
+        "resourceOffset": 77440
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 29120,
+        "seconds": 0.606667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 16480,
+        "fsbSha256": "8a63f6482bbc07266fbab377f53314e69d0a8f4e51599e59c37a15f67452f879",
+        "resource": "resources.resource",
+        "resourceOffset": 99584
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_ability_cross",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_cross.wav",
+        "sha256": "797a1beae295b51e2e86580a3cc5d2c91dcdb06eeafa6f5cf00b3848db524cf8",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 14880,
+        "seconds": 0.31
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 14912,
+        "seconds": 0.310667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 8512,
+        "fsbSha256": "b0ec90ed08f45368ca499a6ae4f6bb232bbc24ea8bc73c8b28b311e41cc957fe",
+        "resource": "resources.resource",
+        "resourceOffset": 238176
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 27392,
+        "seconds": 0.570667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 15520,
+        "fsbSha256": "0bc9258b798ca8f115e23fa70e8d3e13969b751c7d45a7e9491fb2ede3aea12c",
+        "resource": "resources.resource",
+        "resourceOffset": 324032
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_ability_petard",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_petard.wav",
+        "sha256": "cfa1d9a7dacb2143a36e72c2f353af9d08ba7a19701d7cdd87209ceefd405dca",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 10800,
+        "seconds": 0.225
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 10816,
+        "seconds": 0.225333,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 6208,
+        "fsbSha256": "77d4dca1aadb797725258d22aaf473d257adf394dec9ecb2e95e5c59e06d71b2",
+        "resource": "resources.resource",
+        "resourceOffset": 149952
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 42240,
+        "seconds": 0.88,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 23872,
+        "fsbSha256": "559e28a90c35b530310ce876b41735950e7b98ba278459fbd0649ec89f66fe93",
+        "resource": "resources.resource",
+        "resourceOffset": 182720
+      },
+      "codecPaddingFrames": 16,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_ability_square",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_ability_square.wav",
+        "sha256": "42e82dd6e3042556ec2cfa7c7195b138ac012e0fba765b4c1448d380b278e559",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 17184,
+        "seconds": 0.358
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 17216,
+        "seconds": 0.358667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 9792,
+        "fsbSha256": "f0c0d0cf3f82d8cbdd6efada3caafddd26af1c0da519f6c2c3f801d765f5151b",
+        "resource": "resources.resource",
+        "resourceOffset": 0
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 29312,
+        "seconds": 0.610667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 16608,
+        "fsbSha256": "b8761402c232d8b3d1b2f7b63ac8d24d90bdf9a34931f3a7979780964b1f4e16",
+        "resource": "resources.resource",
+        "resourceOffset": 0
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_damage_crit",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav",
+        "sha256": "05c0b593ca6bf1e096a6494369d44f305bd1c1ac78065d1c5e972ed69603f0de",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 16272,
+        "seconds": 0.339
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 16272,
+        "seconds": 0.339,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 4064,
+        "fsbSha256": "af7a74bc817a4821cfe484ebc0741e900dbe59398467171bd57a280ca811f5bf",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 19680
+      },
+      "previous": {
+        "channels": 2,
+        "frequencyHz": 44100,
+        "bitsPerSample": 16,
+        "frames": 93140,
+        "seconds": 2.112018,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 89792,
+        "fsbSha256": "a74afda80039e23df31555e451dfd107052771a0acdcc5f3e1b104118a18892a",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 19680
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_damage_hit",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav",
+        "sha256": "f2941ecd22af2224ae4c14d5efef510e2a5cb1133245fc39ef6aa6fa737425ce",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 13344,
+        "seconds": 0.278
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 13376,
+        "seconds": 0.278667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 7648,
+        "fsbSha256": "cd5c6282ed07dc72d9951cc4b866d89b41b428a6d833b38068f8675ec8954e29",
+        "resource": "resources.resource",
+        "resourceOffset": 217824
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 16320,
+        "seconds": 0.34,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 9280,
+        "fsbSha256": "a3c3501e37ca74238af2fde7c329123db6201755f02517db738f7af2990a6e22",
+        "resource": "resources.resource",
+        "resourceOffset": 297600
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_defeat",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_defeat.wav",
+        "sha256": "81a865dc850ebb11638de8f8566c764b8ac36777dbecdf0e09a43d1d7a80c4cb",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 48480,
+        "seconds": 1.01
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 48512,
+        "seconds": 1.010667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 27392,
+        "fsbSha256": "58ee23092518287a75d2039cb79ad9d12d40f27d1ef6ae2bce1a2323abc34803",
+        "resource": "resources.resource",
+        "resourceOffset": 190432
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 58560,
+        "seconds": 1.22,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 33056,
+        "fsbSha256": "d32a1ad18a25e12121b87e6a45faa8c00f32d2358b058da77d57552d91aa10c2",
+        "resource": "resources.resource",
+        "resourceOffset": 264544
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_line_clear",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_line_clear.wav",
+        "sha256": "d9492954cab0d8ba6594080501fbbb2d41eb53057692f673e663e6d173bbb638",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 5808,
+        "seconds": 0.121
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 5824,
+        "seconds": 0.121333,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 3392,
+        "fsbSha256": "772fa9116d0a3a7192daa216875a4c561d740e037d83312c8971c8d874d11095",
+        "resource": "resources.resource",
+        "resourceOffset": 163040
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 14912,
+        "seconds": 0.310667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 8512,
+        "fsbSha256": "8cdb573e0e28c792520a74e56a212f6c21bbcf17debcb1dda8859f8516ec4bc3",
+        "resource": "resources.resource",
+        "resourceOffset": 215872
+      },
+      "codecPaddingFrames": 16,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_timer_end",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav",
+        "sha256": "eaa635e1d559c37751eb62ae3c875e7229df6725b7b703aaad8f7eb4eef7da2f",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 17808,
+        "seconds": 0.371
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 17856,
+        "seconds": 0.372,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 10144,
+        "fsbSha256": "ad60c270fcb9e68da533d53c83b03522f532ac0d12cc45bfacb9b75cb7e14628",
+        "resource": "resources.resource",
+        "resourceOffset": 67296
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 20160,
+        "seconds": 0.42,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 11456,
+        "fsbSha256": "ce2b56099c28e4aec607bac14e707489ea410ae885df5572938a760d91f434a8",
+        "resource": "resources.resource",
+        "resourceOffset": 88128
+      },
+      "codecPaddingFrames": 48,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "m3_victory",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/m3_victory.wav",
+        "sha256": "3db414df56c96f6299c9c4f0e49013cb00dff6657dc255b2d7279e904bbc206b",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 57600,
+        "seconds": 1.2
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 57600,
+        "seconds": 1.2,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 32512,
+        "fsbSha256": "011049631223d2fbce23cf45779e6e55e62755daf3036237349e9eec75897091",
+        "resource": "resources.resource",
+        "resourceOffset": 9792
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 68160,
+        "seconds": 1.42,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 38464,
+        "fsbSha256": "3706d3a5ac6ee677055482ac5fbedcd7389de43ea365e68ac290a57984ef5058",
+        "resource": "resources.resource",
+        "resourceOffset": 16608
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "queue_enter",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/queue_enter.wav",
+        "sha256": "4ff1d57a172e59c9e833353276ab86b21e543292fe5c231527cbc9fa4273c08c",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 22368,
+        "seconds": 0.466
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 22400,
+        "seconds": 0.466667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 12704,
+        "fsbSha256": "0e794c6fc2d76bde398ae0fad86e5b72076194ab2cd2670492cfa430ad9a71da",
+        "resource": "resources.resource",
+        "resourceOffset": 225472
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 30272,
+        "seconds": 0.630667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 17152,
+        "fsbSha256": "6e968dfd01db8c7f8965ae6993d69c9db1d64eda5e3a91765d7e0e66be76a585",
+        "resource": "resources.resource",
+        "resourceOffset": 306880
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "reward_claim",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/reward_claim.wav",
+        "sha256": "dff58f85a0308dc0b1bd1bd2c1a8fd5e72db0526dcfd97bc3742660ec14e92ab",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 22032,
+        "seconds": 0.459
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 22080,
+        "seconds": 0.46,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 12544,
+        "fsbSha256": "d4135498f225c1fd8a2f44cd29d3e45eb7050556ab65b82a9896c6e2ed9d6877",
+        "resource": "resources.resource",
+        "resourceOffset": 166432
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 32640,
+        "seconds": 0.68,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 18464,
+        "fsbSha256": "a130d2a296500f6f9050a62606253764744f2e41f1ddbc8f864e6db0b1eea702",
+        "resource": "resources.resource",
+        "resourceOffset": 224384
+      },
+      "codecPaddingFrames": 48,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "start_battle_2",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/start_battle_2.wav",
+        "sha256": "dc79d926f62dc9afa0e3e81012bce170ff079a07c4b1f39d77bb717b62693750",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 84480,
+        "seconds": 1.76
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 84480,
+        "seconds": 1.76,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 47616,
+        "fsbSha256": "db584230c74e676708df4d6f137214e407b6f057e43b184b5cda0f923f55012c",
+        "resource": "resources.resource",
+        "resourceOffset": 102336
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 80640,
+        "seconds": 1.68,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 45472,
+        "fsbSha256": "f3f5ef2fcd4c20d75205d5f4ce7c97f1d3478765ad09d11b2888048f59e3409b",
+        "resource": "resources.resource",
+        "resourceOffset": 137248
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "ui_back",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_back.wav",
+        "sha256": "730c44c146e65ba060b5373eaf7d6c7212de66289a1e8f4919dab0789c8ebbab",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 6336,
+        "seconds": 0.132
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 6336,
+        "seconds": 0.132,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 3680,
+        "fsbSha256": "d537278bf7ba6d68c7164195498c9d8ff391fb6559cc0a1b09512c9a92015251",
+        "resource": "resources.resource",
+        "resourceOffset": 280832
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 10112,
+        "seconds": 0.210667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 5792,
+        "fsbSha256": "dbd3a13bbc6d1f15c712affcc5d89ffda146b78112bdca149cef0dee0e23e8ad",
+        "resource": "resources.resource",
+        "resourceOffset": 383136
+      },
+      "codecPaddingFrames": 0,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "ui_blocked",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_blocked.wav",
+        "sha256": "00bc9647c7da92ea2d96bd9e23b5e4c2e2534bc61e8916382b909e4df1cd1671",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 12000,
+        "seconds": 0.25
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 12032,
+        "seconds": 0.250667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 6880,
+        "fsbSha256": "213f3be3ef020515820402a16d98f9c0edca39bb83279e8de8c02395c62bcd2d",
+        "resource": "resources.resource",
+        "resourceOffset": 156160
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 16320,
+        "seconds": 0.34,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 9280,
+        "fsbSha256": "a290df4c3f55fc4e93ef1a9e6c470b270853cbcefa5b5fd0f1940be89629ddfe",
+        "resource": "resources.resource",
+        "resourceOffset": 206592
+      },
+      "codecPaddingFrames": 32,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    },
+    {
+      "clip": "ui_click",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Expedition/ui_click.wav",
+        "sha256": "27e51befc24cb8badfb9c031cffe6a3c2a631f00dc226927e5990ccbfbd2e2bf",
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 6384,
+        "seconds": 0.133
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 6400,
+        "seconds": 0.133333,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 3712,
+        "fsbSha256": "39abff730a40cb9406b624b6608de7fea7893d7011cc76e44d37619223d6f2d5",
+        "resource": "resources.resource",
+        "resourceOffset": 284512
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 7232,
+        "seconds": 0.150667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 4192,
+        "fsbSha256": "ece7b4863708c0786b16b10a7908c9973f50fb289231e0164664e60149da48c7",
+        "resource": "resources.resource",
+        "resourceOffset": 388928
+      },
+      "codecPaddingFrames": 16,
+      "sourcePropertiesMatch": true,
+      "payloadChanged": true
+    }
+  ],
+  "protectedAudio": [
+    {
+      "clip": "Bloodlust_cast",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Bloodlust_cast.ogg",
+        "sha256": "d0c36a9b85488676dbc1629bfdd33b51251706f4c5e81f3922ea2c989ae45506"
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 22050,
+        "bitsPerSample": 16,
+        "frames": 56960,
+        "seconds": 2.58322,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 9600,
+        "fsbSha256": "b9cbae457099b175df8d1af2a9300f1931201f5e2ac9f7ba1bdb4980ad55cdbf",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 10080
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 22050,
+        "bitsPerSample": 16,
+        "frames": 56960,
+        "seconds": 2.58322,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 9600,
+        "fsbSha256": "b9cbae457099b175df8d1af2a9300f1931201f5e2ac9f7ba1bdb4980ad55cdbf",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 10080
+      },
+      "payloadUnchanged": true
+    },
+    {
+      "clip": "Heroism_Cast",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Heroism_Cast.ogg",
+        "sha256": "fa89a028f9f7971f8568f7ec4e0d5d44de0e65da6b8836b7a2115bf0c9ed147b"
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 22050,
+        "bitsPerSample": 16,
+        "frames": 61993,
+        "seconds": 2.811474,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 10080,
+        "fsbSha256": "8d3d796f959262da87768cc2d14d0b1adecebdcf8f8c37da6770b80d7249466b",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 0
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 22050,
+        "bitsPerSample": 16,
+        "frames": 61993,
+        "seconds": 2.811474,
+        "unityCompressionFormat": 1,
+        "fsbCodec": 15,
+        "fsbBytes": 10080,
+        "fsbSha256": "8d3d796f959262da87768cc2d14d0b1adecebdcf8f8c37da6770b80d7249466b",
+        "resource": "sharedassets1.resource",
+        "resourceOffset": 0
+      },
+      "payloadUnchanged": true
+    },
+    {
+      "clip": "tik_timer",
+      "source": {
+        "path": "Assets/_Project/Audio/SFX/Match3/tik_timer.wav",
+        "sha256": "5bd158aaea3dcb33ab3763906801e248775367186f1b28bde12f23ab3ae64ed9"
+      },
+      "current": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 29120,
+        "seconds": 0.606667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 16480,
+        "fsbSha256": "3c4c937015dd5bdf4271cf10e2c4bdd949a35b6702d8afc120aa07288b71233f",
+        "resource": "resources.resource",
+        "resourceOffset": 246688
+      },
+      "previous": {
+        "channels": 1,
+        "frequencyHz": 48000,
+        "bitsPerSample": 16,
+        "frames": 29120,
+        "seconds": 0.606667,
+        "unityCompressionFormat": 2,
+        "fsbCodec": 7,
+        "fsbBytes": 16480,
+        "fsbSha256": "3c4c937015dd5bdf4271cf10e2c4bdd949a35b6702d8afc120aa07288b71233f",
+        "resource": "resources.resource",
+        "resourceOffset": 339552
+      },
+      "payloadUnchanged": true
+    }
+  ],
+  "extraTurnFrames": 31232,
+  "sourceAndPackedBytesComparable": false,
+  "method": "WAV source SHA-256 plus matched PCM geometry, exact FSB5 frame counts with codec block padding, and previous/current encoded payload SHA-256"
+}

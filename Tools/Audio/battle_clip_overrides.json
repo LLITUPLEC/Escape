@@ -1,0 +1,22 @@
+{
+  "cascade_fall": {
+    "cue_index": 1,
+    "file": "fall.wav",
+    "sha256": "8b83ae081e5cb22aad42767eda5c359e839d18a42db007b2259f2dbc8b3f5b74"
+  },
+  "extra_turn": {
+    "cue_index": 6,
+    "file": "5+.wav",
+    "sha256": "0f2fd1132bb10479124a6e11e3fed1b5a8f28c60ea3f2f1d698d659bf59a228f"
+  },
+  "match_ready": {
+    "cue_index": 14,
+    "file": "start_battle_2.wav",
+    "sha256": "9def3b2dacf405e3a03059268511fad9393552c1f079b686ca9e9c37af1017cf"
+  },
+  "tournament_countdown": {
+    "cue_index": 19,
+    "file": "tik_timer.wav",
+    "sha256": "5bd158aaea3dcb33ab3763906801e248775367186f1b28bde12f23ab3ae64ed9"
+  }
+}

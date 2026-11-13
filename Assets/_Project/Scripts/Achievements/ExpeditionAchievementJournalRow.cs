@@ -125,7 +125,7 @@ namespace Project.Achievements
             const int side = 56;
             const float radius = 15f;
             const float straight = side * .5f - radius - 1f;
-            var name = highlight ? "AlbumPocketGoldRim" : "AlbumLeatherPocket";
+            var name = highlight ? "AlbumPocketLimeRim" : "AlbumLeatherPocket";
             var texture = new Texture2D(side, side, TextureFormat.RGBA32, false)
             {
                 name = name,
@@ -136,8 +136,8 @@ namespace Project.Achievements
             Color leather = new Color32(48, 35, 29, 255);
             Color bronze = new Color32(158, 117, 80, 255);
             Color shadow = new Color32(42, 33, 27, 255);
-            Color halo = new Color32(242, 132, 39, 255);
-            Color gold = new Color32(255, 221, 139, 255);
+            Color halo = new Color32(103, 223, 43, 255);
+            Color lime = new Color32(217, 255, 145, 255);
             var pixels = new Color32[side * side];
             for (var y = 0; y < side; y++)
             for (var x = 0; x < side; x++)
@@ -149,9 +149,9 @@ namespace Project.Achievements
                 Color pixel;
                 if (highlight)
                 {
-                    var line = 1f - Mathf.Clamp01((Mathf.Abs(depth - 3.3f) - 1.25f) / 1.1f);
-                    var glow = .65f * (1f - Mathf.SmoothStep(0f, 1f, depth / 12f));
-                    pixel = Color.Lerp(halo, gold, line);
+                    var line = 1f - Mathf.Clamp01((Mathf.Abs(depth - 4.2f) - 1.85f) / 1.2f);
+                    var glow = .65f * (1f - Mathf.SmoothStep(0f, 1f, depth / 13f));
+                    pixel = Color.Lerp(halo, lime, line);
                     pixel.a = coverage * Mathf.Max(line, glow);
                 }
                 else

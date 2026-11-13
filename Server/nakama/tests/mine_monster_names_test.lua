@@ -1,6 +1,8 @@
 -- Actual config and actual engine fallback/storage normalization, with no Nakama I/O.
 package.path="Server/nakama/?.lua;"..package.path
+package.preload.nakama=function()return {} end
 local CFG=require("modules.duel_match3_config")
+local Prices=require("modules.duel_mine_prices")
 local f=assert(io.open("Docs/Design/monstr.txt","r"));local spec=f:read("*a");f:close()
 local expected={}
 for line in spec:gmatch("[^\r\n]+") do local floor,name=line:match("^(%d+)\t([^\t]+)");if floor then expected[tonumber(floor)]=name end end
@@ -10,7 +12,7 @@ local start=assert(source:find("function build_floor_bot_entry",1,true))
 local finish=assert(source:find("\nmath.randomseed",start,true))
 local normalize_start=assert(source:find("local function normalize_stored_bot",finish,true))
 local normalize_end=assert(source:find("local function read_bots_from_storage_key",normalize_start,true))
-local env=setmetatable({CFG=CFG,
+local env=setmetatable({CFG=CFG,Runtime={MinePrices=Prices},
  is_boss_floor=function(floor)return floor==4 or floor==8 or floor==12 end,
  mine_bot_id_for_floor=function(floor)return"mine_"..floor end,
  PveMineCost={DEFAULT_ATTACK={},DEFAULT_BANISH={},clone_list=function(t)return t end,normalize=function(a,b)return a or b end},

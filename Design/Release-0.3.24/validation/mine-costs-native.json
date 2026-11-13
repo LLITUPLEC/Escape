@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "passed": true,
+      "check": "v1 Storage prices remain readable before startup migration"
+    },
+    {
+      "passed": true,
+      "check": "Native v1 battle reserves 80 energy and 5 matter"
+    },
+    {
+      "passed": true,
+      "check": "Startup migrates easy to exact v2 catalog"
+    },
+    {
+      "passed": true,
+      "check": "Startup migrates medium to exact v2 catalog"
+    },
+    {
+      "passed": true,
+      "check": "Startup migrates hard to exact v2 catalog"
+    },
+    {
+      "passed": true,
+      "check": "Recovered v1 match refunds the original frozen price after v2 startup"
+    },
+    {
+      "passed": true,
+      "check": "RPC exposes all 12 updated easy quotes and rewards"
+    },
+    {
+      "passed": true,
+      "check": "RPC exposes all 12 updated medium quotes and rewards"
+    },
+    {
+      "passed": true,
+      "check": "RPC exposes all 12 updated hard quotes and rewards"
+    },
+    {
+      "passed": true,
+      "check": "Native hard floor-12 banish costs exactly 20 energy"
+    },
+    {
+      "passed": true,
+      "check": "Native hard floor-12 attack costs exactly 65 energy"
+    },
+    {
+      "passed": true,
+      "check": "A second startup does not rewrite v2 catalogs"
+    }
+  ]
+}

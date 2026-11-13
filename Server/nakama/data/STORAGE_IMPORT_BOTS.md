@@ -1,11 +1,11 @@
-# Импорт каталогов ботов в Nakama Storage (фаза 3)
+# Каталоги монстров шахты в Nakama Storage
 
 ## Куда писать
 
 | Поле | Значение |
 |------|----------|
 | **Collection** | `duel_match3_bot_defs` (константа `BOTS_COLLECTION` в `duel_match3_config.lua`) |
-| **User ID** | `4ad57156-201b-4abf-8d5d-7b4ed6a0364c` (`BOTS_STORAGE_USER_ID`) — системный пользователь для глобальных каталогов |
+| **User ID** | `00000000-0000-0000-0000-000000000000` (`BOTS_STORAGE_USER_ID`) — системный владелец глобальных каталогов |
 | **Keys** | См. ниже |
 
 ## Ключи (Key)
@@ -15,7 +15,7 @@
 3. **`catalog_medium`** — для **medium**.
 4. **`catalog_hard`** — для **hard**.
 
-Слияние на сервере: `catalog` → `catalog_{difficulty}` (последний побеждает по `id`). Без Storage-записи каталог недоступен (ошибка `bot_catalog_unavailable`).
+Сервер сначала читает `catalog`, затем применяет `catalog_{difficulty}` поверх совпадающих `id`. Пропущенные этажи получают резервные параметры.
 
 ## Формат JSON (тело `value`)
 
@@ -23,7 +23,7 @@
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "bots": {
     "mine_1": { "id": "mine_1", "name": "...", "floor": 1, ... }
   }
@@ -32,9 +32,11 @@
 
 Готовые файлы в этой папке:
 
-- `duel_match3_bots_catalog_easy.json` — копия базового примера (как «лёгкий» слой).
+- `duel_match3_bots_catalog_easy.json` — действующий лёгкий каталог.
 - `duel_match3_bots_catalog_medium.json` — усиленные статы/награды.
 - `duel_match3_bots_catalog_hard.json` — сильнее medium.
+
+Сервер при запуске обновляет действующие каталоги версии 1 до версии 2, если их старые цены совпадают с известными. Он записывает три слоя одним защищённым по версиям пакетом и сохраняет дополнительные поля. При конфликте с ручными ценами остаются исходные записи, причину можно найти в логе `mine_prices_upgrade`. Новая установка создаёт записи версии 2 сразу. Пример общего каталога оставлен для исторических импортов. Актуальные цены описаны в [балансе шахты](../../../Docs/Balance/MineEntryPrices-2026-11-13.md).
 
 ## Консоль Nakama / HTTP API
 
@@ -48,9 +50,9 @@
   "object": {
     "collection": "duel_match3_bot_defs",
     "key": "catalog_medium",
-    "user_id": "4ad57156-201b-4abf-8d5d-7b4ed6a0364c",
+    "user_id": "00000000-0000-0000-0000-000000000000",
     "value": { ...содержимое duel_match3_bots_catalog_medium.json... },
-    "permission_read": 1,
+    "permission_read": 0,
     "permission_write": 0
   }
 }

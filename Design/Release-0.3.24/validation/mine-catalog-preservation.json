@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "totalQuotesChecked": 36,
+  "nonPriceFieldsPreserved": true,
+  "tiers": [
+    {
+      "difficulty": "easy",
+      "catalogVersion": 2,
+      "quotesChecked": 12,
+      "privatePermissions": true,
+      "floor12Attack": [
+        {
+          "amount": 45,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 14,
+          "resource": "energy"
+        }
+      ]
+    },
+    {
+      "difficulty": "hard",
+      "catalogVersion": 2,
+      "quotesChecked": 12,
+      "privatePermissions": true,
+      "floor12Attack": [
+        {
+          "amount": 65,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 20,
+          "resource": "energy"
+        }
+      ]
+    },
+    {
+      "difficulty": "medium",
+      "catalogVersion": 2,
+      "quotesChecked": 12,
+      "privatePermissions": true,
+      "floor12Attack": [
+        {
+          "amount": 55,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 17,
+          "resource": "energy"
+        }
+      ]
+    }
+  ]
+}

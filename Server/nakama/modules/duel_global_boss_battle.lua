@@ -4,11 +4,12 @@ local nk=require('nakama')
 local function load(n)local ok,m=pcall(require,'modules.'..n);if ok then return m end;return require(n)end
 local Rules=load('duel_global_boss_rules')
 local Rounds=load('duel_match3_rounds')
+local Ach=load('duel_match3_achievements')
 local M={}
 local d={}
 local FIELDS={'stats','board','spawn_queues','cheat_rows','active_user_id','global_boss','_consumable_bindings',
  'round_number','round_first_user_id',
- 'bot_fury_open_mana','bot_survival_mode','bot_kill_plan','last_crit','_action_mana_drain'}
+ 'bot_fury_open_mana','bot_survival_mode','bot_kill_plan','last_crit','_action_mana_drain','_ach_five_plus_streak'}
 local function copy(v)if type(v)~='table'then return v end;local o={};for k,x in pairs(v)do o[k]=copy(x)end;return o end
 local function snapshot(s)local v={};for _,k in ipairs(FIELDS)do v[k]=copy(s[k])end;return v end
 local function restore(s,v)for _,k in ipairs(FIELDS)do s[k]=copy(v[k])end end
@@ -104,7 +105,7 @@ function M.join(dispatcher,s,tick)
 end
 local function persist(dispatcher,s,tick,pending)
  local r,err=api(s).commit(s.owner_user_id,s.global_boss.attempt_id,pending.sequence,pending.damage,pending.snapshot,
-  pending.player_action,pending.reason,pending.critical_hit)
+  pending.player_action,pending.reason,pending.critical_hit,pending.achievement_deltas)
  if not r then
   if err=='boss_defeated'or err=='event_expired'then
    s._boss_pending=nil;restore(s,pending.before);M.finish(dispatcher,s,tick,err);return true
@@ -128,6 +129,7 @@ local function action(dispatcher,s,tick,a,actor,pass)
  if e.hp<=0 or os.time()>=e.ends_at then M.finish(dispatcher,s,tick,e.hp<=0 and'boss_defeated'or'event_expired');return end
  s.stats[s.bot_user_id].hp=e.hp;s._global_boss_damage_raw=0
  s.last_crit=false;s._action_mana_drain=0;s._sync_popup=nil
+ s._ach_counters=nil
  s.global_boss.scream_triggered=false;s.global_boss.scream_damage=0;s.global_boss.adaptation_triggered=false
  local extra,keep,steps=false,false,nil
  if boss and not pass and not s.global_boss.boss_turn_prepared then
@@ -147,6 +149,7 @@ local function action(dispatcher,s,tick,a,actor,pass)
    end
    local ok,err;ok,err,extra,keep,steps=d.resolve(s,a,actor,opp)
    if not ok then restore(s,before);return false,err end
+   if not boss then Ach.inc_session(s,actor,Ach.map_action_to_stat(t),1) end
   end
  end
  local reason
@@ -158,12 +161,16 @@ local function action(dispatcher,s,tick,a,actor,pass)
   end
   if boss then s.global_boss.boss_turn_prepared=false end
   if not extra then
+   Ach.clear_five_plus_streak(s,actor)
    d.tick_buffs(s.stats[actor]);Rounds.set_active(s,opp);d.tick_cooldowns(s.stats[opp])
    if boss then s.bot_kill_plan=nil;s.bot_fury_open_mana=nil end
   end
  end
+ local deltas=s._ach_counters and s._ach_counters[s.owner_user_id]
+ s._ach_counters=nil
  local p={sequence=s._boss_sequence+1,damage=s._global_boss_damage_raw or 0,snapshot=snapshot(s),before=before,
-  player_action=not boss,critical_hit=s.last_crit==true,reason=reason,action=a,actor=actor,extra=extra,keep=keep,steps=steps}
+  player_action=not boss,critical_hit=s.last_crit==true,achievement_deltas=deltas,
+  reason=reason,action=a,actor=actor,extra=extra,keep=keep,steps=steps}
  return persist(dispatcher,s,tick,p)
 end
 function M.loop(dispatcher,s,tick,messages)

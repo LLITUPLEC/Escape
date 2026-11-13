@@ -117,6 +117,7 @@ namespace Project.Match3
         public string activeUserId;
         /// <summary>One authoritative round covers the first combatant and the response; extra actions keep it unchanged. Zero means unavailable on a legacy snapshot.</summary>
         public int roundNumber;
+        public string arenaRound;
         /// <summary>Кто совершил действие в этом синке (swap/способность). Пусто, если синк без действия.</summary>
         public string actionActorUserId;
 

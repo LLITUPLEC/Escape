@@ -597,6 +597,8 @@ class Suite:
         arm = self.consumable_use_request(p, 0, "elixir_assault", "reconnect-arm-" + self.run_id)
         self.check(self.rpc(p, "duel_consumables_use", arm).get("ok"), "reconnect fixture arms one owned elixir")
         before = self.stats(p)
+        catalog = self.rpc(p, "duel_match3_pve_catalog_get")
+        quote = resource_totals(next(bot["cost_attack"] for bot in catalog["bots"] if bot["id"] == "mine_4"))
         request_id = "reconnect-" + uuid.uuid4().hex
         launch = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_4", "request_id": request_id})
         mid = launch.get("match_id")
@@ -605,7 +607,8 @@ class Suite:
         recovered = self.rpc(p, "duel_match3_recover", {"request_id": request_id})
         replay = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_4", "request_id": request_id})
         self.check(recovered.get("active") and recovered.get("match_id") == mid and recovered.get("can_cancel")
-            and replay.get("resumed") and replay.get("match_id") == mid and self.rpc(p, "duel_player_resources_get").get("energy") == 85,
+            and replay.get("resumed") and replay.get("match_id") == mid
+            and self.rpc(p, "duel_player_resources_get").get("energy") == 100 - quote["energy"],
             "lost create acknowledgement recovers/resumes the exact paid receipt without a second debit")
         self.check(self.rpc(outsider, "duel_match3_recover", {"match_id": mid}).get("err") == "not_participant"
             and self.rpc(outsider, "duel_match3_cancel", {"match_id": mid}).get("err") == "not_participant",
@@ -690,7 +693,7 @@ class Suite:
         denied_cancel = self.rpc(p, "duel_match3_cancel", {"match_id": mid})
         wallet_after_cancel = self.storage("duel_match3_progress", "profile", p["uid"])
         self.check(denied_cancel.get("err") == "battle_already_started" and wallet_after_cancel == wallet_before_cancel
-            and paid_before_finish.get("status") == "consumed" and resource_totals(paid_before_finish.get("costs")) == {"energy": 15},
+            and paid_before_finish.get("status") == "consumed" and resource_totals(paid_before_finish.get("costs")) == quote,
             "cancel after actual gameplay cannot refund the committed mine entry")
         self.check(self.rpc(p, "duel_match3_forfeit", {"match_id": mid}).get("terminal"), "normal played surrender remains authoritative after recovery")
         ws.event(mid, 11)
@@ -787,11 +790,14 @@ class Suite:
         self.check(self.rpc(p, "duel_consumables_use", self.consumable_use_request(p, 0, "elixir_assault",
             "nojoin-" + self.run_id)).get("ok"), "never-joined PvE fixture arms one real owned elixir")
         before = self.stats(p)
+        catalog = self.rpc(p, "duel_match3_pve_catalog_get")
+        quote = resource_totals(next(bot["cost_attack"] for bot in catalog["bots"] if bot["id"] == "mine_1"))
         first = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_1"})
         if not first.get("ok") or not first.get("match_id"): raise RuntimeError("Paid no-join mine launch failed")
         entry = self.storage("duel_pve_entry", "active", p["uid"])
-        self.check(entry.get("status") == "bound" and self.storage("duel_match3_progress", "profile", p["uid"]).get("energy") == 85,
-            "a created but never joined mine match binds one exact fifteen-energy payment")
+        self.check(entry.get("status") == "bound" and resource_totals(entry.get("costs")) == quote
+            and self.storage("duel_match3_progress", "profile", p["uid"]).get("energy") == 100 - quote["energy"],
+            "a created but never joined mine match binds the exact catalog payment")
         state_path = "/match/" + quote(first["match_id"], safe="") + "/state"
         initial_status, initial_state = self.console("GET", state_path)
         self.check(initial_status == 200 and json.loads(initial_state.get("state", "{}")).get("match_id") == first["match_id"],
@@ -818,7 +824,7 @@ class Suite:
             "abandoned admission refunds original energy once, keeps armed elixir and records no phantom loss")
         second = self.rpc(p, "duel_match3_pve_create", {"bot_id": "mine_1"})
         self.check(second.get("ok") and second.get("match_id") != first["match_id"]
-            and self.rpc(p, "duel_player_resources_get").get("energy") == 85,
+            and self.rpc(p, "duel_player_resources_get").get("energy") == 100 - quote["energy"],
             "new mine entry recovers old reservation and charges once rather than twice")
         ws = self.connect(p); mid = second["match_id"]
         if "match" not in ws.command("match_join", {"match_id": mid}): raise RuntimeError("Recovered mine launch join failed")
@@ -2394,6 +2400,8 @@ class Suite:
                         raise RuntimeError("Arena match join failed")
                 board_a = sockets[uid_a].event(mid, 10)
                 board_b = sockets[uid_b].event(mid, 10)
+                self.check(board_a.get("arenaRound") == board_b.get("arenaRound") == round_name,
+                    round_name + ": both battle clients receive the authoritative tournament stage")
                 self.check(all(board_a.get(key) == board_b.get(key)
                     for key in ("aHp", "bHp", "aMaxHp", "bMaxHp")),
                     round_name + ": both arena clients receive identical authoritative health")

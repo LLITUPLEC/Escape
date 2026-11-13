@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "quotesChecked": 36,
+  "tiers": [
+    {
+      "difficulty": "easy",
+      "version": 2,
+      "rows": 12,
+      "floor12Attack": [
+        {
+          "amount": 45,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 14,
+          "resource": "energy"
+        }
+      ]
+    },
+    {
+      "difficulty": "medium",
+      "version": 2,
+      "rows": 12,
+      "floor12Attack": [
+        {
+          "amount": 55,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 17,
+          "resource": "energy"
+        }
+      ]
+    },
+    {
+      "difficulty": "hard",
+      "version": 2,
+      "rows": 12,
+      "floor12Attack": [
+        {
+          "amount": 65,
+          "resource": "energy"
+        }
+      ],
+      "floor12Banish": [
+        {
+          "amount": 20,
+          "resource": "energy"
+        }
+      ]
+    }
+  ]
+}

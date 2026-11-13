@@ -1,0 +1,8 @@
+# Preserve the exact line endings used by the historical audio hash checks.
+Design/Audio/Escape-audio-choices-0.3.5.txt text eol=lf
+Assets/_Project/Audio/SFX/Bloodlust_cast.ogg.meta text eol=lf
+Assets/_Project/Audio/SFX/Heroism_Cast.ogg.meta text eol=lf
+Assets/_Project/Audio/SFX/Match3/Bloodlust.wav.meta text eol=crlf
+Assets/_Project/Audio/SFX/Match3/m3_ability_shield.wav.meta text eol=crlf
+Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav.meta text eol=crlf
+Assets/_Project/Audio/SFX/Match3/tik_timer.wav.meta text eol=crlf

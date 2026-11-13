@@ -27,6 +27,7 @@ namespace Project.Match3
         private static string _arenaJoinMatchId;
         private static string _arenaOpponentDisplayHint;
         private static string _arenaOpponentUserId;
+        private static string _arenaRound;
         private static bool _arenaJoinOpponentIsBot;
 
         /// <summary>Друзья → «Спуск»: join к уже созданному race-матчу (не арена).</summary>
@@ -197,14 +198,19 @@ namespace Project.Match3
             string matchId,
             string opponentDisplayHint = null,
             bool opponentIsBot = false,
-            string opponentUserId = null)
+            string opponentUserId = null,
+            string round = null)
         {
             _arenaJoinMatchId = string.IsNullOrWhiteSpace(matchId) ? null : matchId.Trim();
             _arenaJoinPending = !string.IsNullOrEmpty(_arenaJoinMatchId);
             _arenaOpponentDisplayHint = string.IsNullOrWhiteSpace(opponentDisplayHint) ? null : opponentDisplayHint.Trim();
             _arenaOpponentUserId = string.IsNullOrWhiteSpace(opponentUserId) ? null : opponentUserId.Trim();
             _arenaJoinOpponentIsBot = opponentIsBot;
+            _arenaRound = round;
         }
+
+        public static string PeekArenaRound(string matchId) =>
+            _arenaJoinPending && !string.IsNullOrEmpty(matchId) && _arenaJoinMatchId == matchId ? _arenaRound : null;
 
         /// <summary>Проверка без сброса (до успешного JoinMatchAsync).</summary>
         public static bool TryPeekArenaJoin(
@@ -228,17 +234,11 @@ namespace Project.Match3
             _arenaOpponentDisplayHint = null;
             _arenaOpponentUserId = null;
             _arenaJoinOpponentIsBot = false;
+            _arenaRound = null;
         }
 
         /// <summary>Сброс при ошибке join или выходе со сцены до входа в матч.</summary>
-        public static void ClearArenaJoinArm()
-        {
-            _arenaJoinPending = false;
-            _arenaJoinMatchId = null;
-            _arenaOpponentDisplayHint = null;
-            _arenaOpponentUserId = null;
-            _arenaJoinOpponentIsBot = false;
-        }
+        public static void ClearArenaJoinArm() => ConsumeArenaJoinArm();
 
         /// <summary>Перед загрузкой DuelMatch3 после accept «Предложить Спуск».</summary>
         public static void ArmFriendRaceJoin(

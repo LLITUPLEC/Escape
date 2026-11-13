@@ -1,12 +1,12 @@
 fileFormatVersion: 2
-guid: 2c5292ba5cf254919a6b9e2b18e04f49
+guid: 39213fbbacce43b48dc08d10075d44d8
 AudioImporter:
   serializedVersion: 7
   defaultSettings:
     serializedVersion: 2
     loadType: 0
     sampleRateSetting: 0
-    sampleRateOverride: 44100
+    sampleRateOverride: 48000
     compressionFormat: 2
     quality: 1
     conversionMode: 0
@@ -17,6 +17,6 @@ AudioImporter:
   loadInBackground: 0
   ambisonic: 0
   3D: 0
-  userData: Original Expedition foley; Tools/Audio/generate_expedition_sfx.py
+  userData: Battle audio supplied for Escape 0.3.24
   assetBundleName:
   assetBundleVariant:

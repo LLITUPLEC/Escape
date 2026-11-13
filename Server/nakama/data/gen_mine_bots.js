@@ -1,5 +1,5 @@
 /**
- * Генерация duel_match3_bots_catalog_{easy,medium,hard}.json
+ * Генерация черновых каталогов для пересмотра боевой лестницы.
  *
  * Одна глобальная монотонная лестница из 36 ступеней (Т1 этаж 1 … Т3 этаж 12):
  *   — easy:   глобальные индексы 0..11
@@ -12,13 +12,13 @@
  *
  * start_mana: easy 3, +3 за этаж; medium 4, +4; hard 5, +5 (кап 950).
  * Боссы 4/8/12: перед ×2 копируют бой и награды с предыдущего этажа (3/7/11), затем удвоение
- * (кроме крита и шанса тессеракта). У 12-го босса matter/тессеракт/стоимость с matter — как у
- * финального этажа до копирования, потом ×2 на наградах.
+ * (кроме крита и шанса тессеракта). Цены v2 берутся из действующих каталогов.
  * Слитки: количество растёт с этажом; цвет слитка на сервере задаётся сложностью шахты (easy/medium/hard).
  *
- * Запуск: node gen_mine_bots.js
+ * Запуск: node gen_mine_bots.js <папка для черновиков>
  */
 const fs = require("fs");
+const path = require("path");
 
 const MAX_HP = 150;
 const NAMES = [
@@ -96,7 +96,7 @@ function applyBossDouble(b) {
   }
 }
 
-function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cross, manaStep) {
+function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cross, manaStep, published) {
   const bots = {};
   for (let i = 1; i <= 12; i++) {
     const key = "mine_" + i;
@@ -125,26 +125,7 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
       tch = 0.05;
     }
 
-    let eat, ban;
-    if (i <= 3) {
-      eat = 15;
-      ban = 5;
-    } else if (i <= 7) {
-      eat = 15;
-      ban = 5;
-    } else if (i <= 11) {
-      eat = 25;
-      ban = 15;
-    } else {
-      eat = 80;
-      ban = 40;
-    }
-    const cost_attack = [{ amount: eat, resource: "energy" }];
-    const cost_banish = [{ amount: ban, resource: "energy" }];
-    if (i === 12) {
-      cost_attack.push({ amount: 5, resource: "matter" });
-      cost_banish.push({ amount: 3, resource: "matter" });
-    }
+    const { cost_attack, cost_banish } = published.bots[key];
 
     const ai = Math.min(0.5, Math.round((0.12 + i * 0.03) * 100) / 100);
 
@@ -186,8 +167,6 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
           reward_matter_min: rmmn,
           reward_matter_max: rmmx,
           reward_tesseract_chance: tch,
-          cost_attack: cost_attack.map((x) => ({ ...x })),
-          cost_banish: cost_banish.map((x) => ({ ...x })),
         };
       }
       b.hp_bonus = prev.hp_bonus;
@@ -205,8 +184,6 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
         b.reward_matter_min = extras12.reward_matter_min;
         b.reward_matter_max = extras12.reward_matter_max;
         b.reward_tesseract_chance = extras12.reward_tesseract_chance;
-        b.cost_attack = extras12.cost_attack;
-        b.cost_banish = extras12.cost_banish;
       } else {
         b.reward_matter_min = prev.reward_matter_min;
         b.reward_matter_max = prev.reward_matter_max;
@@ -215,7 +192,7 @@ function buildFromRows(rows12, critBoss4, critBoss8, critBoss12, rewardScale, cr
       applyBossDouble(b);
     }
   }
-  return { version: 1, bots };
+  return { version: published.version, bots };
 }
 
 function assertMono12(rows, label) {
@@ -256,6 +233,13 @@ function assertGlobal36(rows) {
 }
 
 function main() {
+  if (process.argv.length !== 3) throw new Error("Supply an output directory for draft catalogs.");
+  fs.mkdirSync(process.argv[2], { recursive: true });
+  const destination = fs.realpathSync(process.argv[2]);
+  if (destination === fs.realpathSync(__dirname)) throw new Error("Drafts must not replace the canonical catalogs.");
+  const catalogName = (tier) => `duel_match3_bots_catalog_${tier}.json`;
+  const readPublished = (tier) => JSON.parse(fs.readFileSync(path.join(__dirname, catalogName(tier)), "utf8"));
+
   const globalRows = buildGlobalRows36();
   assertGlobal36(globalRows);
 
@@ -268,17 +252,16 @@ function main() {
   assertMono12(hardRows, "hard");
   assertCrossTier(easyRows, medRows, hardRows, "cross");
 
-  const easy = buildFromRows(easyRows, 0.06, 0.1, 0.15, 1.0, 0.33, 3);
-  const medium = buildFromRows(medRows, 0.12, 0.2, 0.3, 1.5, 0.4, 4);
-  const hard = buildFromRows(hardRows, 0.18, 0.3, 0.45, 2.0, 0.49, 5);
+  const easy = buildFromRows(easyRows, 0.06, 0.1, 0.15, 1.0, 0.33, 3, readPublished("easy"));
+  const medium = buildFromRows(medRows, 0.12, 0.2, 0.3, 1.5, 0.4, 4, readPublished("medium"));
+  const hard = buildFromRows(hardRows, 0.18, 0.3, 0.45, 2.0, 0.49, 5, readPublished("hard"));
 
-  const base = __dirname;
   for (const [name, obj] of [
-    ["duel_match3_bots_catalog_easy.json", easy],
-    ["duel_match3_bots_catalog_medium.json", medium],
-    ["duel_match3_bots_catalog_hard.json", hard],
+    [catalogName("easy"), easy],
+    [catalogName("medium"), medium],
+    [catalogName("hard"), hard],
   ]) {
-    fs.writeFileSync(base + "/" + name, JSON.stringify(obj, null, 2), "utf8");
+    fs.writeFileSync(path.join(destination, name), JSON.stringify(obj, null, 2), { encoding: "utf8", flag: "wx" });
     console.log("wrote", name);
   }
 

@@ -1,12 +1,11 @@
 """Render original, deterministic Expedition foley. No downloaded samples or runtime synthesis.
 
-Requires NumPy. Run from any directory with --write to replace the non-critical Match3 clips.
-The existing critical-hit recording and its importer are protected by exact SHA-256 checks.
+Requires NumPy. Run with --write to regenerate eligible legacy Match3 clips.
+Active overrides and protected clips are verified before generating production assets.
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import uuid
@@ -14,17 +13,13 @@ import wave
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "Assets/_Project/Audio/SFX/Match3"
+from runtime_sfx import (ARCHIVE_KEYS, AUDITIONS, ROOT, SFX, digest, load_overrides,
+                         verify_protected, verify_wav)
+
+OUT = SFX / "Match3"
 REPORT = ROOT / ".cache/qa/audio"
 RATE = 44100
 RNG = np.random.default_rng(3012026)
-CRIT_HASH = "53836329e7a752eed85a20ed25981e2e7ecf5b6fb8a155e92077bb0903a27341"
-CRIT_META_HASH = "d85008ee6c323794a7936a8ed25b1c5eff2c73060afc8a51de12808a8462df0c"
-
-
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def timeline(seconds: float) -> np.ndarray:
@@ -206,36 +201,52 @@ def render() -> dict[str, tuple[np.ndarray, str]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--write", action="store_true", help="Write the new production non-critical clips")
+    parser.add_argument("--write", action="store_true", help="Write eligible legacy production clips and a preview")
     options = parser.parse_args()
     crit = OUT / "m3_damage_crit.wav"
     crit_meta = OUT / "m3_damage_crit.wav.meta"
-    assert digest(crit) == CRIT_HASH and digest(crit_meta) == CRIT_META_HASH, "Critical sound/importer changed; stop"
+    overrides = load_overrides()
+    metadata = json.loads((AUDITIONS / "selected-metadata.json").read_text(encoding="utf-8"))
+    verify_protected(metadata, overrides)
+    for row in overrides.values():
+        verify_wav(row)
+    critical_hashes = digest(crit), digest(crit_meta)
     clips = render()
+    replaced = {"m3_" + key + ".wav" for key in ARCHIVE_KEYS if key in overrides}
+    replaced.update(Path(row["file"]).name for row in overrides.values()
+                    if (SFX / row["file"]).parent == OUT)
+    protected = {path.name for path in (ROOT / filename for filename in metadata["protected_sha256"])
+                 if path.parent == OUT}
     report = {"sample_rate": RATE, "channels": 1, "origin": "Original deterministic foley/modal synthesis; no external recordings",
-              "critical_audio_sha256": CRIT_HASH, "critical_meta_sha256": CRIT_META_HASH, "critical_unchanged": True, "clips": []}
+              "critical_audio_sha256": critical_hashes[0], "critical_meta_sha256": critical_hashes[1],
+              "critical_unchanged": True, "clips": []}
+    written = 0
     for name, (signal, description) in clips.items():
         assert np.isfinite(signal).all() and np.max(np.abs(signal)) < .9
         assert abs(signal[0]) < 1e-6 and abs(signal[-1]) < 1e-6
         path = OUT / name
         previous = digest(path) if path.exists() else None
-        if options.write:
+        write_clip = options.write and name not in replaced and name not in protected
+        if write_clip:
             write_wave(path, signal)
             importer(path)
+            written += 1
         report["clips"].append({"file": name, "description": description, "seconds": round(len(signal) / RATE, 3),
             "peak_dbfs": round(float(20 * np.log10(np.max(np.abs(signal)))), 2),
             "rms_dbfs": round(float(20 * np.log10(np.sqrt(np.mean(signal ** 2)))), 2),
             "clipped_samples": int(np.count_nonzero(np.abs(signal) >= 1)), "old_sha256": previous,
-            "sha256": digest(path) if options.write else None})
+            "sha256": digest(path) if write_clip else None})
     if options.write:
         REPORT.mkdir(parents=True, exist_ok=True)
         order = ["m3_cascade_fall.wav", "m3_damage_hit.wav", "m3_ability_shield.wav", "m3_ability_cross.wav", "m3_ability_square.wav", "m3_ability_petard.wav", "Bloodlust.wav", "m3_extra_turn.wav", "m3_timer_end.wav", "m3_victory.wav", "m3_defeat.wav"]
         gaps = np.zeros(round(.16 * RATE))
         preview = np.concatenate([np.concatenate([clips[name][0], gaps]) for name in order])
         write_wave(REPORT / "sound-preview.wav", preview)
-        assert digest(crit) == CRIT_HASH and digest(crit_meta) == CRIT_META_HASH
+        assert (digest(crit), digest(crit_meta)) == critical_hashes
+        verify_protected(metadata, overrides)
         (REPORT / "audio-assets.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"written": options.write, "new_clips": len(clips), "critical_unchanged": True,
+    print(json.dumps({"written": options.write, "new_clips": len(clips), "production_clips_written": written,
+                      "critical_unchanged": True,
                       "total_pcm16_bytes": sum(len(s[0]) * 2 for s in clips.values())}))
 
 

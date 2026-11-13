@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checkedUtc": "2026-11-13T15:03:57.102376+00:00",
+  "referenceFiles": 2188,
+  "candidateFiles": 2188,
+  "referenceManifestSha256": "8a8abd290c17beb51b9a4cb17cf6cf57c7c7856fadeb0720271ac04b7771ff73",
+  "candidateManifestSha256": "8a8abd290c17beb51b9a4cb17cf6cf57c7c7856fadeb0720271ac04b7771ff73",
+  "missing": [],
+  "added": [],
+  "changed": []
+}

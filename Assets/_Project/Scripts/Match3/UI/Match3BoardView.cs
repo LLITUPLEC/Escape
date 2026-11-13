@@ -523,7 +523,7 @@ namespace Project.Match3
         public void ClearAbilityImpact() => _abilityImpactFx?.Stop();
 
         public IEnumerator AnimateDrop(int[] beforeBoard, Match3BoardLogic afterBoard, float duration = 0.48f,
-            float playbackSpeed = 1f)
+            float playbackSpeed = 1f, Action onLanded = null)
         {
             if (_icon == null || _iconRt == null || afterBoard == null || duration <= 0f || playbackSpeed <= 0f)
                 yield break;
@@ -564,6 +564,7 @@ namespace Project.Match3
 
             // Scale the whole timeline so both the row delays and the fall speed keep the same rhythm.
             float t = 0f;
+            bool sounded = false;
             while (t < endTime)
             {
                 t += Time.deltaTime * playbackSpeed;
@@ -577,6 +578,11 @@ namespace Project.Match3
                     float localT = Mathf.Max(0f, t - delay);
                     float cellProgress = Mathf.Clamp01(speed * localT / start);
                     rt.anchoredPosition = new Vector2(0f, start * Mathf.Pow(1f - cellProgress, 2.2f));
+                    if (!sounded && cellProgress >= 1f)
+                    {
+                        sounded = true;
+                        onLanded?.Invoke();
+                    }
                     if (_icon[x, y] != null && spawn[x, y])
                     {
                         var c = _icon[x, y].color;

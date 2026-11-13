@@ -91,7 +91,7 @@ end
 
 function M.inc_session(state, uid, key, delta)
   if delta == nil or delta == 0 or key == nil or key == "" then return end
-  if not M.is_human(uid) then return end
+  if state._sim_metrics ~= nil or not M.is_human(uid) then return end
   M.ensure_counters(state)
   if state._ach_counters[uid] == nil then
     state._ach_counters[uid] = {}
@@ -205,9 +205,15 @@ local function increment_stats_in_val(val, delta_map)
   return changed == true
 end
 
-function M.apply_boss_critical_hit(summary)
-  increment_stats_in_val(summary, { [ACH_STAT_CRITICAL_HITS] = 1 })
+function M.apply_boss_action_stats(summary, counters, damaging_crit)
+  local changed = increment_stats_in_val(summary, counters)
+  if damaging_crit then
+    increment_stats_in_val(summary, { [ACH_STAT_CRITICAL_HITS] = 1 })
+    changed = true
+  end
+  if not changed then return false end
   summary.updated_at = os.time()
+  return true
 end
 
 local function persistent_merge_increment(user_id, delta_map)
@@ -270,35 +276,20 @@ local function chain_cumulative_need(chain, step_ix)
 end
 
 local function is_achievement_pvp_context(state)
-  if state == nil then
-    return false
-  end
-  if state.mode ~= "pve" then
-    return true
-  end
-  -- Турнир арены (в т.ч. бот в 1/4): технически mode=pve, но это PvP-контекст.
-  if state.arena_mirror ~= nil then
-    return true
-  end
-  return false
+  -- Турнир с ботом технически mode=pve; «Спуск» считается отдельным режимом.
+  return state.pvp_race ~= true and (state.arena_mirror ~= nil or state.mode == "pvp")
 end
 
 -- Pure snapshot for the durable outcome intent. Capture BEFORE committing a
 -- victory reward so a crash/achievement DB failure cannot lose these counters.
 function M.build_match_finish_effects(state, winner, actor, opponent, action_type)
   local result = {}
-  if winner == nil or winner == "" then
-    return result
-  end
-
   local am = state.arena_mirror
+  local pvp = is_achievement_pvp_context(state)
 
   local function extra_for(uid)
     local e = {}
-    if uid ~= winner then
-      return e
-    end
-    if not M.is_human(uid) then
+    if uid ~= winner or (state.arena_no_show_users and state.arena_no_show_users[uid]) then
       return e
     end
 
@@ -310,18 +301,18 @@ function M.build_match_finish_effects(state, winner, actor, opponent, action_typ
           e[ACH_STAT_ORE_TOURN] = (e[ACH_STAT_ORE_TOURN] or 0) + 1
         elseif ak == "gold" then
           e[ACH_STAT_GOLD_TOURN] = (e[ACH_STAT_GOLD_TOURN] or 0) + 1
-        else
+        elseif ak == "smith" then
           e[ACH_STAT_BLACKSMITH] = (e[ACH_STAT_BLACKSMITH] or 0) + 1
         end
       end
-      e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
-    elseif state.mode ~= "pve" then
+    end
+    if pvp then
       e[ACH_STAT_DUEL_TRI] = (e[ACH_STAT_DUEL_TRI] or 0) + 1
     end
 
     -- Финиш способностью в PvP: 2=крест, 3=квадрат, 4=петарда (obs.firework_lover).
     local at_n = tonumber(action_type) or 0
-    if is_achievement_pvp_context(state) and actor ~= nil and opponent ~= nil and uid == actor and uid == winner
+    if pvp and actor ~= nil and opponent ~= nil and uid == actor
         and (at_n == 2 or at_n == 3 or at_n == 4) then
       local oh = tonumber(state.stats[opponent] and state.stats[opponent].hp) or 0
       if oh <= 0 then
@@ -335,7 +326,7 @@ function M.build_match_finish_effects(state, winner, actor, opponent, action_typ
       end
     end
 
-    if state._ach_hp_was_exactly_one ~= nil and state._ach_hp_was_exactly_one[uid] == true then
+    if pvp and state._ach_hp_was_exactly_one ~= nil and state._ach_hp_was_exactly_one[uid] == true then
       e[ACH_STAT_WIN1] = (e[ACH_STAT_WIN1] or 0) + 1
     end
     return e
@@ -343,10 +334,8 @@ function M.build_match_finish_effects(state, winner, actor, opponent, action_typ
 
   local function extra_for_loser(uid)
     local e = {}
-    if uid == winner then
-      return e
-    end
-    if not M.is_human(uid) then
+    if winner == nil or winner == "" or uid == winner or state.started == false
+        or (state.arena_no_show_users and state.arena_no_show_users[uid]) then
       return e
     end
     if am ~= nil and tostring(am.round or "") == "final" then
@@ -366,15 +355,13 @@ function M.build_match_finish_effects(state, winner, actor, opponent, action_typ
     end
   else
     plist[#plist + 1] = winner
-    local oth = opponent
-    if oth ~= nil and oth ~= "" and not seen[oth] then
-      plist[#plist + 1] = oth
+    if opponent and opponent ~= "" and opponent ~= winner then
+      plist[#plist + 1] = opponent
     end
   end
 
   for _, uid in ipairs(plist) do
     if M.is_human(uid) then
-      M.ensure_counters(state)
       local bag = (state._ach_counters and state._ach_counters[uid]) or {}
       local ex = extra_for(uid)
       local deltas = {}
@@ -411,40 +398,53 @@ function M.flush_match_finish(state, winner, actor, opponent, action_type)
   local all_ok = true
   for uid, deltas in pairs(M.build_match_finish_effects(state, winner, actor, opponent, action_type)) do
     if not (state._finalization_managed and state._finalization_managed[uid]) then
-    local ok, delivered = pcall(function()
-      local existing = journal.read(uid, result_id)
-      if existing then
-        -- A wallet finalization can also contain extra effects (e.g. mine_2).
-        -- Never create a second counter increment for the same server result.
-        for stat, delta in pairs(deltas) do
-          if not existing.plan or not existing.plan.achievement_deltas or existing.plan.achievement_deltas[stat] ~= delta then
-            return false, "achievement_intent_conflict"
+      local ok, delivered = pcall(function()
+        local existing = journal.read(uid, result_id)
+        if existing then
+          -- A wallet finalization can also contain extra effects (e.g. mine_2).
+          -- Never create a second counter increment for the same server result.
+          for stat, delta in pairs(deltas) do
+            if not existing.plan or not existing.plan.achievement_deltas or existing.plan.achievement_deltas[stat] ~= delta then
+              return false, "achievement_intent_conflict"
+            end
+          end
+        else
+          local admitted = state._journal_tickets and state._journal_tickets[uid]
+          local ticket = admitted and admitted[result_id] or (journal.ticket and journal.ticket(uid, result_id))
+          local prepared, err = journal.prepare(uid, result_id, "effects", { achievement_deltas = deltas }, ticket)
+          if not prepared then
+            -- This result was already finalized and its receipt has since
+            -- been compacted while the other participant's write was pending.
+            return err == "result_compacted"
           end
         end
-      else
-        local prepared = journal.prepare(uid, result_id, "effects", { achievement_deltas = deltas },journal.ticket and journal.ticket(uid,result_id))
-        if not prepared then return false end
+        if journal.deliver_effects(uid, result_id) then return true end
+        -- The committed outbox is durable. Normal recovery will finish its
+        -- delivery and unused-ticket cleanup cannot retire it.
+        local pending = journal.read(uid, result_id)
+        return pending ~= nil and (pending.status == "committed" or pending.status == "complete")
+      end)
+      if not ok or delivered ~= true then
+        all_ok = false
+        nk.logger_error("achievement durable outbox pending: " .. tostring(uid) .. "/" .. result_id)
       end
-      return journal.deliver_effects(uid, result_id)
-    end)
-    if not ok or delivered ~= true then
-      all_ok = false
-      nk.logger_error("achievement durable outbox pending: " .. tostring(uid) .. "/" .. result_id)
-    end
     end
   end
 
-  local ok_lb, err_lb = pcall(function()
-    local ok, LB = pcall(require, "modules.duel_leaderboard_scores")
-    if not ok or LB == nil then
-      LB = require("duel_leaderboard_scores")
+  if not state._achievement_leaderboard_flushed then
+    state._achievement_leaderboard_flushed = true
+    local ok_lb, err_lb = pcall(function()
+      local ok, LB = pcall(require, "modules.duel_leaderboard_scores")
+      if not ok or LB == nil then
+        LB = require("duel_leaderboard_scores")
+      end
+      if type(LB.flush_match_wins) == "function" then
+        LB.flush_match_wins(state, winner)
+      end
+    end)
+    if not ok_lb then
+      nk.logger_error("leaderboard_flush_match_wins failed: " .. tostring(err_lb))
     end
-    if type(LB.flush_match_wins) == "function" then
-      LB.flush_match_wins(state, winner)
-    end
-  end)
-  if not ok_lb then
-    nk.logger_error("leaderboard_flush_match_wins failed: " .. tostring(err_lb))
   end
   return all_ok
 end
@@ -710,7 +710,7 @@ end
 --- Для 3 ходов подряд обычно нужны два 5+ (два доп. хода). При 3 подряд — +1 к
 --- dnn.three_five_plus_streak и сброс счётчика серии.
 function M.note_five_plus_streak(state, uid, _)
-  if state == nil or not M.is_human(uid) then return end
+  if state == nil or state._sim_metrics ~= nil or not M.is_human(uid) then return end
   if state._ach_five_plus_streak == nil then
     state._ach_five_plus_streak = {}
   end

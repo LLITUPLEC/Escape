@@ -15,7 +15,7 @@ namespace Project.Audio
         private static ExpeditionAudio _instance;
         private static ExpeditionAudioBank _bank;
         private static int _mainThread;
-        private static readonly int[] LastCueFrames = new int[19];
+        private static readonly int[] LastCueFrames = new int[Enum.GetValues(typeof(ExpeditionCue)).Length];
         private AudioSource _source;
         private AudioListener _fallbackListener;
 

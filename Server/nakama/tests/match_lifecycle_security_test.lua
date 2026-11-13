@@ -15,7 +15,7 @@ local function test(name,fn)
   local CFG={TICK_RATE=6,RECONNECT_GRACE_SECONDS=300,ARENA_RECONNECT_GRACE_SECONDS=20,MATCH_ADMISSION_SECONDS=20,
     TURN_READY_TIMEOUT_SECONDS=8,OP_GAME_OVER=11,OP_PLAYER_LEFT=12,OP_PEER_DISCONNECT=18,OP_BOARD_SYNC=10,
     OP_ACTION_REQUEST=13,OP_SELECTION_SYNC=15,OP_SNAPSHOT_REQUEST=16,RACE_WIN_XP=200,RACE_WIN_MATTER=4,RACE_DRAW_XP=200}
-  local Ach={is_human=function(u)return u:sub(1,7)~="zz-bot-"end,flush_match_finish=function()end,
+  local Ach={is_human=function(u)return u:sub(1,7)~="zz-bot-"end,flush_match_finish=function()return true end,
     storage_read_match3_summary_val=function(u)local v,ver=F.get("stats",u,"summary");return v or {},ver end}
   local J=require("tests.journal_fixture_admission").wrap(require("modules.duel_match3_journal").new({stats_collection="stats",stats_key="summary"}),F)
   local Stats=require("modules.duel_match3_stats_api")({CFG={STATS_COLLECTION="stats",STATS_KEY="summary"},Ach=Ach,finalization_journal=J})
@@ -74,6 +74,43 @@ test("played mine surrender preserves damaging critical hits exactly once",funct
   assert(rpc("a",s).terminal and rpc("a",s).terminal and #sent==1)
   local summary=F.get("stats","a","summary")
   assert(summary.losses==1 and summary.achievement_stats["slaughter.critical_hits"]==1)
+end)
+
+test("lost arena final keeps medals and the ticket through failed initial journal write",function(F,R,M,E,D,L,state,rpc,leave,loop,sent,arena,drop,Ach,J)
+  package.loaded["modules.duel_match3_achievements"]=nil
+  local achievements=require("modules.duel_match3_achievements")
+  achievements.configure({finalization_journal=J})
+  Ach.flush_match_finish=achievements.flush_match_finish
+  local s=state(false,true)
+  s.arena_mirror={round="final",kind="gold"}
+  achievements.inc_session(s,"a","matches.line6",1)
+  local admission=require("modules.duel_match3_journal_admission")
+  assert(admission.admit(s,{journal=J,is_human=achievements.is_human,consumable_eligible=function()return false end}))
+  local ticket=s._journal_tickets.a[s.stats_result_id]
+  local function ticket_open()
+    local control=F.get("duel_match3_journal","a","retention_v2")
+    return control.open[tostring(ticket.sequence)] ~= nil
+  end
+  local raw_write=F.nk.storage_write
+  F.nk.storage_write=function(writes)
+    for _,w in ipairs(writes)do
+      if w.collection=="duel_match3_journal" and w.key=="result:"..s.stats_result_id then error("temporary medal journal failure") end
+    end
+    return raw_write(writes)
+  end
+  local cancels=0
+  R.cancel_unused_journal_tickets=function()
+    cancels=cancels+1
+    return admission.cancel_unused(s,J)
+  end
+  assert(rpc("a",s).accepted and #sent==0 and cancels==0)
+  assert(s._achievement_pending_result and not J.read("a",s.stats_result_id) and ticket_open())
+  assert(loop({},D,1,s,{})==s and #sent==0 and cancels==0)
+  F.nk.storage_write=raw_write
+  assert(loop({},D,7,s,{})==nil and #sent==1 and cancels==1 and not ticket_open())
+  local summary=F.get("stats","a","summary")
+  assert(summary.achievement_stats["matches.line6"]==1 and summary.achievement_stats["slaughter.tournament_final_loss"]==1)
+  assert(rpc("a",s).terminal and #sent==1 and arena()==1)
 end)
 
 test("reliable Race surrender settles both entries and broadcasts one shared terminal result",function(F,R,M,E,D,L,state,rpc,leave,loop,sent)

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "bots": {
     "mine_1": {
       "id": "mine_1",
@@ -18,13 +18,13 @@
       "base_damage": 823,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 18,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 6,
           "resource": "energy"
         }
       ],
@@ -57,13 +57,13 @@
       "base_damage": 857,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 21,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 7,
           "resource": "energy"
         }
       ],
@@ -96,13 +96,13 @@
       "base_damage": 891,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 24,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 8,
           "resource": "energy"
         }
       ],
@@ -135,13 +135,13 @@
       "base_damage": 1782,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 36,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 11,
           "resource": "energy"
         }
       ],
@@ -174,13 +174,13 @@
       "base_damage": 960,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 34,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 10,
           "resource": "energy"
         }
       ],
@@ -213,13 +213,13 @@
       "base_damage": 994,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 39,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 12,
           "resource": "energy"
         }
       ],
@@ -252,13 +252,13 @@
       "base_damage": 1029,
       "cost_attack": [
         {
-          "amount": 15,
+          "amount": 44,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 5,
+          "amount": 13,
           "resource": "energy"
         }
       ],
@@ -291,7 +291,7 @@
       "base_damage": 2058,
       "cost_attack": [
         {
-          "amount": 25,
+          "amount": 51,
           "resource": "energy"
         }
       ],
@@ -330,7 +330,7 @@
       "base_damage": 1097,
       "cost_attack": [
         {
-          "amount": 25,
+          "amount": 51,
           "resource": "energy"
         }
       ],
@@ -369,13 +369,13 @@
       "base_damage": 1131,
       "cost_attack": [
         {
-          "amount": 25,
+          "amount": 55,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 15,
+          "amount": 17,
           "resource": "energy"
         }
       ],
@@ -408,13 +408,13 @@
       "base_damage": 1166,
       "cost_attack": [
         {
-          "amount": 25,
+          "amount": 58,
           "resource": "energy"
         }
       ],
       "cost_banish": [
         {
-          "amount": 15,
+          "amount": 18,
           "resource": "energy"
         }
       ],
@@ -447,22 +447,14 @@
       "base_damage": 2332,
       "cost_attack": [
         {
-          "amount": 80,
+          "amount": 65,
           "resource": "energy"
-        },
-        {
-          "amount": 5,
-          "resource": "matter"
         }
       ],
       "cost_banish": [
         {
-          "amount": 40,
+          "amount": 20,
           "resource": "energy"
-        },
-        {
-          "amount": 3,
-          "resource": "matter"
         }
       ],
       "petard_bias": 0.02,

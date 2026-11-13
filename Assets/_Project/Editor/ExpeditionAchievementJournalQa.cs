@@ -263,10 +263,11 @@ namespace Project.Editor
                 Check(crossRow == Button(scroll.content, "JournalRow-" + chain.ChainId), "Progress refresh reuses the visible row", report);
                 Check(claimFrame.enabled && !claimFrame.raycastTarget && crossRow.transform.Find("ClaimReadyTag") == null
                     && crossRow.GetComponentsInChildren<Button>().Length == 1 && Label(crossRow.transform, "MedalStatus").text == "Награда готова",
-                    "Claimable medal has a gold frame and plain readiness status, with one row action", report);
+                    "Claimable medal has a lime frame and plain readiness status, with one row action", report);
                 Check(crossRow.image.type == Image.Type.Sliced && claimFrame.type == Image.Type.Sliced
-                    && crossRow.image.sprite.border == claimFrame.sprite.border && claimFrame.rectTransform.rect == ((RectTransform)crossRow.transform).rect,
-                    "Gold frame follows the row's sliced outline", report);
+                    && crossRow.image.sprite.border == claimFrame.sprite.border && claimFrame.rectTransform.rect == ((RectTransform)crossRow.transform).rect
+                    && claimFrame.sprite.name == "AlbumPocketLimeRim",
+                    "Lime frame follows the row's sliced outline", report);
                 Check(FrameFitsViewport(scroll, claimFrame), "The first medal's whole outline fits at the top of the viewport", report);
                 Call(controller, "UpdateClaimFrames", 0f);
                 var peak = claimFrame.canvasRenderer.GetAlpha();
@@ -276,7 +277,7 @@ namespace Project.Editor
                 Call(controller, "UpdateClaimFrames", 1.2f);
                 var trough = claimFrame.canvasRenderer.GetAlpha();
                 Check(peak > .95f && midpoint is > .5f and < .75f && trough is > .15f and < .35f,
-                    "The gold rim moves smoothly between distinct, visible brightness levels", report);
+                    "The lime rim moves smoothly between distinct, visible brightness levels", report);
                 Capture(canvas, camera, target, $"{width}x{height}-claimable-rest", report);
 
                 var last = catalog.Last(entry => entry.Tab == AchievementTab.Obsession);

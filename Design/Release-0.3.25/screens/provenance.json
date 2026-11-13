@@ -1,0 +1,39 @@
+{
+  "version": "0.3.25",
+  "date": "2026-11-13",
+  "screens": [
+    {
+      "file": "hub.png",
+      "source": "Design/Release-0.3.24/screens/hub.png",
+      "sha256": "3029b2c31d545323ad02ebbc161df4d8a4de9de9ea17dff820bf9e69208c3d5a",
+      "bytes": 2971725,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Retained Unity capture from 0.3.24, whose depicted visuals are unchanged in 0.3.25."
+    },
+    {
+      "file": "character.png",
+      "source": "Design/Release-0.3.24/screens/character.png",
+      "sha256": "39caad930844ed590b82abfa064c7433bc57c4992190d18a7d78b3efe3105d95",
+      "bytes": 1736478,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Retained Unity capture from 0.3.24, whose depicted visuals are unchanged in 0.3.25."
+    },
+    {
+      "file": "mine.png",
+      "source": "Design/Release-0.3.24/screens/mine.png",
+      "sha256": "b81aeead85cf90c25de9ee88c564288f6614208f0543ed7a9a0b669a203392cf",
+      "bytes": 1785995,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "method": "Retained Unity capture from 0.3.24, whose depicted visuals are unchanged in 0.3.25."
+    }
+  ]
+}

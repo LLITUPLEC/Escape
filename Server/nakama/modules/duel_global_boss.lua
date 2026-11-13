@@ -234,7 +234,7 @@ function M.start(uid,attempt_id,snapshot,consumable_receipt,sheet)
     nk.storage_write(writes);return a
   end)
 end
-function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal_reason,critical_hit)
+function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal_reason,critical_hit,achievement_deltas)
   local result,err=retry(function()
     local a,av=read(uid,M.ATTEMPT_COLLECTION,attempt_id);if not a then return nil,"attempt_not_found"end
     local e,ev=read(SYSTEM,M.COLLECTION,a.event_id)
@@ -262,11 +262,12 @@ function M.commit(uid,attempt_id,sequence,damage,snapshot,player_action,terminal
     writes[#writes+1]=op(SYSTEM,M.COLLECTION,e.id,e,ev)
     writes[#writes+1]=op(uid,M.PLAYER_COLLECTION,e.id,p,pv)
     writes[#writes+1]=op(uid,M.ATTEMPT_COLLECTION,a.id,a,av)
-    if player_action and critical_hit and actual > 0 then
+    local damaging_crit = critical_hit and actual > 0
+    if player_action and (damaging_crit or (achievement_deltas and next(achievement_deltas))) then
       -- The attempt sequence protects this counter from lost-ack retries.
       local summary,version=read(uid,CFG.STATS_COLLECTION,CFG.STATS_KEY)
       summary=summary or{}
-      Ach.apply_boss_critical_hit(summary)
+      Ach.apply_boss_action_stats(summary,achievement_deltas,damaging_crit)
       local summary_write=op(uid,CFG.STATS_COLLECTION,CFG.STATS_KEY,summary,version)
       summary_write.permission_read=1
       writes[#writes+1]=summary_write

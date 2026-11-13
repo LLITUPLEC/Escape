@@ -82,6 +82,9 @@ key_meshy.txt
 Assets/_Project/Resources/NakamaConnectionConfig.asset
 Assets/_Project/Resources/NakamaConnectionConfig.asset.meta
 
+# Local manifest for ElevenLabs audio included in the official APK.
+Tools/Audio/elevenlabs_runtime_overrides.json
+
 # Isolated Nakama deployment credentials and generated runtime
 Server/nakama/deploy/.env
 Server/nakama/deploy/secrets/

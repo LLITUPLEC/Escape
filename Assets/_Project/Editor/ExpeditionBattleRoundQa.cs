@@ -65,6 +65,30 @@ namespace Project.Editor
                 }
                 var dto = JsonUtility.FromJson<M3BoardSyncMsg>(JsonUtility.ToJson(Snapshot(42, "hero", "classic")));
                 Require(report, dto.roundNumber == 42, "JsonUtility retains the authoritative round DTO");
+                foreach (var (round, label) in new[] { ("qf", "1/4 финала"), ("sf", "Полуфинал"), ("final", "Финал") })
+                {
+                    var tournament = Snapshot(42, "hero", "tournament");
+                    tournament.arenaRound = round;
+                    Apply(manager, JsonUtility.FromJson<M3BoardSyncMsg>(JsonUtility.ToJson(tournament)));
+                    var stage = hud.transform.Find("ArenaStageText")?.GetComponent<TMPro.TMP_Text>();
+                    Require(report, stage != null && stage.text == label && stage.gameObject.activeSelf, label + " from BoardSync");
+                    Require(report, stage.rectTransform.anchorMax.x <= hud.roundText.rectTransform.anchorMin.x,
+                        label + " and move counter have separate slots");
+                    hud.SetTimerPhase(true);
+                    Require(report, stage.gameObject.activeSelf, label + " remains visible during animations");
+                    hud.SetTimerPhase(false);
+                }
+                hud.SetTournamentStage(null);
+                Require(report, !hud.transform.Find("ArenaStageText").gameObject.activeSelf &&
+                    hud.roundText.rectTransform.anchorMin.x == .05f, "Non-tournament HUD clears the stage and reclaims the full row");
+                Match3LaunchContext.ArmArenaJoin("fixture-match", round: "sf");
+                try
+                {
+                    Require(report, Match3LaunchContext.PeekArenaRound("fixture-match") == "sf" &&
+                        Match3LaunchContext.PeekArenaRound("other-match") == null, "Bracket fallback belongs to one exact match");
+                }
+                finally { Match3LaunchContext.ClearArenaJoinArm(); }
+                Require(report, Match3LaunchContext.PeekArenaRound("fixture-match") == null, "Consumed stage does not survive scene changes");
                 hud.ResetRoundNumber(); Apply(manager, Snapshot(0, "hero", "boss"));
                 Require(report, hud.RoundNumber == 0 && string.IsNullOrEmpty(hud.roundText.text) && !hud.roundText.gameObject.activeSelf,
                     "Legacy boss snapshot does not invent a historical round");

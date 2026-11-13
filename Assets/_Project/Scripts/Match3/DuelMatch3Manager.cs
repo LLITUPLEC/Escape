@@ -75,7 +75,7 @@ namespace Project.Match3
         [SerializeField] private AudioClip sfxDamageCrit;
         [SerializeField] private AudioClip sfxVictory;
         [SerializeField] private AudioClip sfxDefeat;
-        private string _audioConfirmedMatchId;
+        private string _audioBattleStartedMatchId;
 
         [Header("Ability Icon Sprites")]
         [SerializeField] private Sprite petardAbilitySprite;
@@ -387,6 +387,7 @@ namespace Project.Match3
                     _pvpProQueue = false;
                     _pvpRaceQueue = false;
                     _isArenaTournamentMatch = true;
+                    _hud?.SetTournamentStage(Match3LaunchContext.PeekArenaRound(arenaMatchId));
                     _mmTcs?.TrySetCanceled();
                     await CancelMatchmakerTicketAsync();
                     try
@@ -791,7 +792,6 @@ namespace Project.Match3
         private void OnMatchFound()
         {
             if (_cancelPreparationIntent || !BattleOwnerIsCurrent) return;
-            AnnounceConfirmedMatchAudio();
             EnsureRaceHudApplied();
             _myPanel?.SetPlayerName(ResolveMyDisplayName());
             _opPanel?.SetPlayerName(!string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник");
@@ -828,6 +828,7 @@ namespace Project.Match3
                 _searchingPanel?.ShowReady(_opPanel?.avatarImage != null ? _opPanel.avatarImage.sprite : null,
                     !string.IsNullOrWhiteSpace(_opDisplayName) ? _opDisplayName : "Соперник", !_isSoloBotMode,
                     $"Соперник готов. Бой начнётся через {left}…");
+                if (_isArenaTournamentMatch) ExpeditionAudio.Play(ExpeditionCue.TournamentCountdown);
                 yield return new WaitForSecondsRealtime(1);
             }
             _matchRevealRoutine = null;
@@ -958,7 +959,6 @@ namespace Project.Match3
         private void OnBotMatchFound(string botName)
         {
             if (_cancelPreparationIntent || !BattleOwnerIsCurrent) return;
-            AnnounceConfirmedMatchAudio();
             ShowPveSelector(false);
             if (!_isGlobalBoss)
                 botName = MonsterNames.Resolve(botName, presentationMonsterCatalog != null ? presentationMonsterCatalog.GetByFloor(_activePveBotFloor) : null, _activePveBotFloor);
@@ -970,12 +970,14 @@ namespace Project.Match3
             BeginConfirmedMatchPresentation();
         }
 
-        private void AnnounceConfirmedMatchAudio()
+        private void PlayBattleStartSound()
         {
-            if (_match == null || string.IsNullOrEmpty(_match.Id) || _match.Id == _audioConfirmedMatchId) return;
-            _audioConfirmedMatchId = _match.Id;
-            ExpeditionAudio.Play(ExpeditionCue.MatchReady);
+            if (string.IsNullOrEmpty(_match?.Id) || _match.Id == _audioBattleStartedMatchId) return;
+            _audioBattleStartedMatchId = _match.Id;
+            ExpeditionAudio.Play(ExpeditionCue.BattleStart);
         }
+
+        private void PlayCascadeLandingSound() => PlaySfx(sfxCascadeFall);
 
         private void ShowPveSelector(bool visible)
         {
@@ -2261,6 +2263,12 @@ namespace Project.Match3
         {
             // Ensure StartCoroutine has published its handle even for an instantaneous snapshot.
             yield return null;
+            if (msg.arenaRound is "qf" or "sf" or "final")
+            {
+                _isArenaTournamentMatch = true;
+                _hud?.SetTournamentStage(msg.arenaRound);
+            }
+            PlayBattleStartSound();
             var silent = _silentBoardSyncs.Remove(msg);
             var presentAction = !silent && msg.actionType > 0;
             if (silent) _boardView?.ClearAbilityImpact();
@@ -2349,8 +2357,8 @@ namespace Project.Match3
                     {
                         _board.FromArray(step.board);
                         _boardView.RefreshAll(_board);
-                        PlaySfx(sfxCascadeFall);
-                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.25f, playbackSpeed: 1.10f);
+                        yield return _boardView.AnimateDrop(currentBoard, _board, 0.25f, playbackSpeed: 1.10f,
+                            onLanded: PlayCascadeLandingSound);
                         currentBoard = _board.ToArray();
                     }
                 }
@@ -3594,8 +3602,8 @@ namespace Project.Match3
             if (sfxAbilityPetard == null) sfxAbilityPetard = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_ability_petard.wav");
             if (sfxAbilityFury == null)   sfxAbilityFury   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Bloodlust_cast.ogg");
             if (sfxAbilityShield == null) sfxAbilityShield = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Heroism_Cast.ogg");
-            if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_cascade_fall.wav");
-            if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_extra_turn.wav");
+            if (sfxCascadeFall == null)  sfxCascadeFall  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/fall.wav");
+            if (sfxExtraTurn == null)    sfxExtraTurn    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/5+.wav");
             if (sfxTimerEnd == null)     sfxTimerEnd     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_timer_end.wav");
             if (sfxDamageHit == null)    sfxDamageHit    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_damage_hit.wav");
             if (sfxDamageCrit == null)   sfxDamageCrit   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Project/Audio/SFX/Match3/m3_damage_crit.wav");
